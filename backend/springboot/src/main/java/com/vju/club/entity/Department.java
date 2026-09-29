@@ -4,31 +4,35 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-
-import java.util.UUID;
+import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(name = "departments")
-public class Department {
+@Table(name = "departments", uniqueConstraints = @UniqueConstraint(name = "uq_departments_club_name", columnNames = {"club_id", "name"}))
+public class Department extends TimestampedEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
-
-    @Column(name = "club_id", nullable = false)
-    private UUID clubId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "club_id", nullable = false)
+    private Club club;
 
     @Column(nullable = false, length = 200)
     private String name;
 
+    private String description;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
-    private UserStatus status = UserStatus.ACTIVE;
+    private DepartmentStatus status = DepartmentStatus.ACTIVE;
 
-    protected Department() {
-    }
+    public Club getClub() { return club; }
+    public void setClub(Club club) { this.club = club; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public DepartmentStatus getStatus() { return status; }
+    public void setStatus(DepartmentStatus status) { this.status = status; }
 }

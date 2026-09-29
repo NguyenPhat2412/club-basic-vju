@@ -4,40 +4,61 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
-import java.util.UUID;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "user_permissions")
-public class UserPermission {
+public class UserPermission extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    @Column(name = "user_id", nullable = false)
-    private UUID userId;
-
-    @Column(name = "permission_id", nullable = false)
-    private UUID permissionId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "permission_id", nullable = false)
+    private Permission permission;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private PermissionScope scope = PermissionScope.GLOBAL;
 
-    @Column(name = "club_id")
-    private UUID clubId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "club_id")
+    private Club club;
 
-    @Column(name = "department_id")
-    private UUID departmentId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id")
+    private Department department;
 
-    @Column(name = "granted_by", nullable = false)
-    private UUID grantedBy;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "granted_by", nullable = false)
+    private User grantedBy;
 
-    protected UserPermission() {
-    }
+    @Column(name = "granted_at", nullable = false)
+    private OffsetDateTime grantedAt;
+
+    @Column(name = "revoked_at")
+    private OffsetDateTime revokedAt;
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+    public Permission getPermission() { return permission; }
+    public void setPermission(Permission permission) { this.permission = permission; }
+    public PermissionScope getScope() { return scope; }
+    public void setScope(PermissionScope scope) { this.scope = scope; }
+    public Club getClub() { return club; }
+    public void setClub(Club club) { this.club = club; }
+    public Department getDepartment() { return department; }
+    public void setDepartment(Department department) { this.department = department; }
+    public User getGrantedBy() { return grantedBy; }
+    public void setGrantedBy(User grantedBy) { this.grantedBy = grantedBy; }
+    public OffsetDateTime getGrantedAt() { return grantedAt; }
+    public void setGrantedAt(OffsetDateTime grantedAt) { this.grantedAt = grantedAt; }
+    public OffsetDateTime getRevokedAt() { return revokedAt; }
+    public void setRevokedAt(OffsetDateTime revokedAt) { this.revokedAt = revokedAt; }
 }
