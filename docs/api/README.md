@@ -15,13 +15,13 @@ The source catalog is [catalog.yml](catalog.yml). The runtime copy is `backend/s
 - `IMPLEMENTED`: a callable controller exists and has an automated test.
 - `PLANNED`: the route is part of the phase-1 contract, but no callable business controller exists yet.
 
-At this point only `GET /api/v1/api-catalog` is implemented. Authentication, profile, club, department, membership, department-member, and permission-management routes are planned and are not callable APIs yet.
+At this point only `GET /api/v1/api-catalog` is marked `IMPLEMENTED`; all other routes remain `PLANNED` until the backend integration suite confirms them. The contract already includes password change, current-user permissions, user permission listing, and department-member move.
 
 Every catalog entry names `backend/springboot` as its owner so the frontend has one place to check implementation status.
 
 ## Frontend contract
 
-The complete phase-1 contract is [openapi.yaml](openapi.yaml). Import it into Swagger Editor, Postman, or an OpenAPI client generator. The backend uses JWT bearer access tokens; send `Authorization: Bearer <accessToken>` for protected routes. List endpoints use zero-based `page` and `size` (maximum 100). The API returns RFC 7807 errors with a stable `code` property.
+The complete phase-1 contract is [openapi.yaml](openapi.yaml). Import it into Swagger Editor, Postman, or an OpenAPI client generator. The backend uses JWT bearer access tokens; send `Authorization: Bearer <accessToken>` for protected routes. `GET /api/v1/users/me` and `GET /api/v1/users/me/permissions` require login but do not require an administration permission. List endpoints use `offset` and `limit` (maximum 100). The API returns RFC 7807 errors with a stable `code` property.
 
 ## Swagger/OpenAPI workflow
 
@@ -38,3 +38,12 @@ Run the contract checks with:
 ```bash
 python3 -m unittest discover -s docs/api/tests -v
 ```
+
+## Scope rules frontend must reflect
+
+- `GLOBAL` grants omit `clubId` and `departmentId`.
+- `CLUB` grants include `clubId`; `DEPARTMENT` grants include `departmentId`.
+- `permissionId` is the permission-definition ID. A grant ID is returned in `UserPermission.id` and is not accepted in the grant endpoint.
+- Revoke calls should send `scope` and its target ID. If more than one active grant matches an underspecified revoke, the backend returns `400 AMBIGUOUS_PERMISSION_GRANT`.
+- Status operations choose their permission from the target status: `user.active`/`user.inactive`, `club.active`/`club.inactive`, and `department.activate`/`department.inactive`.
+- Department move uses the source department in the URL and `targetDepartmentId` in the body. It requires remove permission at the source and add permission at the target.

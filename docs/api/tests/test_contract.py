@@ -1,5 +1,6 @@
 """Static checks complement OpenAPI validation and live backend contract tests."""
 import pathlib
+import re
 import unittest
 import yaml
 
@@ -86,6 +87,51 @@ class ContractTest(unittest.TestCase):
         catalog_paths = {(e['method'].lower(), e['path'].replace('/api/v1', '', 1)) for e in catalog}
         contract_paths = {(method, path) for path, method, _ in self.operations()}
         self.assertEqual(catalog_paths, contract_paths)
+
+    def test_runtime_documents_match_sources(self):
+        runtime = ROOT / 'backend/springboot/src/main/resources/api'
+        self.assertEqual((ROOT / 'docs/api/openapi.yaml').read_bytes(), (runtime / 'phase1-openapi.yaml').read_bytes())
+        self.assertEqual((ROOT / 'docs/api/catalog.yml').read_bytes(), (runtime / 'catalog.yml').read_bytes())
+
+    def test_status_and_permission_match_catalog(self):
+        entries = yaml.safe_load((ROOT / 'docs/api/catalog.yml').read_text())['entries']
+        for entry in entries:
+            op = self.doc['paths'][entry['path'].removeprefix('/api/v1')][entry['method'].lower()]
+            with self.subTest(path=entry['path'], method=entry['method']):
+                self.assertEqual(entry['status'], op['x-implementation-status'])
+                self.assertEqual(entry['permission'], op['x-permission'])
+
+    def test_partial_updates_have_no_create_requirements(self):
+        for path in ['/clubs/{clubId}', '/departments/{departmentId}']:
+            op = self.doc['paths'][path]['patch']
+            ref = op['requestBody']['content']['application/json']['schema']['$ref'].split('/')[-1]
+            self.assertFalse(self.doc['components']['schemas'][ref].get('required'))
+
+    def test_query_parameter_type_matches_string_default(self):
+        for path, method, op in self.operations():
+            for param in op.get('parameters', []):
+                schema = param['schema']
+                if isinstance(schema.get('default'), str):
+                    self.assertEqual(schema['type'], 'string', (path, method, param['name']))
+
+    def test_permission_assignment_lists_are_arrays(self):
+        for path in ['/users/me/permissions', '/users/{userId}/permissions']:
+            schema = self.doc['paths'][path]['get']['responses']['200']['content']['application/json']['schema']
+            self.assertEqual(schema['type'], 'array')
+            self.assertEqual(schema['items']['$ref'], '#/components/schemas/UserPermission')
+
+    def test_response_fields_match_java_records(self):
+        mapping = {'User': 'auth/dto/UserResponse.java', 'TokenResponse': 'auth/dto/TokenResponse.java',
+                   'Club': 'club/dto/ClubResponse.java', 'Department': 'department/dto/DepartmentResponse.java',
+                   'Membership': 'membership/dto/MembershipResponse.java',
+                   'DepartmentMember': 'departmentmember/dto/DepartmentMemberResponse.java',
+                   'Permission': 'permission/dto/PermissionResponse.java',
+                   'UserPermission': 'permission/dto/UserPermissionResponse.java'}
+        for schema_name, java_path in mapping.items():
+            src = (ROOT / 'backend/springboot/src/main/java/com/vju/club' / java_path).read_text()
+            fields = set(re.findall(r'(?:UUID|String|boolean|Instant|OffsetDateTime|PermissionScope)\s+(\w+)', src.split('public record', 1)[1].split('{', 1)[0]))
+            with self.subTest(schema=schema_name):
+                self.assertEqual(set(self.doc['components']['schemas'][schema_name]['properties']), fields)
 
 if __name__ == '__main__':
     unittest.main()

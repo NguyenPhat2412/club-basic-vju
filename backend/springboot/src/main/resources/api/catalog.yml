@@ -1,232 +1,253 @@
 entries:
-  - method: GET
-    path: /api/v1/api-catalog
-    module: system
-    backend: backend/springboot
-    status: IMPLEMENTED
-    authRequired: false
-    permission:
-
-  - method: POST
-    path: /api/v1/auth/register
-    module: authentication
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: false
-    permission:
-  - method: POST
-    path: /api/v1/auth/login
-    module: authentication
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: false
-    permission:
-  - method: POST
-    path: /api/v1/auth/logout
-    module: authentication
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission:
-  - method: POST
-    path: /api/v1/auth/refresh-token
-    module: authentication
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: false
-    permission:
-  - method: GET
-    path: /api/v1/auth/me
-    module: authentication
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission:
-
-  - method: GET
-    path: /api/v1/users/me
-    module: user-profile
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: user.view
-  - method: PATCH
-    path: /api/v1/users/me
-    module: user-profile
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: user.update
-  - method: GET
-    path: /api/v1/users
-    module: user-profile
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: user.view
-  - method: GET
-    path: /api/v1/users/{userId}
-    module: user-profile
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: user.view
-  - method: PATCH
-    path: /api/v1/users/{userId}/status
-    module: user-profile
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: user.active
-
-  - method: GET
-    path: /api/v1/clubs
-    module: club
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: club.view
-  - method: GET
-    path: /api/v1/clubs/{clubId}
-    module: club
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: club.view
-  - method: POST
-    path: /api/v1/clubs
-    module: club
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: club.create
-  - method: PATCH
-    path: /api/v1/clubs/{clubId}
-    module: club
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: club.update
-  - method: PATCH
-    path: /api/v1/clubs/{clubId}/status
-    module: club
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: club.active
-
-  - method: GET
-    path: /api/v1/clubs/{clubId}/departments
-    module: department
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: department.view
-  - method: GET
-    path: /api/v1/departments/{departmentId}
-    module: department
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: department.view
-  - method: POST
-    path: /api/v1/clubs/{clubId}/departments
-    module: department
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: department.create
-  - method: PATCH
-    path: /api/v1/departments/{departmentId}
-    module: department
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: department.update
-  - method: PATCH
-    path: /api/v1/departments/{departmentId}/status
-    module: department
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: department.activate
-
-  - method: GET
-    path: /api/v1/clubs/{clubId}/memberships
-    module: membership
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: member.view
-  - method: GET
-    path: /api/v1/memberships/{membershipId}
-    module: membership
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: member.view_detail
-  - method: POST
-    path: /api/v1/clubs/{clubId}/memberships
-    module: membership
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: member.add
-  - method: PATCH
-    path: /api/v1/memberships/{membershipId}
-    module: membership
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: member.update
-  - method: DELETE
-    path: /api/v1/memberships/{membershipId}
-    module: membership
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: member.remove
-
-  - method: GET
-    path: /api/v1/departments/{departmentId}/members
-    module: department-member
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: department.member.view
-  - method: POST
-    path: /api/v1/departments/{departmentId}/members
-    module: department-member
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: department.member.add
-  - method: DELETE
-    path: /api/v1/departments/{departmentId}/members/{membershipId}
-    module: department-member
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: department.member.remove
-
-  - method: GET
-    path: /api/v1/permissions
-    module: permission-management
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: permission.view
-  - method: POST
-    path: /api/v1/users/{userId}/permissions
-    module: permission-management
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: permission.assign
-  - method: DELETE
-    path: /api/v1/users/{userId}/permissions/{permissionId}
-    module: permission-management
-    backend: backend/springboot
-    status: PLANNED
-    authRequired: true
-    permission: permission.revoke
+- method: GET
+  path: /api/v1/api-catalog
+  module: system
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: POST
+  path: /api/v1/auth/register
+  module: authentication
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: false
+  permission: null
+- method: POST
+  path: /api/v1/auth/login
+  module: authentication
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: false
+  permission: null
+- method: POST
+  path: /api/v1/auth/logout
+  module: authentication
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: null
+- method: POST
+  path: /api/v1/auth/refresh-token
+  module: authentication
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: false
+  permission: null
+- method: GET
+  path: /api/v1/auth/me
+  module: authentication
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/users/me
+  module: user-profile
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: null
+- method: PATCH
+  path: /api/v1/users/me
+  module: user-profile
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/users
+  module: user-profile
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: user.view
+- method: GET
+  path: /api/v1/users/{userId}
+  module: user-profile
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: user.view
+- method: PATCH
+  path: /api/v1/users/{userId}/status
+  module: user-profile
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: user.active | user.inactive
+- method: GET
+  path: /api/v1/clubs
+  module: club
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: club.view
+- method: GET
+  path: /api/v1/clubs/{clubId}
+  module: club
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: club.view
+- method: POST
+  path: /api/v1/clubs
+  module: club
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: club.create
+- method: PATCH
+  path: /api/v1/clubs/{clubId}
+  module: club
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: club.update
+- method: PATCH
+  path: /api/v1/clubs/{clubId}/status
+  module: club
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: club.active | club.inactive
+- method: GET
+  path: /api/v1/clubs/{clubId}/departments
+  module: department
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: department.view
+- method: GET
+  path: /api/v1/departments/{departmentId}
+  module: department
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: department.view
+- method: POST
+  path: /api/v1/clubs/{clubId}/departments
+  module: department
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: department.create
+- method: PATCH
+  path: /api/v1/departments/{departmentId}
+  module: department
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: department.update
+- method: PATCH
+  path: /api/v1/departments/{departmentId}/status
+  module: department
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: department.activate | department.inactive
+- method: GET
+  path: /api/v1/clubs/{clubId}/memberships
+  module: membership
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: member.view
+- method: GET
+  path: /api/v1/memberships/{membershipId}
+  module: membership
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: member.view_detail
+- method: POST
+  path: /api/v1/clubs/{clubId}/memberships
+  module: membership
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: member.add
+- method: PATCH
+  path: /api/v1/memberships/{membershipId}
+  module: membership
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: member.update
+- method: DELETE
+  path: /api/v1/memberships/{membershipId}
+  module: membership
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: member.remove
+- method: GET
+  path: /api/v1/departments/{departmentId}/members
+  module: department-member
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: department.member.view
+- method: POST
+  path: /api/v1/departments/{departmentId}/members
+  module: department-member
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: department.member.add
+- method: DELETE
+  path: /api/v1/departments/{departmentId}/members/{membershipId}
+  module: department-member
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: department.member.remove
+- method: GET
+  path: /api/v1/permissions
+  module: permission-management
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: permission.view
+- method: POST
+  path: /api/v1/users/{userId}/permissions
+  module: permission-management
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: permission.assign
+- method: DELETE
+  path: /api/v1/users/{userId}/permissions/{permissionId}
+  module: permission-management
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: permission.revoke
+- method: POST
+  path: /api/v1/auth/change-password
+  module: authentication
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/users/me/permissions
+  module: permission-management
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/users/{userId}/permissions
+  module: permission-management
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: permission.view
+- method: PATCH
+  path: /api/v1/departments/{departmentId}/members/{membershipId}
+  module: department-member
+  backend: backend/springboot
+  status: PLANNED
+  authRequired: true
+  permission: department.member.remove & department.member.add
