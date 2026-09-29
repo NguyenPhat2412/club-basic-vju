@@ -18,4 +18,4 @@ cd backend/springboot
 ./mvnw spring-boot:run
 ```
 
-Xem [API inventory](docs/api/README.md), [database guide](docs/database/README.md) và [backend README](backend/springboot/README.md).
+Xem [API inventory và Swagger contract](docs/api/README.md), [OpenAPI 3.1 contract](docs/api/openapi.yaml), [database guide](docs/database/README.md) và [backend README](backend/springboot/README.md).
