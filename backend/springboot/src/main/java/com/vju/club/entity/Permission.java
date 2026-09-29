@@ -8,7 +8,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "permissions")
-public class Permission extends TimestampedEntity {
+public class Permission extends CreatedEntity {
 
     @Column(name = "permission_key", nullable = false, unique = true, length = 120)
     private String permissionKey;

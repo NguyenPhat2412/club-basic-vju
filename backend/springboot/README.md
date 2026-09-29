@@ -26,6 +26,6 @@ Run tests with:
 
 ## Current implementation status
 
-The old controller/entity files in the repository were empty scaffolding and were not working APIs. The current REST package is `src/main/java/com/vju/club/rest`; only `GET /api/v1/api-catalog` is implemented. Phase-1 business routes are documented as planned in `../../docs/api/catalog.yml`.
+The REST controllers and services under `src/main/java/com/vju/club` implement all 36 phase-1 routes. The public catalog is available at `GET /api/v1/api-catalog`, and the packaged OpenAPI YAML is available at `GET /api-docs/phase1.yaml`.
 
 The database is PostgreSQL. Flyway records migration state in `flyway_schema_history` and creates the eight phase-1 tables documented in `../../docs/database/README.md`.

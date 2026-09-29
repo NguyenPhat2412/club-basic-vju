@@ -13,7 +13,7 @@ import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "permission_audit_logs")
-public class PermissionAuditLog extends BaseEntity {
+public class PermissionAuditLog extends CreatedEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "actor_user_id", nullable = false)
@@ -45,9 +45,6 @@ public class PermissionAuditLog extends BaseEntity {
 
     private String reason;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private OffsetDateTime createdAt;
-
     public User getActorUser() { return actorUser; }
     public void setActorUser(User actorUser) { this.actorUser = actorUser; }
     public User getTargetUser() { return targetUser; }
@@ -64,6 +61,4 @@ public class PermissionAuditLog extends BaseEntity {
     public void setDepartment(Department department) { this.department = department; }
     public String getReason() { return reason; }
     public void setReason(String reason) { this.reason = reason; }
-    public OffsetDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 }

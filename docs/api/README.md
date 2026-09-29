@@ -15,7 +15,7 @@ The source catalog is [catalog.yml](catalog.yml). The runtime copy is `backend/s
 - `IMPLEMENTED`: a callable controller exists and has an automated test.
 - `PLANNED`: the route is part of the phase-1 contract, but no callable business controller exists yet.
 
-At this point only `GET /api/v1/api-catalog` is marked `IMPLEMENTED`; all other routes remain `PLANNED` until the backend integration suite confirms them. The contract already includes password change, current-user permissions, user permission listing, and department-member move.
+All 36 phase-1 routes are marked `IMPLEMENTED`; each is covered by the PostgreSQL MockMvc integration suite. The contract also includes password change, current-user permissions, user permission listing, and department-member move.
 
 Every catalog entry names `backend/springboot` as its owner so the frontend has one place to check implementation status.
 
@@ -27,11 +27,11 @@ The complete phase-1 contract is [openapi.yaml](openapi.yaml). Import it into Sw
 
 - Contract source for frontend: `docs/api/openapi.yaml`.
 - Runtime copy packaged by the backend: `classpath:/api/phase1-openapi.yaml`.
-- Swagger UI: `http://localhost:8080/swagger-ui.html` (after the backend adds Springdoc).
+- Swagger UI: `http://localhost:8080/swagger-ui.html`.
 - Generated JSON: `http://localhost:8080/v3/api-docs`.
 - Downloadable YAML: `http://localhost:8080/api-docs/phase1.yaml`.
 
-The OpenAPI server URL already includes `/api/v1`; therefore generated client calls append paths such as `/clubs`, not `/api/v1/clubs`. Protected operations use `Authorization: Bearer <accessToken>`. The contract uses `offset`/`limit` and typed list envelopes (`items`, `total`, `offset`, `limit`) to match the service DTOs. `x-permission` documents the permission checked by the backend and `x-implementation-status` is kept in sync with the catalog until integration tests pass.
+The OpenAPI server URL already includes `/api/v1`; therefore generated client calls append paths such as `/clubs`, not `/api/v1/clubs`. Protected operations use `Authorization: Bearer <accessToken>`. The contract uses `offset`/`limit` and typed list envelopes (`items`, `total`, `offset`, `limit`) to match the service DTOs. `x-permission` documents the permission checked by the backend and `x-implementation-status` is kept in sync with the catalog.
 
 Run the contract checks with:
 

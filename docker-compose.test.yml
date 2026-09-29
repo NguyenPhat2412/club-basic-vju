@@ -1,0 +1,16 @@
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: club_test
+      POSTGRES_USER: club_test
+      POSTGRES_PASSWORD: club_test_local
+    ports:
+      - "127.0.0.1:${TEST_POSTGRES_PORT:-55432}:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U club_test -d club_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 30

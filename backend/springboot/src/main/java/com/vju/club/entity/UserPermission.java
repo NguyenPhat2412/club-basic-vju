@@ -61,4 +61,6 @@ public class UserPermission extends BaseEntity {
     public void setGrantedAt(OffsetDateTime grantedAt) { this.grantedAt = grantedAt; }
     public OffsetDateTime getRevokedAt() { return revokedAt; }
     public void setRevokedAt(OffsetDateTime revokedAt) { this.revokedAt = revokedAt; }
+
+    public void revoke(OffsetDateTime at) { this.revokedAt = at; }
 }

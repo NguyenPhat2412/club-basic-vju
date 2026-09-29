@@ -1,5 +1,13 @@
 spring:
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
-      - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration
+  datasource:
+    url: ${TEST_DB_URL:jdbc:postgresql://localhost:55432/club_test}
+    username: ${TEST_DB_USERNAME:club_test}
+    password: ${TEST_DB_PASSWORD:club_test_local}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+app:
+  security:
+    jwt:
+      secret: integration-test-only-secret-0123456789-abcdef
