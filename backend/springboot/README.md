@@ -23,3 +23,9 @@ Run tests with:
 ```bash
 ./mvnw test
 ```
+
+## Current implementation status
+
+The old controller/entity files in the repository were empty scaffolding and were not working APIs. The current REST package is `src/main/java/com/vju/club/rest`; only `GET /api/v1/api-catalog` is implemented. Phase-1 business routes are documented as planned in `../../docs/api/catalog.yml`.
+
+The database is PostgreSQL. Flyway records migration state in `flyway_schema_history` and creates the eight phase-1 tables documented in `../../docs/database/README.md`.
