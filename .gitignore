@@ -1,3 +1,6 @@
 
 __pycache__/
 *.pyc
+
+# Local-only credentials (bootstrap admin)
+.env.local
