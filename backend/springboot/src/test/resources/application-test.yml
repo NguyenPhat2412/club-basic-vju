@@ -1,8 +1,6 @@
+# The datasource is provided by com.vju.club.integration.TestDatabase: a Testcontainers PostgreSQL
+# by default, or the database named by TEST_DB_URL / TEST_DB_USERNAME / TEST_DB_PASSWORD.
 spring:
-  datasource:
-    url: ${TEST_DB_URL:jdbc:postgresql://localhost:55432/club_test}
-    username: ${TEST_DB_USERNAME:club_test}
-    password: ${TEST_DB_PASSWORD:club_test_local}
   jpa:
     hibernate:
       ddl-auto: validate

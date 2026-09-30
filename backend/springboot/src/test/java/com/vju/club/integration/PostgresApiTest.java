@@ -34,6 +34,7 @@ public class PostgresApiTest {
     private static final String SCHEMA = "test_api_" + UUID.randomUUID().toString().replace("-", "");
     @DynamicPropertySource
     static void databaseSchema(DynamicPropertyRegistry properties) {
+        TestDatabase.register(properties);
         properties.add("spring.flyway.schemas", () -> SCHEMA);
         properties.add("spring.flyway.default-schema", () -> SCHEMA);
         properties.add("spring.jpa.properties.hibernate.default_schema", () -> SCHEMA);

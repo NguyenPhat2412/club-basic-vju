@@ -41,7 +41,7 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 | Xác thực | JWT HS256 (Nimbus), BCrypt |
 | Tài liệu API | OpenAPI 3.1, springdoc / Swagger UI |
 | Frontend | Next.js 16, React 19, TypeScript, pnpm |
-| Kiểm thử | JUnit 5, Mockito, Spring MockMvc trên PostgreSQL thật; Python `unittest` cho contract |
+| Kiểm thử | JUnit 5, Mockito, Spring MockMvc trên PostgreSQL thật (Testcontainers); Python `unittest` cho contract |
 | Hạ tầng | Docker, Docker Compose, GitHub Actions |
 
 ## Cấu trúc thư mục
@@ -293,10 +293,7 @@ Khi chạy, Hibernate chỉ `validate` schema chứ không tự sửa. Mọi tha
 ## Kiểm thử
 
 ```bash
-# PostgreSQL riêng cho test (cổng 55432, dữ liệu nằm trên RAM)
-docker compose -f docker-compose.test.yml up -d
-
-# 239 test backend: unit + integration
+# 239 test backend: unit + integration (cần Docker đang chạy)
 cd backend/springboot && ./mvnw test
 
 # Kiểm tra OpenAPI contract (từ thư mục gốc)
@@ -312,7 +309,7 @@ python3 -m unittest discover -s docs/api/tests
   - SQL injection.
   - Rate limit.
 
-Có thể trỏ test sang database khác bằng `TEST_DB_URL`, `TEST_DB_USERNAME`, `TEST_DB_PASSWORD`.
+Integration test tự bật một container PostgreSQL 16 bằng **Testcontainers** (dùng chung cho cả lượt chạy, tự xoá khi xong), nên chỉ cần Docker đang chạy. Muốn dùng một database có sẵn, ví dụ `docker compose -f docker-compose.test.yml up -d` (cổng 55432), thì đặt `TEST_DB_URL=jdbc:postgresql://localhost:55432/club_test`, cùng `TEST_DB_USERNAME`/`TEST_DB_PASSWORD` nếu khác mặc định.
 
 ## Docker và CI
 
@@ -328,7 +325,7 @@ docker run -p 8080:8080 \
 
 Container chạy bằng user thường (uid 10001), không dùng root.
 
-GitHub Actions ([.github/workflows/backend.yml](.github/workflows/backend.yml)) chạy mỗi khi push lên `main` và cho mọi pull request. Workflow gồm: toàn bộ test backend trên PostgreSQL 16, kiểm tra contract bằng Python, và build Docker image.
+GitHub Actions ([.github/workflows/backend.yml](.github/workflows/backend.yml)) chạy mỗi khi push lên `main` và cho mọi pull request. Workflow gồm: toàn bộ test backend (PostgreSQL 16 qua Testcontainers), kiểm tra contract bằng Python, và build Docker image.
 
 ## Quy trình phát triển
 

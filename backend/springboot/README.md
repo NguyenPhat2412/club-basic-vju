@@ -20,12 +20,13 @@ Any other profile requires `JWT_SECRET` (at least 32 bytes); startup fails witho
 
 The service applies Flyway migrations from `src/main/resources/db/migration` on startup. See the repository [database guide](../../docs/database/README.md) and [API catalog](../../docs/api/README.md) for the current inventory.
 
-Run tests with (integration tests need the test database from the repository root):
+Run tests with (Docker must be running; integration tests start a PostgreSQL container with Testcontainers):
 
 ```bash
-docker compose -f ../../docker-compose.test.yml up -d
 ./mvnw test
 ```
+
+To use an existing database instead, set `TEST_DB_URL` (and `TEST_DB_USERNAME`/`TEST_DB_PASSWORD`), for example against `docker compose -f ../../docker-compose.test.yml up -d` on port 55432.
 
 Integration tests live in `src/test/java/com/vju/club/integration` and extend `ApiIntegrationTest`, which gives each run an isolated PostgreSQL schema plus an `admin` (all permissions) and a `member` (none).
 
