@@ -1,31 +1,309 @@
 # club-basic-vju
 
-Hệ thống quản lý câu lạc bộ cho Trường Đại học Việt Nhật.
+Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt Nhật (VJU): quản lý tài khoản, câu lạc bộ, ban, thành viên và phân quyền chi tiết theo phạm vi.
 
-## Trạng thái hiện tại
+> **Trạng thái:** Backend giai đoạn 1 đã hoàn thành. Toàn bộ 36 route đều `IMPLEMENTED` và có 197 test tự động. Frontend (Next.js) mới dừng ở bộ khung khởi tạo.
 
-- Backend duy nhất: `backend/springboot` (Spring Boot 4.1.1, Java 21).
-- PostgreSQL chạy local bằng Docker Compose.
-- Flyway quản lý migration tại `backend/springboot/src/main/resources/db/migration/`.
-- API catalog: `GET /api/v1/api-catalog`; toàn bộ 36 route giai đoạn 1 đã `IMPLEMENTED`.
-- Database hiện được ghi nhận trong PostgreSQL qua Flyway. Schema đầu tiên gồm tám bảng nghiệp vụ và `flyway_schema_history`.
+## Mục lục
 
-## Chạy local
+- [Tính năng](#tính-năng)
+- [Công nghệ](#công-nghệ)
+- [Cấu trúc thư mục](#cấu-trúc-thư-mục)
+- [Bắt đầu nhanh](#bắt-đầu-nhanh)
+- [Cấu hình](#cấu-hình)
+- [Tổng quan API](#tổng-quan-api)
+- [Phân quyền](#phân-quyền)
+- [Quy ước API](#quy-ước-api)
+- [Cơ sở dữ liệu](#cơ-sở-dữ-liệu)
+- [Kiểm thử](#kiểm-thử)
+- [Docker và CI](#docker-và-ci)
+- [Quy trình phát triển](#quy-trình-phát-triển)
+- [Tài liệu liên quan](#tài-liệu-liên-quan)
+
+## Tính năng
+
+- **Xác thực:** đăng ký, đăng nhập, đăng xuất, đổi mật khẩu. Hệ thống dùng JWT access token (15 phút) kèm refresh token (30 ngày) được xoay vòng sau mỗi lần dùng và chỉ lưu dạng hash.
+- **Người dùng:** xem và sửa hồ sơ cá nhân, tìm kiếm và sắp xếp danh sách người dùng, khoá hoặc mở tài khoản. Tài khoản bị khoá mất quyền truy cập ngay lập tức.
+- **Câu lạc bộ:** tạo, sửa, tìm kiếm, bật/tắt hoạt động. Mã CLB là duy nhất, không phân biệt hoa thường.
+- **Ban:** mỗi CLB có nhiều ban. Tên ban là duy nhất trong phạm vi một CLB.
+- **Thành viên:** thêm thành viên vào CLB, tạm ngưng, cho rời CLB, cho tham gia lại. Khi rời CLB, thành viên tự động bị gỡ khỏi mọi ban.
+- **Thành viên ban:** xếp thành viên vào ban, chuyển ban, gỡ khỏi ban. Chỉ xếp được thành viên đang hoạt động vào ban cùng CLB.
+- **Phân quyền:** 25 quyền, mỗi quyền được cấp theo một trong ba phạm vi `GLOBAL`, `CLUB` hoặc `DEPARTMENT`. Mọi lần cấp và thu hồi quyền đều được ghi audit log.
+- **Bảo vệ:** giới hạn tần suất (rate limit) cho các endpoint đăng nhập/đăng ký/làm mới token. Mọi lỗi trả về theo định dạng RFC 7807. Người không có quyền không thể dò xem một ID có tồn tại hay không.
+
+## Công nghệ
+
+| Thành phần | Công nghệ |
+|---|---|
+| Backend | Java 21, Spring Boot 4.1.1 (Web MVC, Security, OAuth2 Resource Server, Data JPA, Validation) |
+| Cơ sở dữ liệu | PostgreSQL 16, Flyway |
+| Xác thực | JWT HS256 (Nimbus), BCrypt |
+| Tài liệu API | OpenAPI 3.1, springdoc / Swagger UI |
+| Frontend | Next.js 16, React 19, TypeScript, pnpm |
+| Kiểm thử | JUnit 5, Mockito, Spring MockMvc trên PostgreSQL thật; Python `unittest` cho contract |
+| Hạ tầng | Docker, Docker Compose, GitHub Actions |
+
+## Cấu trúc thư mục
+
+```text
+.
+├── backend/springboot/          # Backend Spring Boot (dịch vụ duy nhất)
+│   ├── src/main/java/com/vju/club/
+│   │   ├── auth/                # Đăng ký, đăng nhập, JWT, refresh token
+│   │   ├── user/                # Hồ sơ và quản trị người dùng
+│   │   ├── club/                # Câu lạc bộ
+│   │   ├── department/          # Ban
+│   │   ├── membership/          # Thành viên CLB
+│   │   ├── departmentmember/    # Thành viên ban
+│   │   ├── permission/          # Cấp/thu hồi quyền, audit log
+│   │   ├── security/            # Kiểm tra quyền, rate limit, filter trạng thái tài khoản
+│   │   ├── config/              # Cấu hình security, JWT, CORS
+│   │   ├── error/               # Xử lý lỗi chung (ProblemDetail)
+│   │   ├── entity/, repository/, dao/, common/
+│   │   ├── bootstrap/           # Tạo admin ban đầu (chỉ profile local)
+│   │   └── rest/                # API catalog, phục vụ file OpenAPI
+│   ├── src/main/resources/
+│   │   ├── db/migration/        # Flyway: V1 schema + seed quyền, V2 refresh token
+│   │   └── api/                 # Bản copy runtime của OpenAPI và catalog
+│   ├── src/test/                # Unit test + integration test
+│   └── Dockerfile
+├── frontend/nextjs/             # Frontend Next.js (bộ khung khởi tạo)
+├── docs/
+│   ├── api/                     # OpenAPI contract (nguồn gốc), catalog, test contract
+│   ├── database/                # Hướng dẫn database
+│   └── superpowers/             # Spec và kế hoạch thiết kế
+├── inf/                         # Chỗ dành cho cấu hình docker/nginx/postgres (chưa dùng)
+├── docker-compose.yml           # PostgreSQL cho phát triển (cổng 5432)
+├── docker-compose.test.yml      # PostgreSQL cho kiểm thử (cổng 55432, dữ liệu trên tmpfs)
+└── .github/workflows/backend.yml
+```
+
+Mỗi module nghiệp vụ theo cùng một khuôn: `Controller` → `Service` (interface + `ServiceImpl`) → `Repository`/`Dao` → `Entity`. Việc kiểm tra quyền nằm trong tầng service và dùng chung `PermissionAuthorizationService`.
+
+## Bắt đầu nhanh
+
+### Yêu cầu
+
+- JDK 21
+- Docker + Docker Compose
+- Node.js 20+ và pnpm (nếu chạy frontend)
+- Python 3 + PyYAML (nếu chạy test contract)
+
+### 1. Khởi động PostgreSQL
 
 ```bash
 docker compose up -d postgres
+```
+
+### 2. Chạy backend
+
+Profile `local` cung cấp sẵn một JWT secret dùng cho phát triển:
+
+```bash
 cd backend/springboot
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-Ngoài profile `local`, backend **bắt buộc** biến môi trường `JWT_SECRET` (tối thiểu 32 byte) và sẽ không khởi động nếu thiếu.
+Flyway tự chạy migration khi khởi động. Backend lắng nghe ở `http://localhost:8080`.
+
+### 3. Tạo tài khoản admin đầu tiên
+
+Migration chỉ seed danh mục quyền, không tạo người dùng nào. Để tự tạo admin có đủ mọi quyền `GLOBAL`, chạy profile `local` kèm hai biến môi trường. Thao tác này an toàn khi chạy lại nhiều lần.
+
+```bash
+BOOTSTRAP_ADMIN_EMAIL=admin@vju.local BOOTSTRAP_ADMIN_PASSWORD='ChangeMe123!' ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+### 4. Thử API
+
+- Swagger UI: http://localhost:8080/swagger-ui.html
+- OpenAPI sinh tự động: http://localhost:8080/v3/api-docs
+- Contract giai đoạn 1: http://localhost:8080/api-docs/phase1.yaml
+- Danh mục API: http://localhost:8080/api/v1/api-catalog
+
+```bash
+curl -s -X POST localhost:8080/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@vju.local","password":"ChangeMe123!"}'
+```
+
+Dùng `tokens.accessToken` trong kết quả làm header `Authorization: Bearer <token>` cho các request tiếp theo.
+
+### 5. Chạy frontend (tuỳ chọn)
+
+```bash
+cd frontend/nextjs
+pnpm install
+pnpm dev
+```
+
+Frontend chạy ở `http://localhost:3000`. Đây cũng là origin duy nhất mà CORS của backend cho phép.
+
+## Cấu hình
+
+Backend đọc cấu hình từ biến môi trường:
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `JWT_SECRET` | *(không có, bắt buộc)* | Khoá ký JWT, tối thiểu 32 byte. Thiếu biến này thì app **không khởi động**. Profile `local` có sẵn giá trị dùng cho phát triển. |
+| `JWT_ACCESS_TOKEN_TTL` | `15m` | Thời hạn access token |
+| `JWT_REFRESH_TOKEN_TTL` | `30d` | Thời hạn refresh token |
+| `DB_URL` | `jdbc:postgresql://localhost:5432/club` | Chuỗi kết nối PostgreSQL |
+| `DB_USERNAME` / `DB_PASSWORD` | `club` / `club_local` | Tài khoản database |
+| `SERVER_PORT` | `8080` | Cổng HTTP |
+| `RATE_LIMIT_ENABLED` | `true` | Bật/tắt rate limit |
+| `RATE_LIMIT_MAX_REQUESTS` | `60` | Số request tối đa trong một cửa sổ, tính theo từng IP và từng endpoint |
+| `RATE_LIMIT_WINDOW` | `1m` | Độ dài cửa sổ rate limit |
+| `FORWARD_HEADERS_STRATEGY` | `native` | Chỉ tin `X-Forwarded-For` đến từ proxy có IP nội bộ/loopback, để rate limit thấy đúng IP người dùng khi chạy sau nginx |
+| `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | trống | Tạo admin ban đầu (chỉ có tác dụng ở profile `local`) |
+
+Các biến `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT` dùng để tuỳ chỉnh container trong `docker-compose.yml`.
+
+## Tổng quan API
+
+Mọi route nghiệp vụ nằm dưới `/api/v1`. Chỉ các route đăng ký, đăng nhập, làm mới token, API catalog và tài liệu API là công khai; mọi route còn lại cần Bearer token.
+
+| Nhóm | Route |
+|---|---|
+| **Auth** | `POST /auth/register` · `POST /auth/login` · `POST /auth/refresh-token` · `POST /auth/logout` · `POST /auth/change-password` · `GET /auth/me` |
+| **Users** | `GET /users/me` · `PATCH /users/me` · `GET /users` · `GET /users/{userId}` · `PATCH /users/{userId}/status` |
+| **Clubs** | `GET /clubs` · `POST /clubs` · `GET /clubs/{clubId}` · `PATCH /clubs/{clubId}` · `PATCH /clubs/{clubId}/status` |
+| **Departments** | `GET /clubs/{clubId}/departments` · `POST /clubs/{clubId}/departments` · `GET /departments/{id}` · `PATCH /departments/{id}` · `PATCH /departments/{id}/status` |
+| **Memberships** | `GET /clubs/{clubId}/memberships` · `POST /clubs/{clubId}/memberships` · `GET /memberships/{id}` · `PATCH /memberships/{id}` · `DELETE /memberships/{id}` |
+| **Department members** | `GET /departments/{id}/members` · `POST /departments/{id}/members` · `PATCH /departments/{id}/members/{membershipId}` (chuyển ban) · `DELETE /departments/{id}/members/{membershipId}` |
+| **Permissions** | `GET /permissions` · `GET /users/me/permissions` · `GET /users/{userId}/permissions` · `POST /users/{userId}/permissions` · `DELETE /users/{userId}/permissions/{permissionId}` |
+| **Khác** | `GET /api-catalog` · `GET /api-docs/phase1.yaml` |
+
+Chi tiết request/response nằm trong [docs/api/openapi.yaml](docs/api/openapi.yaml).
+
+## Phân quyền
+
+### Phạm vi và cơ chế kế thừa
+
+Mỗi quyền được khai báo với một phạm vi mặc định. Khi cấp cho người dùng, quyền có thể được cấp ở **đúng phạm vi đó hoặc một phạm vi rộng hơn**, theo thứ tự `DEPARTMENT` < `CLUB` < `GLOBAL`:
+
+- Cấp một quyền cấp ban (ví dụ `department.update`) ở phạm vi `CLUB` thì quyền đó áp dụng cho **mọi ban của CLB ấy**.
+- Cấp ở phạm vi `GLOBAL` thì quyền áp dụng trên toàn hệ thống.
+- Cấp hẹp hơn phạm vi mặc định bị từ chối với lỗi `PERMISSION_SCOPE_MISMATCH`.
+
+Khi kiểm tra quyền, hệ thống xét lần lượt grant cấp ban, rồi grant cấp CLB, rồi grant global. Quyền bị thu hồi hoặc bị vô hiệu hoá (`permissions.active = false`) mất hiệu lực ngay lập tức.
+
+### Danh mục quyền
+
+| Module | Quyền (phạm vi mặc định) |
+|---|---|
+| user | `user.view`, `user.update`, `user.active`, `user.inactive` (GLOBAL) |
+| club | `club.create` (GLOBAL); `club.view`, `club.update`, `club.active`, `club.inactive` (CLUB) |
+| department | `department.view`, `department.create` (CLUB); `department.update`, `department.activate`, `department.inactive` (DEPARTMENT) |
+| member | `member.view`, `member.view_detail`, `member.add`, `member.update`, `member.remove` (CLUB) |
+| department.member | `department.member.view`, `department.member.add`, `department.member.remove` (DEPARTMENT) |
+| permission | `permission.view`, `permission.assign`, `permission.revoke` (GLOBAL) |
+
+Chuyển thành viên sang ban khác cần `department.member.remove` ở ban nguồn **và** `department.member.add` ở ban đích.
+
+## Quy ước API
+
+### Định dạng lỗi
+
+Mọi lỗi trả về `application/problem+json` kèm trường `code` ổn định để frontend xử lý:
+
+```json
+{ "title": "CLUB_CODE_ALREADY_EXISTS", "status": 409, "detail": "Club code is already used", "code": "CLUB_CODE_ALREADY_EXISTS" }
+```
+
+| HTTP | Mã lỗi thường gặp |
+|---|---|
+| 400 | `VALIDATION_ERROR`, `INVALID_SORT`, `CURRENT_PASSWORD_INVALID`, `PERMISSION_SCOPE_MISMATCH`, `INVALID_PERMISSION_SCOPE`, `CROSS_CLUB_ASSIGNMENT`, `CROSS_CLUB_MOVE`, `SAME_DEPARTMENT`, `AMBIGUOUS_PERMISSION_GRANT` |
+| 401 | `UNAUTHORIZED`, `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN` |
+| 403 | `PERMISSION_DENIED`, `ACCOUNT_INACTIVE` |
+| 404 | `NOT_FOUND` (route không tồn tại), `USER_NOT_FOUND`, `CLUB_NOT_FOUND`, `DEPARTMENT_NOT_FOUND`, `MEMBERSHIP_NOT_FOUND`, … |
+| 405 / 415 | `METHOD_NOT_ALLOWED`, `UNSUPPORTED_MEDIA_TYPE` |
+| 409 | `EMAIL_ALREADY_EXISTS`, `STUDENT_CODE_ALREADY_EXISTS`, `CLUB_CODE_ALREADY_EXISTS`, `DEPARTMENT_NAME_ALREADY_EXISTS`, `MEMBERSHIP_ALREADY_EXISTS`, `CLUB_INACTIVE`, `USER_INACTIVE`, `DEPARTMENT_INACTIVE`, `MEMBERSHIP_NOT_ACTIVE`, `PERMISSION_ALREADY_GRANTED` |
+| 429 | `RATE_LIMIT_EXCEEDED`, kèm các header `Retry-After`, `X-RateLimit-Limit` và `X-RateLimit-Remaining` |
+| 500 | `INTERNAL_ERROR` (lỗi được ghi log ở server) |
+
+Một số hành vi cần lưu ý:
+- Khi hai request đồng thời cùng vi phạm ràng buộc duy nhất, request thua nhận 409 với cùng mã lỗi như lúc kiểm tra thông thường, không bao giờ ra 500.
+- Với ID không tồn tại, chỉ người giữ quyền ở phạm vi `GLOBAL` nhận 404; người khác nhận 403. Nhờ vậy không ai dò được ID nào có thật.
+- Đăng nhập sai mật khẩu và dùng email không tồn tại cho ra cùng một phản hồi. Lỗi `ACCOUNT_INACTIVE` chỉ hiện khi người đăng nhập nhập đúng mật khẩu.
+
+### Phân trang
+
+Các endpoint danh sách nhận `offset` (≥ 0, mặc định 0) và `limit` (1–100, mặc định 20). Giá trị ngoài khoảng bị trả 400. Kết quả có dạng:
+
+```json
+{ "items": [ ... ], "total": 42, "offset": 0, "limit": 20 }
+```
+
+`GET /users` nhận thêm `query`, `orderBy` (`email` | `fullName` | `createdAt` | `status`) và `orderType` (`asc` | `desc`).
+
+## Cơ sở dữ liệu
+
+Flyway quản lý schema tại `backend/springboot/src/main/resources/db/migration/`:
+
+| Migration | Nội dung |
+|---|---|
+| `V1__create_phase1_schema.sql` | 8 bảng `users`, `clubs`, `departments`, `memberships`, `department_members`, `permissions`, `user_permissions`, `permission_audit_logs`; seed 25 quyền |
+| `V2__create_refresh_tokens.sql` | Bảng `refresh_tokens` (chỉ lưu SHA-256 của token) |
+
+Ràng buộc được đặt ngay ở tầng database:
+- CHECK cho các cột trạng thái và cho quan hệ giữa scope với `club_id`/`department_id`.
+- UNIQUE cho email, mã sinh viên, mã CLB, tên ban trong một CLB, và cặp user–CLB.
+- Partial unique index để một quyền không thể được cấp trùng khi grant cũ vẫn còn hiệu lực.
+
+Khi chạy, Hibernate chỉ `validate` schema chứ không tự sửa. Mọi thay đổi schema phải đi qua một migration mới (`V3__...`). Xem thêm [docs/database/README.md](docs/database/README.md).
 
 ## Kiểm thử
 
 ```bash
+# PostgreSQL riêng cho test (cổng 55432, dữ liệu nằm trên RAM)
 docker compose -f docker-compose.test.yml up -d
+
+# 197 test backend: unit + integration
 cd backend/springboot && ./mvnw test
+
+# Kiểm tra OpenAPI contract (từ thư mục gốc)
 python3 -m unittest discover -s docs/api/tests
 ```
 
-Xem [API inventory và Swagger contract](docs/api/README.md), [OpenAPI 3.1 contract](docs/api/openapi.yaml), [database guide](docs/database/README.md) và [backend README](backend/springboot/README.md).
+- **Unit test:** kiểm tra logic auth, JWT, cấu hình secret/issuer, kiểm tra quyền, rate limit, bootstrap admin, và báo lỗi khi bản copy OpenAPI trong code lệch với bản trong `docs/`.
+- **Integration test** (`src/test/java/com/vju/club/integration`): gọi API thật qua MockMvc trên PostgreSQL thật. Mỗi lần chạy dùng một schema riêng; base class `ApiIntegrationTest` dựng sẵn user `admin` (có mọi quyền) và `member` (không có quyền nào), cùng các CLB A/B và ban A1/A2/B1. Bộ test phủ:
+  - Mọi endpoint, bao gồm các trường hợp biên và phân trang.
+  - Phân quyền theo phạm vi.
+  - Nhiều request đồng thời (race condition).
+  - Token giả mạo hoặc hết hạn.
+  - SQL injection.
+  - Rate limit.
+
+Có thể trỏ test sang database khác bằng `TEST_DB_URL`, `TEST_DB_USERNAME`, `TEST_DB_PASSWORD`.
+
+## Docker và CI
+
+Build và chạy image backend:
+
+```bash
+docker build -t club-backend backend/springboot
+docker run -p 8080:8080 \
+  -e JWT_SECRET='<ít nhất 32 ký tự ngẫu nhiên>' \
+  -e DB_URL=jdbc:postgresql://host.docker.internal:5432/club \
+  club-backend
+```
+
+Container chạy bằng user thường (uid 10001), không dùng root.
+
+GitHub Actions ([.github/workflows/backend.yml](.github/workflows/backend.yml)) chạy mỗi khi push lên `main` và cho mọi pull request. Workflow gồm: toàn bộ test backend trên PostgreSQL 16, kiểm tra contract bằng Python, và build Docker image.
+
+## Quy trình phát triển
+
+- **Đổi API:** sửa [docs/api/openapi.yaml](docs/api/openapi.yaml) và [docs/api/catalog.yml](docs/api/catalog.yml) trước, rồi copy sang `backend/springboot/src/main/resources/api/` (`phase1-openapi.yaml`, `catalog.yml`). Cả test Java lẫn test Python đều báo lỗi nếu hai bản lệch nhau.
+- **Đổi schema:** thêm migration Flyway mới, không sửa migration đã chạy.
+- **Thêm endpoint có kiểm tra quyền:** gọi `PermissionAuthorizationService.require(...)` trong service, truyền cả `clubId` lẫn `departmentId` khi có để cơ chế kế thừa phạm vi hoạt động. Với ID không tồn tại, dùng `missingResource(...)`.
+- **Trước khi push:** chạy `./mvnw test` và bộ test contract.
+
+## Tài liệu liên quan
+
+- [Backend README](backend/springboot/README.md): chi tiết chạy và kiểm thử backend
+- [API inventory và Swagger contract](docs/api/README.md)
+- [OpenAPI 3.1 contract](docs/api/openapi.yaml)
+- [Hướng dẫn database](docs/database/README.md)
+- [Thiết kế và kế hoạch giai đoạn 1](docs/superpowers/specs/)
