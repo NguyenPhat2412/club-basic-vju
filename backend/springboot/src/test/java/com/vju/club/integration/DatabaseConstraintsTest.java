@@ -128,6 +128,17 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
         db.update("UPDATE memberships SET status = 'ACTIVE', left_at = NULL WHERE id = ?", mid);
     }
 
+    @Test
+    void onlyOneCurrentMembershipPerUserAndClubButHistoryIsUnlimited() {
+        UUID userId = user("h@test.local");
+        db.update("INSERT INTO memberships(user_id, club_id, status, left_at) VALUES (?, ?, 'LEFT', now() - interval '2 year')", userId, clubA);
+        db.update("INSERT INTO memberships(user_id, club_id, status, left_at) VALUES (?, ?, 'LEFT', now() - interval '1 year')", userId, clubA);
+        db.update("INSERT INTO memberships(user_id, club_id, status) VALUES (?, ?, 'ACTIVE')", userId, clubA);
+        rejects("uq_memberships_user_club_current",
+                "INSERT INTO memberships(user_id, club_id, status) VALUES (?, ?, 'SUSPENDED')", userId, clubA);
+        db.update("INSERT INTO memberships(user_id, club_id, status) VALUES (?, ?, 'ACTIVE')", userId, clubB);
+    }
+
     // ---- 4. audit logs are immutable -----------------------------------------------------------
 
     @Test

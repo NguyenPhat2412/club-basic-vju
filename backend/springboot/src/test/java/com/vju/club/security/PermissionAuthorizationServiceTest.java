@@ -1,6 +1,5 @@
 package com.vju.club.security;
 
-import com.vju.club.entity.PermissionScope;
 import com.vju.club.error.ApiException;
 import com.vju.club.repository.UserPermissionRepository;
 import org.junit.jupiter.api.Test;
@@ -41,20 +40,20 @@ class PermissionAuthorizationServiceTest {
 
     @Test
     void departmentGrantIsCheckedFirst() {
-        when(repository.existsForDepartment(userId, "k", PermissionScope.DEPARTMENT, departmentId)).thenReturn(true);
+        when(repository.hasInDepartment(userId, "k", departmentId)).thenReturn(true);
         assertThat(service.hasPermission(jwtFor(userId.toString()), "k", clubId, departmentId)).isTrue();
-        verify(repository, never()).existsForClub(any(), any(), any(), any());
+        verify(repository, never()).hasInClub(any(), any(), any());
     }
 
     @Test
     void clubGrantCoversDepartmentsOfThatClub() {
-        when(repository.existsForClub(userId, "k", PermissionScope.CLUB, clubId)).thenReturn(true);
+        when(repository.hasInClub(userId, "k", clubId)).thenReturn(true);
         assertThat(service.hasPermission(jwtFor(userId.toString()), "k", clubId, departmentId)).isTrue();
     }
 
     @Test
     void globalGrantIsTheFallback() {
-        when(repository.existsGlobal(userId, "k", PermissionScope.GLOBAL)).thenReturn(true);
+        when(repository.hasGlobal(userId, "k")).thenReturn(true);
         assertThat(service.hasPermission(jwtFor(userId.toString()), "k", clubId, departmentId)).isTrue();
     }
 
@@ -72,13 +71,13 @@ class PermissionAuthorizationServiceTest {
         assertThat(service.hasPermission(jwtFor("not-a-uuid"), "k", null, null)).isFalse();
         assertThat(service.hasGlobalPermission(jwtFor("not-a-uuid"), "k")).isFalse();
         assertThat(service.hasAnyPermission(null, "k")).isFalse();
-        verify(repository, never()).existsGlobal(any(), any(), any());
+        verify(repository, never()).hasGlobal(any(), any());
     }
 
     @Test
     void missingResourceIs404OnlyForGlobalHolders() {
         ApiException notFound = new ApiException(HttpStatus.NOT_FOUND, "X_NOT_FOUND", "missing");
-        when(repository.existsGlobal(userId, "k", PermissionScope.GLOBAL)).thenReturn(true);
+        when(repository.hasGlobal(userId, "k")).thenReturn(true);
         assertThat(service.missingResource(jwtFor(userId.toString()), "k", notFound)).isSameAs(notFound);
 
         UUID other = UUID.randomUUID();

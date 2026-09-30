@@ -41,9 +41,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         CONSTRAINT_CODES.put("uq_clubs_code_ci", "CLUB_CODE_ALREADY_EXISTS");
         CONSTRAINT_CODES.put("uq_departments_club_name_ci", "DEPARTMENT_NAME_ALREADY_EXISTS");
         CONSTRAINT_CODES.put("fk_department_members_membership_club", "CROSS_CLUB_ASSIGNMENT");
-        CONSTRAINT_CODES.put("uq_memberships_user_club", "MEMBERSHIP_ALREADY_EXISTS");
+        CONSTRAINT_CODES.put("uq_memberships_user_club_current", "MEMBERSHIP_ALREADY_EXISTS");
         CONSTRAINT_CODES.put("uq_department_members_assignment", "DEPARTMENT_MEMBER_ALREADY_EXISTS");
         CONSTRAINT_CODES.put("uq_user_permissions_active_", "PERMISSION_ALREADY_GRANTED");
+        CONSTRAINT_CODES.put("uq_user_roles_active_", "ROLE_ALREADY_ASSIGNED");
+        CONSTRAINT_CODES.put("uq_roles_code_ci", "ROLE_CODE_ALREADY_EXISTS");
     }
 
     @ExceptionHandler(ApiException.class)

@@ -1,6 +1,7 @@
 package com.vju.club.membership;
 
 import com.vju.club.common.dto.PageResponse;
+import com.vju.club.entity.MembershipStatus;
 import com.vju.club.membership.dto.CreateMembershipRequest;
 import com.vju.club.membership.dto.MembershipResponse;
 import com.vju.club.membership.dto.UpdateMembershipRequest;
@@ -30,9 +31,10 @@ public class MembershipController {
 
     @GetMapping("/clubs/{clubId}/memberships")
     public PageResponse<MembershipResponse> list(Authentication authentication, @PathVariable UUID clubId,
+                                                 @RequestParam(required = false) MembershipStatus status,
                                                  @RequestParam(defaultValue = "0") @Min(0) int offset,
                                                  @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
-        return membershipService.list(authentication, clubId, offset, limit);
+        return membershipService.list(authentication, clubId, status, offset, limit);
     }
     @GetMapping("/memberships/{membershipId}")
     public MembershipResponse get(Authentication authentication, @PathVariable UUID membershipId) {

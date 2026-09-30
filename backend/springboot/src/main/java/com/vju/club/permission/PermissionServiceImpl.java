@@ -9,6 +9,7 @@ import com.vju.club.entity.PermissionScope;
 import com.vju.club.entity.User;
 import com.vju.club.entity.UserPermission;
 import com.vju.club.error.ApiException;
+import com.vju.club.permission.dto.EffectivePermissionResponse;
 import com.vju.club.permission.dto.GrantPermissionRequest;
 import com.vju.club.permission.dto.PermissionResponse;
 import com.vju.club.permission.dto.UserPermissionResponse;
@@ -19,6 +20,7 @@ import com.vju.club.repository.PermissionAuditLogRepository;
 import com.vju.club.repository.UserPermissionRepository;
 import com.vju.club.repository.UserRepository;
 import com.vju.club.security.PermissionAuthorizationService;
+import com.vju.club.security.ScopeRules;
 import com.vju.club.security.SecurityIdentity;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -80,6 +82,18 @@ public class PermissionServiceImpl implements PermissionService {
         findUser(targetUserId);
         return userPermissionRepository.findByUser_IdAndRevokedAtIsNullOrderByGrantedAtDesc(targetUserId).stream()
                 .map(UserPermissionResponse::from).toList();
+    }
+
+    /** Direct grants and role-based permissions together: what the user can actually do. */
+    @Override
+    @Transactional(readOnly = true)
+    public List<EffectivePermissionResponse> listEffective(Authentication authentication, UUID targetUserId) {
+        if (!targetUserId.equals(SecurityIdentity.userId(authentication))) {
+            authorizationService.require(authentication, "permission.view", null, null);
+        }
+        findUser(targetUserId);
+        return userPermissionRepository.findEffective(targetUserId).stream()
+                .map(EffectivePermissionResponse::from).toList();
     }
 
     @Override
@@ -150,25 +164,12 @@ public class PermissionServiceImpl implements PermissionService {
      * so a club-level grant of a department permission covers every department of that club.
      */
     private void validateScope(Permission permission, GrantPermissionRequest request) {
-        if (breadth(request.scope()) < breadth(permission.getScope())) {
+        if (!ScopeRules.canGrantAt(permission.getScope(), request.scope())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "PERMISSION_SCOPE_MISMATCH", "Grant scope does not match permission scope");
         }
-        boolean valid = switch (request.scope()) {
-            case GLOBAL -> request.clubId() == null && request.departmentId() == null;
-            case CLUB -> request.clubId() != null && request.departmentId() == null;
-            case DEPARTMENT -> request.clubId() == null && request.departmentId() != null;
-        };
-        if (!valid) {
+        if (!ScopeRules.targetMatches(request.scope(), request.clubId(), request.departmentId())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PERMISSION_SCOPE", "Scope target is invalid");
         }
-    }
-
-    private static int breadth(PermissionScope scope) {
-        return switch (scope) {
-            case DEPARTMENT -> 0;
-            case CLUB -> 1;
-            case GLOBAL -> 2;
-        };
     }
 
     private boolean sameScope(UserPermission grant, GrantPermissionRequest request) {

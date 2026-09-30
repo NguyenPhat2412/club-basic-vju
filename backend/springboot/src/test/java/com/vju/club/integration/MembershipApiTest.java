@@ -75,15 +75,52 @@ class MembershipApiTest extends ApiIntegrationTest {
     }
 
     @Test
-    void userWhoLeftCanRejoinTheSameClub() throws Exception {
-        UUID mid = id(join(clubA, member));
-        call(delete("/api/v1/memberships/" + mid), adminToken, null, 204);
+    void rejoiningCreatesANewMembershipAndKeepsTheHistory() throws Exception {
+        UUID first = id(join(clubA, member));
+        call(delete("/api/v1/memberships/" + first), adminToken, null, 204);
 
         JsonNode rejoined = join(clubA, member);
-        assertThat(id(rejoined)).isEqualTo(mid);
+        UUID second = id(rejoined);
+        assertThat(second).isNotEqualTo(first);
         assertThat(rejoined.path("status").asText()).isEqualTo("ACTIVE");
         assertThat(rejoined.path("leftAt").isNull()).isTrue();
-        assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ?", member, clubA)).isEqualTo(1);
+        assertThat(status(first)).isEqualTo("LEFT");
+        assertThat(db.queryForObject("SELECT left_at IS NOT NULL FROM memberships WHERE id = ?", Boolean.class, first)).isTrue();
+        assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ?", member, clubA)).isEqualTo(2);
+
+        call(delete("/api/v1/memberships/" + second), adminToken, null, 204);
+        join(clubA, member);
+        assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ?", member, clubA)).isEqualTo(3);
+    }
+
+    @Test
+    void concurrentRejoinsCreateOneCurrentMembership() throws Exception {
+        UUID first = id(join(clubA, member));
+        call(delete("/api/v1/memberships/" + first), adminToken, null, 204);
+        List<Integer> statuses = concurrently(8, () -> () ->
+                send(post("/api/v1/clubs/" + clubA + "/memberships"), adminToken, Map.of("userId", member)).getStatus());
+        assertThat(statuses).containsOnly(201, 409);
+        assertThat(statuses).filteredOn(s -> s == 201).hasSize(1);
+        assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ? AND status <> 'LEFT'",
+                member, clubA)).isEqualTo(1);
+    }
+
+    @Test
+    void historyIsListedAndCanBeFilteredByStatus() throws Exception {
+        UUID first = id(join(clubA, member));
+        call(delete("/api/v1/memberships/" + first), adminToken, null, 204);
+        UUID current = id(join(clubA, member));
+        membership(user("other@test.local"), clubA);
+
+        JsonNode all = call(get("/api/v1/clubs/" + clubA + "/memberships"), adminToken, null, 200);
+        assertThat(all.path("total").asInt()).isEqualTo(3);
+        JsonNode left = call(get("/api/v1/clubs/" + clubA + "/memberships").param("status", "LEFT"), adminToken, null, 200);
+        assertThat(left.path("total").asInt()).isEqualTo(1);
+        assertThat(left.at("/items/0/id").asText()).isEqualTo(first.toString());
+        JsonNode active = call(get("/api/v1/clubs/" + clubA + "/memberships").param("status", "ACTIVE"), adminToken, null, 200);
+        assertThat(active.path("total").asInt()).isEqualTo(2);
+        assertThat(active.toString()).contains(current.toString()).doesNotContain(first.toString());
+        problem(get("/api/v1/clubs/" + clubA + "/memberships").param("status", "GONE"), adminToken, null, 400, "VALIDATION_ERROR");
     }
 
     @Test
@@ -96,14 +133,16 @@ class MembershipApiTest extends ApiIntegrationTest {
     }
 
     @Test
-    void patchingToLeftBehavesLikeLeaving() throws Exception {
+    void patchingToLeftBehavesLikeLeavingAndIsFinal() throws Exception {
         UUID mid = id(join(clubA, member));
         assign(depA1, mid);
         JsonNode left = call(patch("/api/v1/memberships/" + mid), adminToken, Map.of("status", "LEFT"), 200);
         assertThat(left.path("leftAt").isNull()).isFalse();
         assertThat(count("SELECT count(*) FROM department_members WHERE membership_id = ?", mid)).isZero();
-        JsonNode back = call(patch("/api/v1/memberships/" + mid), adminToken, Map.of("status", "ACTIVE"), 200);
-        assertThat(back.path("leftAt").isNull()).isTrue();
+        problem(patch("/api/v1/memberships/" + mid), adminToken, Map.of("status", "ACTIVE"), 409, "MEMBERSHIP_ALREADY_LEFT");
+        problem(patch("/api/v1/memberships/" + mid), adminToken, Map.of("status", "SUSPENDED"), 409, "MEMBERSHIP_ALREADY_LEFT");
+        call(patch("/api/v1/memberships/" + mid), adminToken, Map.of("status", "LEFT"), 200);
+        assertThat(status(mid)).isEqualTo("LEFT");
     }
 
     @Test

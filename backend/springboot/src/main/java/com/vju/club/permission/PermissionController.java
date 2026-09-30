@@ -1,5 +1,6 @@
 package com.vju.club.permission;
 
+import com.vju.club.permission.dto.EffectivePermissionResponse;
 import com.vju.club.permission.dto.GrantPermissionRequest;
 import com.vju.club.permission.dto.PermissionResponse;
 import com.vju.club.permission.dto.UserPermissionResponse;
@@ -53,6 +54,16 @@ public class PermissionController {
     @GetMapping("/users/me/permissions")
     public List<UserPermissionResponse> listOwnPermissions(Authentication authentication) {
         return permissionService.listUserPermissions(authentication, SecurityIdentity.userId(authentication));
+    }
+
+    @GetMapping("/users/me/effective-permissions")
+    public List<EffectivePermissionResponse> listOwnEffective(Authentication authentication) {
+        return permissionService.listEffective(authentication, SecurityIdentity.userId(authentication));
+    }
+
+    @GetMapping("/users/{userId}/effective-permissions")
+    public List<EffectivePermissionResponse> listEffective(Authentication authentication, @PathVariable UUID userId) {
+        return permissionService.listEffective(authentication, userId);
     }
 
     @DeleteMapping("/users/{userId}/permissions/{permissionId}")

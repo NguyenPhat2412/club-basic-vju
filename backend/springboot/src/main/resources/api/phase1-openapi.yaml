@@ -1103,6 +1103,17 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - INACTIVE
+          - LEFT
+          - SUSPENDED
+        description: Lọc theo trạng thái. Bỏ trống để lấy cả lịch sử (các membership đã LEFT).
       - name: offset
         in: query
         schema:
@@ -1164,6 +1175,10 @@ paths:
               $ref: '#/components/schemas/CreateMembershipRequest'
             example:
               userId: 11111111-1111-4111-8111-111111111111
+      description: >-
+        Thêm user vào CLB. Mỗi lần tham gia là một membership mới; user đã rời (LEFT)
+        có thể được thêm lại. Trả 409 MEMBERSHIP_ALREADY_EXISTS nếu user đang có membership
+        chưa kết thúc, CLUB_INACTIVE hoặc USER_INACTIVE.
   /memberships/{membershipId}:
     get:
       operationId: membership.get
@@ -1247,6 +1262,9 @@ paths:
               $ref: '#/components/schemas/UpdateMembershipRequest'
             example:
               status: SUSPENDED
+      description: >-
+        Đổi trạng thái membership. LEFT là trạng thái cuối: chuyển sang LEFT sẽ gỡ user
+        khỏi mọi ban của CLB; membership đã LEFT không mở lại được (409 MEMBERSHIP_ALREADY_LEFT).
     delete:
       operationId: membership.remove
       summary: Remove member
@@ -1647,6 +1665,293 @@ paths:
         clubId/departmentId tương ứng. Nếu bỏ scope và có nhiều grant phù hợp, trả
         400 AMBIGUOUS_PERMISSION_GRANT; không tự chọn một grant. Thu hồi có hiệu lực
         với request tiếp theo, không cần cấp JWT mới.
+  /roles:
+    get:
+      operationId: role.list
+      summary: List roles
+      tags:
+      - Role
+      x-permission: role.view
+      x-implementation-status: IMPLEMENTED
+      description: Trả mọi vai trò (hệ thống trước, rồi theo mã) kèm danh sách permission
+        của từng vai trò.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: role.create
+      summary: Create custom role
+      tags:
+      - Role
+      x-permission: role.manage
+      x-implementation-status: IMPLEMENTED
+      description: Tạo vai trò tuỳ chỉnh. Mã được chuẩn hoá thành chữ hoa và là duy
+        nhất không phân biệt hoa thường. Mọi permission phải đang hoạt động và có scope
+        không rộng hơn scope của vai trò (ROLE_PERMISSION_SCOPE_MISMATCH).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoleRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /roles/{roleId}:
+    parameters:
+    - name: roleId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    get:
+      operationId: role.get
+      summary: Get role
+      tags:
+      - Role
+      x-permission: role.view
+      x-implementation-status: IMPLEMENTED
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      operationId: role.update
+      summary: Update custom role
+      tags:
+      - Role
+      x-permission: role.manage
+      x-implementation-status: IMPLEMENTED
+      description: Cập nhật một phần. permissionIds (nếu gửi) thay thế toàn bộ tập
+        quyền; thay đổi có hiệu lực ngay với mọi người đang giữ vai trò. Vai trò hệ
+        thống trả 409 SYSTEM_ROLE_IMMUTABLE. active=false vô hiệu hoá vai trò.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoleRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /users/me/roles:
+    get:
+      operationId: role.ownAssignments
+      summary: List own role assignments
+      tags:
+      - Role
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserRole'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /users/{userId}/roles:
+    parameters:
+    - name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    get:
+      operationId: role.userAssignments
+      summary: List user role assignments
+      tags:
+      - Role
+      x-permission: permission.view
+      x-implementation-status: IMPLEMENTED
+      description: Vai trò đang hiệu lực của user. Xem của chính mình không cần permission.view.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserRole'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      operationId: role.assign
+      summary: Assign role
+      tags:
+      - Role
+      x-permission: permission.assign
+      x-implementation-status: IMPLEMENTED
+      description: Gán vai trò theo scope, ghi audit. Scope phải bằng hoặc rộng hơn scope
+        của vai trò (ROLE_SCOPE_MISMATCH); gán trùng trả 409 ROLE_ALREADY_ASSIGNED.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignRoleRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRole'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /users/{userId}/roles/{assignmentId}:
+    delete:
+      operationId: role.revoke
+      summary: Revoke role assignment
+      tags:
+      - Role
+      x-permission: permission.revoke
+      x-implementation-status: IMPLEMENTED
+      description: Thu hồi một lần gán vai trò (theo id của assignment), ghi audit. Có
+        hiệu lực ngay.
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: assignmentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /users/me/effective-permissions:
+    get:
+      operationId: permission.ownEffective
+      summary: List own effective permissions
+      tags:
+      - Permission
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      description: Mọi quyền user đang thực sự có, gộp grant trực tiếp (source DIRECT)
+        và quyền từ vai trò (source ROLE, kèm roleCode). Dùng để ẩn/hiện chức năng trên
+        giao diện.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EffectivePermission'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /users/{userId}/effective-permissions:
+    get:
+      operationId: permission.userEffective
+      summary: List user effective permissions
+      tags:
+      - Permission
+      x-permission: permission.view
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EffectivePermission'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 components:
   securitySchemes:
     bearerAuth:
@@ -2227,10 +2532,6 @@ components:
         active: true
     GrantPermissionRequest:
       type: object
-      description: >-
-        A permission may be granted at its own scope or any broader one (DEPARTMENT < CLUB < GLOBAL).
-        A CLUB grant of a DEPARTMENT permission applies to every department of that club.
-        Narrower grants fail with PERMISSION_SCOPE_MISMATCH.
       required:
       - permissionId
       - scope
@@ -2258,10 +2559,11 @@ components:
           type:
           - string
           - 'null'
-      description: 'GLOBAL: bỏ clubId và departmentId. CLUB: cần clubId và bỏ departmentId.
-        DEPARTMENT: cần departmentId và bỏ clubId. GLOBAL được cấp cho mọi permission;
-        scope cụ thể phải khớp Permission.scope. Backend vẫn kiểm tra quyền người
-        cấp.'
+      description: >-
+        GLOBAL bỏ clubId và departmentId; CLUB cần clubId và bỏ departmentId; DEPARTMENT cần
+        departmentId và bỏ clubId. Permission được cấp ở đúng scope của nó hoặc scope rộng hơn
+        (DEPARTMENT < CLUB < GLOBAL); grant CLUB của một permission cấp ban áp dụng cho mọi ban
+        của CLB đó. Cấp hẹp hơn trả 400 PERMISSION_SCOPE_MISMATCH.
       examples:
       - permissionId: 55555555-5555-4555-8555-555555555555
         scope: CLUB
@@ -2648,6 +2950,220 @@ components:
           format: uuid
       examples:
       - membershipId: 44444444-4444-4444-8444-444444444444
+    Role:
+      type: object
+      required:
+      - id
+      - code
+      - name
+      - scope
+      - system
+      - active
+      - permissionKeys
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          pattern: ^[A-Z][A-Z0-9_]*$
+        name:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        scope:
+          type: string
+          enum:
+          - GLOBAL
+          - CLUB
+          - DEPARTMENT
+          description: Scope hẹp nhất có thể gán vai trò; vai trò chỉ chứa permission
+            có scope bằng hoặc hẹp hơn.
+        system:
+          type: boolean
+          description: Vai trò hệ thống (seed sẵn) không sửa được qua API.
+        active:
+          type: boolean
+        permissionKeys:
+          type: array
+          items:
+            type: string
+      examples:
+      - id: 77777777-7777-4777-8777-777777777777
+        code: CLUB_PRESIDENT
+        name: Chủ nhiệm CLB
+        description: Quản lý thông tin, ban và thành viên của CLB
+        scope: CLUB
+        system: true
+        active: true
+        permissionKeys:
+        - club.update
+        - club.view
+        - member.add
+    CreateRoleRequest:
+      type: object
+      required:
+      - code
+      - name
+      - scope
+      - permissionIds
+      properties:
+        code:
+          type: string
+          maxLength: 64
+          pattern: ^[A-Za-z][A-Za-z0-9_]*$
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type:
+          - string
+          - 'null'
+          maxLength: 2000
+        scope:
+          type: string
+          enum:
+          - GLOBAL
+          - CLUB
+          - DEPARTMENT
+        permissionIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+    UpdateRoleRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type:
+          - string
+          - 'null'
+          maxLength: 2000
+        active:
+          type: boolean
+        permissionIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+    AssignRoleRequest:
+      type: object
+      required:
+      - roleId
+      - scope
+      properties:
+        roleId:
+          type: string
+          format: uuid
+        scope:
+          type: string
+          enum:
+          - GLOBAL
+          - CLUB
+          - DEPARTMENT
+        clubId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        departmentId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        reason:
+          type:
+          - string
+          - 'null'
+          maxLength: 1000
+    UserRole:
+      type: object
+      required:
+      - id
+      - userId
+      - roleId
+      - roleCode
+      - roleName
+      - scope
+      - grantedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: ID của lần gán; dùng để thu hồi.
+        userId:
+          type: string
+          format: uuid
+        roleId:
+          type: string
+          format: uuid
+        roleCode:
+          type: string
+        roleName:
+          type: string
+        scope:
+          type: string
+          enum:
+          - GLOBAL
+          - CLUB
+          - DEPARTMENT
+        clubId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        departmentId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        grantedAt:
+          type: string
+          format: date-time
+    EffectivePermission:
+      type: object
+      required:
+      - permissionKey
+      - scope
+      - source
+      properties:
+        permissionKey:
+          type: string
+        scope:
+          type: string
+          enum:
+          - GLOBAL
+          - CLUB
+          - DEPARTMENT
+        clubId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        departmentId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        source:
+          type: string
+          enum:
+          - DIRECT
+          - ROLE
+        roleCode:
+          type:
+          - string
+          - 'null'
+          description: Mã vai trò khi source là ROLE.
 tags:
 - name: System
   description: Danh mục và trạng thái API
@@ -2665,3 +3181,5 @@ tags:
   description: Phân công thành viên vào ban
 - name: Permission
   description: Danh mục, cấp và thu hồi quyền
+- name: Role
+  description: Vai trò (nhóm quyền theo chức vụ) và gán vai trò

@@ -126,12 +126,29 @@ class ContractTest(unittest.TestCase):
                    'Membership': 'membership/dto/MembershipResponse.java',
                    'DepartmentMember': 'departmentmember/dto/DepartmentMemberResponse.java',
                    'Permission': 'permission/dto/PermissionResponse.java',
-                   'UserPermission': 'permission/dto/UserPermissionResponse.java'}
+                   'UserPermission': 'permission/dto/UserPermissionResponse.java',
+                   'Role': 'role/dto/RoleResponse.java', 'UserRole': 'role/dto/UserRoleResponse.java',
+                   'EffectivePermission': 'permission/dto/EffectivePermissionResponse.java'}
         for schema_name, java_path in mapping.items():
             src = (ROOT / 'backend/springboot/src/main/java/com/vju/club' / java_path).read_text()
-            fields = set(re.findall(r'(?:UUID|String|boolean|Instant|OffsetDateTime|PermissionScope)\s+(\w+)', src.split('public record', 1)[1].split('{', 1)[0]))
+            fields = set(re.findall(r'(?:UUID|String|boolean|Instant|OffsetDateTime|PermissionScope|List<String>)\s+(\w+)', src.split('public record', 1)[1].split('{', 1)[0]))
             with self.subTest(schema=schema_name):
                 self.assertEqual(set(self.doc['components']['schemas'][schema_name]['properties']), fields)
+
+    def test_documents_have_no_duplicate_keys(self):
+        # PyYAML silently keeps the last duplicate key, hiding the first value.
+        class StrictLoader(yaml.SafeLoader):
+            pass
+
+        def construct(loader, node, deep=False):
+            keys = [loader.construct_object(key, deep=deep) for key, _ in node.value]
+            duplicates = {key for key in keys if keys.count(key) > 1}
+            self.assertFalse(duplicates, f'duplicate keys at line {node.start_mark.line + 1}')
+            return yaml.SafeLoader.construct_mapping(loader, node, deep)
+
+        StrictLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct)
+        for name in ['docs/api/openapi.yaml', 'docs/api/catalog.yml']:
+            yaml.load((ROOT / name).read_text(), StrictLoader)
 
 if __name__ == '__main__':
     unittest.main()

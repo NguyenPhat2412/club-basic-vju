@@ -1,6 +1,5 @@
 package com.vju.club.security;
 
-import com.vju.club.entity.PermissionScope;
 import com.vju.club.error.ApiException;
 import com.vju.club.repository.UserPermissionRepository;
 import org.springframework.http.HttpStatus;
@@ -29,26 +28,19 @@ public class PermissionAuthorizationService {
             return false;
         }
 
-        if (departmentId != null && userPermissionRepository
-                .existsForDepartment(
-                        userId, permissionKey, PermissionScope.DEPARTMENT, departmentId)) {
+        if (departmentId != null && userPermissionRepository.hasInDepartment(userId, permissionKey, departmentId)) {
             return true;
         }
-        if (clubId != null && userPermissionRepository
-                .existsForClub(
-                        userId, permissionKey, PermissionScope.CLUB, clubId)) {
+        if (clubId != null && userPermissionRepository.hasInClub(userId, permissionKey, clubId)) {
             return true;
         }
-        return userPermissionRepository
-                .existsGlobal(
-                        userId, permissionKey, PermissionScope.GLOBAL);
+        return userPermissionRepository.hasGlobal(userId, permissionKey);
     }
 
     public boolean hasGlobalPermission(Authentication authentication, String permissionKey) {
         if (authentication == null || !authentication.isAuthenticated()) return false;
         try {
-            return userPermissionRepository.existsGlobal(
-                    SecurityIdentity.userId(authentication), permissionKey, PermissionScope.GLOBAL);
+            return userPermissionRepository.hasGlobal(SecurityIdentity.userId(authentication), permissionKey);
         } catch (RuntimeException exception) {
             return false;
         }
@@ -57,8 +49,7 @@ public class PermissionAuthorizationService {
     public boolean hasAnyPermission(Authentication authentication, String permissionKey) {
         if (authentication == null || !authentication.isAuthenticated()) return false;
         try {
-            return userPermissionRepository.existsByUser_IdAndPermission_PermissionKeyAndPermission_ActiveTrueAndRevokedAtIsNull(
-                    SecurityIdentity.userId(authentication), permissionKey);
+            return userPermissionRepository.hasAnywhere(SecurityIdentity.userId(authentication), permissionKey);
         } catch (RuntimeException exception) {
             return false;
         }

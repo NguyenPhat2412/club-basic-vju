@@ -8,12 +8,11 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "memberships", uniqueConstraints = @UniqueConstraint(name = "uq_memberships_user_club", columnNames = {"user_id", "club_id"}))
+@Table(name = "memberships")
 public class Membership extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

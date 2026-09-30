@@ -72,6 +72,8 @@ abstract class ApiIntegrationTest {
         mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
         db.execute("TRUNCATE users, clubs CASCADE");
         db.update("UPDATE permissions SET active = true");
+        db.update("DELETE FROM roles WHERE NOT system");
+        db.update("UPDATE roles SET active = true");
         admin = user("admin@test.local");
         member = user("member@test.local");
         for (UUID permission : db.queryForList("SELECT id FROM permissions", UUID.class)) {

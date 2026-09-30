@@ -1,5 +1,6 @@
 package com.vju.club.membership;
 
+import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.common.dto.PageResponse;
 import com.vju.club.entity.Club;
 import com.vju.club.entity.ClubStatus;
@@ -28,19 +29,17 @@ import java.util.UUID;
 @Service
 public class MembershipServiceImpl implements MembershipService {
     private final MembershipRepository membershipRepository;
-    private final MembershipDao membershipDao;
     private final ClubRepository clubRepository;
     private final UserRepository userRepository;
     private final DepartmentMemberRepository departmentMemberRepository;
     private final PermissionAuthorizationService authorizationService;
     private final Clock clock;
 
-    public MembershipServiceImpl(MembershipRepository membershipRepository, MembershipDao membershipDao,
+    public MembershipServiceImpl(MembershipRepository membershipRepository,
                                  ClubRepository clubRepository, UserRepository userRepository,
                                  DepartmentMemberRepository departmentMemberRepository,
                                  PermissionAuthorizationService authorizationService, Clock clock) {
         this.membershipRepository = membershipRepository;
-        this.membershipDao = membershipDao;
         this.clubRepository = clubRepository;
         this.userRepository = userRepository;
         this.departmentMemberRepository = departmentMemberRepository;
@@ -50,11 +49,13 @@ public class MembershipServiceImpl implements MembershipService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<MembershipResponse> list(Authentication authentication, UUID clubId, int offset, int limit) {
+    public PageResponse<MembershipResponse> list(Authentication authentication, UUID clubId, MembershipStatus status,
+                                                 int offset, int limit) {
         authorizationService.require(authentication, "member.view", clubId, null);
         if (!clubRepository.existsById(clubId)) throw notFound("CLUB_NOT_FOUND", "Club not found");
-        var items = membershipDao.findByClub(clubId, offset, limit).stream().map(MembershipResponse::from).toList();
-        return new PageResponse<>(items, membershipRepository.countByClub_Id(clubId), offset, limit);
+        var items = membershipRepository.findPageByClub(clubId, status, new OffsetLimitRequest(offset, limit)).stream()
+                .map(MembershipResponse::from).toList();
+        return new PageResponse<>(items, membershipRepository.countByClub(clubId, status), offset, limit);
     }
 
     @Override
@@ -77,19 +78,15 @@ public class MembershipServiceImpl implements MembershipService {
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new ApiException(HttpStatus.CONFLICT, "USER_INACTIVE", "User account is inactive");
         }
-        Membership membership = membershipRepository.findByUser_IdAndClub_Id(user.getId(), clubId).orElse(null);
-        if (membership != null && membership.getStatus() != MembershipStatus.LEFT) {
+        if (membershipRepository.findFirstByUser_IdAndClub_IdAndStatusNot(user.getId(), clubId, MembershipStatus.LEFT).isPresent()) {
             throw new ApiException(HttpStatus.CONFLICT, "MEMBERSHIP_ALREADY_EXISTS", "Membership already exists");
         }
-        if (membership == null) {
-            // A user who left can rejoin; the unique (user, club) row is then reactivated below.
-            membership = new Membership();
-            membership.setUser(user);
-            membership.setClub(club);
-        }
+        // Every (re)join is a new row, so earlier stints stay in the history untouched.
+        Membership membership = new Membership();
+        membership.setUser(user);
+        membership.setClub(club);
         membership.setStatus(MembershipStatus.ACTIVE);
         membership.setJoinedAt(now());
-        membership.setLeftAt(null);
         return MembershipResponse.from(membershipRepository.saveAndFlush(membership));
     }
 
@@ -111,13 +108,18 @@ public class MembershipServiceImpl implements MembershipService {
         membershipRepository.saveAndFlush(membership);
     }
 
-    /** Leaving a club keeps the original leave date and drops the member from all its departments. */
+    /**
+     * LEFT is final: a left membership is history and cannot be reopened (rejoining creates a new
+     * membership). Leaving drops the member from every department of the club.
+     */
     private void changeStatus(Membership membership, MembershipStatus status) {
-        boolean alreadyLeft = membership.getStatus() == MembershipStatus.LEFT;
+        if (membership.getStatus() == MembershipStatus.LEFT) {
+            if (status == MembershipStatus.LEFT) return;
+            throw new ApiException(HttpStatus.CONFLICT, "MEMBERSHIP_ALREADY_LEFT",
+                    "A membership that has ended cannot be reopened; add the user to the club again");
+        }
         membership.setStatus(status);
-        if (status != MembershipStatus.LEFT) {
-            membership.setLeftAt(null);
-        } else if (!alreadyLeft) {
+        if (status == MembershipStatus.LEFT) {
             membership.setLeftAt(now());
             departmentMemberRepository.deleteByMembershipId(membership.getId());
         }

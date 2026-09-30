@@ -2,12 +2,13 @@ package com.vju.club.bootstrap;
 
 import com.vju.club.config.BootstrapAdminProperties;
 import com.vju.club.entity.PermissionScope;
+import com.vju.club.entity.Role;
 import com.vju.club.entity.User;
-import com.vju.club.entity.UserPermission;
+import com.vju.club.entity.UserRole;
 import com.vju.club.entity.UserStatus;
-import com.vju.club.repository.PermissionRepository;
-import com.vju.club.repository.UserPermissionRepository;
+import com.vju.club.repository.RoleRepository;
 import com.vju.club.repository.UserRepository;
+import com.vju.club.repository.UserRoleRepository;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,26 +17,29 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
+/** Creates the local administrator and gives it the SYSTEM_ADMIN role; safe to run on every start. */
 @Service
 @Profile("local")
 public class BootstrapAdminService {
 
+    static final String ADMIN_ROLE = "SYSTEM_ADMIN";
+
     private final BootstrapAdminProperties properties;
     private final UserRepository userRepository;
-    private final PermissionRepository permissionRepository;
-    private final UserPermissionRepository userPermissionRepository;
+    private final RoleRepository roleRepository;
+    private final UserRoleRepository userRoleRepository;
     private final PasswordEncoder passwordEncoder;
 
     public BootstrapAdminService(
             BootstrapAdminProperties properties,
             UserRepository userRepository,
-            PermissionRepository permissionRepository,
-            UserPermissionRepository userPermissionRepository,
+            RoleRepository roleRepository,
+            UserRoleRepository userRoleRepository,
             PasswordEncoder passwordEncoder) {
         this.properties = properties;
         this.userRepository = userRepository;
-        this.permissionRepository = permissionRepository;
-        this.userPermissionRepository = userPermissionRepository;
+        this.roleRepository = roleRepository;
+        this.userRoleRepository = userRoleRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -52,19 +56,18 @@ public class BootstrapAdminService {
             return userRepository.save(user);
         });
 
-        permissionRepository.findAllByActiveTrueOrderByModuleAscActionAsc().forEach(permission -> {
-            boolean exists = userPermissionRepository
-                    .findByUser_IdAndPermission_IdAndRevokedAtIsNullOrderByGrantedAtDesc(admin.getId(), permission.getId())
-                    .stream().anyMatch(grant -> grant.getScope() == PermissionScope.GLOBAL);
-            if (!exists) {
-                UserPermission grant = new UserPermission();
-                grant.setUser(admin);
-                grant.setPermission(permission);
-                grant.setScope(PermissionScope.GLOBAL);
-                grant.setGrantedBy(admin);
-                grant.setGrantedAt(OffsetDateTime.now(ZoneOffset.UTC));
-                userPermissionRepository.save(grant);
-            }
-        });
+        Role role = roleRepository.findByCode(ADMIN_ROLE)
+                .orElseThrow(() -> new IllegalStateException("Role " + ADMIN_ROLE + " is missing; check migrations"));
+        if (userRoleRepository.existsByUser_IdAndRole_IdAndScopeAndRevokedAtIsNull(
+                admin.getId(), role.getId(), PermissionScope.GLOBAL)) {
+            return;
+        }
+        UserRole assignment = new UserRole();
+        assignment.setUser(admin);
+        assignment.setRole(role);
+        assignment.setScope(PermissionScope.GLOBAL);
+        assignment.setGrantedBy(admin);
+        assignment.setGrantedAt(OffsetDateTime.now(ZoneOffset.UTC));
+        userRoleRepository.save(assignment);
     }
 }

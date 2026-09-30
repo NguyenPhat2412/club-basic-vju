@@ -2,7 +2,7 @@
 
 Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt Nhật (VJU): quản lý tài khoản, câu lạc bộ, ban, thành viên và phân quyền chi tiết theo phạm vi.
 
-> **Trạng thái:** Backend giai đoạn 1 đã hoàn thành. Toàn bộ 36 route đều `IMPLEMENTED` và có 216 test tự động. Frontend (Next.js) mới dừng ở bộ khung khởi tạo.
+> **Trạng thái:** Backend giai đoạn 1 đã hoàn thành. Toàn bộ 46 route đều `IMPLEMENTED` và có 237 test tự động. Frontend (Next.js) mới dừng ở bộ khung khởi tạo.
 
 ## Mục lục
 
@@ -26,9 +26,10 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 - **Người dùng:** xem và sửa hồ sơ cá nhân, tìm kiếm và sắp xếp danh sách người dùng, khoá hoặc mở tài khoản. Tài khoản bị khoá mất quyền truy cập ngay lập tức.
 - **Câu lạc bộ:** tạo, sửa, tìm kiếm, bật/tắt hoạt động. Mã CLB là duy nhất, không phân biệt hoa thường.
 - **Ban:** mỗi CLB có nhiều ban. Tên ban là duy nhất trong phạm vi một CLB.
-- **Thành viên:** thêm thành viên vào CLB, tạm ngưng, cho rời CLB, cho tham gia lại. Khi rời CLB, thành viên tự động bị gỡ khỏi mọi ban.
+- **Thành viên:** thêm thành viên vào CLB, tạm ngưng, cho rời CLB. Hệ thống lưu **lịch sử** tham gia: mỗi lần tham gia là một membership riêng, người đã rời có thể được thêm lại. Khi rời CLB, thành viên tự động bị gỡ khỏi mọi ban.
 - **Thành viên ban:** xếp thành viên vào ban, chuyển ban, gỡ khỏi ban. Chỉ xếp được thành viên đang hoạt động vào ban cùng CLB.
-- **Phân quyền:** 25 quyền, mỗi quyền được cấp theo một trong ba phạm vi `GLOBAL`, `CLUB` hoặc `DEPARTMENT`. Mọi lần cấp và thu hồi quyền đều được ghi audit log.
+- **Phân quyền:** 27 quyền, mỗi quyền được cấp theo một trong ba phạm vi `GLOBAL`, `CLUB` hoặc `DEPARTMENT`. Mọi lần cấp và thu hồi đều được ghi audit log.
+- **Vai trò:** vai trò là nhóm quyền ứng với một chức vụ. Có 5 vai trò hệ thống (Quản trị hệ thống, Chủ nhiệm, Phó chủ nhiệm, Trưởng ban, Thành viên); admin có thể tạo thêm vai trò tuỳ chỉnh. Vai trò được gán theo cùng cơ chế scope như quyền.
 - **Bảo vệ:** giới hạn tần suất (rate limit) cho các endpoint đăng nhập/đăng ký/làm mới token. Mọi lỗi trả về theo định dạng RFC 7807. Người không có quyền không thể dò xem một ID có tồn tại hay không.
 
 ## Công nghệ
@@ -55,7 +56,8 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 │   │   ├── department/          # Ban
 │   │   ├── membership/          # Thành viên CLB
 │   │   ├── departmentmember/    # Thành viên ban
-│   │   ├── permission/          # Cấp/thu hồi quyền, audit log
+│   │   ├── permission/          # Cấp/thu hồi quyền, quyền hiệu lực, audit log
+│   │   ├── role/                # Vai trò và gán vai trò
 │   │   ├── security/            # Kiểm tra quyền, rate limit, filter trạng thái tài khoản
 │   │   ├── config/              # Cấu hình security, JWT, CORS
 │   │   ├── error/               # Xử lý lỗi chung (ProblemDetail)
@@ -63,7 +65,7 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 │   │   ├── bootstrap/           # Tạo admin ban đầu (chỉ profile local)
 │   │   └── rest/                # API catalog, phục vụ file OpenAPI
 │   ├── src/main/resources/
-│   │   ├── db/migration/        # Flyway: V1 schema + seed quyền, V2 refresh token, V3 ràng buộc + index
+│   │   ├── db/migration/        # Flyway: V1 schema + seed quyền, V2 refresh token, V3 ràng buộc + index, V4 lịch sử membership, V5 vai trò
 │   │   └── api/                 # Bản copy runtime của OpenAPI và catalog
 │   ├── src/test/                # Unit test + integration test
 │   └── Dockerfile
@@ -108,7 +110,7 @@ Flyway tự chạy migration khi khởi động. Backend lắng nghe ở `http:/
 
 ### 3. Tạo tài khoản admin đầu tiên
 
-Migration chỉ seed danh mục quyền, không tạo người dùng nào. Để tự tạo admin có đủ mọi quyền `GLOBAL`, chạy profile `local` kèm hai biến môi trường. Thao tác này an toàn khi chạy lại nhiều lần.
+Migration chỉ seed danh mục quyền và vai trò hệ thống, không tạo người dùng nào. Để tự tạo admin mang vai trò `SYSTEM_ADMIN` (phạm vi `GLOBAL`), chạy profile `local` kèm hai biến môi trường. Thao tác này an toàn khi chạy lại nhiều lần.
 
 ```bash
 BOOTSTRAP_ADMIN_EMAIL=admin@vju.local BOOTSTRAP_ADMIN_PASSWORD='ChangeMe123!' ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
@@ -171,9 +173,10 @@ Mọi route nghiệp vụ nằm dưới `/api/v1`. Chỉ các route đăng ký, 
 | **Users** | `GET /users/me` · `PATCH /users/me` · `GET /users` · `GET /users/{userId}` · `PATCH /users/{userId}/status` |
 | **Clubs** | `GET /clubs` · `POST /clubs` · `GET /clubs/{clubId}` · `PATCH /clubs/{clubId}` · `PATCH /clubs/{clubId}/status` |
 | **Departments** | `GET /clubs/{clubId}/departments` · `POST /clubs/{clubId}/departments` · `GET /departments/{id}` · `PATCH /departments/{id}` · `PATCH /departments/{id}/status` |
-| **Memberships** | `GET /clubs/{clubId}/memberships` · `POST /clubs/{clubId}/memberships` · `GET /memberships/{id}` · `PATCH /memberships/{id}` · `DELETE /memberships/{id}` |
+| **Memberships** | `GET /clubs/{clubId}/memberships` (lọc `?status=`) · `POST /clubs/{clubId}/memberships` · `GET /memberships/{id}` · `PATCH /memberships/{id}` · `DELETE /memberships/{id}` |
 | **Department members** | `GET /departments/{id}/members` · `POST /departments/{id}/members` · `PATCH /departments/{id}/members/{membershipId}` (chuyển ban) · `DELETE /departments/{id}/members/{membershipId}` |
-| **Permissions** | `GET /permissions` · `GET /users/me/permissions` · `GET /users/{userId}/permissions` · `POST /users/{userId}/permissions` · `DELETE /users/{userId}/permissions/{permissionId}` |
+| **Permissions** | `GET /permissions` · `GET /users/me/permissions` · `GET /users/{userId}/permissions` · `POST /users/{userId}/permissions` · `DELETE /users/{userId}/permissions/{permissionId}` · `GET /users/me/effective-permissions` · `GET /users/{userId}/effective-permissions` |
+| **Roles** | `GET /roles` · `POST /roles` · `GET /roles/{roleId}` · `PATCH /roles/{roleId}` · `GET /users/me/roles` · `GET /users/{userId}/roles` · `POST /users/{userId}/roles` · `DELETE /users/{userId}/roles/{assignmentId}` |
 | **Khác** | `GET /api-catalog` · `GET /api-docs/phase1.yaml` |
 
 Chi tiết request/response nằm trong [docs/api/openapi.yaml](docs/api/openapi.yaml).
@@ -188,7 +191,23 @@ Mỗi quyền được khai báo với một phạm vi mặc định. Khi cấp 
 - Cấp ở phạm vi `GLOBAL` thì quyền áp dụng trên toàn hệ thống.
 - Cấp hẹp hơn phạm vi mặc định bị từ chối với lỗi `PERMISSION_SCOPE_MISMATCH`.
 
-Khi kiểm tra quyền, hệ thống xét lần lượt grant cấp ban, rồi grant cấp CLB, rồi grant global. Quyền bị thu hồi hoặc bị vô hiệu hoá (`permissions.active = false`) mất hiệu lực ngay lập tức.
+Khi kiểm tra quyền, hệ thống xét lần lượt grant cấp ban, rồi grant cấp CLB, rồi grant global. Mỗi grant có thể là **quyền cấp trực tiếp** hoặc **quyền đến từ một vai trò** đang được gán. Quyền hoặc vai trò bị thu hồi hay vô hiệu hoá mất hiệu lực ngay lập tức.
+
+`GET /users/me/effective-permissions` trả toàn bộ quyền người dùng đang thực sự có (kèm nguồn `DIRECT`/`ROLE`), để frontend ẩn/hiện chức năng.
+
+### Vai trò
+
+Vai trò là một nhóm quyền. Mỗi vai trò có phạm vi hẹp nhất có thể gán; vai trò chỉ được chứa các quyền có phạm vi bằng hoặc hẹp hơn phạm vi của nó. Ví dụ, vai trò cấp CLB không chứa được `user.view`.
+
+| Vai trò hệ thống | Phạm vi | Quyền |
+|---|---|---|
+| `SYSTEM_ADMIN` | GLOBAL | Tất cả |
+| `CLUB_PRESIDENT` | CLUB | `club.view`, `club.update`, mọi quyền `department.*`, `member.*`, `department.member.*` |
+| `CLUB_VICE_PRESIDENT` | CLUB | `club.view`, `department.view`, `member.view`, `member.view_detail`, `member.add`, `member.update`, `department.member.*` |
+| `DEPARTMENT_HEAD` | DEPARTMENT | `department.update`, `department.member.*` |
+| `CLUB_MEMBER` | CLUB | `club.view`, `department.view`, `member.view` |
+
+Vai trò hệ thống không sửa được qua API. Vai trò tuỳ chỉnh (tạo bằng quyền `role.manage`) có thể sửa tập quyền hoặc tắt đi, và thay đổi có hiệu lực ngay với mọi người đang giữ vai trò đó. Gán và thu hồi vai trò cần `permission.assign`/`permission.revoke`, và cũng được ghi audit log.
 
 ### Danh mục quyền
 
@@ -200,6 +219,7 @@ Khi kiểm tra quyền, hệ thống xét lần lượt grant cấp ban, rồi g
 | member | `member.view`, `member.view_detail`, `member.add`, `member.update`, `member.remove` (CLUB) |
 | department.member | `department.member.view`, `department.member.add`, `department.member.remove` (DEPARTMENT) |
 | permission | `permission.view`, `permission.assign`, `permission.revoke` (GLOBAL) |
+| role | `role.view`, `role.manage` (GLOBAL) |
 
 Chuyển thành viên sang ban khác cần `department.member.remove` ở ban nguồn **và** `department.member.add` ở ban đích.
 
@@ -215,12 +235,12 @@ Mọi lỗi trả về `application/problem+json` kèm trường `code` ổn đ�
 
 | HTTP | Mã lỗi thường gặp |
 |---|---|
-| 400 | `VALIDATION_ERROR`, `INVALID_SORT`, `CURRENT_PASSWORD_INVALID`, `PERMISSION_SCOPE_MISMATCH`, `INVALID_PERMISSION_SCOPE`, `CROSS_CLUB_ASSIGNMENT`, `CROSS_CLUB_MOVE`, `SAME_DEPARTMENT`, `AMBIGUOUS_PERMISSION_GRANT` |
+| 400 | `VALIDATION_ERROR`, `INVALID_SORT`, `CURRENT_PASSWORD_INVALID`, `PERMISSION_SCOPE_MISMATCH`, `INVALID_PERMISSION_SCOPE`, `ROLE_SCOPE_MISMATCH`, `ROLE_PERMISSION_SCOPE_MISMATCH`, `INVALID_SCOPE_TARGET`, `ROLE_INACTIVE`, `CROSS_CLUB_ASSIGNMENT`, `CROSS_CLUB_MOVE`, `SAME_DEPARTMENT`, `AMBIGUOUS_PERMISSION_GRANT` |
 | 401 | `UNAUTHORIZED`, `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN` |
 | 403 | `PERMISSION_DENIED`, `ACCOUNT_INACTIVE` |
 | 404 | `NOT_FOUND` (route không tồn tại), `USER_NOT_FOUND`, `CLUB_NOT_FOUND`, `DEPARTMENT_NOT_FOUND`, `MEMBERSHIP_NOT_FOUND`, … |
 | 405 / 415 | `METHOD_NOT_ALLOWED`, `UNSUPPORTED_MEDIA_TYPE` |
-| 409 | `EMAIL_ALREADY_EXISTS`, `STUDENT_CODE_ALREADY_EXISTS`, `CLUB_CODE_ALREADY_EXISTS`, `DEPARTMENT_NAME_ALREADY_EXISTS`, `MEMBERSHIP_ALREADY_EXISTS`, `CLUB_INACTIVE`, `USER_INACTIVE`, `DEPARTMENT_INACTIVE`, `MEMBERSHIP_NOT_ACTIVE`, `PERMISSION_ALREADY_GRANTED` |
+| 409 | `EMAIL_ALREADY_EXISTS`, `STUDENT_CODE_ALREADY_EXISTS`, `CLUB_CODE_ALREADY_EXISTS`, `DEPARTMENT_NAME_ALREADY_EXISTS`, `MEMBERSHIP_ALREADY_EXISTS`, `CLUB_INACTIVE`, `USER_INACTIVE`, `DEPARTMENT_INACTIVE`, `MEMBERSHIP_NOT_ACTIVE`, `MEMBERSHIP_ALREADY_LEFT`, `PERMISSION_ALREADY_GRANTED`, `ROLE_ALREADY_ASSIGNED`, `ROLE_CODE_ALREADY_EXISTS`, `SYSTEM_ROLE_IMMUTABLE` |
 | 429 | `RATE_LIMIT_EXCEEDED`, kèm các header `Retry-After`, `X-RateLimit-Limit` và `X-RateLimit-Remaining` |
 | 500 | `INTERNAL_ERROR` (lỗi được ghi log ở server) |
 
@@ -248,12 +268,15 @@ Flyway quản lý schema tại `backend/springboot/src/main/resources/db/migrati
 | `V1__create_phase1_schema.sql` | 8 bảng `users`, `clubs`, `departments`, `memberships`, `department_members`, `permissions`, `user_permissions`, `permission_audit_logs`; seed 25 quyền |
 | `V2__create_refresh_tokens.sql` | Bảng `refresh_tokens` (chỉ lưu SHA-256 của token) |
 | `V3__harden_constraints_and_indexes.sql` | Chuyển các ràng buộc nghiệp vụ xuống tầng DB và bổ sung index (chi tiết bên dưới) |
+| `V4__membership_history.sql` | Lưu lịch sử tham gia: mỗi user chỉ có tối đa một membership chưa kết thúc cho mỗi CLB |
+| `V5__roles.sql` | Bảng `roles`, `role_permissions`, `user_roles`; view `effective_user_permissions`; seed 5 vai trò hệ thống và 2 quyền `role.*` |
 
 Ràng buộc được đặt ngay ở tầng database, nên dữ liệu sai bị chặn kể cả khi ghi bằng SQL trực tiếp hoặc khi nhiều request chạy đồng thời:
-- **Duy nhất, không phân biệt hoa thường:** email, mã sinh viên, mã CLB, và tên ban trong một CLB (unique index trên `lower(...)`). Cặp user–CLB cũng là duy nhất.
+- **Duy nhất, không phân biệt hoa thường:** email, mã sinh viên, mã CLB, và tên ban trong một CLB (unique index trên `lower(...)`). Mỗi user chỉ có tối đa một membership **chưa kết thúc** trong một CLB; các membership đã `LEFT` được giữ làm lịch sử.
 - **Thành viên ban luôn cùng CLB:** `department_members.club_id` được ràng buộc bằng khoá ngoại ghép tới cả `departments(id, club_id)` lẫn `memberships(id, club_id)`, nên không thể xếp người vào ban của CLB khác.
 - **CHECK** cho các cột trạng thái; cho quan hệ scope ↔ `club_id`/`department_id`; cho quy tắc `left_at` có giá trị **khi và chỉ khi** membership ở trạng thái `LEFT`; cho `permission_key = module.action`; và cho quy tắc `revoked_by` chỉ có khi đã có `revoked_at`.
-- **Partial unique index** để một quyền không thể được cấp trùng khi grant cũ vẫn còn hiệu lực.
+- **Partial unique index** để một quyền hoặc vai trò không thể được cấp trùng khi grant cũ vẫn còn hiệu lực.
+- **Trigger phạm vi:** grant quyền hoặc gán vai trò hẹp hơn phạm vi cho phép bị từ chối; vai trò không chứa được quyền rộng hơn phạm vi của nó.
 - **Audit log bất biến:** không xoá được CLB hoặc ban đã có lịch sử phân quyền. Hệ thống chỉ khoá mềm bằng cột `status`.
 - **Index:** mọi cột khoá ngoại đều có index; có index `(club_id, joined_at)` và `(department_id, joined_at)` cho các danh sách; và tìm theo email/mã CLB dùng được index nhờ truy vấn qua `lower(...)`.
 - **Trigger `updated_at`:** cột này luôn được cập nhật, kể cả khi sửa dữ liệu ngoài ứng dụng.
@@ -268,7 +291,7 @@ Khi chạy, Hibernate chỉ `validate` schema chứ không tự sửa. Mọi tha
 # PostgreSQL riêng cho test (cổng 55432, dữ liệu nằm trên RAM)
 docker compose -f docker-compose.test.yml up -d
 
-# 216 test backend: unit + integration
+# 237 test backend: unit + integration
 cd backend/springboot && ./mvnw test
 
 # Kiểm tra OpenAPI contract (từ thư mục gốc)

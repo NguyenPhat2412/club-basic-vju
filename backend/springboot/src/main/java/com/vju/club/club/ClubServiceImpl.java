@@ -4,6 +4,7 @@ import com.vju.club.club.dto.ClubRequest;
 import com.vju.club.club.dto.ClubPatchRequest;
 import com.vju.club.club.dto.ClubResponse;
 import com.vju.club.club.dto.ClubStatusRequest;
+import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.common.dto.PageResponse;
 import com.vju.club.entity.Club;
 import com.vju.club.entity.ClubStatus;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import com.vju.club.security.SecurityIdentity;
 
@@ -23,31 +25,30 @@ import com.vju.club.security.SecurityIdentity;
 public class ClubServiceImpl implements ClubService {
 
     private final ClubRepository clubRepository;
-    private final ClubDao clubDao;
     private final PermissionAuthorizationService authorizationService;
 
-    public ClubServiceImpl(ClubRepository clubRepository, ClubDao clubDao,
-                           PermissionAuthorizationService authorizationService) {
+    public ClubServiceImpl(ClubRepository clubRepository, PermissionAuthorizationService authorizationService) {
         this.clubRepository = clubRepository;
-        this.clubDao = clubDao;
         this.authorizationService = authorizationService;
     }
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<ClubResponse> list(Authentication authentication, String query, int offset, int limit) {
+        String pattern = "%" + (query == null ? "" : query.trim().toLowerCase(Locale.ROOT)) + "%";
+        OffsetLimitRequest page = new OffsetLimitRequest(offset, limit);
         List<ClubResponse> clubs;
         long total;
         if (authorizationService.hasGlobalPermission(authentication, "club.view")) {
-            clubs = clubDao.search(query, offset, limit).stream().map(ClubResponse::from).toList();
-            total = clubDao.count(query);
+            clubs = clubRepository.search(pattern, page).stream().map(ClubResponse::from).toList();
+            total = clubRepository.countSearch(pattern);
         } else {
-            UUID userId = SecurityIdentity.userId(authentication);
-            clubs = clubDao.searchForUser(userId, query, offset, limit).stream().map(ClubResponse::from).toList();
-            total = clubDao.countForUser(userId, query);
-            if (clubs.isEmpty() && total == 0 && !authorizationService.hasAnyPermission(authentication, "club.view")) {
+            if (!authorizationService.hasAnyPermission(authentication, "club.view")) {
                 authorizationService.require(authentication, "club.view", null, null);
             }
+            UUID userId = SecurityIdentity.userId(authentication);
+            clubs = clubRepository.searchVisibleTo(userId, pattern, page).stream().map(ClubResponse::from).toList();
+            total = clubRepository.countVisibleTo(userId, pattern);
         }
         return new PageResponse<>(clubs, total, offset, limit);
     }

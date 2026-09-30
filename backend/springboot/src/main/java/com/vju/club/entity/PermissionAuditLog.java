@@ -23,9 +23,14 @@ public class PermissionAuditLog extends CreatedEntity {
     @JoinColumn(name = "target_user_id", nullable = false)
     private User targetUser;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "permission_id", nullable = false)
+    /** Exactly one of permission / role is set: the audited grant is either a permission or a role. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "permission_id")
     private Permission permission;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "role_id")
+    private Role role;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
@@ -45,6 +50,8 @@ public class PermissionAuditLog extends CreatedEntity {
 
     private String reason;
 
+    public Role getRole() { return role; }
+    public void setRole(Role role) { this.role = role; }
     public User getActorUser() { return actorUser; }
     public void setActorUser(User actorUser) { this.actorUser = actorUser; }
     public User getTargetUser() { return targetUser; }
