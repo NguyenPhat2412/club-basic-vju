@@ -11,3 +11,6 @@ app:
   security:
     jwt:
       secret: integration-test-only-secret-0123456789-abcdef
+  # Integration tests log in far more often than a real client; a dedicated test covers the limiter.
+  rate-limit:
+    max-requests: 100000
