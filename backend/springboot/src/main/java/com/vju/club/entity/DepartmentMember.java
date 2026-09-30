@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "department_members", uniqueConstraints = @UniqueConstraint(name = "uq_department_members_assignment", columnNames = {"department_id", "membership_id"}))
@@ -22,6 +23,10 @@ public class DepartmentMember extends BaseEntity {
     @JoinColumn(name = "membership_id", nullable = false)
     private Membership membership;
 
+    /** Denormalized from the department; composite foreign keys make it match the membership's club too. */
+    @Column(name = "club_id", nullable = false)
+    private UUID clubId;
+
     @Column(name = "joined_at", nullable = false)
     private OffsetDateTime joinedAt;
 
@@ -29,6 +34,8 @@ public class DepartmentMember extends BaseEntity {
     public void setDepartment(Department department) { this.department = department; }
     public Membership getMembership() { return membership; }
     public void setMembership(Membership membership) { this.membership = membership; }
+    public UUID getClubId() { return clubId; }
+    public void setClubId(UUID clubId) { this.clubId = clubId; }
     public OffsetDateTime getJoinedAt() { return joinedAt; }
     public void setJoinedAt(OffsetDateTime joinedAt) { this.joinedAt = joinedAt; }
 }

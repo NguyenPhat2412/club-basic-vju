@@ -126,7 +126,7 @@ class AuthServiceTest {
 
         @Test
         void rejectsDuplicateStudentCode() {
-            when(userRepository.existsByStudentCode("SV001")).thenReturn(true);
+            when(userRepository.existsByStudentCodeIgnoreCase("SV001")).thenReturn(true);
             assertApiError(() -> service.register(new RegisterRequest("new@example.com", "password123", "Test", "SV001", null)),
                     HttpStatus.CONFLICT, "STUDENT_CODE_ALREADY_EXISTS");
             verify(userRepository, never()).saveAndFlush(any());
@@ -135,7 +135,7 @@ class AuthServiceTest {
         @Test
         void blankStudentCodeIsStoredAsNullAndNotCheckedForDuplicates() {
             service.register(new RegisterRequest("a@example.com", "password123", "Test", "   ", null));
-            verify(userRepository, never()).existsByStudentCode(any());
+            verify(userRepository, never()).existsByStudentCodeIgnoreCase(any());
         }
     }
 

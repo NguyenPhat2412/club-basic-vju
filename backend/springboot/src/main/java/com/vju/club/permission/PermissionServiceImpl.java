@@ -139,7 +139,7 @@ public class PermissionServiceImpl implements PermissionService {
         }
         UserPermission grant = grants.get(0);
         OffsetDateTime now = OffsetDateTime.now(clock);
-        grant.revoke(now);
+        grant.revoke(now, actor);
         userPermissionRepository.saveAndFlush(grant);
         audit(actor, target, permission, PermissionAuditAction.REVOKE, grant.getScope(),
                 grant.getClub(), grant.getDepartment(), null);

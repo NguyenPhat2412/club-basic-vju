@@ -70,6 +70,7 @@ public class DepartmentMemberServiceImpl implements DepartmentMemberService {
         DepartmentMember member = new DepartmentMember();
         member.setDepartment(department);
         member.setMembership(membership);
+        member.setClubId(department.getClub().getId());
         member.setJoinedAt(OffsetDateTime.now(clock));
         return DepartmentMemberResponse.from(departmentMemberRepository.saveAndFlush(member));
     }

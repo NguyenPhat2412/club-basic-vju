@@ -2,7 +2,7 @@
 
 Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt Nhật (VJU): quản lý tài khoản, câu lạc bộ, ban, thành viên và phân quyền chi tiết theo phạm vi.
 
-> **Trạng thái:** Backend giai đoạn 1 đã hoàn thành. Toàn bộ 36 route đều `IMPLEMENTED` và có 197 test tự động. Frontend (Next.js) mới dừng ở bộ khung khởi tạo.
+> **Trạng thái:** Backend giai đoạn 1 đã hoàn thành. Toàn bộ 36 route đều `IMPLEMENTED` và có 216 test tự động. Frontend (Next.js) mới dừng ở bộ khung khởi tạo.
 
 ## Mục lục
 
@@ -63,7 +63,7 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 │   │   ├── bootstrap/           # Tạo admin ban đầu (chỉ profile local)
 │   │   └── rest/                # API catalog, phục vụ file OpenAPI
 │   ├── src/main/resources/
-│   │   ├── db/migration/        # Flyway: V1 schema + seed quyền, V2 refresh token
+│   │   ├── db/migration/        # Flyway: V1 schema + seed quyền, V2 refresh token, V3 ràng buộc + index
 │   │   └── api/                 # Bản copy runtime của OpenAPI và catalog
 │   ├── src/test/                # Unit test + integration test
 │   └── Dockerfile
@@ -116,7 +116,7 @@ BOOTSTRAP_ADMIN_EMAIL=admin@vju.local BOOTSTRAP_ADMIN_PASSWORD='ChangeMe123!' ./
 
 ### 4. Thử API
 
-- Swagger UI: http://localhost:8080/swagger-ui.html
+- Swagger UI: http://localhost:8080/swagger-ui.html. Đăng nhập qua `POST /api/v1/auth/login`, copy `tokens.accessToken`, rồi bấm **Authorize** để gọi các route cần xác thực.
 - OpenAPI sinh tự động: http://localhost:8080/v3/api-docs
 - Contract giai đoạn 1: http://localhost:8080/api-docs/phase1.yaml
 - Danh mục API: http://localhost:8080/api/v1/api-catalog
@@ -155,6 +155,8 @@ Backend đọc cấu hình từ biến môi trường:
 | `RATE_LIMIT_MAX_REQUESTS` | `60` | Số request tối đa trong một cửa sổ, tính theo từng IP và từng endpoint |
 | `RATE_LIMIT_WINDOW` | `1m` | Độ dài cửa sổ rate limit |
 | `FORWARD_HEADERS_STRATEGY` | `native` | Chỉ tin `X-Forwarded-For` đến từ proxy có IP nội bộ/loopback, để rate limit thấy đúng IP người dùng khi chạy sau nginx |
+| `REFRESH_TOKEN_CLEANUP_CRON` | `0 30 3 * * *` | Lịch chạy job dọn refresh token |
+| `REFRESH_TOKEN_CLEANUP_RETENTION` | `7d` | Thời gian giữ lại refresh token đã chết trước khi xoá |
 | `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | trống | Tạo admin ban đầu (chỉ có tác dụng ở profile `local`) |
 
 Các biến `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT` dùng để tuỳ chỉnh container trong `docker-compose.yml`.
@@ -245,13 +247,20 @@ Flyway quản lý schema tại `backend/springboot/src/main/resources/db/migrati
 |---|---|
 | `V1__create_phase1_schema.sql` | 8 bảng `users`, `clubs`, `departments`, `memberships`, `department_members`, `permissions`, `user_permissions`, `permission_audit_logs`; seed 25 quyền |
 | `V2__create_refresh_tokens.sql` | Bảng `refresh_tokens` (chỉ lưu SHA-256 của token) |
+| `V3__harden_constraints_and_indexes.sql` | Chuyển các ràng buộc nghiệp vụ xuống tầng DB và bổ sung index (chi tiết bên dưới) |
 
-Ràng buộc được đặt ngay ở tầng database:
-- CHECK cho các cột trạng thái và cho quan hệ giữa scope với `club_id`/`department_id`.
-- UNIQUE cho email, mã sinh viên, mã CLB, tên ban trong một CLB, và cặp user–CLB.
-- Partial unique index để một quyền không thể được cấp trùng khi grant cũ vẫn còn hiệu lực.
+Ràng buộc được đặt ngay ở tầng database, nên dữ liệu sai bị chặn kể cả khi ghi bằng SQL trực tiếp hoặc khi nhiều request chạy đồng thời:
+- **Duy nhất, không phân biệt hoa thường:** email, mã sinh viên, mã CLB, và tên ban trong một CLB (unique index trên `lower(...)`). Cặp user–CLB cũng là duy nhất.
+- **Thành viên ban luôn cùng CLB:** `department_members.club_id` được ràng buộc bằng khoá ngoại ghép tới cả `departments(id, club_id)` lẫn `memberships(id, club_id)`, nên không thể xếp người vào ban của CLB khác.
+- **CHECK** cho các cột trạng thái; cho quan hệ scope ↔ `club_id`/`department_id`; cho quy tắc `left_at` có giá trị **khi và chỉ khi** membership ở trạng thái `LEFT`; cho `permission_key = module.action`; và cho quy tắc `revoked_by` chỉ có khi đã có `revoked_at`.
+- **Partial unique index** để một quyền không thể được cấp trùng khi grant cũ vẫn còn hiệu lực.
+- **Audit log bất biến:** không xoá được CLB hoặc ban đã có lịch sử phân quyền. Hệ thống chỉ khoá mềm bằng cột `status`.
+- **Index:** mọi cột khoá ngoại đều có index; có index `(club_id, joined_at)` và `(department_id, joined_at)` cho các danh sách; và tìm theo email/mã CLB dùng được index nhờ truy vấn qua `lower(...)`.
+- **Trigger `updated_at`:** cột này luôn được cập nhật, kể cả khi sửa dữ liệu ngoài ứng dụng.
 
-Khi chạy, Hibernate chỉ `validate` schema chứ không tự sửa. Mọi thay đổi schema phải đi qua một migration mới (`V3__...`). Xem thêm [docs/database/README.md](docs/database/README.md).
+Refresh token đã hết hạn hoặc bị thu hồi được một job dọn mỗi ngày lúc 03:30, sau khi giữ lại 7 ngày. Có thể chỉnh bằng `REFRESH_TOKEN_CLEANUP_CRON` và `REFRESH_TOKEN_CLEANUP_RETENTION`.
+
+Khi chạy, Hibernate chỉ `validate` schema chứ không tự sửa. Mọi thay đổi schema phải đi qua một migration mới, và không được sửa migration đã chạy. Xem thêm [docs/database/README.md](docs/database/README.md).
 
 ## Kiểm thử
 
@@ -259,7 +268,7 @@ Khi chạy, Hibernate chỉ `validate` schema chứ không tự sửa. Mọi tha
 # PostgreSQL riêng cho test (cổng 55432, dữ liệu nằm trên RAM)
 docker compose -f docker-compose.test.yml up -d
 
-# 197 test backend: unit + integration
+# 216 test backend: unit + integration
 cd backend/springboot && ./mvnw test
 
 # Kiểm tra OpenAPI contract (từ thư mục gốc)

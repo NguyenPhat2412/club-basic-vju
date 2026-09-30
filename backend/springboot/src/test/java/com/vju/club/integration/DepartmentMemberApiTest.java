@@ -61,8 +61,8 @@ class DepartmentMemberApiTest extends ApiIntegrationTest {
         List<UUID> ids = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             UUID mid = activeMember("p" + i + "@test.local", clubA);
-            db.update("INSERT INTO department_members(department_id, membership_id, joined_at) "
-                    + "VALUES (?, ?, now() + (? * interval '1 second'))", depA1, mid, i);
+            db.update("INSERT INTO department_members(department_id, membership_id, club_id, joined_at) "
+                    + "VALUES (?, ?, ?, now() + (? * interval '1 second'))", depA1, mid, clubA, i);
             ids.add(mid);
         }
         assign(depA2, ids.get(0));

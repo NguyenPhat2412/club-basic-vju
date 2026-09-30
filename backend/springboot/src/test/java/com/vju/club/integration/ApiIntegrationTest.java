@@ -127,7 +127,8 @@ abstract class ApiIntegrationTest {
     }
 
     void assign(UUID departmentId, UUID membershipId) {
-        db.update("INSERT INTO department_members(department_id, membership_id) VALUES (?, ?)", departmentId, membershipId);
+        db.update("INSERT INTO department_members(department_id, membership_id, club_id) "
+                + "SELECT ?, ?, club_id FROM departments WHERE id = ?", departmentId, membershipId, departmentId);
     }
 
     String token(UUID id) {

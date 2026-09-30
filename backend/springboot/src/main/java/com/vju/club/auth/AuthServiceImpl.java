@@ -65,7 +65,7 @@ public class AuthServiceImpl implements AuthService {
         if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new ApiException(HttpStatus.CONFLICT, "EMAIL_ALREADY_EXISTS", "Email is already registered");
         }
-        if (studentCode != null && userRepository.existsByStudentCode(studentCode)) {
+        if (studentCode != null && userRepository.existsByStudentCodeIgnoreCase(studentCode)) {
             throw new ApiException(HttpStatus.CONFLICT, "STUDENT_CODE_ALREADY_EXISTS", "Student code is already registered");
         }
         User user = new User();

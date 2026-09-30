@@ -10,18 +10,35 @@ The Spring Boot backend connects to `jdbc:postgresql://localhost:5432/club` by d
 
 ## Current schema
 
-Migration `V1__create_phase1_schema.sql` creates these phase-1 tables:
+| Migration | Purpose |
+|---|---|
+| `V1__create_phase1_schema.sql` | Phase-1 tables and the 25-permission catalog seed |
+| `V2__create_refresh_tokens.sql` | `refresh_tokens` (SHA-256 hashes only) |
+| `V3__harden_constraints_and_indexes.sql` | Moves application rules into the database and adds indexes |
 
-- `users`
-- `clubs`
-- `departments`
-- `memberships`
-- `department_members`
-- `permissions`
-- `user_permissions`
-- `permission_audit_logs`
+Tables: `users`, `clubs`, `departments`, `memberships`, `department_members`, `permissions`, `user_permissions`, `permission_audit_logs`, `refresh_tokens`. Flyway records applied migrations in `flyway_schema_history`. Migrations seed the permission catalog only; no sample users, clubs, or memberships are created.
 
-Flyway also records applied migrations in `flyway_schema_history`. The migration seeds the permission catalog only; it does not create sample users, clubs, or memberships.
+### Integrity rules enforced by PostgreSQL
+
+| Rule | How |
+|---|---|
+| Email, student code, club code and department name (per club) are unique ignoring case | Unique indexes on `lower(...)`: `uq_users_email_ci`, `uq_users_student_code_ci`, `uq_clubs_code_ci`, `uq_departments_club_name_ci` |
+| A department member belongs to the department's club | `department_members.club_id` with composite FKs `fk_department_members_department_club` → `departments(id, club_id)` and `fk_department_members_membership_club` → `memberships(id, club_id)` |
+| `left_at` is set exactly when a membership is `LEFT` | `ck_memberships_left_at` |
+| A user joins a club at most once | `uq_memberships_user_club` |
+| Grant scope matches its target, and an active grant is never duplicated | `ck_user_permissions_scope`, partial unique indexes `uq_user_permissions_active_*` |
+| `revoked_by` only exists on revoked grants | `ck_user_permissions_revoked_by` |
+| `permission_key` is `module.action` | `ck_permissions_key_matches_module_action` |
+| Audit history is immutable | `permission_audit_logs` FKs are `ON DELETE RESTRICT`; clubs and departments are deactivated, never deleted |
+| `updated_at` follows every update | `set_updated_at()` trigger on `users`, `clubs`, `departments` (keeps a value the statement sets itself) |
+
+Every foreign-key column is indexed, and list queries are backed by `idx_memberships_club_joined` and `idx_department_members_department_joined`. Repository lookups use `lower(...)` so they hit the case-insensitive indexes.
+
+V3 checks existing data first and aborts with a readable message if values collide by case or a department member crosses clubs; merge or fix those rows, then restart. Memberships whose `left_at` contradicts their status are corrected automatically (status wins).
+
+### Maintenance
+
+`RefreshTokenCleanupJob` deletes refresh tokens that expired or were revoked more than `REFRESH_TOKEN_CLEANUP_RETENTION` (default `7d`) ago, on `REFRESH_TOKEN_CLEANUP_CRON` (default daily at 03:30).
 
 Check the local database with:
 

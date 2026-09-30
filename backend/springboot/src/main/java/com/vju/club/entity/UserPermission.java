@@ -45,6 +45,10 @@ public class UserPermission extends BaseEntity {
     @Column(name = "revoked_at")
     private OffsetDateTime revokedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "revoked_by")
+    private User revokedBy;
+
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
     public Permission getPermission() { return permission; }
@@ -62,5 +66,10 @@ public class UserPermission extends BaseEntity {
     public OffsetDateTime getRevokedAt() { return revokedAt; }
     public void setRevokedAt(OffsetDateTime revokedAt) { this.revokedAt = revokedAt; }
 
-    public void revoke(OffsetDateTime at) { this.revokedAt = at; }
+    public User getRevokedBy() { return revokedBy; }
+
+    public void revoke(OffsetDateTime at, User by) {
+        this.revokedAt = at;
+        this.revokedBy = by;
+    }
 }

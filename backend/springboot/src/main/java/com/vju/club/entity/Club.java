@@ -10,7 +10,7 @@ import jakarta.persistence.Table;
 @Table(name = "clubs")
 public class Club extends TimestampedEntity {
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(nullable = false, length = 50)
     private String code;
 
     @Column(nullable = false, length = 200)

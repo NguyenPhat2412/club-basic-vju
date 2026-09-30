@@ -10,7 +10,7 @@ import jakarta.persistence.Table;
 @Table(name = "users")
 public class User extends TimestampedEntity {
 
-    @Column(nullable = false, unique = true, length = 320)
+    @Column(nullable = false, length = 320)
     private String email;
 
     @Column(name = "password_hash", nullable = false)
@@ -19,7 +19,7 @@ public class User extends TimestampedEntity {
     @Column(name = "full_name", nullable = false, length = 200)
     private String fullName;
 
-    @Column(name = "student_code", unique = true, length = 50)
+    @Column(name = "student_code", length = 50)
     private String studentCode;
 
     @Column(length = 32)
