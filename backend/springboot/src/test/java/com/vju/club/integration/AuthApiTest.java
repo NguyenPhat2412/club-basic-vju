@@ -245,7 +245,7 @@ class AuthApiTest extends ApiIntegrationTest {
         problem(get("/api/v1/auth/me"), jwt("evil-issuer", member.toString(), Instant.now().plusSeconds(600)),
                 null, 401, "UNAUTHORIZED");
         problem(get("/api/v1/auth/me"), jwt(JwtTokenService.ISSUER, member.toString(), Instant.now().minusSeconds(120)),
-                null, 401, "UNAUTHORIZED");
+                null, 401, "AUTH_TOKEN_EXPIRED");
         call(get("/api/v1/auth/me"), jwt(JwtTokenService.ISSUER, member.toString(), Instant.now().plusSeconds(600)), null, 200);
     }
 

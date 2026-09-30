@@ -1,6 +1,8 @@
 package com.vju.club.membership;
 
 import com.vju.club.security.Actor;
+import com.vju.club.audit.AuditAction;
+import com.vju.club.audit.AuditService;
 import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.common.dto.PageResponse;
 import com.vju.club.entity.Club;
@@ -24,11 +26,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
 public class MembershipService {
     private final MembershipRepository membershipRepository;
+    private final AuditService auditService;
     private final ClubRepository clubRepository;
     private final UserRepository userRepository;
     private final DepartmentMemberRepository departmentMemberRepository;
@@ -38,7 +42,9 @@ public class MembershipService {
     public MembershipService(MembershipRepository membershipRepository,
                                  ClubRepository clubRepository, UserRepository userRepository,
                                  DepartmentMemberRepository departmentMemberRepository,
-                                 PermissionAuthorizationService authorizationService, Clock clock) {
+                                 PermissionAuthorizationService authorizationService, Clock clock,
+                                 AuditService auditService) {
+        this.auditService = auditService;
         this.membershipRepository = membershipRepository;
         this.clubRepository = clubRepository;
         this.userRepository = userRepository;
@@ -84,14 +90,17 @@ public class MembershipService {
         membership.setClub(club);
         membership.setStatus(MembershipStatus.ACTIVE);
         membership.setJoinedAt(now());
-        return MembershipResponse.from(membershipRepository.saveAndFlush(membership));
+        Membership saved = membershipRepository.saveAndFlush(membership);
+        auditService.record(actor.id(), AuditAction.MEMBER_ADDED, saved.getId(), clubId, null,
+                Map.of("userId", user.getId(), "status", saved.getStatus()));
+        return MembershipResponse.from(saved);
     }
 
     @Transactional
     public MembershipResponse update(Actor actor, UUID membershipId, UpdateMembershipRequest request) {
         Membership membership = find(actor, "member.update", membershipId);
         authorizationService.require(actor, "member.update", membership.getClub().getId(), null);
-        changeStatus(membership, request.status());
+        changeStatus(actor, membership, request.status());
         return MembershipResponse.from(membershipRepository.saveAndFlush(membership));
     }
 
@@ -99,7 +108,7 @@ public class MembershipService {
     public void remove(Actor actor, UUID membershipId) {
         Membership membership = find(actor, "member.remove", membershipId);
         authorizationService.require(actor, "member.remove", membership.getClub().getId(), null);
-        changeStatus(membership, MembershipStatus.LEFT);
+        changeStatus(actor, membership, MembershipStatus.LEFT);
         membershipRepository.saveAndFlush(membership);
     }
 
@@ -107,17 +116,22 @@ public class MembershipService {
      * LEFT is final: a left membership is history and cannot be reopened (rejoining creates a new
      * membership). Leaving drops the member from every department of the club.
      */
-    private void changeStatus(Membership membership, MembershipStatus status) {
-        if (membership.getStatus() == MembershipStatus.LEFT) {
+    private void changeStatus(Actor actor, Membership membership, MembershipStatus status) {
+        MembershipStatus previous = membership.getStatus();
+        if (previous == MembershipStatus.LEFT) {
             if (status == MembershipStatus.LEFT) return;
             throw new ApiException(HttpStatus.CONFLICT, "MEMBERSHIP_ALREADY_LEFT",
                     "A membership that has ended cannot be reopened; add the user to the club again");
         }
+        if (previous == status) return;
         membership.setStatus(status);
         if (status == MembershipStatus.LEFT) {
             membership.setLeftAt(now());
             departmentMemberRepository.deleteByMembershipId(membership.getId());
         }
+        auditService.record(actor.id(), status == MembershipStatus.LEFT ? AuditAction.MEMBER_REMOVED
+                        : AuditAction.MEMBER_STATUS_CHANGED, membership.getId(), membership.getClub().getId(),
+                Map.of("status", previous), Map.of("status", status));
     }
 
     private Membership find(Actor actor, String permissionKey, UUID id) {

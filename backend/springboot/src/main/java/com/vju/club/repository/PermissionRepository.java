@@ -10,4 +10,6 @@ import java.util.List;
 public interface PermissionRepository extends JpaRepository<Permission, UUID> {
     Optional<Permission> findByPermissionKeyAndActiveTrue(String permissionKey);
     List<Permission> findAllByActiveTrueOrderByModuleAscActionAsc();
+
+    List<Permission> findByPermissionKeyIn(java.util.Collection<String> keys);
 }

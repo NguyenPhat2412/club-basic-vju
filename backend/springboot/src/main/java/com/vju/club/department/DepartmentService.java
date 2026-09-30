@@ -1,6 +1,8 @@
 package com.vju.club.department;
 
 import com.vju.club.security.Actor;
+import com.vju.club.audit.AuditAction;
+import com.vju.club.audit.AuditService;
 import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.common.dto.PageResponse;
 import com.vju.club.department.dto.DepartmentPatchRequest;
@@ -19,17 +21,21 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
 public class DepartmentService {
     private final DepartmentRepository departmentRepository;
+    private final AuditService auditService;
     private final ClubRepository clubRepository;
     private final PermissionAuthorizationService authorizationService;
 
     public DepartmentService(DepartmentRepository departmentRepository,
-                                 ClubRepository clubRepository, PermissionAuthorizationService authorizationService) {
+                                 ClubRepository clubRepository, AuditService auditService, PermissionAuthorizationService authorizationService) {
         this.departmentRepository = departmentRepository;
+        this.auditService = auditService;
         this.clubRepository = clubRepository;
         this.authorizationService = authorizationService;
     }
@@ -62,12 +68,15 @@ public class DepartmentService {
         department.setClub(club);
         department.setName(name);
         department.setDescription(request.description());
-        return DepartmentResponse.from(departmentRepository.saveAndFlush(department));
+        Department saved = departmentRepository.saveAndFlush(department);
+        auditService.record(actor.id(), AuditAction.DEPARTMENT_CREATED, saved.getId(), clubId, null, snapshot(saved));
+        return DepartmentResponse.from(saved);
     }
 
     @Transactional
     public DepartmentResponse update(Actor actor, UUID departmentId, DepartmentPatchRequest request) {
         Department department = authorize(actor, "department.update", departmentId);
+        Map<String, Object> before = snapshot(department);
         if (request.name() != null) {
             String name = request.name().trim();
             if (name.isEmpty()) {
@@ -80,15 +89,31 @@ public class DepartmentService {
             department.setName(name);
         }
         if (request.description() != null) department.setDescription(request.description());
-        return DepartmentResponse.from(departmentRepository.saveAndFlush(department));
+        Department saved = departmentRepository.saveAndFlush(department);
+        auditService.recordChange(actor.id(), AuditAction.DEPARTMENT_UPDATED, departmentId, saved.getClub().getId(),
+                before, snapshot(saved));
+        return DepartmentResponse.from(saved);
     }
 
     @Transactional
     public DepartmentResponse updateStatus(Actor actor, UUID departmentId, DepartmentStatusRequest request) {
         String permission = request.status() == DepartmentStatus.ACTIVE ? "department.activate" : "department.inactive";
         Department department = authorize(actor, permission, departmentId);
+        Map<String, Object> before = Map.of("status", department.getStatus());
         department.setStatus(request.status());
-        return DepartmentResponse.from(departmentRepository.saveAndFlush(department));
+        Department saved = departmentRepository.saveAndFlush(department);
+        auditService.recordChange(actor.id(), request.status() == DepartmentStatus.ACTIVE
+                ? AuditAction.DEPARTMENT_ACTIVATED : AuditAction.DEPARTMENT_DEACTIVATED, departmentId,
+                saved.getClub().getId(), before, Map.of("status", saved.getStatus()));
+        return DepartmentResponse.from(saved);
+    }
+
+    private static Map<String, Object> snapshot(Department department) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("name", department.getName());
+        values.put("description", department.getDescription());
+        values.put("status", department.getStatus());
+        return values;
     }
 
     /** Checks the permission at department scope or at the scope of the department's club. */

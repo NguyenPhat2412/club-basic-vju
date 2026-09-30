@@ -1,5 +1,6 @@
 package com.vju.club.auth;
 
+import com.vju.club.audit.AuditService;
 import com.vju.club.auth.dto.ChangePasswordRequest;
 import com.vju.club.auth.dto.LoginRequest;
 import com.vju.club.auth.dto.RefreshTokenRequest;
@@ -54,6 +55,7 @@ class AuthServiceTest {
     @Mock RefreshTokenRepository refreshTokenRepository;
     @Mock AuthenticationManager authenticationManager;
     @Mock JwtTokenService tokenService;
+    @Mock AuditService auditService;
 
     private AuthService service;
     private final JwtProperties properties = new JwtProperties();
@@ -61,7 +63,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         service = new AuthService(userRepository, refreshTokenRepository, ENCODER,
-                authenticationManager, tokenService, properties, Clock.fixed(NOW, ZoneOffset.UTC));
+                authenticationManager, tokenService, properties, Clock.fixed(NOW, ZoneOffset.UTC), auditService);
         when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(refreshTokenRepository.saveAndFlush(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(tokenService.issueAccessToken(any(User.class)))

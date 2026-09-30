@@ -1,6 +1,8 @@
 package com.vju.club.role;
 
 import com.vju.club.security.Actor;
+import com.vju.club.audit.AuditAction;
+import com.vju.club.audit.AuditService;
 import com.vju.club.entity.Club;
 import com.vju.club.entity.Department;
 import com.vju.club.entity.Permission;
@@ -32,7 +34,9 @@ import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -52,12 +56,14 @@ public class RoleService {
     private final DepartmentRepository departmentRepository;
     private final PermissionAuthorizationService authorizationService;
     private final Clock clock;
+    private final AuditService auditService;
 
     public RoleService(RoleRepository roleRepository, UserRoleRepository userRoleRepository,
                        PermissionRepository permissionRepository, PermissionAuditLogRepository auditLogRepository,
                        UserRepository userRepository, ClubRepository clubRepository,
                        DepartmentRepository departmentRepository, PermissionAuthorizationService authorizationService,
-                       Clock clock) {
+                       Clock clock, AuditService auditService) {
+        this.auditService = auditService;
         this.roleRepository = roleRepository;
         this.userRoleRepository = userRoleRepository;
         this.permissionRepository = permissionRepository;
@@ -96,7 +102,9 @@ public class RoleService {
         role.setDescription(request.description());
         role.setScope(request.scope());
         role.setPermissions(resolvePermissions(request.permissionIds(), role));
-        return RoleResponse.from(roleRepository.saveAndFlush(role));
+        Role saved = roleRepository.saveAndFlush(role);
+        auditService.record(actor.id(), AuditAction.ROLE_CREATED, saved.getId(), null, null, snapshot(saved));
+        return RoleResponse.from(saved);
     }
 
     @Transactional
@@ -106,6 +114,7 @@ public class RoleService {
         if (role.isSystem()) {
             throw new ApiException(HttpStatus.CONFLICT, "SYSTEM_ROLE_IMMUTABLE", "System roles cannot be changed");
         }
+        Map<String, Object> before = snapshot(role);
         if (request.name() != null) {
             if (request.name().isBlank()) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_ROLE_NAME", "Role name cannot be blank");
@@ -115,7 +124,9 @@ public class RoleService {
         if (request.description() != null) role.setDescription(request.description());
         if (request.active() != null) role.setActive(request.active());
         if (request.permissionIds() != null) role.setPermissions(resolvePermissions(request.permissionIds(), role));
-        return RoleResponse.from(roleRepository.saveAndFlush(role));
+        Role saved = roleRepository.saveAndFlush(role);
+        auditService.recordChange(actor.id(), AuditAction.ROLE_UPDATED, roleId, null, before, snapshot(saved));
+        return RoleResponse.from(saved);
     }
 
     /** Every permission must exist, be active and be no broader than the role's scope. */
@@ -183,6 +194,8 @@ public class RoleService {
         assignment.setGrantedAt(OffsetDateTime.now(clock));
         UserRole saved = userRoleRepository.saveAndFlush(assignment);
         audit(actorUser, saved, PermissionAuditAction.GRANT, request.reason());
+        auditService.record(actorUser.getId(), AuditAction.ROLE_ASSIGNED, saved.getId(), clubOf(saved), null,
+                assignmentValues(saved, request.reason()));
         return UserRoleResponse.from(saved);
     }
 
@@ -196,6 +209,8 @@ public class RoleService {
         assignment.revoke(OffsetDateTime.now(clock), actorUser);
         userRoleRepository.saveAndFlush(assignment);
         audit(actorUser, assignment, PermissionAuditAction.REVOKE, null);
+        auditService.record(actorUser.getId(), AuditAction.ROLE_REVOKED, assignment.getId(), clubOf(assignment),
+                assignmentValues(assignment, null), null);
     }
 
     private void audit(User actor, UserRole assignment, PermissionAuditAction action, String reason) {
@@ -209,6 +224,33 @@ public class RoleService {
         log.setDepartment(assignment.getDepartment());
         log.setReason(reason);
         auditLogRepository.saveAndFlush(log);
+    }
+
+    private static Map<String, Object> snapshot(Role role) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("code", role.getCode());
+        values.put("name", role.getName());
+        values.put("description", role.getDescription());
+        values.put("scope", role.getScope());
+        values.put("active", role.isActive());
+        values.put("permissionKeys", role.getPermissions().stream().map(Permission::getPermissionKey).sorted().toList());
+        return values;
+    }
+
+    private static Map<String, Object> assignmentValues(UserRole assignment, String reason) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("userId", assignment.getUser().getId());
+        values.put("roleCode", assignment.getRole().getCode());
+        values.put("scope", assignment.getScope());
+        values.put("clubId", assignment.getClub() == null ? null : assignment.getClub().getId());
+        values.put("departmentId", assignment.getDepartment() == null ? null : assignment.getDepartment().getId());
+        if (reason != null) values.put("reason", reason);
+        return values;
+    }
+
+    private static UUID clubOf(UserRole assignment) {
+        if (assignment.getClub() != null) return assignment.getClub().getId();
+        return assignment.getDepartment() == null ? null : assignment.getDepartment().getClub().getId();
     }
 
     private Role findRole(UUID id) {

@@ -1,6 +1,8 @@
 package com.vju.club.departmentmember;
 
 import com.vju.club.security.Actor;
+import com.vju.club.audit.AuditAction;
+import com.vju.club.audit.AuditService;
 import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.common.dto.PageResponse;
 import com.vju.club.departmentmember.dto.AddDepartmentMemberRequest;
@@ -22,11 +24,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
 public class DepartmentMemberService {
     private final DepartmentMemberRepository departmentMemberRepository;
+    private final AuditService auditService;
     private final DepartmentRepository departmentRepository;
     private final MembershipRepository membershipRepository;
     private final PermissionAuthorizationService authorizationService;
@@ -36,7 +40,9 @@ public class DepartmentMemberService {
                                        DepartmentRepository departmentRepository,
                                        MembershipRepository membershipRepository,
                                        PermissionAuthorizationService authorizationService,
-                                       Clock clock) {
+                                       Clock clock,
+                                       AuditService auditService) {
+        this.auditService = auditService;
         this.departmentMemberRepository = departmentMemberRepository;
         this.departmentRepository = departmentRepository;
         this.membershipRepository = membershipRepository;
@@ -70,13 +76,19 @@ public class DepartmentMemberService {
         member.setMembership(membership);
         member.setClubId(department.getClub().getId());
         member.setJoinedAt(OffsetDateTime.now(clock));
-        return DepartmentMemberResponse.from(departmentMemberRepository.saveAndFlush(member));
+        DepartmentMember saved = departmentMemberRepository.saveAndFlush(member);
+        auditService.record(actor.id(), AuditAction.DEPARTMENT_MEMBER_ADDED, saved.getId(), saved.getClubId(), null,
+                Map.of("departmentId", departmentId, "membershipId", membership.getId()));
+        return DepartmentMemberResponse.from(saved);
     }
 
     @Transactional
     public void remove(Actor actor, UUID departmentId, UUID membershipId) {
         authorize(actor, "department.member.remove", departmentId);
-        departmentMemberRepository.delete(findAssignment(departmentId, membershipId));
+        DepartmentMember assignment = findAssignment(departmentId, membershipId);
+        departmentMemberRepository.delete(assignment);
+        auditService.record(actor.id(), AuditAction.DEPARTMENT_MEMBER_REMOVED, assignment.getId(), assignment.getClubId(),
+                Map.of("departmentId", departmentId, "membershipId", membershipId), null);
     }
 
     @Transactional
@@ -96,7 +108,10 @@ public class DepartmentMemberService {
         // Re-point the existing row: a single UPDATE, so the member is never in zero or two departments.
         assignment.setDepartment(target);
         assignment.setJoinedAt(OffsetDateTime.now(clock));
-        return DepartmentMemberResponse.from(departmentMemberRepository.saveAndFlush(assignment));
+        DepartmentMember saved = departmentMemberRepository.saveAndFlush(assignment);
+        auditService.record(actor.id(), AuditAction.DEPARTMENT_MEMBER_MOVED, saved.getId(), saved.getClubId(),
+                Map.of("departmentId", departmentId), Map.of("departmentId", target.getId()));
+        return DepartmentMemberResponse.from(saved);
     }
 
     /** Loads the department and checks the permission at department scope or at its club's scope. */

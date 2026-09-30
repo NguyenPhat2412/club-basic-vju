@@ -3,6 +3,8 @@ package com.vju.club.permission;
 import com.vju.club.security.Actor;
 import com.vju.club.permission.dto.EffectivePermissionResponse;
 import com.vju.club.permission.dto.GrantPermissionRequest;
+import com.vju.club.permission.dto.PermissionGroupResponse;
+import com.vju.club.permission.dto.ReplacePermissionsRequest;
 import com.vju.club.permission.dto.PermissionResponse;
 import com.vju.club.permission.dto.UserPermissionResponse;
 import jakarta.validation.Valid;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -34,6 +37,17 @@ public class PermissionController {
     @GetMapping("/permissions")
     public List<PermissionResponse> list(Actor actor) {
         return permissionService.list(actor);
+    }
+
+    @GetMapping("/permissions/groups")
+    public List<PermissionGroupResponse> listGroups(Actor actor) {
+        return permissionService.listGroups(actor);
+    }
+
+    @PutMapping("/users/{userId}/permissions")
+    public List<UserPermissionResponse> replace(Actor actor, @PathVariable UUID userId,
+                                                @Valid @RequestBody ReplacePermissionsRequest request) {
+        return permissionService.replace(actor, userId, request);
     }
 
     @PostMapping("/users/{userId}/permissions")

@@ -8,6 +8,10 @@ spring:
     password: ${DB_PASSWORD:club_local}
 
 app:
+  # Demo club VJUA with 4 departments and users demo.a/b/c@vju.local; skipped without DEMO_USER_PASSWORD.
+  demo-data:
+    enabled: ${DEMO_DATA_ENABLED:true}
+    password: ${DEMO_USER_PASSWORD:}
   bootstrap-admin:
     email: ${BOOTSTRAP_ADMIN_EMAIL:}
     password: ${BOOTSTRAP_ADMIN_PASSWORD:}

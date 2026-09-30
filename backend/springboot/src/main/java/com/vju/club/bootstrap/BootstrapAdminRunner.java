@@ -9,13 +9,16 @@ import org.springframework.stereotype.Component;
 public class BootstrapAdminRunner implements CommandLineRunner {
 
     private final BootstrapAdminService bootstrapAdminService;
+    private final DemoDataSeeder demoDataSeeder;
 
-    public BootstrapAdminRunner(BootstrapAdminService bootstrapAdminService) {
+    public BootstrapAdminRunner(BootstrapAdminService bootstrapAdminService, DemoDataSeeder demoDataSeeder) {
         this.bootstrapAdminService = bootstrapAdminService;
+        this.demoDataSeeder = demoDataSeeder;
     }
 
     @Override
     public void run(String... args) {
         bootstrapAdminService.bootstrap();
+        demoDataSeeder.seed();
     }
 }

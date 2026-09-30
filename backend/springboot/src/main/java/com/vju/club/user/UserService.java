@@ -2,6 +2,8 @@ package com.vju.club.user;
 
 import com.vju.club.security.Actor;
 import com.vju.club.user.dto.UserResponse;
+import com.vju.club.audit.AuditAction;
+import com.vju.club.audit.AuditService;
 import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.common.dto.PageResponse;
 import com.vju.club.entity.User;
@@ -16,7 +18,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -26,12 +30,15 @@ public class UserService {
     private static final Set<String> SORTABLE = Set.of("email", "fullName", "createdAt", "status");
 
     private final UserRepository userRepository;
+    private final AuditService auditService;
     private final PermissionAuthorizationService authorizationService;
 
     public UserService(
             UserRepository userRepository,
-            PermissionAuthorizationService authorizationService) {
+            PermissionAuthorizationService authorizationService,
+            AuditService auditService) {
         this.userRepository = userRepository;
+        this.auditService = auditService;
         this.authorizationService = authorizationService;
     }
 
@@ -43,6 +50,7 @@ public class UserService {
     @Transactional
     public UserResponse updateProfile(Actor actor, UpdateProfileRequest request) {
         User user = findUser(actor.id());
+        Map<String, Object> before = profile(user);
         if (request.fullName() != null) {
             if (request.fullName().isBlank()) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_FULL_NAME", "Full name cannot be blank");
@@ -51,7 +59,9 @@ public class UserService {
         }
         if (request.phone() != null) user.setPhone(blankToNull(request.phone()));
         if (request.avatarUrl() != null) user.setAvatarUrl(blankToNull(request.avatarUrl()));
-        return UserResponse.from(userRepository.saveAndFlush(user));
+        User saved = userRepository.saveAndFlush(user);
+        auditService.recordChange(actor.id(), AuditAction.USER_PROFILE_UPDATED, saved.getId(), null, before, profile(saved));
+        return UserResponse.from(saved);
     }
 
     @Transactional(readOnly = true)
@@ -85,8 +95,21 @@ public class UserService {
         authorizationService.require(actor,
                 request.status() == UserStatus.ACTIVE ? "user.active" : "user.inactive", null, null);
         User user = findUser(userId);
+        Map<String, Object> before = Map.of("status", user.getStatus());
         user.setStatus(request.status());
-        return UserResponse.from(userRepository.saveAndFlush(user));
+        User saved = userRepository.saveAndFlush(user);
+        auditService.recordChange(actor.id(), request.status() == UserStatus.ACTIVE
+                ? AuditAction.USER_UNLOCKED : AuditAction.USER_LOCKED, userId, null, before,
+                Map.of("status", saved.getStatus()));
+        return UserResponse.from(saved);
+    }
+
+    private static Map<String, Object> profile(User user) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("fullName", user.getFullName());
+        values.put("phone", user.getPhone());
+        values.put("avatarUrl", user.getAvatarUrl());
+        return values;
     }
 
     private User findUser(UUID userId) {

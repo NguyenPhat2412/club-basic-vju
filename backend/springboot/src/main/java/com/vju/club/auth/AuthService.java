@@ -1,5 +1,7 @@
 package com.vju.club.auth;
 
+import com.vju.club.audit.AuditAction;
+import com.vju.club.audit.AuditService;
 import com.vju.club.auth.dto.AuthResponse;
 import com.vju.club.auth.dto.ChangePasswordRequest;
 import com.vju.club.auth.dto.LoginRequest;
@@ -27,6 +29,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -39,6 +42,7 @@ public class AuthService {
     private final JwtTokenService tokenService;
     private final JwtProperties jwtProperties;
     private final Clock clock;
+    private final AuditService auditService;
 
     public AuthService(
             UserRepository userRepository,
@@ -47,7 +51,9 @@ public class AuthService {
             AuthenticationManager authenticationManager,
             JwtTokenService tokenService,
             JwtProperties jwtProperties,
-            Clock clock) {
+            Clock clock,
+            AuditService auditService) {
+        this.auditService = auditService;
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
@@ -74,7 +80,10 @@ public class AuthService {
         user.setStudentCode(studentCode);
         user.setPhone(blankToNull(request.phone()));
         user.setStatus(UserStatus.ACTIVE);
-        return UserResponse.from(userRepository.saveAndFlush(user));
+        User saved = userRepository.saveAndFlush(user);
+        auditService.record(saved.getId(), AuditAction.USER_REGISTERED, saved.getId(), null, null,
+                Map.of("email", saved.getEmail()));
+        return UserResponse.from(saved);
     }
 
     @Transactional
@@ -138,6 +147,7 @@ public class AuthService {
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userRepository.saveAndFlush(user);
         refreshTokenRepository.revokeAllForUser(userId, now());
+        auditService.record(userId, AuditAction.USER_PASSWORD_CHANGED, userId, null, null, null);
     }
 
     private TokenResponse issueTokens(User user) {

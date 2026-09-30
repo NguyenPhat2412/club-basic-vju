@@ -321,3 +321,24 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: permission.view
+- method: GET
+  path: /api/v1/permissions/groups
+  module: permission-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: permission.view
+- method: PUT
+  path: /api/v1/users/{userId}/permissions
+  module: permission-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: permission.assign
+- method: GET
+  path: /api/v1/audit-logs
+  module: audit
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: audit.view

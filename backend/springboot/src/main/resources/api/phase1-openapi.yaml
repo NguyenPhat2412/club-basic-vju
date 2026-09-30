@@ -1556,6 +1556,56 @@ paths:
           format: uuid
       description: Trả mảng grant của user mục tiêu (không dùng envelope phân trang).
         Cần permission.view.
+    put:
+      operationId: permission.replace
+      summary: Replace user permissions at one scope
+      tags:
+      - Permission
+      x-permission: permission.assign
+      x-implementation-status: IMPLEMENTED
+      description: >-
+        Đặt tập permission cấp trực tiếp của user tại đúng một scope target: cấp thêm những
+        quyền còn thiếu, thu hồi những quyền không có trong danh sách (mỗi thay đổi đều ghi audit).
+        Danh sách rỗng thu hồi hết tại target đó. Grant ở scope/target khác không bị ảnh hưởng.
+        Cần thêm permission.revoke khi có quyền bị thu hồi. Toàn bộ request được kiểm tra trước
+        khi thay đổi bất cứ thứ gì.
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplacePermissionsRequest'
+            example:
+              scope: CLUB
+              clubId: 22222222-2222-4222-8222-222222222222
+              permissionKeys:
+              - club.view
+              - member.view
+              - member.update
+      responses:
+        '200':
+          description: Grant đang hiệu lực tại scope target sau khi thay đổi
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserPermission'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
     post:
       operationId: permission.grant
       summary: Grant permission
@@ -1952,6 +2002,100 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /permissions/groups:
+    get:
+      operationId: permission.groups
+      summary: List permissions grouped by module
+      tags:
+      - Permission
+      x-permission: permission.view
+      x-implementation-status: IMPLEMENTED
+      description: Permission đang hoạt động, nhóm theo module (sắp xếp theo tên module).
+        Dùng để render danh sách checkbox.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PermissionGroup'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /audit-logs:
+    get:
+      operationId: audit.list
+      summary: Search the audit log
+      tags:
+      - Audit
+      x-permission: audit.view
+      x-implementation-status: IMPLEMENTED
+      description: >-
+        Nhật ký thao tác nghiệp vụ, mới nhất trước. oldValue/newValue chỉ chứa các trường
+        thay đổi. Mọi bộ lọc đều tuỳ chọn; giá trị resourceType hoặc action không hợp lệ trả 400.
+      parameters:
+      - name: resourceType
+        in: query
+        schema:
+          type: string
+          enum:
+          - USER
+          - CLUB
+          - DEPARTMENT
+          - MEMBERSHIP
+          - DEPARTMENT_MEMBER
+          - PERMISSION_GRANT
+          - ROLE
+          - ROLE_ASSIGNMENT
+      - name: resourceId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: actorUserId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: clubId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: action
+        in: query
+        schema:
+          type: string
+        description: Ví dụ PERMISSION_GRANTED, USER_LOCKED, MEMBER_ADDED, CLUB_UPDATED.
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 components:
   securitySchemes:
     bearerAuth:
@@ -1966,7 +2110,8 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
     Unauthorized:
-      description: Authentication required
+      description: Chưa xác thực (code UNAUTHORIZED) hoặc access token đã hết hạn (code
+        AUTH_TOKEN_EXPIRED, nên gọi /auth/refresh-token).
       content:
         application/problem+json:
           schema:
@@ -2433,6 +2578,14 @@ components:
           - string
           - 'null'
           format: date-time
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
       required:
       - id
       - userId
@@ -2440,6 +2593,8 @@ components:
       - status
       - joinedAt
       - leftAt
+      - createdAt
+      - updatedAt
       examples:
       - id: 44444444-4444-4444-8444-444444444444
         userId: 11111111-1111-4111-8111-111111111111
@@ -2447,6 +2602,8 @@ components:
         status: ACTIVE
         joinedAt: '2026-09-29T12:00:00Z'
         leftAt: null
+        createdAt: '2026-09-29T12:00:00Z'
+        updatedAt: '2026-09-29T12:00:00Z'
     MoveDepartmentMemberRequest:
       type: object
       required:
@@ -3164,6 +3321,112 @@ components:
           - string
           - 'null'
           description: Mã vai trò khi source là ROLE.
+    PermissionGroup:
+      type: object
+      required:
+      - module
+      - permissions
+      properties:
+        module:
+          type: string
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+    ReplacePermissionsRequest:
+      type: object
+      required:
+      - scope
+      - permissionKeys
+      properties:
+        scope:
+          type: string
+          enum:
+          - GLOBAL
+          - CLUB
+          - DEPARTMENT
+        clubId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        departmentId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        permissionKeys:
+          type: array
+          maxItems: 200
+          uniqueItems: true
+          items:
+            type: string
+        reason:
+          type:
+          - string
+          - 'null'
+          maxLength: 1000
+    AuditLog:
+      type: object
+      required:
+      - id
+      - action
+      - resourceType
+      - resourceId
+      - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        actorUserId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: Người thực hiện; khi tự đăng ký chính là user mới.
+        action:
+          type: string
+        resourceType:
+          type: string
+        resourceId:
+          type: string
+          format: uuid
+        clubId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        oldValue:
+          type:
+          - object
+          - 'null'
+          description: Giá trị trước thay đổi (chỉ các trường đổi); null khi tạo mới.
+        newValue:
+          type:
+          - object
+          - 'null'
+          description: Giá trị sau thay đổi; null khi xoá/thu hồi.
+        createdAt:
+          type: string
+          format: date-time
+    AuditLogListResponse:
+      type: object
+      required:
+      - items
+      - total
+      - offset
+      - limit
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLog'
+        total:
+          type: integer
+        offset:
+          type: integer
+        limit:
+          type: integer
 tags:
 - name: System
   description: Danh mục và trạng thái API
@@ -3183,3 +3446,5 @@ tags:
   description: Danh mục, cấp và thu hồi quyền
 - name: Role
   description: Vai trò (nhóm quyền theo chức vụ) và gán vai trò
+- name: Audit
+  description: Nhật ký thao tác nghiệp vụ

@@ -128,10 +128,11 @@ class ContractTest(unittest.TestCase):
                    'Permission': 'permission/dto/PermissionResponse.java',
                    'UserPermission': 'permission/dto/UserPermissionResponse.java',
                    'Role': 'role/dto/RoleResponse.java', 'UserRole': 'role/dto/UserRoleResponse.java',
-                   'EffectivePermission': 'permission/dto/EffectivePermissionResponse.java'}
+                   'EffectivePermission': 'permission/dto/EffectivePermissionResponse.java',
+                   'AuditLog': 'audit/dto/AuditLogResponse.java'}
         for schema_name, java_path in mapping.items():
             src = (ROOT / 'backend/springboot/src/main/java/com/vju/club' / java_path).read_text()
-            fields = set(re.findall(r'(?:UUID|String|boolean|Instant|OffsetDateTime|PermissionScope|List<String>)\s+(\w+)', src.split('public record', 1)[1].split('{', 1)[0]))
+            fields = set(re.findall(r'(?:UUID|String|boolean|Instant|OffsetDateTime|PermissionScope|List<String>|Map<String, Object>)\s+(\w+)', src.split('public record', 1)[1].split('{', 1)[0]))
             with self.subTest(schema=schema_name):
                 self.assertEqual(set(self.doc['components']['schemas'][schema_name]['properties']), fields)
 

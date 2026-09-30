@@ -17,8 +17,9 @@ The Spring Boot backend connects to `jdbc:postgresql://localhost:5432/club` by d
 | `V3__harden_constraints_and_indexes.sql` | Moves application rules into the database and adds indexes |
 | `V4__membership_history.sql` | Keeps membership history: at most one current (non-`LEFT`) membership per user and club |
 | `V5__roles.sql` | Roles (`roles`, `role_permissions`, `user_roles`), the `effective_user_permissions` view, 5 system roles and the `role.*` permissions |
+| `V6__audit_log_and_membership_timestamps.sql` | General `audit_logs`, membership `created_at`/`updated_at`, the `audit.view` permission |
 
-Tables: `users`, `clubs`, `departments`, `memberships`, `department_members`, `permissions`, `user_permissions`, `roles`, `role_permissions`, `user_roles`, `permission_audit_logs`, `refresh_tokens`; view `effective_user_permissions` (active direct grants plus active role assignments, used by every authorization check). Flyway records applied migrations in `flyway_schema_history`. Migrations seed the permission catalog only; no sample users, clubs, or memberships are created.
+Tables: `users`, `clubs`, `departments`, `memberships`, `department_members`, `permissions`, `user_permissions`, `roles`, `role_permissions`, `user_roles`, `permission_audit_logs`, `audit_logs`, `refresh_tokens`; view `effective_user_permissions` (active direct grants plus active role assignments, used by every authorization check). Flyway records applied migrations in `flyway_schema_history`. Migrations seed the permission catalog only; no sample users, clubs, or memberships are created.
 
 ### Integrity rules enforced by PostgreSQL
 
@@ -34,6 +35,7 @@ Tables: `users`, `clubs`, `departments`, `memberships`, `department_members`, `p
 | A role only bundles permissions no broader than its scope | trigger `trg_role_permissions_scope` (`ck_role_permissions_scope`) |
 | An active role assignment is never duplicated | partial unique indexes `uq_user_roles_active_*` |
 | Each audit row is about exactly one permission or one role | `ck_permission_audit_subject` |
+| `audit_logs` is append-only and its values are valid JSON | trigger `trg_audit_logs_append_only` (`ck_audit_logs_append_only`), `ck_audit_logs_old_value_json`, `ck_audit_logs_new_value_json` |
 | `permission_key` is `module.action` | `ck_permissions_key_matches_module_action` |
 | Audit history is immutable | `permission_audit_logs` FKs are `ON DELETE RESTRICT`; clubs and departments are deactivated, never deleted |
 | `updated_at` follows every update | `set_updated_at()` trigger on `users`, `clubs`, `departments` (keeps a value the statement sets itself) |

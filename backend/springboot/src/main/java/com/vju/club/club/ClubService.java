@@ -1,6 +1,8 @@
 package com.vju.club.club;
 
 import com.vju.club.security.Actor;
+import com.vju.club.audit.AuditAction;
+import com.vju.club.audit.AuditService;
 import com.vju.club.club.dto.ClubRequest;
 import com.vju.club.club.dto.ClubPatchRequest;
 import com.vju.club.club.dto.ClubResponse;
@@ -16,7 +18,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -24,10 +28,13 @@ import java.util.UUID;
 public class ClubService {
 
     private final ClubRepository clubRepository;
+    private final AuditService auditService;
     private final PermissionAuthorizationService authorizationService;
 
-    public ClubService(ClubRepository clubRepository, PermissionAuthorizationService authorizationService) {
+    public ClubService(ClubRepository clubRepository, PermissionAuthorizationService authorizationService,
+                       AuditService auditService) {
         this.clubRepository = clubRepository;
+        this.auditService = auditService;
         this.authorizationService = authorizationService;
     }
 
@@ -67,7 +74,9 @@ public class ClubService {
         Club club = new Club();
         club.setCode(code);
         apply(club, request);
-        return ClubResponse.from(clubRepository.saveAndFlush(club));
+        Club saved = clubRepository.saveAndFlush(club);
+        auditService.record(actor.id(), AuditAction.CLUB_CREATED, saved.getId(), saved.getId(), null, snapshot(saved));
+        return ClubResponse.from(saved);
     }
 
     @Transactional
@@ -78,8 +87,11 @@ public class ClubService {
                 && clubRepository.existsByCodeIgnoreCase(request.code().trim())) {
             throw new ApiException(HttpStatus.CONFLICT, "CLUB_CODE_ALREADY_EXISTS", "Club code is already used");
         }
+        Map<String, Object> before = snapshot(club);
         applyPatch(club, request);
-        return ClubResponse.from(clubRepository.saveAndFlush(club));
+        Club saved = clubRepository.saveAndFlush(club);
+        auditService.recordChange(actor.id(), AuditAction.CLUB_UPDATED, clubId, clubId, before, snapshot(saved));
+        return ClubResponse.from(saved);
     }
 
     @Transactional
@@ -88,8 +100,26 @@ public class ClubService {
                 request.status() == ClubStatus.ACTIVE ? "club.active" : "club.inactive",
                 clubId, null);
         Club club = findClub(clubId);
+        Map<String, Object> before = Map.of("status", club.getStatus());
         club.setStatus(request.status());
-        return ClubResponse.from(clubRepository.saveAndFlush(club));
+        Club saved = clubRepository.saveAndFlush(club);
+        auditService.recordChange(actor.id(), request.status() == ClubStatus.ACTIVE
+                ? AuditAction.CLUB_ACTIVATED : AuditAction.CLUB_DEACTIVATED, clubId, clubId,
+                before, Map.of("status", saved.getStatus()));
+        return ClubResponse.from(saved);
+    }
+
+    private static Map<String, Object> snapshot(Club club) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("code", club.getCode());
+        values.put("name", club.getName());
+        values.put("description", club.getDescription());
+        values.put("activityField", club.getActivityField());
+        values.put("contactEmail", club.getContactEmail());
+        values.put("logoUrl", club.getLogoUrl());
+        values.put("coverUrl", club.getCoverUrl());
+        values.put("status", club.getStatus());
+        return values;
     }
 
     private void apply(Club club, ClubRequest request) {

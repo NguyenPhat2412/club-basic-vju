@@ -2,7 +2,7 @@
 
 Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt Nhật (VJU): quản lý tài khoản, câu lạc bộ, ban, thành viên và phân quyền chi tiết theo phạm vi.
 
-> **Trạng thái:** Backend giai đoạn 1 đã hoàn thành. Toàn bộ 46 route đều `IMPLEMENTED` và có 239 test tự động. Frontend (Next.js) mới dừng ở bộ khung khởi tạo.
+> **Trạng thái:** Backend giai đoạn 1 đã hoàn thành. Toàn bộ 49 route đều `IMPLEMENTED` và có 309 test tự động. Frontend (Next.js) mới dừng ở bộ khung khởi tạo.
 
 ## Mục lục
 
@@ -30,6 +30,7 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 - **Thành viên ban:** xếp thành viên vào ban, chuyển ban, gỡ khỏi ban. Chỉ xếp được thành viên đang hoạt động vào ban cùng CLB.
 - **Phân quyền:** 27 quyền, mỗi quyền được cấp theo một trong ba phạm vi `GLOBAL`, `CLUB` hoặc `DEPARTMENT`. Mọi lần cấp và thu hồi đều được ghi audit log.
 - **Vai trò:** vai trò là nhóm quyền ứng với một chức vụ. Có 5 vai trò hệ thống (Quản trị hệ thống, Chủ nhiệm, Phó chủ nhiệm, Trưởng ban, Thành viên); admin có thể tạo thêm vai trò tuỳ chỉnh. Vai trò được gán theo cùng cơ chế scope như quyền.
+- **Audit log:** mọi thao tác nghiệp vụ quan trọng (khoá/mở tài khoản, tạo/sửa CLB và ban, thêm/xoá thành viên, cấp/thu hồi quyền và vai trò…) đều được ghi lại, kèm người thực hiện, thời điểm và giá trị trước/sau. Tra cứu qua `GET /audit-logs`.
 - **Bảo vệ:** giới hạn tần suất (rate limit) cho các endpoint đăng nhập/đăng ký/làm mới token. Mọi lỗi trả về theo định dạng RFC 7807. Người không có quyền không thể dò xem một ID có tồn tại hay không.
 
 ## Công nghệ
@@ -58,15 +59,16 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 │   │   ├── departmentmember/    # Thành viên ban
 │   │   ├── permission/          # Cấp/thu hồi quyền, quyền hiệu lực, audit log
 │   │   ├── role/                # Vai trò và gán vai trò
+│   │   ├── audit/               # Ghi và tra cứu audit log
 │   │   ├── security/            # Kiểm tra quyền, rate limit, filter trạng thái tài khoản
 │   │   ├── config/              # Cấu hình security, JWT, CORS
 │   │   ├── error/               # Xử lý lỗi chung (ProblemDetail)
 │   │   ├── entity/, repository/ # Domain model và truy vấn dùng chung cho mọi module
 │   │   ├── common/              # Phân trang (PageResponse, OffsetLimitRequest)
-│   │   ├── bootstrap/           # Tạo admin ban đầu (chỉ profile local)
+│   │   ├── bootstrap/           # Admin ban đầu và dữ liệu demo (chỉ profile local)
 │   │   └── rest/                # API catalog, phục vụ file OpenAPI
 │   ├── src/main/resources/
-│   │   ├── db/migration/        # Flyway: V1 schema + seed quyền, V2 refresh token, V3 ràng buộc + index, V4 lịch sử membership, V5 vai trò
+│   │   ├── db/migration/        # Flyway: V1 schema + seed quyền, V2 refresh token, V3 ràng buộc + index, V4 lịch sử membership, V5 vai trò, V6 audit log
 │   │   └── api/                 # Bản copy runtime của OpenAPI và catalog
 │   ├── src/test/                # Unit test + integration test
 │   └── Dockerfile
@@ -121,7 +123,21 @@ Migration chỉ seed danh mục quyền và vai trò hệ thống, không tạo 
 BOOTSTRAP_ADMIN_EMAIL=admin@vju.local BOOTSTRAP_ADMIN_PASSWORD='ChangeMe123!' ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-### 4. Thử API
+### 4. Dữ liệu demo (tuỳ chọn)
+
+Đặt thêm `DEMO_USER_PASSWORD` khi chạy profile `local`, backend sẽ tạo sẵn một bộ dữ liệu demo. Việc này chỉ diễn ra một lần: nếu CLB VJUA đã tồn tại thì bỏ qua.
+
+| Dữ liệu | Chi tiết |
+|---|---|
+| CLB | `VJUA` (CLB Học thuật VJU) |
+| 4 ban | Ban Truyền thông, Ban Chuyên môn, Ban Hậu cần, Ban Đối ngoại |
+| `demo.a@vju.local` | Chủ nhiệm VJUA (vai trò `CLUB_PRESIDENT`), thuộc Ban Chuyên môn |
+| `demo.b@vju.local` | Trưởng Ban Truyền thông (vai trò `DEPARTMENT_HEAD`) |
+| `demo.c@vju.local` | Thành viên Ban Truyền thông, được cấp trực tiếp `club.view` và `member.view` |
+
+Cả 3 user dùng chung mật khẩu `DEMO_USER_PASSWORD`. Dữ liệu demo không bao giờ được tạo ngoài profile `local`.
+
+### 5. Thử API
 
 - Swagger UI: http://localhost:8080/swagger-ui.html. Đăng nhập qua `POST /api/v1/auth/login`, copy `tokens.accessToken`, rồi bấm **Authorize** để gọi các route cần xác thực.
 - OpenAPI sinh tự động: http://localhost:8080/v3/api-docs
@@ -136,7 +152,7 @@ curl -s -X POST localhost:8080/api/v1/auth/login \
 
 Dùng `tokens.accessToken` trong kết quả làm header `Authorization: Bearer <token>` cho các request tiếp theo.
 
-### 5. Chạy frontend (tuỳ chọn)
+### 6. Chạy frontend (tuỳ chọn)
 
 ```bash
 cd frontend/nextjs
@@ -165,6 +181,8 @@ Backend đọc cấu hình từ biến môi trường:
 | `REFRESH_TOKEN_CLEANUP_CRON` | `0 30 3 * * *` | Lịch chạy job dọn refresh token |
 | `REFRESH_TOKEN_CLEANUP_RETENTION` | `7d` | Thời gian giữ lại refresh token đã chết trước khi xoá |
 | `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | trống | Tạo admin ban đầu (chỉ có tác dụng ở profile `local`) |
+| `DEMO_USER_PASSWORD` | trống | Mật khẩu của 3 user demo; có giá trị thì tạo dữ liệu demo (chỉ profile `local`) |
+| `DEMO_DATA_ENABLED` | `true` | Tắt hẳn việc tạo dữ liệu demo |
 
 Các biến `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT` dùng để tuỳ chỉnh container trong `docker-compose.yml`.
 
@@ -180,8 +198,9 @@ Mọi route nghiệp vụ nằm dưới `/api/v1`. Chỉ các route đăng ký, 
 | **Departments** | `GET /clubs/{clubId}/departments` · `POST /clubs/{clubId}/departments` · `GET /departments/{id}` · `PATCH /departments/{id}` · `PATCH /departments/{id}/status` |
 | **Memberships** | `GET /clubs/{clubId}/memberships` (lọc `?status=`) · `POST /clubs/{clubId}/memberships` · `GET /memberships/{id}` · `PATCH /memberships/{id}` · `DELETE /memberships/{id}` |
 | **Department members** | `GET /departments/{id}/members` · `POST /departments/{id}/members` · `PATCH /departments/{id}/members/{membershipId}` (chuyển ban) · `DELETE /departments/{id}/members/{membershipId}` |
-| **Permissions** | `GET /permissions` · `GET /users/me/permissions` · `GET /users/{userId}/permissions` · `POST /users/{userId}/permissions` · `DELETE /users/{userId}/permissions/{permissionId}` · `GET /users/me/effective-permissions` · `GET /users/{userId}/effective-permissions` |
+| **Permissions** | `GET /permissions` · `GET /users/me/permissions` · `GET /users/{userId}/permissions` · `POST /users/{userId}/permissions` · `DELETE /users/{userId}/permissions/{permissionId}` · `GET /users/me/effective-permissions` · `GET /users/{userId}/effective-permissions` · `GET /permissions/groups` · `PUT /users/{userId}/permissions` |
 | **Roles** | `GET /roles` · `POST /roles` · `GET /roles/{roleId}` · `PATCH /roles/{roleId}` · `GET /users/me/roles` · `GET /users/{userId}/roles` · `POST /users/{userId}/roles` · `DELETE /users/{userId}/roles/{assignmentId}` |
+| **Audit** | `GET /audit-logs` (lọc theo `resourceType`, `resourceId`, `actorUserId`, `clubId`, `action`) |
 | **Khác** | `GET /api-catalog` · `GET /api-docs/phase1.yaml` |
 
 Chi tiết request/response nằm trong [docs/api/openapi.yaml](docs/api/openapi.yaml).
@@ -225,6 +244,7 @@ Vai trò hệ thống không sửa được qua API. Vai trò tuỳ chỉnh (t�
 | department.member | `department.member.view`, `department.member.add`, `department.member.remove` (DEPARTMENT) |
 | permission | `permission.view`, `permission.assign`, `permission.revoke` (GLOBAL) |
 | role | `role.view`, `role.manage` (GLOBAL) |
+| audit | `audit.view` (GLOBAL) |
 
 Chuyển thành viên sang ban khác cần `department.member.remove` ở ban nguồn **và** `department.member.add` ở ban đích.
 
@@ -241,7 +261,7 @@ Mọi lỗi trả về `application/problem+json` kèm trường `code` ổn đ�
 | HTTP | Mã lỗi thường gặp |
 |---|---|
 | 400 | `VALIDATION_ERROR`, `INVALID_SORT`, `CURRENT_PASSWORD_INVALID`, `PERMISSION_SCOPE_MISMATCH`, `INVALID_PERMISSION_SCOPE`, `ROLE_SCOPE_MISMATCH`, `ROLE_PERMISSION_SCOPE_MISMATCH`, `INVALID_SCOPE_TARGET`, `ROLE_INACTIVE`, `CROSS_CLUB_ASSIGNMENT`, `CROSS_CLUB_MOVE`, `SAME_DEPARTMENT`, `AMBIGUOUS_PERMISSION_GRANT` |
-| 401 | `UNAUTHORIZED`, `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN` |
+| 401 | `UNAUTHORIZED`, `AUTH_TOKEN_EXPIRED` (access token hết hạn, nên gọi refresh), `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN` |
 | 403 | `PERMISSION_DENIED`, `ACCOUNT_INACTIVE` |
 | 404 | `NOT_FOUND` (route không tồn tại), `USER_NOT_FOUND`, `CLUB_NOT_FOUND`, `DEPARTMENT_NOT_FOUND`, `MEMBERSHIP_NOT_FOUND`, … |
 | 405 / 415 | `METHOD_NOT_ALLOWED`, `UNSUPPORTED_MEDIA_TYPE` |
@@ -275,6 +295,7 @@ Flyway quản lý schema tại `backend/springboot/src/main/resources/db/migrati
 | `V3__harden_constraints_and_indexes.sql` | Chuyển các ràng buộc nghiệp vụ xuống tầng DB và bổ sung index (chi tiết bên dưới) |
 | `V4__membership_history.sql` | Lưu lịch sử tham gia: mỗi user chỉ có tối đa một membership chưa kết thúc cho mỗi CLB |
 | `V5__roles.sql` | Bảng `roles`, `role_permissions`, `user_roles`; view `effective_user_permissions`; seed 5 vai trò hệ thống và 2 quyền `role.*` |
+| `V6__audit_log_and_membership_timestamps.sql` | Bảng `audit_logs` (chỉ được thêm, không sửa/xoá), `created_at`/`updated_at` cho membership, quyền `audit.view` |
 
 Ràng buộc được đặt ngay ở tầng database, nên dữ liệu sai bị chặn kể cả khi ghi bằng SQL trực tiếp hoặc khi nhiều request chạy đồng thời:
 - **Duy nhất, không phân biệt hoa thường:** email, mã sinh viên, mã CLB, và tên ban trong một CLB (unique index trên `lower(...)`). Mỗi user chỉ có tối đa một membership **chưa kết thúc** trong một CLB; các membership đã `LEFT` được giữ làm lịch sử.
@@ -293,7 +314,7 @@ Khi chạy, Hibernate chỉ `validate` schema chứ không tự sửa. Mọi tha
 ## Kiểm thử
 
 ```bash
-# 239 test backend: unit + integration (cần Docker đang chạy)
+# 309 test backend: unit + integration (cần Docker đang chạy)
 cd backend/springboot && ./mvnw test
 
 # Kiểm tra OpenAPI contract (từ thư mục gốc)

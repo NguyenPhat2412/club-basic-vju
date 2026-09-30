@@ -13,7 +13,7 @@ import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "memberships")
-public class Membership extends BaseEntity {
+public class Membership extends TimestampedEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
