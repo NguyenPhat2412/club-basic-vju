@@ -26,8 +26,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
+import java.time.Clock;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -40,6 +41,7 @@ public class PermissionServiceImpl implements PermissionService {
     private final ClubRepository clubRepository;
     private final DepartmentRepository departmentRepository;
     private final PermissionAuthorizationService authorizationService;
+    private final Clock clock;
 
     public PermissionServiceImpl(
             PermissionRepository permissionRepository,
@@ -48,7 +50,8 @@ public class PermissionServiceImpl implements PermissionService {
             UserRepository userRepository,
             ClubRepository clubRepository,
             DepartmentRepository departmentRepository,
-            PermissionAuthorizationService authorizationService) {
+            PermissionAuthorizationService authorizationService,
+            Clock clock) {
         this.permissionRepository = permissionRepository;
         this.userPermissionRepository = userPermissionRepository;
         this.auditLogRepository = auditLogRepository;
@@ -56,11 +59,13 @@ public class PermissionServiceImpl implements PermissionService {
         this.clubRepository = clubRepository;
         this.departmentRepository = departmentRepository;
         this.authorizationService = authorizationService;
+        this.clock = clock;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<PermissionResponse> list() {
+    public List<PermissionResponse> list(Authentication authentication) {
+        authorizationService.require(authentication, "permission.view", null, null);
         return permissionRepository.findAllByActiveTrueOrderByModuleAscActionAsc().stream()
                 .map(PermissionResponse::from)
                 .toList();
@@ -105,10 +110,8 @@ public class PermissionServiceImpl implements PermissionService {
         if (request.clubId() != null) grant.setClub(findClub(request.clubId()));
         if (request.departmentId() != null) grant.setDepartment(findDepartment(request.departmentId()));
         grant.setGrantedBy(actor);
-        grant.setGrantedAt(OffsetDateTime.now(ZoneOffset.UTC));
-        userPermissionRepository.save(grant);
-        userPermissionRepository.flush();
-        UserPermission saved = grant;
+        grant.setGrantedAt(OffsetDateTime.now(clock));
+        UserPermission saved = userPermissionRepository.saveAndFlush(grant);
         audit(actor, target, permission, PermissionAuditAction.GRANT, request.scope(),
                 grant.getClub(), grant.getDepartment(), request.reason());
         return UserPermissionResponse.from(saved);
@@ -135,16 +138,19 @@ public class PermissionServiceImpl implements PermissionService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "AMBIGUOUS_PERMISSION_GRANT", "Specify scope and target to revoke this permission");
         }
         UserPermission grant = grants.get(0);
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        OffsetDateTime now = OffsetDateTime.now(clock);
         grant.revoke(now);
-        userPermissionRepository.save(grant);
-        userPermissionRepository.flush();
+        userPermissionRepository.saveAndFlush(grant);
         audit(actor, target, permission, PermissionAuditAction.REVOKE, grant.getScope(),
                 grant.getClub(), grant.getDepartment(), null);
     }
 
+    /**
+     * A permission may be granted at its own scope or any broader one (DEPARTMENT < CLUB < GLOBAL),
+     * so a club-level grant of a department permission covers every department of that club.
+     */
     private void validateScope(Permission permission, GrantPermissionRequest request) {
-        if (request.scope() != PermissionScope.GLOBAL && permission.getScope() != request.scope()) {
+        if (breadth(request.scope()) < breadth(permission.getScope())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "PERMISSION_SCOPE_MISMATCH", "Grant scope does not match permission scope");
         }
         boolean valid = switch (request.scope()) {
@@ -157,12 +163,20 @@ public class PermissionServiceImpl implements PermissionService {
         }
     }
 
+    private static int breadth(PermissionScope scope) {
+        return switch (scope) {
+            case DEPARTMENT -> 0;
+            case CLUB -> 1;
+            case GLOBAL -> 2;
+        };
+    }
+
     private boolean sameScope(UserPermission grant, GrantPermissionRequest request) {
         UUID clubId = grant.getClub() == null ? null : grant.getClub().getId();
         UUID departmentId = grant.getDepartment() == null ? null : grant.getDepartment().getId();
         return grant.getScope() == request.scope()
-                && java.util.Objects.equals(clubId, request.clubId())
-                && java.util.Objects.equals(departmentId, request.departmentId());
+                && Objects.equals(clubId, request.clubId())
+                && Objects.equals(departmentId, request.departmentId());
     }
 
     private void audit(User actor, User target, Permission permission, PermissionAuditAction action,
@@ -176,8 +190,7 @@ public class PermissionServiceImpl implements PermissionService {
         log.setClub(club);
         log.setDepartment(department);
         log.setReason(reason);
-        auditLogRepository.save(log);
-        auditLogRepository.flush();
+        auditLogRepository.saveAndFlush(log);
     }
 
     private User findUser(UUID id) {

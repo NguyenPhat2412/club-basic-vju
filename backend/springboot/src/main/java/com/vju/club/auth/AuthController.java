@@ -9,18 +9,15 @@ import com.vju.club.auth.dto.UserResponse;
 import com.vju.club.auth.dto.ChangePasswordRequest;
 import com.vju.club.security.SecurityIdentity;
 import jakarta.validation.Valid;
-import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -62,9 +59,6 @@ public class AuthController {
 
     @GetMapping("/me")
     public UserResponse me(Authentication authentication) {
-        if (!(authentication instanceof JwtAuthenticationToken jwtAuthentication)) {
-            throw new IllegalStateException("JWT authentication is required");
-        }
-        return authService.getCurrentUser(UUID.fromString(jwtAuthentication.getToken().getSubject()));
+        return authService.getCurrentUser(SecurityIdentity.userId(authentication));
     }
 }

@@ -1,6 +1,7 @@
 package com.vju.club.repository;
 
 import com.vju.club.entity.User;
+import com.vju.club.entity.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
@@ -9,4 +10,6 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmailIgnoreCase(String email);
     boolean existsByEmailIgnoreCase(String email);
+    boolean existsByStudentCode(String studentCode);
+    boolean existsByIdAndStatus(UUID id, UserStatus status);
 }

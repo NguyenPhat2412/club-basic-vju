@@ -1,12 +1,12 @@
 package com.vju.club.auth;
 
 import com.vju.club.auth.dto.AuthResponse;
+import com.vju.club.auth.dto.ChangePasswordRequest;
 import com.vju.club.auth.dto.LoginRequest;
 import com.vju.club.auth.dto.RefreshTokenRequest;
 import com.vju.club.auth.dto.RegisterRequest;
 import com.vju.club.auth.dto.TokenResponse;
 import com.vju.club.auth.dto.UserResponse;
-import com.vju.club.auth.dto.ChangePasswordRequest;
 import com.vju.club.config.JwtProperties;
 import com.vju.club.entity.RefreshToken;
 import com.vju.club.entity.User;
@@ -22,8 +22,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -35,6 +38,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenService tokenService;
     private final JwtProperties jwtProperties;
+    private final Clock clock;
 
     public AuthServiceImpl(
             UserRepository userRepository,
@@ -42,32 +46,36 @@ public class AuthServiceImpl implements AuthService {
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
             JwtTokenService tokenService,
-            JwtProperties jwtProperties) {
+            JwtProperties jwtProperties,
+            Clock clock) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.tokenService = tokenService;
         this.jwtProperties = jwtProperties;
+        this.clock = clock;
     }
 
     @Override
     @Transactional
     public UserResponse register(RegisterRequest request) {
         String email = normalizeEmail(request.email());
+        String studentCode = blankToNull(request.studentCode());
         if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new ApiException(HttpStatus.CONFLICT, "EMAIL_ALREADY_EXISTS", "Email is already registered");
+        }
+        if (studentCode != null && userRepository.existsByStudentCode(studentCode)) {
+            throw new ApiException(HttpStatus.CONFLICT, "STUDENT_CODE_ALREADY_EXISTS", "Student code is already registered");
         }
         User user = new User();
         user.setEmail(email);
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setFullName(request.fullName().trim());
-        user.setStudentCode(blankToNull(request.studentCode()));
+        user.setStudentCode(studentCode);
         user.setPhone(blankToNull(request.phone()));
         user.setStatus(UserStatus.ACTIVE);
-        userRepository.save(user);
-        userRepository.flush();
-        return UserResponse.from(user);
+        return UserResponse.from(userRepository.saveAndFlush(user));
     }
 
     @Override
@@ -78,32 +86,34 @@ public class AuthServiceImpl implements AuthService {
             authenticationManager.authenticate(
                     UsernamePasswordAuthenticationToken.unauthenticated(email, request.password()));
         } catch (AuthenticationException exception) {
+            // Only reveal that an account is inactive to someone who proved they own it.
             User user = userRepository.findByEmailIgnoreCase(email).orElse(null);
-            if (user != null && user.getStatus() != UserStatus.ACTIVE) {
+            if (user != null && user.getStatus() != UserStatus.ACTIVE
+                    && passwordEncoder.matches(request.password(), user.getPasswordHash())) {
                 throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_INACTIVE", "Account is inactive");
             }
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Invalid credentials");
+            throw invalidCredentials();
         }
 
-        User user = userRepository.findByEmailIgnoreCase(email)
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Invalid credentials"));
+        User user = userRepository.findByEmailIgnoreCase(email).orElseThrow(this::invalidCredentials);
         return new AuthResponse(UserResponse.from(user), issueTokens(user));
     }
 
     @Override
     @Transactional
     public AuthResponse refresh(RefreshTokenRequest request) {
-        String hash = tokenService.hash(request.refreshToken());
-        RefreshToken existing = refreshTokenRepository.findByTokenHash(hash)
-                .orElseThrow(() -> invalidRefreshToken());
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        if (!existing.isActive(now) || existing.getUser().getStatus() != UserStatus.ACTIVE) {
+        RefreshToken existing = refreshTokenRepository.findByTokenHash(tokenService.hash(request.refreshToken()))
+                .orElseThrow(this::invalidRefreshToken);
+        OffsetDateTime now = now();
+        User user = existing.getUser();
+        if (!existing.isActive(now) || user.getStatus() != UserStatus.ACTIVE) {
             throw invalidRefreshToken();
         }
-        existing.revoke(now);
-        refreshTokenRepository.save(existing);
-        refreshTokenRepository.flush();
-        return new AuthResponse(UserResponse.from(existing.getUser()), issueTokens(existing.getUser()));
+        if (refreshTokenRepository.revokeIfActive(existing.getId(), now) != 1) {
+            // Another request rotated this token first.
+            throw invalidRefreshToken();
+        }
+        return new AuthResponse(UserResponse.from(user), issueTokens(user));
     }
 
     @Override
@@ -112,13 +122,8 @@ public class AuthServiceImpl implements AuthService {
         if (refreshToken == null || refreshToken.isBlank()) {
             return;
         }
-        refreshTokenRepository.findByTokenHash(tokenService.hash(refreshToken)).ifPresent(token -> {
-            if (token.getRevokedAt() == null) {
-                token.revoke(OffsetDateTime.now(ZoneOffset.UTC));
-                refreshTokenRepository.save(token);
-                refreshTokenRepository.flush();
-            }
-        });
+        refreshTokenRepository.findByTokenHash(tokenService.hash(refreshToken))
+                .ifPresent(token -> refreshTokenRepository.revokeIfActive(token.getId(), now()));
     }
 
     @Override
@@ -137,30 +142,30 @@ public class AuthServiceImpl implements AuthService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "CURRENT_PASSWORD_INVALID", "Current password is invalid");
         }
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
-        userRepository.save(user);
-        userRepository.flush();
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        for (RefreshToken token : refreshTokenRepository.findByUser_IdAndRevokedAtIsNull(userId)) {
-            token.revoke(now);
-            refreshTokenRepository.save(token);
-        }
-        refreshTokenRepository.flush();
+        userRepository.saveAndFlush(user);
+        refreshTokenRepository.revokeAllForUser(userId, now());
     }
 
     private TokenResponse issueTokens(User user) {
         JwtTokenService.AccessToken accessToken = tokenService.issueAccessToken(user);
         JwtTokenService.RefreshTokenValue refreshToken = tokenService.issueRefreshToken();
-        InstantPair expiration = new InstantPair(accessToken.expiresAt(),
-                java.time.Instant.now().plus(jwtProperties.getRefreshTokenTtl()));
+        Instant refreshExpiresAt = clock.instant().plus(jwtProperties.getRefreshTokenTtl());
 
         RefreshToken refreshEntity = new RefreshToken();
         refreshEntity.setUser(user);
         refreshEntity.setTokenHash(refreshToken.hash());
-        refreshEntity.setExpiresAt(OffsetDateTime.ofInstant(expiration.refreshExpiresAt(), ZoneOffset.UTC));
-        refreshTokenRepository.save(refreshEntity);
-        refreshTokenRepository.flush();
+        refreshEntity.setExpiresAt(OffsetDateTime.ofInstant(refreshExpiresAt, ZoneOffset.UTC));
+        refreshTokenRepository.saveAndFlush(refreshEntity);
         return new TokenResponse(accessToken.value(), refreshToken.value(),
-                expiration.accessExpiresAt(), expiration.refreshExpiresAt());
+                accessToken.expiresAt(), refreshExpiresAt);
+    }
+
+    private OffsetDateTime now() {
+        return OffsetDateTime.now(clock);
+    }
+
+    private ApiException invalidCredentials() {
+        return new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Invalid credentials");
     }
 
     private ApiException invalidRefreshToken() {
@@ -168,12 +173,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private String normalizeEmail(String email) {
-        return email.trim().toLowerCase();
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }
-
-    private record InstantPair(java.time.Instant accessExpiresAt, java.time.Instant refreshExpiresAt) { }
 }

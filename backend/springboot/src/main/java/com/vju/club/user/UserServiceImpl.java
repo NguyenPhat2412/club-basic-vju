@@ -1,15 +1,18 @@
 package com.vju.club.user;
 
 import com.vju.club.auth.dto.UserResponse;
+import com.vju.club.common.dto.PageResponse;
 import com.vju.club.dao.UserDao;
 import com.vju.club.entity.User;
+import com.vju.club.entity.UserStatus;
 import com.vju.club.error.ApiException;
 import com.vju.club.repository.UserRepository;
 import com.vju.club.security.PermissionAuthorizationService;
+import com.vju.club.security.SecurityIdentity;
 import com.vju.club.user.dto.UpdateProfileRequest;
 import com.vju.club.user.dto.UpdateUserStatusRequest;
-import com.vju.club.user.dto.UserListResponse;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,14 +36,14 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserResponse getById(UUID userId) {
-        return UserResponse.from(findUser(userId));
+    public UserResponse getCurrent(Authentication authentication) {
+        return UserResponse.from(findUser(SecurityIdentity.userId(authentication)));
     }
 
     @Override
     @Transactional
-    public UserResponse updateProfile(UUID userId, UpdateProfileRequest request) {
-        User user = findUser(userId);
+    public UserResponse updateProfile(Authentication authentication, UpdateProfileRequest request) {
+        User user = findUser(SecurityIdentity.userId(authentication));
         if (request.fullName() != null) {
             if (request.fullName().isBlank()) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_FULL_NAME", "Full name cannot be blank");
@@ -49,24 +52,35 @@ public class UserServiceImpl implements UserService {
         }
         if (request.phone() != null) user.setPhone(blankToNull(request.phone()));
         if (request.avatarUrl() != null) user.setAvatarUrl(blankToNull(request.avatarUrl()));
-        return UserResponse.from(userRepository.save(user));
+        return UserResponse.from(userRepository.saveAndFlush(user));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public UserListResponse search(String query, int offset, int limit, String orderBy, String orderType) {
+    public UserResponse getById(Authentication authentication, UUID userId) {
+        authorizationService.require(authentication, "user.view", null, null);
+        return UserResponse.from(findUser(userId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<UserResponse> search(Authentication authentication, String query, int offset, int limit,
+                                             String orderBy, String orderType) {
+        authorizationService.require(authentication, "user.view", null, null);
         var users = userDao.search(query, offset, limit, orderBy, orderType).stream()
                 .map(UserResponse::from)
                 .toList();
-        return new UserListResponse(users, userDao.count(query), Math.max(0, offset), Math.max(1, Math.min(limit, 100)));
+        return new PageResponse<>(users, userDao.count(query), offset, limit);
     }
 
     @Override
     @Transactional
-    public UserResponse updateStatus(UUID userId, UpdateUserStatusRequest request) {
+    public UserResponse updateStatus(Authentication authentication, UUID userId, UpdateUserStatusRequest request) {
+        authorizationService.require(authentication,
+                request.status() == UserStatus.ACTIVE ? "user.active" : "user.inactive", null, null);
         User user = findUser(userId);
         user.setStatus(request.status());
-        return UserResponse.from(userRepository.save(user));
+        return UserResponse.from(userRepository.saveAndFlush(user));
     }
 
     private User findUser(UUID userId) {

@@ -1,0 +1,41 @@
+name: backend
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: club_test
+          POSTGRES_USER: club_test
+          POSTGRES_PASSWORD: club_test_local
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U club_test -d club_test"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Backend tests
+        working-directory: backend/springboot
+        run: ./mvnw -B test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: API contract checks
+        run: |
+          pip install pyyaml
+          python -m unittest discover -s docs/api/tests
+      - name: Docker image builds
+        run: docker build -t club-backend backend/springboot

@@ -6,6 +6,8 @@ import com.vju.club.club.dto.ClubResponse;
 import com.vju.club.club.dto.ClubStatusRequest;
 import com.vju.club.common.dto.PageResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -32,8 +34,8 @@ public class ClubController {
     @GetMapping
     public PageResponse<ClubResponse> list(Authentication authentication,
                                    @RequestParam(defaultValue = "") String query,
-                                   @RequestParam(defaultValue = "0") int offset,
-                                   @RequestParam(defaultValue = "20") int limit) {
+                                   @RequestParam(defaultValue = "0") @Min(0) int offset,
+                                   @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
         return clubService.list(authentication, query, offset, limit);
     }
 

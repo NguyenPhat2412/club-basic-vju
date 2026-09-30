@@ -5,6 +5,8 @@ import com.vju.club.membership.dto.CreateMembershipRequest;
 import com.vju.club.membership.dto.MembershipResponse;
 import com.vju.club.membership.dto.UpdateMembershipRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -28,8 +30,8 @@ public class MembershipController {
 
     @GetMapping("/clubs/{clubId}/memberships")
     public PageResponse<MembershipResponse> list(Authentication authentication, @PathVariable UUID clubId,
-                                                 @RequestParam(defaultValue = "0") int offset,
-                                                 @RequestParam(defaultValue = "20") int limit) {
+                                                 @RequestParam(defaultValue = "0") @Min(0) int offset,
+                                                 @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
         return membershipService.list(authentication, clubId, offset, limit);
     }
     @GetMapping("/memberships/{membershipId}")

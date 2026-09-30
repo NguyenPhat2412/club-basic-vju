@@ -8,7 +8,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
+import com.vju.club.error.ProblemResponses;
 import com.vju.club.security.AccountStatusFilter;
+import com.vju.club.security.RateLimitFilter;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
@@ -19,7 +21,10 @@ import jakarta.servlet.http.HttpServletResponse;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, AccountStatusFilter accountStatusFilter) throws Exception {
+    SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            AccountStatusFilter accountStatusFilter,
+            RateLimitFilter rateLimitFilter) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
@@ -37,23 +42,18 @@ public class SecurityConfig {
                 .jwt(Customizer.withDefaults())
                 .authenticationEntryPoint(authenticationEntryPoint())
                 .accessDeniedHandler(accessDeniedHandler()));
+        http.addFilterBefore(rateLimitFilter, BearerTokenAuthenticationFilter.class);
         http.addFilterAfter(accountStatusFilter, BearerTokenAuthenticationFilter.class);
         return http.build();
     }
 
     private AuthenticationEntryPoint authenticationEntryPoint() {
-        return (request, response, exception) -> {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/problem+json");
-            response.getWriter().write("{\"title\":\"UNAUTHORIZED\",\"status\":401,\"code\":\"UNAUTHORIZED\"}");
-        };
+        return (request, response, exception) -> ProblemResponses.write(
+                response, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHORIZED", "Authentication is required");
     }
 
     private AccessDeniedHandler accessDeniedHandler() {
-        return (request, response, exception) -> {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            response.setContentType("application/problem+json");
-            response.getWriter().write("{\"title\":\"PERMISSION_DENIED\",\"status\":403,\"code\":\"PERMISSION_DENIED\"}");
-        };
+        return (request, response, exception) -> ProblemResponses.write(
+                response, HttpServletResponse.SC_FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
     }
 }

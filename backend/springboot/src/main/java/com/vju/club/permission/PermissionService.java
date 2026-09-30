@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface PermissionService {
-    List<PermissionResponse> list();
+    List<PermissionResponse> list(Authentication authentication);
     List<UserPermissionResponse> listUserPermissions(Authentication authentication, UUID targetUserId);
     UserPermissionResponse grant(Authentication authentication, UUID targetUserId, GrantPermissionRequest request);
     void revoke(Authentication authentication, UUID targetUserId, UUID permissionId,

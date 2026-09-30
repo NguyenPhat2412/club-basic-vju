@@ -1,6 +1,7 @@
 package com.vju.club.security;
 
 import com.vju.club.entity.UserStatus;
+import com.vju.club.error.ProblemResponses;
 import com.vju.club.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -28,16 +29,16 @@ public class AccountStatusFilter extends OncePerRequestFilter {
         if (authentication instanceof JwtAuthenticationToken jwt) {
             try {
                 UUID id = UUID.fromString(jwt.getToken().getSubject());
-                if (userRepository.findById(id).map(user -> user.getStatus() == UserStatus.ACTIVE).orElse(false) == false) {
+                if (!userRepository.existsByIdAndStatus(id, UserStatus.ACTIVE)) {
                     SecurityContextHolder.clearContext();
-                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                    response.setContentType("application/problem+json");
-                    response.getWriter().write("{\"title\":\"ACCOUNT_INACTIVE\",\"status\":403,\"code\":\"ACCOUNT_INACTIVE\"}");
+                    ProblemResponses.write(response, HttpServletResponse.SC_FORBIDDEN,
+                            "ACCOUNT_INACTIVE", "Account is inactive");
                     return;
                 }
-            } catch (IllegalArgumentException exception) {
+            } catch (IllegalArgumentException | NullPointerException exception) {
                 SecurityContextHolder.clearContext();
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                ProblemResponses.write(response, HttpServletResponse.SC_UNAUTHORIZED,
+                        "UNAUTHORIZED", "Authentication is required");
                 return;
             }
         }

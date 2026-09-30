@@ -7,7 +7,8 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "app.security.jwt")
 public class JwtProperties {
 
-    private String secret = "local-development-secret-change-this-value-0123456789";
+    /** No default: a missing secret must fail startup instead of silently using a public value. */
+    private String secret;
     private Duration accessTokenTtl = Duration.ofMinutes(15);
     private Duration refreshTokenTtl = Duration.ofDays(30);
 

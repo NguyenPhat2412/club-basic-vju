@@ -66,7 +66,20 @@ public class PermissionAuthorizationService {
 
     public void require(Authentication authentication, String permissionKey, UUID clubId, UUID departmentId) {
         if (!hasPermission(authentication, permissionKey, clubId, departmentId)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
+            throw forbidden();
         }
+    }
+
+    /**
+     * Error for a resource id that does not exist. Only callers holding the permission globally may
+     * learn that (404); everyone else gets the same 403 as for an existing resource they cannot
+     * access, so ids cannot be probed.
+     */
+    public ApiException missingResource(Authentication authentication, String permissionKey, ApiException notFound) {
+        return hasGlobalPermission(authentication, permissionKey) ? notFound : forbidden();
+    }
+
+    private static ApiException forbidden() {
+        return new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
     }
 }

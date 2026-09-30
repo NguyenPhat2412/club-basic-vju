@@ -1,6 +1,5 @@
 package com.vju.club.auth;
 
-import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.vju.club.config.JwtProperties;
 import com.vju.club.entity.User;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -14,26 +13,32 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.HexFormat;
 
 @Service
 public class JwtTokenService {
 
+    public static final String ISSUER = "club-backend";
+
     private final JwtEncoder jwtEncoder;
     private final JwtProperties properties;
+    private final Clock clock;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public JwtTokenService(JwtEncoder jwtEncoder, JwtProperties properties) {
+    public JwtTokenService(JwtEncoder jwtEncoder, JwtProperties properties, Clock clock) {
         this.jwtEncoder = jwtEncoder;
         this.properties = properties;
+        this.clock = clock;
     }
 
     public AccessToken issueAccessToken(User user) {
-        Instant issuedAt = Instant.now();
+        Instant issuedAt = clock.instant();
         Instant expiresAt = issuedAt.plus(properties.getAccessTokenTtl());
         JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer("club-backend")
+                .issuer(ISSUER)
                 .subject(user.getId().toString())
                 .issuedAt(issuedAt)
                 .expiresAt(expiresAt)
@@ -55,11 +60,7 @@ public class JwtTokenService {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")
                     .digest(token.getBytes(StandardCharsets.UTF_8));
-            StringBuilder result = new StringBuilder(digest.length * 2);
-            for (byte value : digest) {
-                result.append(String.format("%02x", value));
-            }
-            return result.toString();
+            return HexFormat.of().formatHex(digest);
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 is not available", exception);
         }

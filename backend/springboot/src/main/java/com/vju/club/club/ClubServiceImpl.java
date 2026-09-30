@@ -6,6 +6,7 @@ import com.vju.club.club.dto.ClubResponse;
 import com.vju.club.club.dto.ClubStatusRequest;
 import com.vju.club.common.dto.PageResponse;
 import com.vju.club.entity.Club;
+import com.vju.club.entity.ClubStatus;
 import com.vju.club.error.ApiException;
 import com.vju.club.repository.ClubRepository;
 import com.vju.club.security.PermissionAuthorizationService;
@@ -48,7 +49,7 @@ public class ClubServiceImpl implements ClubService {
                 authorizationService.require(authentication, "club.view", null, null);
             }
         }
-        return new PageResponse<>(clubs, total, Math.max(0, offset), Math.max(1, Math.min(limit, 100)));
+        return new PageResponse<>(clubs, total, offset, limit);
     }
 
     @Override
@@ -67,9 +68,9 @@ public class ClubServiceImpl implements ClubService {
             throw new ApiException(HttpStatus.CONFLICT, "CLUB_CODE_ALREADY_EXISTS", "Club code is already used");
         }
         Club club = new Club();
-        apply(club, request);
         club.setCode(code);
-        return ClubResponse.from(clubRepository.save(club));
+        apply(club, request);
+        return ClubResponse.from(clubRepository.saveAndFlush(club));
     }
 
     @Override
@@ -77,27 +78,26 @@ public class ClubServiceImpl implements ClubService {
     public ClubResponse update(Authentication authentication, UUID clubId, ClubPatchRequest request) {
         authorizationService.require(authentication, "club.update", clubId, null);
         Club club = findClub(clubId);
-        if (request.code() != null && !club.getCode().equalsIgnoreCase(request.code())
+        if (request.code() != null && !club.getCode().equalsIgnoreCase(request.code().trim())
                 && clubRepository.existsByCodeIgnoreCase(request.code().trim())) {
             throw new ApiException(HttpStatus.CONFLICT, "CLUB_CODE_ALREADY_EXISTS", "Club code is already used");
         }
         applyPatch(club, request);
-        return ClubResponse.from(clubRepository.save(club));
+        return ClubResponse.from(clubRepository.saveAndFlush(club));
     }
 
     @Override
     @Transactional
     public ClubResponse updateStatus(Authentication authentication, UUID clubId, ClubStatusRequest request) {
         authorizationService.require(authentication,
-                request.status() == com.vju.club.entity.ClubStatus.ACTIVE ? "club.active" : "club.inactive",
+                request.status() == ClubStatus.ACTIVE ? "club.active" : "club.inactive",
                 clubId, null);
         Club club = findClub(clubId);
         club.setStatus(request.status());
-        return ClubResponse.from(clubRepository.save(club));
+        return ClubResponse.from(clubRepository.saveAndFlush(club));
     }
 
     private void apply(Club club, ClubRequest request) {
-        club.setCode(request.code().trim());
         club.setName(request.name().trim());
         club.setLogoUrl(request.logoUrl());
         club.setCoverUrl(request.coverUrl());

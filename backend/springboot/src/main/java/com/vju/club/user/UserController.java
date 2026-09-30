@@ -1,13 +1,12 @@
 package com.vju.club.user;
 
 import com.vju.club.auth.dto.UserResponse;
-import com.vju.club.security.PermissionAuthorizationService;
-import com.vju.club.security.SecurityIdentity;
+import com.vju.club.common.dto.PageResponse;
 import com.vju.club.user.dto.UpdateProfileRequest;
 import com.vju.club.user.dto.UpdateUserStatusRequest;
-import com.vju.club.user.dto.UserListResponse;
 import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -24,41 +23,37 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
-    private final PermissionAuthorizationService authorizationService;
 
-    public UserController(UserService userService, PermissionAuthorizationService authorizationService) {
+    public UserController(UserService userService) {
         this.userService = userService;
-        this.authorizationService = authorizationService;
     }
 
     @GetMapping("/me")
     public UserResponse me(Authentication authentication) {
-        return userService.getById(SecurityIdentity.userId(authentication));
+        return userService.getCurrent(authentication);
     }
 
     @PatchMapping("/me")
     public UserResponse updateMe(
             Authentication authentication,
             @Valid @RequestBody UpdateProfileRequest request) {
-        return userService.updateProfile(SecurityIdentity.userId(authentication), request);
+        return userService.updateProfile(authentication, request);
     }
 
     @GetMapping
-    public UserListResponse search(
+    public PageResponse<UserResponse> search(
             Authentication authentication,
             @RequestParam(defaultValue = "") String query,
-            @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "20") int limit,
+            @RequestParam(defaultValue = "0") @Min(0) int offset,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
             @RequestParam(defaultValue = "createdAt") String orderBy,
             @RequestParam(defaultValue = "desc") String orderType) {
-        authorizationService.require(authentication, "user.view", null, null);
-        return userService.search(query, offset, limit, orderBy, orderType);
+        return userService.search(authentication, query, offset, limit, orderBy, orderType);
     }
 
     @GetMapping("/{userId}")
     public UserResponse getById(Authentication authentication, @PathVariable UUID userId) {
-        authorizationService.require(authentication, "user.view", null, null);
-        return userService.getById(userId);
+        return userService.getById(authentication, userId);
     }
 
     @PatchMapping("/{userId}/status")
@@ -66,9 +61,6 @@ public class UserController {
             Authentication authentication,
             @PathVariable UUID userId,
             @Valid @RequestBody UpdateUserStatusRequest request) {
-        authorizationService.require(authentication,
-                request.status() == com.vju.club.entity.UserStatus.ACTIVE ? "user.active" : "user.inactive",
-                null, null);
-        return userService.updateStatus(userId, request);
+        return userService.updateStatus(authentication, userId, request);
     }
 }

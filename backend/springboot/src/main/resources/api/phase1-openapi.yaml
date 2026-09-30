@@ -2227,6 +2227,10 @@ components:
         active: true
     GrantPermissionRequest:
       type: object
+      description: >-
+        A permission may be granted at its own scope or any broader one (DEPARTMENT < CLUB < GLOBAL).
+        A CLUB grant of a DEPARTMENT permission applies to every department of that club.
+        Narrower grants fail with PERMISSION_SCOPE_MISMATCH.
       required:
       - permissionId
       - scope
