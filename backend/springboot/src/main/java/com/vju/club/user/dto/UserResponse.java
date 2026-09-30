@@ -1,4 +1,4 @@
-package com.vju.club.auth.dto;
+package com.vju.club.user.dto;
 
 import com.vju.club.entity.User;
 

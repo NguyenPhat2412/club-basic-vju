@@ -121,7 +121,7 @@ class ContractTest(unittest.TestCase):
             self.assertEqual(schema['items']['$ref'], '#/components/schemas/UserPermission')
 
     def test_response_fields_match_java_records(self):
-        mapping = {'User': 'auth/dto/UserResponse.java', 'TokenResponse': 'auth/dto/TokenResponse.java',
+        mapping = {'User': 'user/dto/UserResponse.java', 'TokenResponse': 'auth/dto/TokenResponse.java',
                    'Club': 'club/dto/ClubResponse.java', 'Department': 'department/dto/DepartmentResponse.java',
                    'Membership': 'membership/dto/MembershipResponse.java',
                    'DepartmentMember': 'departmentmember/dto/DepartmentMemberResponse.java',

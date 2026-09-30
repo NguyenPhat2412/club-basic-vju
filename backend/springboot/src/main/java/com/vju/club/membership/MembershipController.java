@@ -1,5 +1,6 @@
 package com.vju.club.membership;
 
+import com.vju.club.security.Actor;
 import com.vju.club.common.dto.PageResponse;
 import com.vju.club.entity.MembershipStatus;
 import com.vju.club.membership.dto.CreateMembershipRequest;
@@ -10,7 +11,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,29 +30,29 @@ public class MembershipController {
     public MembershipController(MembershipService membershipService) { this.membershipService = membershipService; }
 
     @GetMapping("/clubs/{clubId}/memberships")
-    public PageResponse<MembershipResponse> list(Authentication authentication, @PathVariable UUID clubId,
+    public PageResponse<MembershipResponse> list(Actor actor, @PathVariable UUID clubId,
                                                  @RequestParam(required = false) MembershipStatus status,
                                                  @RequestParam(defaultValue = "0") @Min(0) int offset,
                                                  @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
-        return membershipService.list(authentication, clubId, status, offset, limit);
+        return membershipService.list(actor, clubId, status, offset, limit);
     }
     @GetMapping("/memberships/{membershipId}")
-    public MembershipResponse get(Authentication authentication, @PathVariable UUID membershipId) {
-        return membershipService.get(authentication, membershipId);
+    public MembershipResponse get(Actor actor, @PathVariable UUID membershipId) {
+        return membershipService.get(actor, membershipId);
     }
     @PostMapping("/clubs/{clubId}/memberships")
-    public ResponseEntity<MembershipResponse> create(Authentication authentication, @PathVariable UUID clubId,
+    public ResponseEntity<MembershipResponse> create(Actor actor, @PathVariable UUID clubId,
                                                       @Valid @RequestBody CreateMembershipRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(membershipService.create(authentication, clubId, request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(membershipService.create(actor, clubId, request));
     }
     @PatchMapping("/memberships/{membershipId}")
-    public MembershipResponse update(Authentication authentication, @PathVariable UUID membershipId,
+    public MembershipResponse update(Actor actor, @PathVariable UUID membershipId,
                                      @Valid @RequestBody UpdateMembershipRequest request) {
-        return membershipService.update(authentication, membershipId, request);
+        return membershipService.update(actor, membershipId, request);
     }
     @DeleteMapping("/memberships/{membershipId}")
-    public ResponseEntity<Void> remove(Authentication authentication, @PathVariable UUID membershipId) {
-        membershipService.remove(authentication, membershipId);
+    public ResponseEntity<Void> remove(Actor actor, @PathVariable UUID membershipId) {
+        membershipService.remove(actor, membershipId);
         return ResponseEntity.noContent().build();
     }
 }

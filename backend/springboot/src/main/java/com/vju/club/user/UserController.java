@@ -1,13 +1,13 @@
 package com.vju.club.user;
 
-import com.vju.club.auth.dto.UserResponse;
+import com.vju.club.security.Actor;
+import com.vju.club.user.dto.UserResponse;
 import com.vju.club.common.dto.PageResponse;
 import com.vju.club.user.dto.UpdateProfileRequest;
 import com.vju.club.user.dto.UpdateUserStatusRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,38 +29,38 @@ public class UserController {
     }
 
     @GetMapping("/me")
-    public UserResponse me(Authentication authentication) {
-        return userService.getCurrent(authentication);
+    public UserResponse me(Actor actor) {
+        return userService.getCurrent(actor);
     }
 
     @PatchMapping("/me")
     public UserResponse updateMe(
-            Authentication authentication,
+            Actor actor,
             @Valid @RequestBody UpdateProfileRequest request) {
-        return userService.updateProfile(authentication, request);
+        return userService.updateProfile(actor, request);
     }
 
     @GetMapping
     public PageResponse<UserResponse> search(
-            Authentication authentication,
+            Actor actor,
             @RequestParam(defaultValue = "") String query,
             @RequestParam(defaultValue = "0") @Min(0) int offset,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
             @RequestParam(defaultValue = "createdAt") String orderBy,
             @RequestParam(defaultValue = "desc") String orderType) {
-        return userService.search(authentication, query, offset, limit, orderBy, orderType);
+        return userService.search(actor, query, offset, limit, orderBy, orderType);
     }
 
     @GetMapping("/{userId}")
-    public UserResponse getById(Authentication authentication, @PathVariable UUID userId) {
-        return userService.getById(authentication, userId);
+    public UserResponse getById(Actor actor, @PathVariable UUID userId) {
+        return userService.getById(actor, userId);
     }
 
     @PatchMapping("/{userId}/status")
     public UserResponse updateStatus(
-            Authentication authentication,
+            Actor actor,
             @PathVariable UUID userId,
             @Valid @RequestBody UpdateUserStatusRequest request) {
-        return userService.updateStatus(authentication, userId, request);
+        return userService.updateStatus(actor, userId, request);
     }
 }

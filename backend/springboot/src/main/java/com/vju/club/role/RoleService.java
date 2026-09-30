@@ -1,5 +1,6 @@
 package com.vju.club.role;
 
+import com.vju.club.security.Actor;
 import com.vju.club.entity.Club;
 import com.vju.club.entity.Department;
 import com.vju.club.entity.Permission;
@@ -23,9 +24,7 @@ import com.vju.club.role.dto.UpdateRoleRequest;
 import com.vju.club.role.dto.UserRoleResponse;
 import com.vju.club.security.PermissionAuthorizationService;
 import com.vju.club.security.ScopeRules;
-import com.vju.club.security.SecurityIdentity;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -73,20 +72,20 @@ public class RoleService {
     // ---- role definitions -----------------------------------------------------------------------
 
     @Transactional(readOnly = true)
-    public List<RoleResponse> list(Authentication authentication) {
-        authorizationService.require(authentication, "role.view", null, null);
+    public List<RoleResponse> list(Actor actor) {
+        authorizationService.require(actor, "role.view", null, null);
         return roleRepository.findAllWithPermissions().stream().map(RoleResponse::from).toList();
     }
 
     @Transactional(readOnly = true)
-    public RoleResponse get(Authentication authentication, UUID roleId) {
-        authorizationService.require(authentication, "role.view", null, null);
+    public RoleResponse get(Actor actor, UUID roleId) {
+        authorizationService.require(actor, "role.view", null, null);
         return RoleResponse.from(findRole(roleId));
     }
 
     @Transactional
-    public RoleResponse create(Authentication authentication, CreateRoleRequest request) {
-        authorizationService.require(authentication, "role.manage", null, null);
+    public RoleResponse create(Actor actor, CreateRoleRequest request) {
+        authorizationService.require(actor, "role.manage", null, null);
         String code = request.code().trim().toUpperCase(Locale.ROOT);
         if (roleRepository.existsByCodeIgnoreCase(code)) {
             throw new ApiException(HttpStatus.CONFLICT, "ROLE_CODE_ALREADY_EXISTS", "Role code is already used");
@@ -101,8 +100,8 @@ public class RoleService {
     }
 
     @Transactional
-    public RoleResponse update(Authentication authentication, UUID roleId, UpdateRoleRequest request) {
-        authorizationService.require(authentication, "role.manage", null, null);
+    public RoleResponse update(Actor actor, UUID roleId, UpdateRoleRequest request) {
+        authorizationService.require(actor, "role.manage", null, null);
         Role role = findRole(roleId);
         if (role.isSystem()) {
             throw new ApiException(HttpStatus.CONFLICT, "SYSTEM_ROLE_IMMUTABLE", "System roles cannot be changed");
@@ -142,18 +141,18 @@ public class RoleService {
     // ---- assignments ----------------------------------------------------------------------------
 
     @Transactional(readOnly = true)
-    public List<UserRoleResponse> listAssignments(Authentication authentication, UUID userId) {
-        if (!userId.equals(SecurityIdentity.userId(authentication))) {
-            authorizationService.require(authentication, "permission.view", null, null);
+    public List<UserRoleResponse> listAssignments(Actor actor, UUID userId) {
+        if (!userId.equals(actor.id())) {
+            authorizationService.require(actor, "permission.view", null, null);
         }
         findUser(userId);
         return userRoleRepository.findActiveByUser(userId).stream().map(UserRoleResponse::from).toList();
     }
 
     @Transactional
-    public UserRoleResponse assign(Authentication authentication, UUID userId, AssignRoleRequest request) {
-        authorizationService.require(authentication, "permission.assign", null, null);
-        User actor = findUser(SecurityIdentity.userId(authentication));
+    public UserRoleResponse assign(Actor actor, UUID userId, AssignRoleRequest request) {
+        authorizationService.require(actor, "permission.assign", null, null);
+        User actorUser = findUser(actor.id());
         User target = findUser(userId);
         Role role = findRole(request.roleId());
         if (!role.isActive()) {
@@ -180,23 +179,23 @@ public class RoleService {
         assignment.setScope(request.scope());
         assignment.setClub(club);
         assignment.setDepartment(department);
-        assignment.setGrantedBy(actor);
+        assignment.setGrantedBy(actorUser);
         assignment.setGrantedAt(OffsetDateTime.now(clock));
         UserRole saved = userRoleRepository.saveAndFlush(assignment);
-        audit(actor, saved, PermissionAuditAction.GRANT, request.reason());
+        audit(actorUser, saved, PermissionAuditAction.GRANT, request.reason());
         return UserRoleResponse.from(saved);
     }
 
     @Transactional
-    public void revoke(Authentication authentication, UUID userId, UUID assignmentId) {
-        authorizationService.require(authentication, "permission.revoke", null, null);
-        User actor = findUser(SecurityIdentity.userId(authentication));
+    public void revoke(Actor actor, UUID userId, UUID assignmentId) {
+        authorizationService.require(actor, "permission.revoke", null, null);
+        User actorUser = findUser(actor.id());
         UserRole assignment = userRoleRepository.findByIdAndUser_Id(assignmentId, userId)
                 .filter(found -> found.getRevokedAt() == null)
                 .orElseThrow(() -> notFound("ROLE_ASSIGNMENT_NOT_FOUND", "Role assignment not found"));
-        assignment.revoke(OffsetDateTime.now(clock), actor);
+        assignment.revoke(OffsetDateTime.now(clock), actorUser);
         userRoleRepository.saveAndFlush(assignment);
-        audit(actor, assignment, PermissionAuditAction.REVOKE, null);
+        audit(actorUser, assignment, PermissionAuditAction.REVOKE, null);
     }
 
     private void audit(User actor, UserRole assignment, PermissionAuditAction action, String reason) {

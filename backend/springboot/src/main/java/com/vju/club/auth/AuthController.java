@@ -1,17 +1,16 @@
 package com.vju.club.auth;
 
+import com.vju.club.security.Actor;
 import com.vju.club.auth.dto.AuthResponse;
 import com.vju.club.auth.dto.LoginRequest;
 import com.vju.club.auth.dto.LogoutRequest;
 import com.vju.club.auth.dto.RefreshTokenRequest;
 import com.vju.club.auth.dto.RegisterRequest;
-import com.vju.club.auth.dto.UserResponse;
+import com.vju.club.user.dto.UserResponse;
 import com.vju.club.auth.dto.ChangePasswordRequest;
-import com.vju.club.security.SecurityIdentity;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -51,14 +50,14 @@ public class AuthController {
     }
 
     @PostMapping("/change-password")
-    public ResponseEntity<Void> changePassword(Authentication authentication,
+    public ResponseEntity<Void> changePassword(Actor actor,
                                                @Valid @RequestBody ChangePasswordRequest request) {
-        authService.changePassword(SecurityIdentity.userId(authentication), request);
+        authService.changePassword(actor.id(), request);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/me")
-    public UserResponse me(Authentication authentication) {
-        return authService.getCurrentUser(SecurityIdentity.userId(authentication));
+    public UserResponse me(Actor actor) {
+        return authService.getCurrentUser(actor.id());
     }
 }

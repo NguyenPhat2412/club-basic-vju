@@ -1,19 +1,124 @@
 package com.vju.club.club;
 
+import com.vju.club.security.Actor;
 import com.vju.club.club.dto.ClubRequest;
 import com.vju.club.club.dto.ClubPatchRequest;
 import com.vju.club.club.dto.ClubResponse;
 import com.vju.club.club.dto.ClubStatusRequest;
+import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.common.dto.PageResponse;
-import org.springframework.security.core.Authentication;
+import com.vju.club.entity.Club;
+import com.vju.club.entity.ClubStatus;
+import com.vju.club.error.ApiException;
+import com.vju.club.repository.ClubRepository;
+import com.vju.club.security.PermissionAuthorizationService;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
-public interface ClubService {
-    PageResponse<ClubResponse> list(Authentication authentication, String query, int offset, int limit);
-    ClubResponse get(Authentication authentication, UUID clubId);
-    ClubResponse create(Authentication authentication, ClubRequest request);
-    ClubResponse update(Authentication authentication, UUID clubId, ClubPatchRequest request);
-    ClubResponse updateStatus(Authentication authentication, UUID clubId, ClubStatusRequest request);
+@Service
+public class ClubService {
+
+    private final ClubRepository clubRepository;
+    private final PermissionAuthorizationService authorizationService;
+
+    public ClubService(ClubRepository clubRepository, PermissionAuthorizationService authorizationService) {
+        this.clubRepository = clubRepository;
+        this.authorizationService = authorizationService;
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<ClubResponse> list(Actor actor, String query, int offset, int limit) {
+        String pattern = "%" + (query == null ? "" : query.trim().toLowerCase(Locale.ROOT)) + "%";
+        OffsetLimitRequest page = new OffsetLimitRequest(offset, limit);
+        List<ClubResponse> clubs;
+        long total;
+        if (authorizationService.hasGlobalPermission(actor, "club.view")) {
+            clubs = clubRepository.search(pattern, page).stream().map(ClubResponse::from).toList();
+            total = clubRepository.countSearch(pattern);
+        } else {
+            if (!authorizationService.hasAnyPermission(actor, "club.view")) {
+                authorizationService.require(actor, "club.view", null, null);
+            }
+            UUID userId = actor.id();
+            clubs = clubRepository.searchVisibleTo(userId, pattern, page).stream().map(ClubResponse::from).toList();
+            total = clubRepository.countVisibleTo(userId, pattern);
+        }
+        return new PageResponse<>(clubs, total, offset, limit);
+    }
+
+    @Transactional(readOnly = true)
+    public ClubResponse get(Actor actor, UUID clubId) {
+        authorizationService.require(actor, "club.view", clubId, null);
+        return ClubResponse.from(findClub(clubId));
+    }
+
+    @Transactional
+    public ClubResponse create(Actor actor, ClubRequest request) {
+        authorizationService.require(actor, "club.create", null, null);
+        String code = request.code().trim();
+        if (clubRepository.existsByCodeIgnoreCase(code)) {
+            throw new ApiException(HttpStatus.CONFLICT, "CLUB_CODE_ALREADY_EXISTS", "Club code is already used");
+        }
+        Club club = new Club();
+        club.setCode(code);
+        apply(club, request);
+        return ClubResponse.from(clubRepository.saveAndFlush(club));
+    }
+
+    @Transactional
+    public ClubResponse update(Actor actor, UUID clubId, ClubPatchRequest request) {
+        authorizationService.require(actor, "club.update", clubId, null);
+        Club club = findClub(clubId);
+        if (request.code() != null && !club.getCode().equalsIgnoreCase(request.code().trim())
+                && clubRepository.existsByCodeIgnoreCase(request.code().trim())) {
+            throw new ApiException(HttpStatus.CONFLICT, "CLUB_CODE_ALREADY_EXISTS", "Club code is already used");
+        }
+        applyPatch(club, request);
+        return ClubResponse.from(clubRepository.saveAndFlush(club));
+    }
+
+    @Transactional
+    public ClubResponse updateStatus(Actor actor, UUID clubId, ClubStatusRequest request) {
+        authorizationService.require(actor,
+                request.status() == ClubStatus.ACTIVE ? "club.active" : "club.inactive",
+                clubId, null);
+        Club club = findClub(clubId);
+        club.setStatus(request.status());
+        return ClubResponse.from(clubRepository.saveAndFlush(club));
+    }
+
+    private void apply(Club club, ClubRequest request) {
+        club.setName(request.name().trim());
+        club.setLogoUrl(request.logoUrl());
+        club.setCoverUrl(request.coverUrl());
+        club.setDescription(request.description());
+        club.setActivityField(request.activityField());
+        club.setContactEmail(request.contactEmail());
+    }
+
+    private void applyPatch(Club club, ClubPatchRequest request) {
+        if (request.code() != null) {
+            if (request.code().isBlank()) throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_CLUB_CODE", "Club code cannot be blank");
+            club.setCode(request.code().trim());
+        }
+        if (request.name() != null) {
+            if (request.name().isBlank()) throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_CLUB_NAME", "Club name cannot be blank");
+            club.setName(request.name().trim());
+        }
+        if (request.logoUrl() != null) club.setLogoUrl(request.logoUrl());
+        if (request.coverUrl() != null) club.setCoverUrl(request.coverUrl());
+        if (request.description() != null) club.setDescription(request.description());
+        if (request.activityField() != null) club.setActivityField(request.activityField());
+        if (request.contactEmail() != null) club.setContactEmail(request.contactEmail());
+    }
+
+    private Club findClub(UUID id) {
+        return clubRepository.findById(id)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND", "Club not found"));
+    }
 }

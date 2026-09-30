@@ -1,5 +1,6 @@
 package com.vju.club.department;
 
+import com.vju.club.security.Actor;
 import com.vju.club.common.dto.PageResponse;
 import com.vju.club.department.dto.DepartmentPatchRequest;
 import com.vju.club.department.dto.DepartmentRequest;
@@ -10,7 +11,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,32 +30,32 @@ public class DepartmentController {
     public DepartmentController(DepartmentService departmentService) { this.departmentService = departmentService; }
 
     @GetMapping("/clubs/{clubId}/departments")
-    public PageResponse<DepartmentResponse> list(Authentication authentication, @PathVariable UUID clubId,
+    public PageResponse<DepartmentResponse> list(Actor actor, @PathVariable UUID clubId,
                                                  @RequestParam(defaultValue = "0") @Min(0) int offset,
                                                  @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
-        return departmentService.list(authentication, clubId, offset, limit);
+        return departmentService.list(actor, clubId, offset, limit);
     }
 
     @GetMapping("/departments/{departmentId}")
-    public DepartmentResponse get(Authentication authentication, @PathVariable UUID departmentId) {
-        return departmentService.get(authentication, departmentId);
+    public DepartmentResponse get(Actor actor, @PathVariable UUID departmentId) {
+        return departmentService.get(actor, departmentId);
     }
 
     @PostMapping("/clubs/{clubId}/departments")
-    public ResponseEntity<DepartmentResponse> create(Authentication authentication, @PathVariable UUID clubId,
+    public ResponseEntity<DepartmentResponse> create(Actor actor, @PathVariable UUID clubId,
                                                       @Valid @RequestBody DepartmentRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(departmentService.create(authentication, clubId, request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(departmentService.create(actor, clubId, request));
     }
 
     @PatchMapping("/departments/{departmentId}")
-    public DepartmentResponse update(Authentication authentication, @PathVariable UUID departmentId,
+    public DepartmentResponse update(Actor actor, @PathVariable UUID departmentId,
                                      @Valid @RequestBody DepartmentPatchRequest request) {
-        return departmentService.update(authentication, departmentId, request);
+        return departmentService.update(actor, departmentId, request);
     }
 
     @PatchMapping("/departments/{departmentId}/status")
-    public DepartmentResponse updateStatus(Authentication authentication, @PathVariable UUID departmentId,
+    public DepartmentResponse updateStatus(Actor actor, @PathVariable UUID departmentId,
                                            @Valid @RequestBody DepartmentStatusRequest request) {
-        return departmentService.updateStatus(authentication, departmentId, request);
+        return departmentService.updateStatus(actor, departmentId, request);
     }
 }

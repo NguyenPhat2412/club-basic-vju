@@ -1,5 +1,6 @@
 package com.vju.club.departmentmember;
 
+import com.vju.club.security.Actor;
 import com.vju.club.common.dto.PageResponse;
 import com.vju.club.departmentmember.dto.AddDepartmentMemberRequest;
 import com.vju.club.departmentmember.dto.DepartmentMemberResponse;
@@ -9,7 +10,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -29,26 +29,26 @@ public class DepartmentMemberController {
     public DepartmentMemberController(DepartmentMemberService service) { this.service = service; }
 
     @GetMapping
-    public PageResponse<DepartmentMemberResponse> list(Authentication authentication, @PathVariable UUID departmentId,
+    public PageResponse<DepartmentMemberResponse> list(Actor actor, @PathVariable UUID departmentId,
                                                        @RequestParam(defaultValue = "0") @Min(0) int offset,
                                                        @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
-        return service.list(authentication, departmentId, offset, limit);
+        return service.list(actor, departmentId, offset, limit);
     }
     @PostMapping
-    public ResponseEntity<DepartmentMemberResponse> add(Authentication authentication, @PathVariable UUID departmentId,
+    public ResponseEntity<DepartmentMemberResponse> add(Actor actor, @PathVariable UUID departmentId,
                                                         @Valid @RequestBody AddDepartmentMemberRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.add(authentication, departmentId, request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.add(actor, departmentId, request));
     }
     @DeleteMapping("/{membershipId}")
-    public ResponseEntity<Void> remove(Authentication authentication, @PathVariable UUID departmentId,
+    public ResponseEntity<Void> remove(Actor actor, @PathVariable UUID departmentId,
                                        @PathVariable UUID membershipId) {
-        service.remove(authentication, departmentId, membershipId);
+        service.remove(actor, departmentId, membershipId);
         return ResponseEntity.noContent().build();
     }
     @PatchMapping("/{membershipId}")
-    public DepartmentMemberResponse move(Authentication authentication, @PathVariable UUID departmentId,
+    public DepartmentMemberResponse move(Actor actor, @PathVariable UUID departmentId,
                                          @PathVariable UUID membershipId,
                                          @Valid @RequestBody MoveDepartmentMemberRequest request) {
-        return service.move(authentication, departmentId, membershipId, request);
+        return service.move(actor, departmentId, membershipId, request);
     }
 }

@@ -1,15 +1,14 @@
 package com.vju.club.role;
 
+import com.vju.club.security.Actor;
 import com.vju.club.role.dto.AssignRoleRequest;
 import com.vju.club.role.dto.CreateRoleRequest;
 import com.vju.club.role.dto.RoleResponse;
 import com.vju.club.role.dto.UpdateRoleRequest;
 import com.vju.club.role.dto.UserRoleResponse;
-import com.vju.club.security.SecurityIdentity;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -33,46 +32,46 @@ public class RoleController {
     }
 
     @GetMapping("/roles")
-    public List<RoleResponse> list(Authentication authentication) {
-        return roleService.list(authentication);
+    public List<RoleResponse> list(Actor actor) {
+        return roleService.list(actor);
     }
 
     @GetMapping("/roles/{roleId}")
-    public RoleResponse get(Authentication authentication, @PathVariable UUID roleId) {
-        return roleService.get(authentication, roleId);
+    public RoleResponse get(Actor actor, @PathVariable UUID roleId) {
+        return roleService.get(actor, roleId);
     }
 
     @PostMapping("/roles")
-    public ResponseEntity<RoleResponse> create(Authentication authentication, @Valid @RequestBody CreateRoleRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(roleService.create(authentication, request));
+    public ResponseEntity<RoleResponse> create(Actor actor, @Valid @RequestBody CreateRoleRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(roleService.create(actor, request));
     }
 
     @PatchMapping("/roles/{roleId}")
-    public RoleResponse update(Authentication authentication, @PathVariable UUID roleId,
+    public RoleResponse update(Actor actor, @PathVariable UUID roleId,
                                @Valid @RequestBody UpdateRoleRequest request) {
-        return roleService.update(authentication, roleId, request);
+        return roleService.update(actor, roleId, request);
     }
 
     @GetMapping("/users/me/roles")
-    public List<UserRoleResponse> listOwn(Authentication authentication) {
-        return roleService.listAssignments(authentication, SecurityIdentity.userId(authentication));
+    public List<UserRoleResponse> listOwn(Actor actor) {
+        return roleService.listAssignments(actor, actor.id());
     }
 
     @GetMapping("/users/{userId}/roles")
-    public List<UserRoleResponse> listForUser(Authentication authentication, @PathVariable UUID userId) {
-        return roleService.listAssignments(authentication, userId);
+    public List<UserRoleResponse> listForUser(Actor actor, @PathVariable UUID userId) {
+        return roleService.listAssignments(actor, userId);
     }
 
     @PostMapping("/users/{userId}/roles")
-    public ResponseEntity<UserRoleResponse> assign(Authentication authentication, @PathVariable UUID userId,
+    public ResponseEntity<UserRoleResponse> assign(Actor actor, @PathVariable UUID userId,
                                                    @Valid @RequestBody AssignRoleRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(roleService.assign(authentication, userId, request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(roleService.assign(actor, userId, request));
     }
 
     @DeleteMapping("/users/{userId}/roles/{assignmentId}")
-    public ResponseEntity<Void> revoke(Authentication authentication, @PathVariable UUID userId,
+    public ResponseEntity<Void> revoke(Actor actor, @PathVariable UUID userId,
                                        @PathVariable UUID assignmentId) {
-        roleService.revoke(authentication, userId, assignmentId);
+        roleService.revoke(actor, userId, assignmentId);
         return ResponseEntity.noContent().build();
     }
 }

@@ -55,12 +55,12 @@ class AuthServiceTest {
     @Mock AuthenticationManager authenticationManager;
     @Mock JwtTokenService tokenService;
 
-    private AuthServiceImpl service;
+    private AuthService service;
     private final JwtProperties properties = new JwtProperties();
 
     @BeforeEach
     void setUp() {
-        service = new AuthServiceImpl(userRepository, refreshTokenRepository, ENCODER,
+        service = new AuthService(userRepository, refreshTokenRepository, ENCODER,
                 authenticationManager, tokenService, properties, Clock.fixed(NOW, ZoneOffset.UTC));
         when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(refreshTokenRepository.saveAndFlush(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));

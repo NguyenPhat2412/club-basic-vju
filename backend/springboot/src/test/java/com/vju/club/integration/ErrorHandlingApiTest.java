@@ -1,5 +1,6 @@
 package com.vju.club.integration;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -95,6 +96,14 @@ class ErrorHandlingApiTest extends ApiIntegrationTest {
     @Test
     void nonNumericPaginationIs400() throws Exception {
         problem(get("/api/v1/clubs").param("limit", "ten"), adminToken, null, 400, "VALIDATION_ERROR");
+    }
+
+    @Test
+    void generatedOpenApiHidesTheActorArgumentAndDeclaresBearerAuth() throws Exception {
+        JsonNode docs = call(get("/v3/api-docs"), null, null, 200);
+        assertThat(docs.toString()).doesNotContain("\"name\":\"actor\"");
+        assertThat(docs.at("/components/securitySchemes/bearerAuth/scheme").asText()).isEqualTo("bearer");
+        assertThat(docs.at("/paths/~1api~1v1~1roles/get/parameters").isMissingNode()).isTrue();
     }
 
     @Test

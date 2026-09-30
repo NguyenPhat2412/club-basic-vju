@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -63,6 +64,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         }
         log.warn("Unmapped data integrity violation: {}", message);
         return problem(HttpStatus.CONFLICT, "DATA_CONFLICT", "Request conflicts with existing data");
+    }
+
+    @ExceptionHandler(AuthenticationCredentialsNotFoundException.class)
+    ResponseEntity<ProblemDetail> handleMissingAuthentication(AuthenticationCredentialsNotFoundException exception) {
+        return problem(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Authentication is required");
     }
 
     @ExceptionHandler(AuthenticationException.class)

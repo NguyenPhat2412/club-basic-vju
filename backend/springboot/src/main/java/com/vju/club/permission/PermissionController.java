@@ -1,5 +1,6 @@
 package com.vju.club.permission;
 
+import com.vju.club.security.Actor;
 import com.vju.club.permission.dto.EffectivePermissionResponse;
 import com.vju.club.permission.dto.GrantPermissionRequest;
 import com.vju.club.permission.dto.PermissionResponse;
@@ -7,7 +8,6 @@ import com.vju.club.permission.dto.UserPermissionResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.UUID;
 import com.vju.club.entity.PermissionScope;
-import com.vju.club.security.SecurityIdentity;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -33,48 +32,48 @@ public class PermissionController {
     }
 
     @GetMapping("/permissions")
-    public List<PermissionResponse> list(Authentication authentication) {
-        return permissionService.list(authentication);
+    public List<PermissionResponse> list(Actor actor) {
+        return permissionService.list(actor);
     }
 
     @PostMapping("/users/{userId}/permissions")
     public ResponseEntity<UserPermissionResponse> grant(
-            Authentication authentication,
+            Actor actor,
             @PathVariable UUID userId,
             @Valid @RequestBody GrantPermissionRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(permissionService.grant(authentication, userId, request));
+                .body(permissionService.grant(actor, userId, request));
     }
 
     @GetMapping("/users/{userId}/permissions")
-    public List<UserPermissionResponse> listUserPermissions(Authentication authentication, @PathVariable UUID userId) {
-        return permissionService.listUserPermissions(authentication, userId);
+    public List<UserPermissionResponse> listUserPermissions(Actor actor, @PathVariable UUID userId) {
+        return permissionService.listUserPermissions(actor, userId);
     }
 
     @GetMapping("/users/me/permissions")
-    public List<UserPermissionResponse> listOwnPermissions(Authentication authentication) {
-        return permissionService.listUserPermissions(authentication, SecurityIdentity.userId(authentication));
+    public List<UserPermissionResponse> listOwnPermissions(Actor actor) {
+        return permissionService.listUserPermissions(actor, actor.id());
     }
 
     @GetMapping("/users/me/effective-permissions")
-    public List<EffectivePermissionResponse> listOwnEffective(Authentication authentication) {
-        return permissionService.listEffective(authentication, SecurityIdentity.userId(authentication));
+    public List<EffectivePermissionResponse> listOwnEffective(Actor actor) {
+        return permissionService.listEffective(actor, actor.id());
     }
 
     @GetMapping("/users/{userId}/effective-permissions")
-    public List<EffectivePermissionResponse> listEffective(Authentication authentication, @PathVariable UUID userId) {
-        return permissionService.listEffective(authentication, userId);
+    public List<EffectivePermissionResponse> listEffective(Actor actor, @PathVariable UUID userId) {
+        return permissionService.listEffective(actor, userId);
     }
 
     @DeleteMapping("/users/{userId}/permissions/{permissionId}")
     public ResponseEntity<Void> revoke(
-            Authentication authentication,
+            Actor actor,
             @PathVariable UUID userId,
             @PathVariable UUID permissionId,
             @RequestParam(required = false) PermissionScope scope,
             @RequestParam(required = false) UUID clubId,
             @RequestParam(required = false) UUID departmentId) {
-        permissionService.revoke(authentication, userId, permissionId, scope, clubId, departmentId);
+        permissionService.revoke(actor, userId, permissionId, scope, clubId, departmentId);
         return ResponseEntity.noContent().build();
     }
 }

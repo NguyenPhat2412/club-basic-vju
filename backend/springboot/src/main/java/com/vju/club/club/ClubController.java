@@ -1,5 +1,6 @@
 package com.vju.club.club;
 
+import com.vju.club.security.Actor;
 import com.vju.club.club.dto.ClubRequest;
 import com.vju.club.club.dto.ClubPatchRequest;
 import com.vju.club.club.dto.ClubResponse;
@@ -10,7 +11,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,32 +32,32 @@ public class ClubController {
     public ClubController(ClubService clubService) { this.clubService = clubService; }
 
     @GetMapping
-    public PageResponse<ClubResponse> list(Authentication authentication,
+    public PageResponse<ClubResponse> list(Actor actor,
                                    @RequestParam(defaultValue = "") String query,
                                    @RequestParam(defaultValue = "0") @Min(0) int offset,
                                    @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
-        return clubService.list(authentication, query, offset, limit);
+        return clubService.list(actor, query, offset, limit);
     }
 
     @GetMapping("/{clubId}")
-    public ClubResponse get(Authentication authentication, @PathVariable UUID clubId) {
-        return clubService.get(authentication, clubId);
+    public ClubResponse get(Actor actor, @PathVariable UUID clubId) {
+        return clubService.get(actor, clubId);
     }
 
     @PostMapping
-    public ResponseEntity<ClubResponse> create(Authentication authentication, @Valid @RequestBody ClubRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(clubService.create(authentication, request));
+    public ResponseEntity<ClubResponse> create(Actor actor, @Valid @RequestBody ClubRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(clubService.create(actor, request));
     }
 
     @PatchMapping("/{clubId}")
-    public ClubResponse update(Authentication authentication, @PathVariable UUID clubId,
+    public ClubResponse update(Actor actor, @PathVariable UUID clubId,
                                @Valid @RequestBody ClubPatchRequest request) {
-        return clubService.update(authentication, clubId, request);
+        return clubService.update(actor, clubId, request);
     }
 
     @PatchMapping("/{clubId}/status")
-    public ClubResponse updateStatus(Authentication authentication, @PathVariable UUID clubId,
+    public ClubResponse updateStatus(Actor actor, @PathVariable UUID clubId,
                                      @Valid @RequestBody ClubStatusRequest request) {
-        return clubService.updateStatus(authentication, clubId, request);
+        return clubService.updateStatus(actor, clubId, request);
     }
 }

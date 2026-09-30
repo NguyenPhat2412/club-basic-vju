@@ -2,7 +2,7 @@
 
 Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt Nhật (VJU): quản lý tài khoản, câu lạc bộ, ban, thành viên và phân quyền chi tiết theo phạm vi.
 
-> **Trạng thái:** Backend giai đoạn 1 đã hoàn thành. Toàn bộ 46 route đều `IMPLEMENTED` và có 237 test tự động. Frontend (Next.js) mới dừng ở bộ khung khởi tạo.
+> **Trạng thái:** Backend giai đoạn 1 đã hoàn thành. Toàn bộ 46 route đều `IMPLEMENTED` và có 239 test tự động. Frontend (Next.js) mới dừng ở bộ khung khởi tạo.
 
 ## Mục lục
 
@@ -61,7 +61,8 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 │   │   ├── security/            # Kiểm tra quyền, rate limit, filter trạng thái tài khoản
 │   │   ├── config/              # Cấu hình security, JWT, CORS
 │   │   ├── error/               # Xử lý lỗi chung (ProblemDetail)
-│   │   ├── entity/, repository/, dao/, common/
+│   │   ├── entity/, repository/ # Domain model và truy vấn dùng chung cho mọi module
+│   │   ├── common/              # Phân trang (PageResponse, OffsetLimitRequest)
 │   │   ├── bootstrap/           # Tạo admin ban đầu (chỉ profile local)
 │   │   └── rest/                # API catalog, phục vụ file OpenAPI
 │   ├── src/main/resources/
@@ -80,7 +81,11 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 └── .github/workflows/backend.yml
 ```
 
-Mỗi module nghiệp vụ theo cùng một khuôn: `Controller` → `Service` (interface + `ServiceImpl`) → `Repository`/`Dao` → `Entity`. Việc kiểm tra quyền nằm trong tầng service và dùng chung `PermissionAuthorizationService`.
+Mỗi module nghiệp vụ theo cùng một khuôn: `Controller` → `Service` → `Repository` (Spring Data) → `Entity`. Controller và service chia theo tính năng (`club/`, `role/`, …) kèm DTO của tính năng đó. Entity và repository nằm chung ở `entity/`, `repository/` vì nhiều tính năng cùng dùng một bảng (ví dụ quyền, thành viên).
+
+- **Service không phụ thuộc Spring Security:** controller nhận tham số `Actor` (người đang gọi, lấy từ JWT qua `ActorArgumentResolver`) và truyền xuống service. Nhờ vậy service unit test được bằng một `Actor` giả, không cần dựng security context.
+- **Kiểm tra quyền** nằm trong service và dùng chung `PermissionAuthorizationService`, vốn đọc view `effective_user_permissions` (gộp quyền trực tiếp và quyền từ vai trò).
+- **Truy vấn** đều nằm trong repository: JPQL cho truy vấn thường, SQL gốc khi cần view của PostgreSQL. Phân trang dùng `OffsetLimitRequest`.
 
 ## Bắt đầu nhanh
 
@@ -291,7 +296,7 @@ Khi chạy, Hibernate chỉ `validate` schema chứ không tự sửa. Mọi tha
 # PostgreSQL riêng cho test (cổng 55432, dữ liệu nằm trên RAM)
 docker compose -f docker-compose.test.yml up -d
 
-# 237 test backend: unit + integration
+# 239 test backend: unit + integration
 cd backend/springboot && ./mvnw test
 
 # Kiểm tra OpenAPI contract (từ thư mục gốc)
@@ -329,7 +334,7 @@ GitHub Actions ([.github/workflows/backend.yml](.github/workflows/backend.yml)) 
 
 - **Đổi API:** sửa [docs/api/openapi.yaml](docs/api/openapi.yaml) và [docs/api/catalog.yml](docs/api/catalog.yml) trước, rồi copy sang `backend/springboot/src/main/resources/api/` (`phase1-openapi.yaml`, `catalog.yml`). Cả test Java lẫn test Python đều báo lỗi nếu hai bản lệch nhau.
 - **Đổi schema:** thêm migration Flyway mới, không sửa migration đã chạy.
-- **Thêm endpoint có kiểm tra quyền:** gọi `PermissionAuthorizationService.require(...)` trong service, truyền cả `clubId` lẫn `departmentId` khi có để cơ chế kế thừa phạm vi hoạt động. Với ID không tồn tại, dùng `missingResource(...)`.
+- **Thêm endpoint có kiểm tra quyền:** khai báo tham số `Actor actor` trong controller, rồi trong service gọi `PermissionAuthorizationService.require(actor, ...)`. Truyền cả `clubId` lẫn `departmentId` khi có để cơ chế kế thừa phạm vi hoạt động. Với ID không tồn tại, dùng `missingResource(...)`.
 - **Trước khi push:** chạy `./mvnw test` và bộ test contract.
 
 ## Tài liệu liên quan

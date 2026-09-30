@@ -2,10 +2,12 @@ package com.vju.club.repository;
 
 import com.vju.club.entity.User;
 import com.vju.club.entity.UserStatus;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,6 +18,16 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Query("SELECT count(u) > 0 FROM User u WHERE lower(u.email) = lower(:email)")
     boolean existsByEmailIgnoreCase(@Param("email") String email);
+
+    String SEARCH = "FROM User u WHERE lower(u.email) LIKE :pattern OR lower(u.fullName) LIKE :pattern "
+            + "OR lower(coalesce(u.studentCode, '')) LIKE :pattern";
+
+    /** {@code pattern} is a lower-case LIKE pattern; ordering comes from the pageable's sort. */
+    @Query("SELECT u " + SEARCH)
+    List<User> search(@Param("pattern") String pattern, Pageable pageable);
+
+    @Query("SELECT count(u) " + SEARCH)
+    long countSearch(@Param("pattern") String pattern);
 
     @Query("SELECT count(u) > 0 FROM User u WHERE lower(u.studentCode) = lower(:studentCode)")
     boolean existsByStudentCodeIgnoreCase(@Param("studentCode") String studentCode);
