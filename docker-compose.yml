@@ -1,22 +1,20 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: vju-club-postgres
-    restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-vju_club}
-      POSTGRES_USER: ${POSTGRES_USER:-vju}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vju_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-club}
+      POSTGRES_USER: ${POSTGRES_USER:-club}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-club_local}
     ports:
-      - "55432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./inf/postgres/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+      - club_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vju} -d ${POSTGRES_DB:-vju_club}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 5s
 
 volumes:
-  postgres_data:
+  club_postgres_data:

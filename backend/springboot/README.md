@@ -1,47 +1,41 @@
-﻿# VJU Clubs backend
+# Club backend
 
-Backend Sprint 1 cung cấp vertical slice cho authentication, profile, permission, club và membership.
+Spring Boot service for the VJU club management system.
 
-## PostgreSQL bằng Docker
+## Local development
 
-Từ thư mục gốc repository:
+Start PostgreSQL from the repository root:
 
-```powershell
+```bash
 docker compose up -d postgres
-docker compose ps
 ```
 
-PostgreSQL chạy tại `localhost:55432` (cổng PostgreSQL trong container vẫn là `5432`) với database `vju_club`, user `vju`, password mặc định `vju_dev_password`. Có thể thay đổi bằng các biến `POSTGRES_DB`, `POSTGRES_USER` và `POSTGRES_PASSWORD`.
+Run the backend with the `local` profile (it supplies a development JWT secret and can bootstrap an admin via `BOOTSTRAP_ADMIN_EMAIL`/`BOOTSTRAP_ADMIN_PASSWORD`):
 
-## Yêu cầu môi trường
-
-- Java 17+
-- Maven 3.9+
-
-## Chạy ứng dụng
-
-```powershell
-mvn spring-boot:run
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-API mặc định chạy tại `http://localhost:8080`.
+Any other profile requires `JWT_SECRET` (at least 32 bytes); startup fails without it. Behind a reverse proxy, `server.forward-headers-strategy=native` makes the rate limiter see the real client IP (only private/loopback proxies are trusted).
 
-Tài khoản quản lý demo:
+The service applies Flyway migrations from `src/main/resources/db/migration` on startup. See the repository [database guide](../../docs/database/README.md) and [API catalog](../../docs/api/README.md) for the current inventory.
 
-- Email: `manager@vju.ac.vn`
-- Mật khẩu: `Vju@123456`
+Run tests with (Docker must be running; integration tests start a PostgreSQL container with Testcontainers):
 
-Tài khoản demo có quyền global để tạo CLB, thêm thành viên và cấp/thu hồi permission. Database container đã được cấu hình; dữ liệu nghiệp vụ hiện vẫn lưu trong memory cho đến khi hoàn tất migration repository sang PostgreSQL.
+```bash
+./mvnw test
+```
 
-## API chính
+To use an existing database instead, set `TEST_DB_URL` (and `TEST_DB_USERNAME`/`TEST_DB_PASSWORD`), for example against `docker compose -f ../../docker-compose.test.yml up -d` on port 55432.
 
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `GET/PATCH /api/auth/me`
-- `GET/POST /api/clubs`
-- `GET/PATCH /api/clubs/{clubId}`
-- `GET/POST /api/clubs/{clubId}/members`
-- `GET /api/permissions/catalog`
-- `GET/POST/DELETE /api/permissions/users/{userId}`
+Integration tests live in `src/test/java/com/vju/club/integration` and extend `ApiIntegrationTest`, which gives each run an isolated PostgreSQL schema plus an `admin` (all permissions) and a `member` (none).
 
-Các API bảo vệ yêu cầu `Authorization: Bearer <accessToken>`. Permission được kiểm tra ở backend theo `GLOBAL`, `CLUB` hoặc `DEPARTMENT`.
+## Error model
+
+Every error is `application/problem+json` with a stable `code`. Framework errors keep their real status (`NOT_FOUND`, `METHOD_NOT_ALLOWED`, `UNSUPPORTED_MEDIA_TYPE`, `VALIDATION_ERROR`); unique-constraint races become `409` with the same code as the service-level check (for example `EMAIL_ALREADY_EXISTS`, `STUDENT_CODE_ALREADY_EXISTS`, `CLUB_CODE_ALREADY_EXISTS`). Callers without a global grant get `403` for ids that do not exist, so ids cannot be probed.
+
+## Current implementation status
+
+The REST controllers and services under `src/main/java/com/vju/club` implement all 36 phase-1 routes. The public catalog is available at `GET /api/v1/api-catalog`, and the packaged OpenAPI YAML is available at `GET /api-docs/phase1.yaml`.
+
+The database is PostgreSQL. Flyway records migration state in `flyway_schema_history` and creates the eight phase-1 tables documented in `../../docs/database/README.md`.

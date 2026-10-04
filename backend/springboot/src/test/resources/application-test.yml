@@ -1,0 +1,14 @@
+# The datasource is provided by com.vju.club.integration.TestDatabase: a Testcontainers PostgreSQL
+# by default, or the database named by TEST_DB_URL / TEST_DB_USERNAME / TEST_DB_PASSWORD.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+app:
+  security:
+    jwt:
+      secret: integration-test-only-secret-0123456789-abcdef
+  # Integration tests log in far more often than a real client; a dedicated test covers the limiter.
+  rate-limit:
+    max-requests: 100000
