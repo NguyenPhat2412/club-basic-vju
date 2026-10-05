@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AuthUser, Grant, MyMembership, currentUser, myMemberships, myPermissions, logout } from "../lib/api";
+import { AuthUser, Grant, MyMembership, currentUser, isAuthenticationError, myMemberships, myPermissions, logout } from "../lib/api";
 import styles from "./page.module.css";
 
 function initials(value: string) { return value.split(" ").filter(Boolean).slice(-2).map((part) => part[0]).join("").toUpperCase(); }
@@ -21,12 +21,19 @@ export default function Home() {
   useEffect(() => {
     const stored = localStorage.getItem("vju_access_token");
     if (!stored) { router.replace("/login"); return; }
-    Promise.all([currentUser(stored), myPermissions(stored), myMemberships(stored)]).then(([me, ownGrants, ownMemberships]) => {
-      setUser(me); setGrants(ownGrants); setMyClubList(ownMemberships); setLoading(false);
-    }).catch(() => { setError("Không thể tải dữ liệu workspace"); localStorage.removeItem("vju_access_token"); router.replace("/login"); });
+    currentUser(stored).then(async (me) => {
+      setUser(me);
+      const [grantResult, membershipResult] = await Promise.allSettled([myPermissions(stored), myMemberships(stored)]);
+      if (grantResult.status === "fulfilled") setGrants(grantResult.value);
+      if (membershipResult.status === "fulfilled") setMyClubList(membershipResult.value);
+      const failures = [grantResult, membershipResult].filter((result): result is PromiseRejectedResult => result.status === "rejected");
+      if (failures.some((failure) => isAuthenticationError(failure.reason))) { localStorage.removeItem("vju_access_token"); localStorage.removeItem("vju_user"); router.replace("/login"); return; }
+      if (failures.length > 0) setError(failures.map((failure) => failure.reason instanceof Error ? failure.reason.message : "Không thể tải dữ liệu workspace").join(". "));
+      setLoading(false);
+    }).catch((requestError) => { if (isAuthenticationError(requestError)) { localStorage.removeItem("vju_access_token"); localStorage.removeItem("vju_user"); router.replace("/login"); } else { setError(requestError instanceof Error ? requestError.message : "Không thể tải dữ liệu workspace"); setLoading(false); } });
   }, [router]);
 
-  async function signOut() { await logout(token); localStorage.removeItem("vju_access_token"); localStorage.removeItem("vju_user"); router.replace("/login"); }
+  async function signOut() { try { await logout(token); } finally { localStorage.removeItem("vju_access_token"); localStorage.removeItem("vju_user"); router.replace("/login"); } }
 
   if (loading || !user) return <main className={styles.loading}>Đang tải không gian VJU Clubs...</main>;
   const canViewDepartments = can("department.view");

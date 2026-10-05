@@ -26,12 +26,16 @@ mvn spring-boot:run
 
 API mặc định chạy tại `http://localhost:8080`.
 
-Tài khoản quản lý demo:
+Tài khoản quản lý demo chỉ được tạo khi bật rõ ràng trong môi trường local dùng thử:
 
-- Email: `manager@vju.ac.vn`
-- Mật khẩu: `Vju@123456`
+```bash
+VJU_DEMO_SEED_ENABLED=true \
+VJU_DEMO_MANAGER_EMAIL=manager@example.test \
+VJU_DEMO_MANAGER_PASSWORD='change-me-locally' \
+mvn spring-boot:run
+```
 
-Tài khoản demo có quyền global để tạo CLB, thêm thành viên và cấp/thu hồi permission. Database container đã được cấu hình; dữ liệu nghiệp vụ hiện vẫn lưu trong memory cho đến khi hoàn tất migration repository sang PostgreSQL.
+Không dùng tài khoản demo hoặc mật khẩu mặc định trong môi trường chia sẻ. Database container đã được cấu hình; dữ liệu nghiệp vụ hiện vẫn lưu trong memory cho đến khi hoàn tất migration repository sang PostgreSQL.
 
 ## API chính
 

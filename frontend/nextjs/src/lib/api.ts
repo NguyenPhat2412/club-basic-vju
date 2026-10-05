@@ -1,9 +1,15 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number) { super(message); this.name = "ApiError"; }
+}
+export function isAuthenticationError(error: unknown) { return error instanceof ApiError && error.status === 401; }
+
 export type AuthUser = {
   userId: string;
   email: string;
   fullName: string;
+  phone: string;
   status: "ACTIVE" | "INACTIVE";
 };
 
@@ -15,13 +21,13 @@ export async function login(email: string, password: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
-  if (!response.ok) throw new Error(await errorMessage(response, "Email hoặc mật khẩu không chính xác"));
+  if (!response.ok) throw new ApiError(await errorMessage(response, "Email hoặc mật khẩu không chính xác"), response.status);
   return response.json() as Promise<{ accessToken: string; user: AuthUser }>;
 }
 
 export async function register(input: { email: string; password: string; fullName: string; studentCode?: string; phone?: string }) {
   const response = await fetch(`${API_URL}/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
-  if (!response.ok) throw new Error(await errorMessage(response, "Không thể tạo tài khoản"));
+  if (!response.ok) throw new ApiError(await errorMessage(response, "Không thể tạo tài khoản"), response.status);
   return response.json() as Promise<{ accessToken: string; user: AuthUser }>;
 }
 
@@ -32,7 +38,7 @@ async function errorMessage(response: Response, fallback: string) {
 
 export async function currentUser(token: string) {
   const response = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
-  if (!response.ok) throw new Error("Phiên đăng nhập đã hết hạn");
+  if (!response.ok) throw new ApiError("Phiên đăng nhập đã hết hạn", response.status);
   return response.json() as Promise<AuthUser>;
 }
 
@@ -42,13 +48,13 @@ export async function logout(token: string) {
 
 export async function myPermissions(token: string) {
   const response = await fetch(`${API_URL}/permissions/me`, { headers: { Authorization: `Bearer ${token}` } });
-  if (!response.ok) throw new Error("Không thể tải quyền truy cập");
+  if (!response.ok) throw new ApiError("Không thể tải quyền truy cập", response.status);
   return response.json() as Promise<Grant[]>;
 }
 
 async function authorized<T>(token: string, path: string, init: RequestInit = {}) {
   const response = await fetch(`${API_URL}${path}`, { ...init, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...init.headers } });
-  if (!response.ok) throw new Error(await errorMessage(response, "Thao tác không thành công"));
+  if (!response.ok) throw new ApiError(await errorMessage(response, "Thao tác không thành công"), response.status);
   return response.json() as Promise<T>;
 }
 
@@ -62,7 +68,7 @@ export type MyMembership = { membershipId: string; club: Club; status: string; d
 export function updateProfile(token: string, fullName: string, phone: string) { return authorized<AuthUser>(token, "/auth/me", { method: "PATCH", body: JSON.stringify({ fullName, phone }) }); }
 export function clubs(token: string) { return authorized<Club[]>(token, "/clubs"); }
 export function createClub(token: string, input: { code: string; name: string; description?: string; field?: string; contactEmail?: string }) { return authorized<Club>(token, "/clubs", { method: "POST", body: JSON.stringify(input) }); }
-export function updateClub(token: string, clubId: string, input: { name: string; description?: string; field?: string; contactEmail?: string }) { return authorized<Club>(token, `/clubs/${clubId}`, { method: "PATCH", body: JSON.stringify(input) }); }
+export function updateClub(token: string, clubId: string, input: { name?: string; description?: string; field?: string; contactEmail?: string }) { return authorized<Club>(token, `/clubs/${clubId}`, { method: "PATCH", body: JSON.stringify(input) }); }
 export function users(token: string) { return authorized<UserSummary[]>(token, "/users"); }
 export function myMemberships(token: string) { return authorized<MyMembership[]>(token, "/memberships/me"); }
 export function departments(token: string, clubId: string) { return authorized<Department[]>(token, `/clubs/${clubId}/departments`); }

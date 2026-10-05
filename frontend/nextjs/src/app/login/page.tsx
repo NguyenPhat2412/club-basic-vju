@@ -52,7 +52,6 @@ export default function LoginPage() {
             <button className={styles.submitButton} type="submit" disabled={loading}>{loading ? "Đang xác thực..." : "Đăng nhập"}<span className={styles.submitArrow}>→</span></button>
           </form>
           <p className={styles.register}>Chưa có tài khoản? <a href="/register">Đăng ký ngay</a></p>
-          <p className={styles.demo}>Tài khoản demo: <strong>manager@vju.ac.vn</strong> / <strong>Vju@123456</strong></p>
         </div>
       </section>
     </main>
