@@ -1,10 +1,12 @@
 package com.vju.club.user.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.vju.club.entity.User;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+@JsonInclude(JsonInclude.Include.ALWAYS)
 public record UserResponse(
         UUID id,
         String email,
