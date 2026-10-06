@@ -27,9 +27,12 @@ import com.vju.club.modules.user.repository.UserRepository;
 import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
 import com.vju.club.modules.notification.service.NotificationService;
+import com.vju.club.modules.clubapplication.specification.ClubApplicationSpecifications;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -120,10 +123,13 @@ public class IClubApplicationService implements ClubApplicationService {
     public PageResponse<ClubApplicationSummaryResponse> listMine(
             Actor actor, ClubApplicationStatus status, UUID clubId, String sort, int offset, int limit) {
         OffsetLimitRequest page = new OffsetLimitRequest(offset, limit, applicationSort(sort));
-        List<ClubApplicationSummaryResponse> items = applicationRepository
-                .findPageByApplicant(actor.id(), status, clubId, page).stream()
+        Specification<ClubApplication> spec = Specification.where(ClubApplicationSpecifications.forApplicant(actor.id()))
+                .and(ClubApplicationSpecifications.hasStatus(status))
+                .and(ClubApplicationSpecifications.forClub(clubId));
+        Page<ClubApplication> applicationPage = applicationRepository.findAll(spec, page);
+        List<ClubApplicationSummaryResponse> items = applicationPage.getContent().stream()
                 .map(ClubApplicationSummaryResponse::from).toList();
-        return new PageResponse<>(items, applicationRepository.countByApplicant(actor.id(), status, clubId), offset, limit);
+        return new PageResponse<>(items, applicationPage.getTotalElements(), offset, limit);
     }
 
     @Transactional(readOnly = true)
@@ -159,16 +165,15 @@ public class IClubApplicationService implements ClubApplicationService {
         if (!clubRepository.existsById(clubId)) {
             throw notFound("CLUB_NOT_FOUND", "Club not found");
         }
-        String normalizedSearch = search == null || search.isBlank()
-                ? null : "%" + search.trim().toLowerCase(java.util.Locale.ROOT) + "%";
         OffsetLimitRequest page = new OffsetLimitRequest(offset, limit, applicationSort(sort));
-        OffsetDateTime from = createdFrom == null ? MIN_CREATED_AT : createdFrom;
-        OffsetDateTime to = createdTo == null ? MAX_CREATED_AT : createdTo;
-        List<ClubApplicationResponse> items = applicationRepository.findPageByClub(
-                        clubId, status, normalizedSearch, from, to, page).stream()
+        Specification<ClubApplication> spec = Specification.where(ClubApplicationSpecifications.forClub(clubId))
+                .and(ClubApplicationSpecifications.hasStatus(status))
+                .and(ClubApplicationSpecifications.applicantKeyword(search))
+                .and(ClubApplicationSpecifications.createdBetween(createdFrom, createdTo));
+        Page<ClubApplication> applicationPage = applicationRepository.findAll(spec, page);
+        List<ClubApplicationResponse> items = applicationPage.getContent().stream()
                 .map(ClubApplicationResponse::from).toList();
-        long total = applicationRepository.countByClub(clubId, status, normalizedSearch, from, to);
-        return new PageResponse<>(items, total, offset, limit);
+        return new PageResponse<>(items, applicationPage.getTotalElements(), offset, limit);
     }
 
     @Transactional(readOnly = true)

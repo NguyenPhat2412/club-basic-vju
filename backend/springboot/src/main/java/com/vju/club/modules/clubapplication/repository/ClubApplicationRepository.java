@@ -3,19 +3,24 @@ package com.vju.club.modules.clubapplication.repository;
 import com.vju.club.modules.clubapplication.entity.ClubApplication;
 import com.vju.club.modules.clubapplication.entity.ClubApplicationStatus;
 import jakarta.persistence.LockModeType;
-import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
-import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface ClubApplicationRepository extends JpaRepository<ClubApplication, UUID> {
+public interface ClubApplicationRepository extends JpaRepository<ClubApplication, UUID>, JpaSpecificationExecutor<ClubApplication> {
+
+    @Override
+    @EntityGraph(attributePaths = {"applicant", "club", "reviewedBy"})
+    Page<ClubApplication> findAll(Specification<ClubApplication> spec, Pageable pageable);
 
     @EntityGraph(attributePaths = {"applicant", "club", "reviewedBy"})
     Optional<ClubApplication> findByIdAndApplicant_Id(UUID id, UUID applicantId);
@@ -31,49 +36,6 @@ public interface ClubApplicationRepository extends JpaRepository<ClubApplication
 
     Optional<ClubApplication> findByApplicant_IdAndClub_IdAndStatus(
             UUID applicantId, UUID clubId, ClubApplicationStatus status);
-
-    @Query("SELECT a FROM ClubApplication a JOIN FETCH a.club "
-            + "WHERE a.applicant.id = :applicantId "
-            + "AND (:status IS NULL OR a.status = :status) "
-            + "AND (:clubId IS NULL OR a.club.id = :clubId)")
-    List<ClubApplication> findPageByApplicant(@Param("applicantId") UUID applicantId,
-                                               @Param("status") ClubApplicationStatus status,
-                                               @Param("clubId") UUID clubId, Pageable pageable);
-
-    @Query("SELECT count(a) FROM ClubApplication a "
-            + "WHERE a.applicant.id = :applicantId "
-            + "AND (:status IS NULL OR a.status = :status) "
-            + "AND (:clubId IS NULL OR a.club.id = :clubId)")
-    long countByApplicant(@Param("applicantId") UUID applicantId,
-                          @Param("status") ClubApplicationStatus status,
-                          @Param("clubId") UUID clubId);
-
-    @Query("SELECT a FROM ClubApplication a JOIN FETCH a.applicant JOIN FETCH a.club LEFT JOIN FETCH a.reviewedBy "
-            + "WHERE a.club.id = :clubId "
-            + "AND (:status IS NULL OR a.status = :status) "
-            + "AND (:search IS NULL OR lower(a.applicant.email) LIKE :search OR lower(a.applicant.fullName) LIKE :search "
-            + "OR lower(coalesce(a.applicant.studentCode, '')) LIKE :search) "
-            + "AND a.createdAt >= :createdFrom "
-            + "AND a.createdAt < :createdTo")
-    List<ClubApplication> findPageByClub(@Param("clubId") UUID clubId,
-                                         @Param("status") ClubApplicationStatus status,
-                                         @Param("search") String search,
-                                         @Param("createdFrom") OffsetDateTime createdFrom,
-                                         @Param("createdTo") OffsetDateTime createdTo,
-                                         Pageable pageable);
-
-    @Query("SELECT count(a) FROM ClubApplication a "
-            + "WHERE a.club.id = :clubId "
-            + "AND (:status IS NULL OR a.status = :status) "
-            + "AND (:search IS NULL OR lower(a.applicant.email) LIKE :search OR lower(a.applicant.fullName) LIKE :search "
-            + "OR lower(coalesce(a.applicant.studentCode, '')) LIKE :search) "
-            + "AND a.createdAt >= :createdFrom "
-            + "AND a.createdAt < :createdTo")
-    long countByClub(@Param("clubId") UUID clubId,
-                     @Param("status") ClubApplicationStatus status,
-                     @Param("search") String search,
-                     @Param("createdFrom") OffsetDateTime createdFrom,
-                     @Param("createdTo") OffsetDateTime createdTo);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT a FROM ClubApplication a JOIN FETCH a.applicant JOIN FETCH a.club LEFT JOIN FETCH a.reviewedBy "
