@@ -44,6 +44,16 @@ public class PermissionAuthorizationService {
         return actor != null && userPermissionRepository.hasAnywhere(actor.id(), permissionKey);
     }
 
+    public java.util.Set<UUID> getPermittedClubIds(Actor actor, String permissionKey) {
+        if (actor == null) {
+            return java.util.Collections.emptySet();
+        }
+        return userPermissionRepository.findEffective(actor.id()).stream()
+                .filter(row -> permissionKey.equals(row.getPermissionKey()) && "CLUB".equals(row.getScope()) && row.getClubId() != null)
+                .map(UserPermissionRepository.EffectivePermissionRow::getClubId)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
     public void require(Actor actor, String permissionKey, UUID clubId, UUID departmentId) {
         if (!hasPermission(actor, permissionKey, clubId, departmentId)) {
             throw forbidden();

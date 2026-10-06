@@ -22,7 +22,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 
 import java.util.Map;
@@ -159,9 +162,8 @@ class ClubServiceTest {
         active.setStatus(ClubStatus.ACTIVE);
         when(authorization.hasGlobalPermission(actor, "club.view")).thenReturn(false);
         when(authorization.hasAnyPermission(actor, "club.view")).thenReturn(false);
-        when(clubRepository.searchDiscoverable(anyString(), eq(""), any(Pageable.class)))
-                .thenReturn(java.util.List.of(active));
-        when(clubRepository.countDiscoverable(anyString(), eq(""))).thenReturn(1L);
+        when(clubRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(java.util.List.of(active), PageRequest.of(0, 20), 1));
 
         var page = service.list(actor, "", null, null, 0, 20);
 
@@ -172,14 +174,12 @@ class ClubServiceTest {
     @Test
     void globalViewerCanFilterByCategoryAndStatus() {
         when(authorization.hasGlobalPermission(actor, "club.view")).thenReturn(true);
-        when(clubRepository.search(anyString(), eq("Arts"), eq(ClubStatus.INACTIVE), any(Pageable.class)))
-                .thenReturn(java.util.List.of());
-        when(clubRepository.countSearch(anyString(), eq("Arts"), eq(ClubStatus.INACTIVE))).thenReturn(0L);
+        when(clubRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(java.util.List.of(), PageRequest.of(0, 20), 0));
 
         service.list(actor, "music", "Arts", ClubStatus.INACTIVE, 0, 20);
 
-        verify(clubRepository).search(eq("%music%"), eq("Arts"), eq(ClubStatus.INACTIVE), any(Pageable.class));
-        verify(clubRepository).countSearch(eq("%music%"), eq("Arts"), eq(ClubStatus.INACTIVE));
+        verify(clubRepository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test

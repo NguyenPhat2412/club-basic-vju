@@ -20,6 +20,10 @@ import com.vju.club.security.PermissionAuthorizationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.vju.club.modules.club.specification.ClubSpecifications;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -49,25 +53,24 @@ public class IClubService implements ClubService {
     @Transactional(readOnly = true)
     public PageResponse<ClubResponse> list(Actor actor, String query, String category, ClubStatus status,
                                            int offset, int limit) {
-        String pattern = "%" + (query == null ? "" : query.trim().toLowerCase(Locale.ROOT)) + "%";
-        String normalizedCategory = category == null || category.isBlank() ? "" : category.trim();
-        OffsetLimitRequest page = new OffsetLimitRequest(offset, limit);
-        List<ClubResponse> clubs;
-        long total;
+        Specification<Club> spec = Specification.where(ClubSpecifications.hasKeyword(query))
+                .and(ClubSpecifications.hasCategory(category));
+
         if (authorizationService.hasGlobalPermission(actor, ClubConstants.PERMISSION_VIEW)) {
-            clubs = clubRepository.search(pattern, normalizedCategory, status, page).stream().map(ClubResponse::from).toList();
-            total = clubRepository.countSearch(pattern, normalizedCategory, status);
+            spec = spec.and(ClubSpecifications.hasStatus(status));
         } else if (authorizationService.hasAnyPermission(actor, ClubConstants.PERMISSION_VIEW)) {
-            String statusName = status == null ? "" : status.name();
-            clubs = clubRepository.searchVisibleTo(actor.id(), pattern, normalizedCategory, statusName, page)
-                    .stream().map(ClubResponse::from).toList();
-            total = clubRepository.countVisibleTo(actor.id(), pattern, normalizedCategory, statusName);
+            java.util.Set<UUID> permittedClubIds = authorizationService.getPermittedClubIds(actor, ClubConstants.PERMISSION_VIEW);
+            spec = spec.and(ClubSpecifications.hasStatus(status))
+                    .and(ClubSpecifications.idIn(permittedClubIds));
         } else {
-            clubs = clubRepository.searchDiscoverable(pattern, normalizedCategory, page)
-                    .stream().map(ClubResponse::from).toList();
-            total = clubRepository.countDiscoverable(pattern, normalizedCategory);
+            spec = spec.and(ClubSpecifications.isDiscoverable());
         }
-        return new PageResponse<>(clubs, total, offset, limit);
+
+        Sort sort = Sort.by(Sort.Order.asc("name"), Sort.Order.asc("id"));
+        OffsetLimitRequest page = new OffsetLimitRequest(offset, limit, sort);
+        Page<Club> clubPage = clubRepository.findAll(spec, page);
+        List<ClubResponse> clubs = clubPage.getContent().stream().map(ClubResponse::from).toList();
+        return new PageResponse<>(clubs, clubPage.getTotalElements(), offset, limit);
     }
 
     @Transactional(readOnly = true)
