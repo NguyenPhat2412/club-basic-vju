@@ -1,5 +1,6 @@
 package com.vju.club.entity;
 
+import com.vju.club.audit.AuditAction;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,18 @@ class EntityMappingTest {
             assertThat(entityType).hasAnnotation(Entity.class);
             assertThat(entityType.getAnnotation(Table.class).name()).isEqualTo(tableName);
         });
+    }
+
+    @Test
+    void phaseTwoApplicationMapsItsMigrationTableAndStatusValues() {
+        assertThat(ClubApplication.class).hasAnnotation(Entity.class);
+        assertThat(ClubApplication.class.getAnnotation(Table.class).name()).isEqualTo("club_applications");
+        assertThat(ClubApplicationStatus.values())
+                .extracting(Enum::name)
+                .containsExactly("PENDING", "APPROVED", "REJECTED", "CANCELLED");
+        assertThat(AuditAction.ResourceType.values())
+                .extracting(Enum::name)
+                .contains("APPLICATION");
     }
 
     @Test
