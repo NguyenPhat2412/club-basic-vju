@@ -4,3 +4,6 @@ __pycache__/
 
 # Local-only credentials (bootstrap admin)
 .env.local
+
+# Local worktrees
+.worktrees/
