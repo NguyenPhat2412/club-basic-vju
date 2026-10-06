@@ -25,22 +25,22 @@
 - Modify: `backend/springboot/src/test/java/com/vju/club/repository/ClubRepositoryQueryTest.java` -> Rename or replace with `ClubSpecificationsTest.java`
 - Modify: `backend/springboot/src/test/java/com/vju/club/club/ClubServiceTest.java`
 
-- [ ] **Step 1: Create `ClubSpecifications`**
+- [x] **Step 1: Create `ClubSpecifications`**
 Implement `ClubSpecifications` with methods: `hasKeyword(String search)`, `hasCategory(String category)`, `hasStatus(ClubStatus status)`, `isDiscoverable()`, `idIn(Collection<UUID> ids)`.
 
-- [ ] **Step 2: Update `ClubRepository`**
+- [x] **Step 2: Update `ClubRepository`**
 Add `JpaSpecificationExecutor<Club>` to `ClubRepository` interface. Remove `search`, `countSearch`, `searchDiscoverable`, `countDiscoverable`, `searchVisibleTo`, `countVisibleTo`, and `VISIBLE_TO_USER`.
 
-- [ ] **Step 3: Update `IClubService`**
+- [x] **Step 3: Update `IClubService`**
 In `IClubService.list(...)`, compose `Specification<Club>` using `ClubSpecifications`. For users with scoped `club.view` permissions, extract permitted club IDs via `userPermissionRepository.findEffective(actor.id())` and filter with `ClubSpecifications.idIn(...)`. Execute via `clubRepository.findAll(spec, page)`.
 
-- [ ] **Step 4: Update Tests**
+- [x] **Step 4: Update Tests**
 Replace `ClubRepositoryQueryTest` with `ClubSpecificationsTest`. Update `ClubServiceTest` to mock `clubRepository.findAll(any(Specification.class), any(Pageable.class))` returning `PageImpl`.
 
-- [ ] **Step 5: Verify Task 1**
+- [x] **Step 5: Verify Task 1**
 Run `./mvnw test -Dtest=Club*` and ensure all club-related tests pass.
 
-- [ ] **Step 6: Commit Task 1**
+- [x] **Step 6: Commit Task 1**
 Commit changes: `refactor(club): migrate query and filtering logic to ClubSpecifications`.
 
 ---
@@ -53,19 +53,19 @@ Commit changes: `refactor(club): migrate query and filtering logic to ClubSpecif
 - Modify: `backend/springboot/src/main/java/com/vju/club/modules/user/service/impl/IUserService.java`
 - Modify: `backend/springboot/src/test/java/com/vju/club/user/UserServiceTest.java` (if applicable)
 
-- [ ] **Step 1: Create `UserSpecifications`**
+- [x] **Step 1: Create `UserSpecifications`**
 Implement `hasKeyword(String query)` matching lower-case `email`, `fullName`, or `coalesce(studentCode, '')`.
 
-- [ ] **Step 2: Update `UserRepository`**
+- [x] **Step 2: Update `UserRepository`**
 Extend `JpaSpecificationExecutor<User>`. Remove `SEARCH`, `search(pattern, pageable)`, `countSearch(pattern)`.
 
-- [ ] **Step 3: Update `IUserService`**
+- [x] **Step 3: Update `IUserService`**
 In `IUserService.search(...)`, use `UserSpecifications.hasKeyword(query)` and call `userRepository.findAll(spec, page)`.
 
-- [ ] **Step 4: Verify Task 2**
+- [x] **Step 4: Verify Task 2**
 Run `./mvnw test -Dtest=User*` to verify user tests pass.
 
-- [ ] **Step 5: Commit Task 2**
+- [x] **Step 5: Commit Task 2**
 Commit changes: `refactor(user): migrate search query to UserSpecifications`.
 
 ---
@@ -78,19 +78,19 @@ Commit changes: `refactor(user): migrate search query to UserSpecifications`.
 - Modify: `backend/springboot/src/main/java/com/vju/club/modules/membership/service/impl/IMembershipService.java`
 - Modify: `backend/springboot/src/test/java/com/vju/club/membership/MembershipServiceTest.java`
 
-- [ ] **Step 1: Create `MembershipSpecifications`**
+- [x] **Step 1: Create `MembershipSpecifications`**
 Implement `hasClubId(UUID clubId)`, `hasStatus(MembershipStatus status)`, `inDepartment(UUID departmentId)`, `userKeyword(String search)`.
 
-- [ ] **Step 2: Update `MembershipRepository`**
+- [x] **Step 2: Update `MembershipRepository`**
 Extend `JpaSpecificationExecutor<Membership>`.
 
-- [ ] **Step 3: Update `IMembershipService`**
+- [x] **Step 3: Update `IMembershipService`**
 In `IMembershipService.list(...)`, compose specifications dynamically and call `membershipRepository.findAll(spec, pageable)`.
 
-- [ ] **Step 4: Verify Task 3**
+- [x] **Step 4: Verify Task 3**
 Run `./mvnw test -Dtest=Membership*` to verify membership tests pass.
 
-- [ ] **Step 5: Commit Task 3**
+- [x] **Step 5: Commit Task 3**
 Commit changes: `refactor(membership): migrate query logic to MembershipSpecifications`.
 
 ---
@@ -103,19 +103,19 @@ Commit changes: `refactor(membership): migrate query logic to MembershipSpecific
 - Modify: `backend/springboot/src/main/java/com/vju/club/modules/clubapplication/service/impl/IClubApplicationService.java`
 - Modify: `backend/springboot/src/test/java/com/vju/club/application/ClubApplicationServiceTest.java`
 
-- [ ] **Step 1: Create `ClubApplicationSpecifications`**
+- [x] **Step 1: Create `ClubApplicationSpecifications`**
 Implement `forApplicant(UUID applicantId)`, `forClub(UUID clubId)`, `hasStatus(ClubApplicationStatus status)`, `createdBetween(OffsetDateTime from, OffsetDateTime to)`, `applicantKeyword(String search)`.
 
-- [ ] **Step 2: Update `ClubApplicationRepository`**
+- [x] **Step 2: Update `ClubApplicationRepository`**
 Extend `JpaSpecificationExecutor<ClubApplication>`.
 
-- [ ] **Step 3: Update `IClubApplicationService`**
+- [x] **Step 3: Update `IClubApplicationService`**
 In `IClubApplicationService`, use `ClubApplicationSpecifications` in `listMine` and `listForClub`.
 
-- [ ] **Step 4: Verify Task 4**
+- [x] **Step 4: Verify Task 4**
 Run `./mvnw test -Dtest=ClubApplication*` to verify application tests pass.
 
-- [ ] **Step 5: Commit Task 4**
+- [x] **Step 5: Commit Task 4**
 Commit changes: `refactor(clubapplication): migrate query logic to ClubApplicationSpecifications`.
 
 ---
@@ -128,19 +128,19 @@ Commit changes: `refactor(clubapplication): migrate query logic to ClubApplicati
 - Modify: `backend/springboot/src/main/java/com/vju/club/modules/audit/service/AuditQueryService.java`
 - Modify: `backend/springboot/src/test/java/com/vju/club/integration/AuditLogApiTest.java`
 
-- [ ] **Step 1: Create `AuditLogSpecifications`**
+- [x] **Step 1: Create `AuditLogSpecifications`**
 Implement `hasResourceType(String resourceType)`, `hasResourceId(UUID resourceId)`, `hasActorUserId(UUID actorUserId)`, `hasClubId(UUID clubId)`, `hasAction(String action)`.
 
-- [ ] **Step 2: Update `AuditLogRepository`**
+- [x] **Step 2: Update `AuditLogRepository`**
 Extend `JpaSpecificationExecutor<AuditLog>`. Remove `FILTER`, `search`, `countSearch`.
 
-- [ ] **Step 3: Update `AuditQueryService`**
+- [x] **Step 3: Update `AuditQueryService`**
 Use `AuditLogSpecifications` in `search(...)` and call `auditLogRepository.findAll(spec, pageable)`.
 
-- [ ] **Step 4: Verify Task 5**
+- [x] **Step 4: Verify Task 5**
 Run `./mvnw test -Dtest=Audit*` to verify audit tests pass.
 
-- [ ] **Step 5: Commit Task 5**
+- [x] **Step 5: Commit Task 5**
 Commit changes: `refactor(audit): migrate query logic to AuditLogSpecifications`.
 
 ---
@@ -150,8 +150,8 @@ Commit changes: `refactor(audit): migrate query logic to AuditLogSpecifications`
 **Files:**
 - Run: `./mvnw clean test` across entire project
 
-- [ ] **Step 1: Run Full Clean Test Suite**
-Verify all 353+ tests pass without errors or failures.
+- [x] **Step 1: Run Full Clean Test Suite**
+Verify all 353+ tests pass without errors or failures (364 tests passed, 0 failures).
 
-- [ ] **Step 2: Audit and Final Review**
+- [x] **Step 2: Audit and Final Review**
 Confirm all 5 target goals are met with zero regressions.
