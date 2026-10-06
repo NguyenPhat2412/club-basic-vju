@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 
 import java.util.Map;
@@ -28,6 +29,7 @@ import static com.vju.club.support.ApiErrors.FORBIDDEN;
 import static com.vju.club.support.ApiErrors.assertApiError;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
@@ -148,8 +150,49 @@ class ClubServiceTest {
     }
 
     @Test
-    void getRequiresClubViewBeforeLookingTheClubUp() {
+    void activeUserWithoutClubViewCanDiscoverActiveClubs() {
+        Club active = club("ACTIVE");
+        active.setStatus(ClubStatus.ACTIVE);
+        when(authorization.hasGlobalPermission(actor, "club.view")).thenReturn(false);
+        when(authorization.hasAnyPermission(actor, "club.view")).thenReturn(false);
+        when(clubRepository.searchDiscoverable(anyString(), isNull(), any(Pageable.class)))
+                .thenReturn(java.util.List.of(active));
+        when(clubRepository.countDiscoverable(anyString(), isNull())).thenReturn(1L);
+
+        var page = service.list(actor, "", null, null, 0, 20);
+
+        assertThat(page.items()).extracting(response -> response.code()).containsExactly("ACTIVE");
+        verify(authorization, never()).require(actor, "club.view", null, null);
+    }
+
+    @Test
+    void globalViewerCanFilterByCategoryAndStatus() {
+        when(authorization.hasGlobalPermission(actor, "club.view")).thenReturn(true);
+        when(clubRepository.search(anyString(), eq("Arts"), eq(ClubStatus.INACTIVE), any(Pageable.class)))
+                .thenReturn(java.util.List.of());
+        when(clubRepository.countSearch(anyString(), eq("Arts"), eq(ClubStatus.INACTIVE))).thenReturn(0L);
+
+        service.list(actor, "music", "Arts", ClubStatus.INACTIVE, 0, 20);
+
+        verify(clubRepository).search(eq("%music%"), eq("Arts"), eq(ClubStatus.INACTIVE), any(Pageable.class));
+        verify(clubRepository).countSearch(eq("%music%"), eq("Arts"), eq(ClubStatus.INACTIVE));
+    }
+
+    @Test
+    void activeUserWithoutClubViewCanGetAnActiveClub() {
         UUID id = UUID.randomUUID();
+        Club active = club("ACTIVE");
+        when(authorization.hasAnyPermission(actor, "club.view")).thenReturn(false);
+        when(clubRepository.findByIdAndStatus(id, ClubStatus.ACTIVE)).thenReturn(Optional.of(active));
+
+        assertThat(service.get(actor, id).id()).isEqualTo(active.getId());
+        verify(authorization, never()).require(actor, "club.view", id, null);
+    }
+
+    @Test
+    void permissionedGetStillRequiresClubViewBeforeLookingTheClubUp() {
+        UUID id = UUID.randomUUID();
+        when(authorization.hasAnyPermission(actor, "club.view")).thenReturn(true);
         doThrow(FORBIDDEN).when(authorization).require(actor, "club.view", id, null);
         assertApiError(() -> service.get(actor, id), HttpStatus.FORBIDDEN, "PERMISSION_DENIED");
         verify(clubRepository, never()).findById(any());

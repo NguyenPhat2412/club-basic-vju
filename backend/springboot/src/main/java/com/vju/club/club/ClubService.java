@@ -40,28 +40,41 @@ public class ClubService {
 
     @Transactional(readOnly = true)
     public PageResponse<ClubResponse> list(Actor actor, String query, int offset, int limit) {
+        return list(actor, query, null, null, offset, limit);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<ClubResponse> list(Actor actor, String query, String category, ClubStatus status,
+                                           int offset, int limit) {
         String pattern = "%" + (query == null ? "" : query.trim().toLowerCase(Locale.ROOT)) + "%";
+        String normalizedCategory = category == null || category.isBlank() ? null : category.trim();
         OffsetLimitRequest page = new OffsetLimitRequest(offset, limit);
         List<ClubResponse> clubs;
         long total;
         if (authorizationService.hasGlobalPermission(actor, "club.view")) {
-            clubs = clubRepository.search(pattern, page).stream().map(ClubResponse::from).toList();
-            total = clubRepository.countSearch(pattern);
+            clubs = clubRepository.search(pattern, normalizedCategory, status, page).stream().map(ClubResponse::from).toList();
+            total = clubRepository.countSearch(pattern, normalizedCategory, status);
+        } else if (authorizationService.hasAnyPermission(actor, "club.view")) {
+            String statusName = status == null ? null : status.name();
+            clubs = clubRepository.searchVisibleTo(actor.id(), pattern, normalizedCategory, statusName, page)
+                    .stream().map(ClubResponse::from).toList();
+            total = clubRepository.countVisibleTo(actor.id(), pattern, normalizedCategory, statusName);
         } else {
-            if (!authorizationService.hasAnyPermission(actor, "club.view")) {
-                authorizationService.require(actor, "club.view", null, null);
-            }
-            UUID userId = actor.id();
-            clubs = clubRepository.searchVisibleTo(userId, pattern, page).stream().map(ClubResponse::from).toList();
-            total = clubRepository.countVisibleTo(userId, pattern);
+            clubs = clubRepository.searchDiscoverable(pattern, normalizedCategory, page)
+                    .stream().map(ClubResponse::from).toList();
+            total = clubRepository.countDiscoverable(pattern, normalizedCategory);
         }
         return new PageResponse<>(clubs, total, offset, limit);
     }
 
     @Transactional(readOnly = true)
     public ClubResponse get(Actor actor, UUID clubId) {
-        authorizationService.require(actor, "club.view", clubId, null);
-        return ClubResponse.from(findClub(clubId));
+        if (authorizationService.hasAnyPermission(actor, "club.view")) {
+            authorizationService.require(actor, "club.view", clubId, null);
+            return ClubResponse.from(findClub(clubId));
+        }
+        return ClubResponse.from(clubRepository.findByIdAndStatus(clubId, ClubStatus.ACTIVE)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND", "Club not found")));
     }
 
     @Transactional

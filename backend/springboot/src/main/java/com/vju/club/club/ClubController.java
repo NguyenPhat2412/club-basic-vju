@@ -6,6 +6,7 @@ import com.vju.club.club.dto.ClubPatchRequest;
 import com.vju.club.club.dto.ClubResponse;
 import com.vju.club.club.dto.ClubStatusRequest;
 import com.vju.club.common.dto.PageResponse;
+import com.vju.club.entity.ClubStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -34,9 +35,11 @@ public class ClubController {
     @GetMapping
     public PageResponse<ClubResponse> list(Actor actor,
                                    @RequestParam(defaultValue = "") String query,
+                                   @RequestParam(required = false) String category,
+                                   @RequestParam(required = false) ClubStatus status,
                                    @RequestParam(defaultValue = "0") @Min(0) int offset,
                                    @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
-        return clubService.list(actor, query, offset, limit);
+        return clubService.list(actor, query, category, status, offset, limit);
     }
 
     @GetMapping("/{clubId}")
