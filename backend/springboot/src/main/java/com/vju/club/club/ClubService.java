@@ -47,7 +47,7 @@ public class ClubService {
     public PageResponse<ClubResponse> list(Actor actor, String query, String category, ClubStatus status,
                                            int offset, int limit) {
         String pattern = "%" + (query == null ? "" : query.trim().toLowerCase(Locale.ROOT)) + "%";
-        String normalizedCategory = category == null || category.isBlank() ? null : category.trim();
+        String normalizedCategory = category == null || category.isBlank() ? "" : category.trim();
         OffsetLimitRequest page = new OffsetLimitRequest(offset, limit);
         List<ClubResponse> clubs;
         long total;
@@ -55,7 +55,7 @@ public class ClubService {
             clubs = clubRepository.search(pattern, normalizedCategory, status, page).stream().map(ClubResponse::from).toList();
             total = clubRepository.countSearch(pattern, normalizedCategory, status);
         } else if (authorizationService.hasAnyPermission(actor, "club.view")) {
-            String statusName = status == null ? null : status.name();
+            String statusName = status == null ? "" : status.name();
             clubs = clubRepository.searchVisibleTo(actor.id(), pattern, normalizedCategory, statusName, page)
                     .stream().map(ClubResponse::from).toList();
             total = clubRepository.countVisibleTo(actor.id(), pattern, normalizedCategory, statusName);

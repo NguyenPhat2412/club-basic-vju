@@ -15,6 +15,28 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 class MembershipApiTest extends ApiIntegrationTest {
 
+    @Test
+    void personalHistoryIncludesOnlyOwnMembershipsAndTheirDepartments() throws Exception {
+        UUID own = membership(member, clubA);
+        assign(depA1, own);
+        assign(depA2, own);
+        UUID other = membership(user("history-other@test.local"), clubB);
+        assign(depB1, other);
+
+        JsonNode history = call(get("/api/v1/users/me/memberships"), memberToken, null, 200);
+
+        assertThat(history.path("total").asInt()).isEqualTo(1);
+        assertThat(history.at("/items/0/id").asText()).isEqualTo(own.toString());
+        assertThat(history.at("/items/0/departments").size()).isEqualTo(2);
+        assertThat(history.at("/items/0/departments").toString())
+                .contains(depA1.toString(), depA2.toString(), "A1", "A2").doesNotContain(depB1.toString());
+        call(delete("/api/v1/memberships/" + own), adminToken, null, 204);
+        JsonNode left = call(get("/api/v1/users/me/memberships").param("status", "LEFT"), memberToken, null, 200);
+        assertThat(left.at("/items/0/leftAt").isTextual()).isTrue();
+        assertThat(left.at("/items/0/departments").isArray()).isTrue();
+        assertThat(left.at("/items/0/departments").size()).isZero();
+    }
+
     private JsonNode join(UUID clubId, UUID userId) throws Exception {
         return call(post("/api/v1/clubs/" + clubId + "/memberships"), adminToken, Map.of("userId", userId), 201);
     }

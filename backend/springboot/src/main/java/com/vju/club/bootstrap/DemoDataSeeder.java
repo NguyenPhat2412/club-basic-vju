@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Seeds a demo club for local development: club VJUA with four departments and three users.
+ * Seeds a demo club for local development: club VJUA with four departments, three members and a student applicant.
  * A is president (CLUB_PRESIDENT role), B heads the communications department (DEPARTMENT_HEAD
  * role), C is a plain member holding two direct permissions, so both grant mechanisms can be shown.
  * Runs once: nothing happens if club VJUA already exists.
@@ -45,6 +45,7 @@ public class DemoDataSeeder {
     static final String USER_A = "demo.a@vju.local";
     static final String USER_B = "demo.b@vju.local";
     static final String USER_C = "demo.c@vju.local";
+    static final String STUDENT = "demo.student@vju.local";
 
     private static final Logger log = LoggerFactory.getLogger(DemoDataSeeder.class);
 
@@ -96,6 +97,7 @@ public class DemoDataSeeder {
         User a = user(USER_A, "Nguyễn Văn A", "VJU-DEMO-A");
         User b = user(USER_B, "Trần Thị B", "VJU-DEMO-B");
         User c = user(USER_C, "Lê Văn C", "VJU-DEMO-C");
+        user(STUDENT, "Sinh viên đăng ký CLB", "VJU-DEMO-STUDENT");
 
         Club club = new Club();
         club.setCode(CLUB_CODE);
@@ -125,8 +127,8 @@ public class DemoDataSeeder {
         grant(c, "club.view", club, a);
         grant(c, "member.view", club, a);
 
-        log.info("Seeded demo club {} with {} departments and users {}, {}, {}",
-                CLUB_CODE, departments.size(), USER_A, USER_B, USER_C);
+        log.info("Seeded demo club {} with {} departments and users {}, {}, {}, {}",
+                CLUB_CODE, departments.size(), USER_A, USER_B, USER_C, STUDENT);
         return true;
     }
 

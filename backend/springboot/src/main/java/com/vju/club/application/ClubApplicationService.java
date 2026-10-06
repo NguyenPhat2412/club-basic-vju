@@ -21,7 +21,10 @@ import com.vju.club.repository.MembershipRepository;
 import com.vju.club.repository.UserRepository;
 import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
+import com.vju.club.notification.NotificationService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +39,9 @@ import java.util.UUID;
 @Service
 public class ClubApplicationService {
 
+    private static final OffsetDateTime MIN_CREATED_AT = OffsetDateTime.parse("0001-01-01T00:00:00Z");
+    private static final OffsetDateTime MAX_CREATED_AT = OffsetDateTime.parse("9999-12-31T23:59:59.999999Z");
+
     private final ClubApplicationRepository applicationRepository;
     private final ClubRepository clubRepository;
     private final UserRepository userRepository;
@@ -43,6 +49,7 @@ public class ClubApplicationService {
     private final PermissionAuthorizationService authorizationService;
     private final AuditService auditService;
     private final Clock clock;
+    private final NotificationService notificationService;
 
     public ClubApplicationService(ClubApplicationRepository applicationRepository,
                                   ClubRepository clubRepository,
@@ -51,6 +58,18 @@ public class ClubApplicationService {
                                   PermissionAuthorizationService authorizationService,
                                   AuditService auditService,
                                   Clock clock) {
+        this(applicationRepository, clubRepository, userRepository, membershipRepository, authorizationService, auditService, clock, null);
+    }
+
+    @Autowired
+    public ClubApplicationService(ClubApplicationRepository applicationRepository,
+                                  ClubRepository clubRepository,
+                                  UserRepository userRepository,
+                                  MembershipRepository membershipRepository,
+                                  PermissionAuthorizationService authorizationService,
+                                  AuditService auditService,
+                                  Clock clock,
+                                  NotificationService notificationService) {
         this.applicationRepository = applicationRepository;
         this.clubRepository = clubRepository;
         this.userRepository = userRepository;
@@ -58,6 +77,7 @@ public class ClubApplicationService {
         this.authorizationService = authorizationService;
         this.auditService = auditService;
         this.clock = clock;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -93,8 +113,8 @@ public class ClubApplicationService {
 
     @Transactional(readOnly = true)
     public PageResponse<ClubApplicationSummaryResponse> listMine(
-            Actor actor, ClubApplicationStatus status, UUID clubId, int offset, int limit) {
-        OffsetLimitRequest page = new OffsetLimitRequest(offset, limit);
+            Actor actor, ClubApplicationStatus status, UUID clubId, String sort, int offset, int limit) {
+        OffsetLimitRequest page = new OffsetLimitRequest(offset, limit, applicationSort(sort));
         List<ClubApplicationSummaryResponse> items = applicationRepository
                 .findPageByApplicant(actor.id(), status, clubId, page).stream()
                 .map(ClubApplicationSummaryResponse::from).toList();
@@ -109,16 +129,17 @@ public class ClubApplicationService {
 
     @Transactional
     public ClubApplicationResponse cancel(Actor actor, UUID applicationId) {
-        ClubApplication application = applicationRepository.findByIdAndApplicant_Id(applicationId, actor.id())
+        ClubApplication application = applicationRepository.findForUpdateByIdAndApplicant_Id(applicationId, actor.id())
                 .orElseThrow(() -> notFound("CLUB_APPLICATION_NOT_FOUND", "Club application not found"));
         if (application.getStatus() != ClubApplicationStatus.PENDING) {
             throw conflict("APPLICATION_CANNOT_BE_CANCELLED", "Only pending applications can be cancelled");
         }
+        Map<String, Object> before = pendingAuditValues(application);
         application.setStatus(ClubApplicationStatus.CANCELLED);
         application.setCancelledAt(now());
         ClubApplication saved = applicationRepository.saveAndFlush(application);
         auditService.record(actor.id(), AuditAction.CLUB_APPLICATION_CANCELLED, saved.getId(), saved.getClub().getId(),
-                Map.of("status", ClubApplicationStatus.PENDING), Map.of("status", saved.getStatus()));
+                before, applicationAuditValues(saved, saved.getStatus(), null));
         return ClubApplicationResponse.from(saved);
     }
 
@@ -126,7 +147,7 @@ public class ClubApplicationService {
     public PageResponse<ClubApplicationResponse> listForClub(Actor actor, UUID clubId,
                                                               ClubApplicationStatus status, String search,
                                                               OffsetDateTime createdFrom, OffsetDateTime createdTo,
-                                                              int offset, int limit) {
+                                                              String sort, int offset, int limit) {
         if (!authorizationService.hasPermission(actor, "application.view", clubId, null)) {
             throw forbidden();
         }
@@ -135,11 +156,13 @@ public class ClubApplicationService {
         }
         String normalizedSearch = search == null || search.isBlank()
                 ? null : "%" + search.trim().toLowerCase(java.util.Locale.ROOT) + "%";
-        OffsetLimitRequest page = new OffsetLimitRequest(offset, limit);
+        OffsetLimitRequest page = new OffsetLimitRequest(offset, limit, applicationSort(sort));
+        OffsetDateTime from = createdFrom == null ? MIN_CREATED_AT : createdFrom;
+        OffsetDateTime to = createdTo == null ? MAX_CREATED_AT : createdTo;
         List<ClubApplicationResponse> items = applicationRepository.findPageByClub(
-                        clubId, status, normalizedSearch, createdFrom, createdTo, page).stream()
+                        clubId, status, normalizedSearch, from, to, page).stream()
                 .map(ClubApplicationResponse::from).toList();
-        long total = applicationRepository.countByClub(clubId, status, normalizedSearch, createdFrom, createdTo);
+        long total = applicationRepository.countByClub(clubId, status, normalizedSearch, from, to);
         return new PageResponse<>(items, total, offset, limit);
     }
 
@@ -170,6 +193,7 @@ public class ClubApplicationService {
         membership.setJoinedAt(now());
         com.vju.club.entity.Membership savedMembership = membershipRepository.saveAndFlush(membership);
 
+        Map<String, Object> approvalBefore = pendingAuditValues(application);
         application.setStatus(ClubApplicationStatus.APPROVED);
         application.setReviewedBy(reviewer);
         application.setReviewedAt(now());
@@ -182,10 +206,10 @@ public class ClubApplicationService {
         membershipAfter.put("status", MembershipStatus.ACTIVE);
         auditService.record(actor.id(), AuditAction.MEMBERSHIP_CREATED, savedMembership.getId(), clubId, null,
                 membershipAfter);
-        Map<String, Object> approvalBefore = pendingAuditValues(application);
         Map<String, Object> approvalAfter = applicationAuditValues(application, saved.getStatus(), savedMembership.getId());
         auditService.record(actor.id(), AuditAction.CLUB_APPLICATION_APPROVED, saved.getId(), clubId,
                 approvalBefore, approvalAfter);
+        if (notificationService != null) notificationService.create(application.getApplicant().getId(), "Đơn đăng ký được duyệt", "Bạn đã được chấp nhận vào " + application.getClub().getName() + ".", saved.getId());
         return ClubApplicationResponse.from(saved, savedMembership);
     }
 
@@ -197,14 +221,16 @@ public class ClubApplicationService {
                 .orElseThrow(() -> notFound("CLUB_APPLICATION_NOT_FOUND", "Club application not found"));
         ensurePending(application);
         User reviewer = findUser(actor.id());
+        Map<String, Object> rejectionBefore = pendingAuditValues(application);
         application.setStatus(ClubApplicationStatus.REJECTED);
         application.setReviewedBy(reviewer);
         application.setReviewedAt(now());
         application.setReviewNote(normalizeNote(request));
         ClubApplication saved = applicationRepository.saveAndFlush(application);
         auditService.record(actor.id(), AuditAction.CLUB_APPLICATION_REJECTED, saved.getId(), clubId,
-                pendingAuditValues(application),
+                rejectionBefore,
                 applicationAuditValues(saved, saved.getStatus(), null));
+        if (notificationService != null) notificationService.create(application.getApplicant().getId(), "Đơn đăng ký bị từ chối", "Đơn đăng ký vào " + application.getClub().getName() + " đã bị từ chối.", saved.getId());
         return ClubApplicationResponse.from(saved);
     }
 
@@ -232,6 +258,25 @@ public class ClubApplicationService {
     private static String normalizeNote(com.vju.club.application.dto.ReviewClubApplicationRequest request) {
         return request == null || request.reviewNote() == null || request.reviewNote().isBlank()
                 ? null : request.reviewNote().trim();
+    }
+
+    private static Sort applicationSort(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+        }
+        String[] parts = raw.trim().split(",", -1);
+        if (parts.length != 2 || !parts[0].equals("createdAt")) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_SORT",
+                    "Sort must be createdAt,asc or createdAt,desc");
+        }
+        Sort.Direction direction;
+        try {
+            direction = Sort.Direction.fromString(parts[1]);
+        } catch (IllegalArgumentException exception) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_SORT",
+                    "Sort must be createdAt,asc or createdAt,desc");
+        }
+        return Sort.by(new Sort.Order(direction, "createdAt"), new Sort.Order(direction, "id"));
     }
 
     private static Map<String, Object> applicationAuditValues(ClubApplication application,

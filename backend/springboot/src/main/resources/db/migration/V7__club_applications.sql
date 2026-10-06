@@ -22,6 +22,7 @@ CREATE TABLE club_applications (
 
 CREATE INDEX idx_club_applications_applicant ON club_applications (applicant_id, created_at DESC);
 CREATE INDEX idx_club_applications_club_status ON club_applications (club_id, status, created_at DESC);
+CREATE INDEX idx_club_applications_reviewed_by ON club_applications (reviewed_by) WHERE reviewed_by IS NOT NULL;
 CREATE UNIQUE INDEX uq_club_applications_pending
     ON club_applications (applicant_id, club_id)
     WHERE status = 'PENDING';
@@ -44,10 +45,17 @@ ALTER TABLE audit_logs ADD CONSTRAINT ck_audit_logs_resource_type CHECK (resourc
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id
 FROM roles r CROSS JOIN permissions p
-WHERE r.code IN ('CLUB_PRESIDENT', 'CLUB_VICE_PRESIDENT')
+WHERE r.code IN ('SYSTEM_ADMIN', 'CLUB_PRESIDENT', 'CLUB_VICE_PRESIDENT')
   AND p.permission_key IN (
       'application.view', 'application.view_detail', 'application.review',
       'application.approve', 'application.reject')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r CROSS JOIN permissions p
+WHERE r.code = 'SYSTEM_ADMIN'
+  AND p.permission_key IN ('application.create', 'application.cancel')
 ON CONFLICT DO NOTHING;
 
 CREATE TRIGGER trg_club_applications_updated_at BEFORE UPDATE ON club_applications

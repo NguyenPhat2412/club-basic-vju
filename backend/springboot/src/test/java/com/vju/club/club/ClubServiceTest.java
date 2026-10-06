@@ -155,9 +155,9 @@ class ClubServiceTest {
         active.setStatus(ClubStatus.ACTIVE);
         when(authorization.hasGlobalPermission(actor, "club.view")).thenReturn(false);
         when(authorization.hasAnyPermission(actor, "club.view")).thenReturn(false);
-        when(clubRepository.searchDiscoverable(anyString(), isNull(), any(Pageable.class)))
+        when(clubRepository.searchDiscoverable(anyString(), eq(""), any(Pageable.class)))
                 .thenReturn(java.util.List.of(active));
-        when(clubRepository.countDiscoverable(anyString(), isNull())).thenReturn(1L);
+        when(clubRepository.countDiscoverable(anyString(), eq(""))).thenReturn(1L);
 
         var page = service.list(actor, "", null, null, 0, 20);
 

@@ -607,6 +607,21 @@ paths:
           type: string
           default: ''
         description: Tìm theo tên/mã CLB hoặc email/họ tên/mã sinh viên tùy endpoint.
+      - name: category
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Lọc theo lĩnh vực hoạt động của CLB.
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - INACTIVE
+        description: Lọc theo trạng thái; người không có club.view chỉ thấy ACTIVE.
       - name: offset
         in: query
         schema:
@@ -622,8 +637,9 @@ paths:
           default: 20
           maximum: 100
         description: Số bản ghi tối đa trong một lần lấy, mặc định 20, tối đa 100.
-      description: Kết quả chỉ chứa CLB người gọi có club.view đúng scope; total là
-        số CLB được phép xem sau lọc.
+      description: Người gọi có club.view chỉ thấy CLB đúng scope; người dùng ACTIVE
+        đã xác thực không có quyền này được khám phá các CLB ACTIVE. total là số CLB
+        được phép xem sau lọc.
     post:
       operationId: club.create
       summary: Create club
@@ -673,6 +689,8 @@ paths:
     get:
       operationId: club.get
       summary: Get club
+      description: Người dùng ACTIVE đã xác thực không có club.view được xem CLB ACTIVE;
+        người có club.view phải có quyền đúng scope cho CLB trên URL.
       tags:
       - Club
       x-permission: club.view
@@ -1114,6 +1132,19 @@ paths:
           - LEFT
           - SUSPENDED
         description: Lọc theo trạng thái. Bỏ trống để lấy cả lịch sử (các membership đã LEFT).
+      - name: departmentId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+        description: Chỉ lấy membership đang được phân vào ban này.
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Tìm theo email, họ tên hoặc mã sinh viên.
       - name: offset
         in: query
         schema:
@@ -2100,6 +2131,8 @@ paths:
     get:
       operationId: clubApplication.listForClub
       summary: List club applications
+      description: Danh sách có phân trang; yêu cầu application.view tại CLUB trên URL.
+        Lọc theo trạng thái, email/họ tên applicant và thời gian tạo; sắp xếp mới nhất trước.
       tags: [ClubApplication]
       x-permission: application.view
       x-scope: CLUB
@@ -2121,6 +2154,10 @@ paths:
       - name: createdTo
         in: query
         schema: {type: string, format: date-time}
+      - name: sort
+        in: query
+        schema: {type: string, default: createdAt,desc}
+        description: Sắp xếp theo createdAt với hướng asc hoặc desc, ví dụ createdAt,desc.
       - name: offset
         in: query
         schema: {type: integer, minimum: 0, default: 0}
@@ -2136,9 +2173,13 @@ paths:
         '400': {$ref: '#/components/responses/BadRequest'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
     post:
       operationId: clubApplication.create
       summary: Submit a club application
+      description: Applicant ACTIVE gửi đơn cho CLB ACTIVE bằng ownership. Trạng thái và
+        các trường xét duyệt do backend quản lý. Trả 409 APPLICATION_ALREADY_PENDING
+        hoặc ALREADY_CLUB_MEMBER khi đã có đơn PENDING hoặc membership chưa kết thúc.
       tags: [ClubApplication]
       x-permission: application.create (owner)
       x-implementation-status: IMPLEMENTED
@@ -2161,11 +2202,14 @@ paths:
         '400': {$ref: '#/components/responses/BadRequest'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
   /clubs/{clubId}/applications/{applicationId}:
     get:
       operationId: clubApplication.getForClub
       summary: Get a club application
+      description: Application phải thuộc CLUB trên URL; yêu cầu application.view hoặc
+        application.view_detail tại CLUB đó. Không tìm thấy đơn phù hợp trả CLUB_APPLICATION_NOT_FOUND.
       tags: [ClubApplication]
       x-permission: application.view | application.view_detail
       x-scope: CLUB
@@ -2192,6 +2236,10 @@ paths:
     post:
       operationId: clubApplication.approve
       summary: Approve a club application and create membership
+      description: Yêu cầu application.approve hoặc application.review tại CLUB trên URL.
+        Chỉ xử lý PENDING; tạo Membership ACTIVE và chuyển đơn APPROVED trong cùng transaction.
+        Trả 409 APPLICATION_ALREADY_REVIEWED hoặc DUPLICATE_MEMBERSHIP; lỗi tạo membership
+        rollback toàn bộ thao tác. Response gồm membershipId, membershipStatus và membershipJoinedAt.
       tags: [ClubApplication]
       x-permission: application.approve | application.review
       x-scope: CLUB
@@ -2225,6 +2273,8 @@ paths:
     post:
       operationId: clubApplication.reject
       summary: Reject a club application
+      description: Yêu cầu application.reject hoặc application.review tại CLUB trên URL.
+        Chỉ xử lý PENDING và không tạo membership. Đơn đã xử lý trả 409 APPLICATION_ALREADY_REVIEWED.
       tags: [ClubApplication]
       x-permission: application.reject | application.review
       x-scope: CLUB
@@ -2258,6 +2308,8 @@ paths:
     get:
       operationId: clubApplication.listMine
       summary: List my club applications
+      description: Chỉ trả đơn của người gọi; hỗ trợ trạng thái và CLB, phân trang offset/limit,
+        sắp xếp mới nhất trước. Không cần permission quản trị.
       tags: [ClubApplication]
       x-permission: null
       x-implementation-status: IMPLEMENTED
@@ -2268,6 +2320,10 @@ paths:
       - name: clubId
         in: query
         schema: {type: string, format: uuid}
+      - name: sort
+        in: query
+        schema: {type: string, default: createdAt,desc}
+        description: Sắp xếp theo createdAt với hướng asc hoặc desc, ví dụ createdAt,desc.
       - name: offset
         in: query
         schema: {type: integer, minimum: 0, default: 0}
@@ -2280,12 +2336,15 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/MyClubApplicationListResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
   /users/me/applications/{applicationId}:
     get:
       operationId: clubApplication.getMine
       summary: Get my club application
+      description: Chỉ owner xem được đơn; đơn không tồn tại hoặc thuộc người khác đều
+        trả 404 CLUB_APPLICATION_NOT_FOUND. Reviewer dùng endpoint quản lý theo CLB.
       tags: [ClubApplication]
       x-permission: null
       x-implementation-status: IMPLEMENTED
@@ -2307,6 +2366,8 @@ paths:
     patch:
       operationId: clubApplication.cancel
       summary: Cancel a pending club application
+      description: Chỉ owner được hủy đơn PENDING; lưu trạng thái CANCELLED và cancelledAt,
+        không hard delete. Trạng thái khác trả 409 APPLICATION_CANNOT_BE_CANCELLED.
       tags: [ClubApplication]
       x-permission: application.cancel (owner)
       x-implementation-status: IMPLEMENTED
@@ -2329,6 +2390,8 @@ paths:
     get:
       operationId: membership.listMine
       summary: List my club membership history
+      description: Chỉ trả membership của người gọi; gồm club, trạng thái, joinedAt và leftAt.
+        Không cần permission quản trị và sắp xếp theo joinedAt mới nhất trước.
       tags: [Membership]
       x-permission: null
       x-implementation-status: IMPLEMENTED
@@ -2348,6 +2411,46 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/MyMembershipListResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /users/me/notifications:
+    get:
+      operationId: notification.listMine
+      summary: List my in-app notifications
+      description: Chỉ trả thông báo của người gọi, sắp xếp mới nhất trước.
+      tags: [Notification]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: offset
+        in: query
+        schema: {type: integer, minimum: 0, default: 0}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: My notifications
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/NotificationListResponse'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /users/me/notifications/{notificationId}/read:
+    patch:
+      operationId: notification.markRead
+      summary: Mark my notification as read
+      tags: [Notification]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: notificationId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '204': {description: Notification marked as read}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
 components:
@@ -2466,7 +2569,7 @@ components:
         limit: {type: integer}
     MyMembership:
       type: object
-      required: [id, clubId, clubCode, clubName, status, joinedAt, createdAt, updatedAt]
+      required: [id, clubId, clubCode, clubName, status, joinedAt, createdAt, updatedAt, departments]
       properties:
         id: {type: string, format: uuid}
         clubId: {type: string, format: uuid}
@@ -2477,6 +2580,35 @@ components:
         leftAt: {type: [string, 'null'], format: date-time}
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}
+        departments:
+          type: array
+          items:
+            type: object
+            required: [id, name, joinedAt]
+            properties:
+              id: {type: string, format: uuid}
+              name: {type: string}
+              joinedAt: {type: string, format: date-time}
+    Notification:
+      type: object
+      required: [id, title, message, read, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        title: {type: string, maxLength: 160}
+        message: {type: string, maxLength: 2000}
+        read: {type: boolean}
+        referenceId: {type: [string, 'null'], format: uuid}
+        createdAt: {type: string, format: date-time}
+    NotificationListResponse:
+      type: object
+      required: [items, total, offset, limit]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/Notification'}
+        total: {type: integer, format: int64}
+        offset: {type: integer}
+        limit: {type: integer}
     RegisterRequest:
       type: object
       required:
@@ -3790,3 +3922,5 @@ tags:
   description: Vai trò (nhóm quyền theo chức vụ) và gán vai trò
 - name: Audit
   description: Nhật ký thao tác nghiệp vụ
+- name: Notification
+  description: Thông báo trong ứng dụng

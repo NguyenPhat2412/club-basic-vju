@@ -8,7 +8,9 @@ The supported flow is:
 
 `active user -> discover active clubs -> submit application -> owner tracks/cancels -> club-scoped reviewer approves or rejects -> approved application creates an ACTIVE membership atomically -> existing membership and department APIs manage the member`.
 
-The Next.js frontend, event management, notifications beyond a documented deferral, payments, reporting, and other post-Phase-2 domains remain outside this change.
+The Next.js frontend, basic in-app notifications, event management, payments, reporting, and other post-Phase-2 domains remain outside the backend domain model except for the notification endpoints described below.
+
+Phase 2 includes a persisted in-app notification slice: approval and rejection create a notification for the applicant in the same transaction, and the authenticated applicant can list and mark their own notifications as read.
 
 ## Existing boundaries and compatibility
 
@@ -149,7 +151,7 @@ Audit values include application/user/club IDs, status transitions, reviewer ID,
 
 ## Deferred and explicit assumptions
 
-- No notification module exists in the repository, so approval/rejection notifications are documented as deferred rather than introducing email, push, WebSocket, or a new persistence subsystem.
+- In-app notifications are intentionally limited to persisted approval/rejection messages; email, push, and WebSocket delivery remain out of scope.
 - Rejected or cancelled users may submit a new application after no pending application remains.
 - The existing schema permits a membership in multiple departments; Phase 2 preserves that behavior and does not invent a single-department rule.
 - `LEFT` memberships remain history and cannot be reopened; rejoining uses the existing create-membership/history convention.

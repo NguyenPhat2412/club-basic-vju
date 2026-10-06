@@ -12,6 +12,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface DepartmentMemberRepository extends JpaRepository<DepartmentMember, UUID> {
+
+    @Query("SELECT dm FROM DepartmentMember dm JOIN FETCH dm.department "
+            + "WHERE dm.membership.id IN :membershipIds ORDER BY dm.department.name, dm.department.id")
+    List<DepartmentMember> findForMemberships(@Param("membershipIds") List<UUID> membershipIds);
     /** Paged in the database; membership is fetched so building responses causes no N+1 queries. */
     @Query("SELECT dm FROM DepartmentMember dm JOIN FETCH dm.membership "
             + "WHERE dm.department.id = :departmentId ORDER BY dm.joinedAt ASC, dm.id ASC")

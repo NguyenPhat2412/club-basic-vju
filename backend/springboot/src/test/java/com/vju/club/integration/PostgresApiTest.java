@@ -141,7 +141,8 @@ public class PostgresApiTest {
     }
     @Test
     void clubScopedAccessAndImmediateRevocation() throws Exception {
-        call(get("/api/v1/clubs"),memberToken,null,403);
+        var discoverable=call(get("/api/v1/clubs"),memberToken,null,200);
+        assertThat(discoverable.path("total").asInt()).isEqualTo(2);
         call(patch("/api/v1/clubs/"+a),memberToken,Map.of("name","Forbidden"),403);
         grant(member,"club.view","CLUB",a,null);
         var list=call(get("/api/v1/clubs"),memberToken,null,200);

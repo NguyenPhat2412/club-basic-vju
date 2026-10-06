@@ -98,7 +98,8 @@ class RoleApiTest extends ApiIntegrationTest {
 
     @Test
     void clubMemberRoleControlsWhichClubsAreListed() throws Exception {
-        problem(get("/api/v1/clubs"), memberToken, null, 403, "PERMISSION_DENIED");
+        JsonNode discoverable = call(get("/api/v1/clubs"), memberToken, null, 200);
+        assertThat(discoverable.path("total").asInt()).isEqualTo(2);
         assign(member, "CLUB_MEMBER", "CLUB", clubB, null);
         JsonNode clubs = call(get("/api/v1/clubs"), memberToken, null, 200);
         assertThat(clubs.path("total").asInt()).isEqualTo(1);

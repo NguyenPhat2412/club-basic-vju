@@ -167,7 +167,7 @@ class ClubApplicationServiceTest {
         application.setApplicant(user(UserStatus.ACTIVE));
         application.setClub(club(ClubStatus.ACTIVE));
         application.setStatus(ClubApplicationStatus.PENDING);
-        when(applicationRepository.findByIdAndApplicant_Id(application.getId(), actor.id()))
+        when(applicationRepository.findForUpdateByIdAndApplicant_Id(application.getId(), actor.id()))
                 .thenReturn(Optional.of(application));
         when(applicationRepository.saveAndFlush(application)).thenReturn(application);
 
@@ -175,8 +175,14 @@ class ClubApplicationServiceTest {
 
         assertThat(response.status()).isEqualTo(ClubApplicationStatus.CANCELLED.name());
         assertThat(application.getCancelledAt()).isEqualTo(java.time.OffsetDateTime.now(clock));
+        ArgumentCaptor<java.util.Map> before = ArgumentCaptor.forClass(java.util.Map.class);
+        ArgumentCaptor<java.util.Map> after = ArgumentCaptor.forClass(java.util.Map.class);
         verify(auditService).record(eq(actor.id()), eq(AuditAction.CLUB_APPLICATION_CANCELLED),
-                eq(application.getId()), eq(application.getClub().getId()), any(), any());
+                eq(application.getId()), eq(application.getClub().getId()), before.capture(), after.capture());
+        assertThat(before.getValue()).containsEntry("status", ClubApplicationStatus.PENDING)
+                .containsEntry("applicantId", actor.id()).containsEntry("clubId", application.getClub().getId());
+        assertThat(after.getValue()).containsEntry("status", ClubApplicationStatus.CANCELLED)
+                .containsEntry("applicantId", actor.id()).containsEntry("clubId", application.getClub().getId());
     }
 
     @Test
@@ -186,7 +192,7 @@ class ClubApplicationServiceTest {
         application.setApplicant(user(UserStatus.ACTIVE));
         application.setClub(club(ClubStatus.ACTIVE));
         application.setStatus(ClubApplicationStatus.APPROVED);
-        when(applicationRepository.findByIdAndApplicant_Id(application.getId(), actor.id()))
+        when(applicationRepository.findForUpdateByIdAndApplicant_Id(application.getId(), actor.id()))
                 .thenReturn(Optional.of(application));
 
         assertApiError(() -> service.cancel(actor, application.getId()), HttpStatus.CONFLICT,
@@ -289,7 +295,7 @@ class ClubApplicationServiceTest {
         when(authorization.hasPermission(actor, "application.view", missingClub, null)).thenReturn(true);
         when(clubRepository.existsById(missingClub)).thenReturn(false);
 
-        assertApiError(() -> service.listForClub(actor, missingClub, null, null, null, null, 0, 20),
+        assertApiError(() -> service.listForClub(actor, missingClub, null, null, null, null, null, 0, 20),
                 HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND");
     }
 
@@ -298,7 +304,7 @@ class ClubApplicationServiceTest {
         UUID clubId = UUID.randomUUID();
         when(authorization.hasPermission(actor, "application.view", clubId, null)).thenReturn(false);
 
-        assertApiError(() -> service.listForClub(actor, clubId, null, null, null, null, 0, 20),
+        assertApiError(() -> service.listForClub(actor, clubId, null, null, null, null, null, 0, 20),
                 HttpStatus.FORBIDDEN, "PERMISSION_DENIED");
     }
 

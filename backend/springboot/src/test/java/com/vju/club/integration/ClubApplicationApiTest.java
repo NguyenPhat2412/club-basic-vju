@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -13,6 +14,30 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 class ClubApplicationApiTest extends ApiIntegrationTest {
+
+    @Test
+    void ownerAndReviewerListsSupportValidatedSortWithPagination() throws Exception {
+        JsonNode older = call(post(applications(clubA)), memberToken, Map.of("message", "older"), 201);
+        JsonNode newer = call(post(applications(clubB)), memberToken, Map.of("message", "newer"), 201);
+        db.update("UPDATE club_applications SET created_at = now() - interval '1 day' WHERE id = ?", id(older));
+
+        JsonNode ascending = call(get("/api/v1/users/me/applications").param("sort", "createdAt,asc")
+                .param("limit", "1"), memberToken, null, 200);
+        assertThat(ascending.path("total").asInt()).isEqualTo(2);
+        assertThat(ascending.at("/items/0/id").asText()).isEqualTo(id(older).toString());
+        JsonNode defaultOrder = call(get("/api/v1/users/me/applications").param("limit", "1"), memberToken, null, 200);
+        assertThat(defaultOrder.at("/items/0/id").asText()).isEqualTo(id(newer).toString());
+
+        UUID another = user("sort-other@test.local");
+        call(post(applications(clubA)), token(another), Map.of("message", "other"), 201);
+        JsonNode reviewed = call(get(applications(clubA)).param("sort", "createdAt,asc").param("limit", "1"),
+                adminToken, null, 200);
+        assertThat(reviewed.path("total").asInt()).isEqualTo(2);
+        assertThat(reviewed.at("/items/0/id").asText()).isEqualTo(id(older).toString());
+        problem(get("/api/v1/users/me/applications").param("sort", "createdAt;delete,asc"), memberToken, null,
+                400, "INVALID_SORT");
+        problem(get(applications(clubA)).param("sort", "createdAt,sideways"), adminToken, null, 400, "INVALID_SORT");
+    }
 
     private String applications(UUID clubId) {
         return "/api/v1/clubs/" + clubId + "/applications";
@@ -69,6 +94,11 @@ class ClubApplicationApiTest extends ApiIntegrationTest {
         assertThat(rejected.path("status").asText()).isEqualTo("REJECTED");
         assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ?", applicant, clubA))
                 .isZero();
+        JsonNode notifications = call(get("/api/v1/users/me/notifications"), token(applicant), null, 200);
+        assertThat(notifications.path("total").asInt()).isEqualTo(1);
+        assertThat(notifications.at("/items/0/title").asText()).contains("từ chối");
+        problem(patch("/api/v1/users/me/applications/" + id(application) + "/cancel"), token(applicant), null,
+                409, "APPLICATION_CANNOT_BE_CANCELLED");
     }
 
     @Test
@@ -104,6 +134,23 @@ class ClubApplicationApiTest extends ApiIntegrationTest {
         assertThat(statuses).filteredOn(status -> status == 200).hasSize(1);
         assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ? AND status = 'ACTIVE'",
                 applicant, clubA)).isEqualTo(1);
+    }
+
+    @Test
+    void concurrentCancelAndApproveHaveOneTerminalWinner() throws Exception {
+        JsonNode application = call(post(applications(clubA)), memberToken, Map.of("message", "race cancel"), 201);
+        AtomicInteger order = new AtomicInteger();
+        List<Integer> statuses = concurrently(2, () -> () -> {
+            if (order.getAndIncrement() == 0) {
+                return send(patch("/api/v1/users/me/applications/" + id(application) + "/cancel"), memberToken, null).getStatus();
+            }
+            return send(post(applications(clubA) + "/" + id(application) + "/approve"), adminToken, Map.of()).getStatus();
+        });
+        assertThat(statuses).containsOnly(200, 409);
+        String status = db.queryForObject("SELECT status FROM club_applications WHERE id = ?", String.class, id(application));
+        assertThat(status).isIn("CANCELLED", "APPROVED");
+        assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ? AND status = 'ACTIVE'",
+                member, clubA)).isEqualTo(status.equals("APPROVED") ? 1 : 0);
     }
 
     @Test

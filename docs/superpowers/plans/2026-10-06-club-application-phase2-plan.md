@@ -15,7 +15,7 @@
 - Keep all backend routes under `/api/v1` and extend equivalent Phase 1 routes instead of creating duplicates.
 - Authorization must use permission plus `GLOBAL`/`CLUB`/`DEPARTMENT` scope; never branch on role names.
 - Preserve UUID IDs, DTO responses, RFC 7807 errors, offset/limit pagination, Flyway migrations, append-only audit logging, and existing Phase 1 behavior unless discovery requires the documented ACTIVE-club fallback.
-- Do not add notification, events, tasks, attendance, payments, reporting, or new external dependencies.
+- Do not add events, tasks, attendance, payments, reporting, or new external dependencies. Basic persisted in-app notifications are part of the requested Phase 2 workflow.
 - `LEFT` memberships remain final; current schema behavior permitting multiple department assignments is preserved.
 - Every task writes the failing test first, runs the focused test to observe failure, implements the smallest change, reruns the focused test, and finishes with the relevant unit suite.
 
@@ -169,7 +169,7 @@
 
 - [ ] **Step 1: Add failing contract assertions for Phase 2 route parity, permissions, and OpenAPI schemas.**
 - [ ] **Step 2: Run contract tests and verify missing entries fail.**
-- [ ] **Step 3: Update both catalog copies, OpenAPI operation/security/error definitions, README workflow/configuration, and the deferred-notification note.**
+- [ ] **Step 3: Update both catalog copies, OpenAPI operation/security/error definitions, README workflow/configuration, and the in-app notification contract.**
 - [ ] **Step 4: Run contract tests and verify PASS.**
 - [ ] **Step 5: Commit `docs: document phase two application APIs`.**
 

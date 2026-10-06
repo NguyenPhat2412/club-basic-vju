@@ -47,9 +47,10 @@ public class ClubApplicationController {
             Actor actor,
             @RequestParam(required = false) ClubApplicationStatus status,
             @RequestParam(required = false) UUID clubId,
+            @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") @Min(0) int offset,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
-        return applicationService.listMine(actor, status, clubId, offset, limit);
+        return applicationService.listMine(actor, status, clubId, sort, offset, limit);
     }
 
     @GetMapping("/users/me/applications/{applicationId}")
@@ -69,9 +70,10 @@ public class ClubApplicationController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime createdFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime createdTo,
+            @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") @Min(0) int offset,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
-        return applicationService.listForClub(actor, clubId, status, search, createdFrom, createdTo, offset, limit);
+        return applicationService.listForClub(actor, clubId, status, search, createdFrom, createdTo, sort, offset, limit);
     }
 
     @GetMapping("/clubs/{clubId}/applications/{applicationId}")

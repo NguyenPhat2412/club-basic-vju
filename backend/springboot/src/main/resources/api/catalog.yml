@@ -405,3 +405,17 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: null
+- method: GET
+  path: /api/v1/users/me/notifications
+  module: notification
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: PATCH
+  path: /api/v1/users/me/notifications/{notificationId}/read
+  module: notification
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null

@@ -38,4 +38,4 @@ Every error is `application/problem+json` with a stable `code`. Framework errors
 
 The REST controllers and services under `src/main/java/com/vju/club` implement all 36 phase-1 routes. The public catalog is available at `GET /api/v1/api-catalog`, and the packaged OpenAPI YAML is available at `GET /api-docs/phase1.yaml`.
 
-The database is PostgreSQL. Flyway records migration state in `flyway_schema_history` and creates the eight phase-1 tables documented in `../../docs/database/README.md`.
+The database is PostgreSQL. Flyway records migration state in `flyway_schema_history` and applies the Phase 1 foundation plus the Phase 2 application and notification migrations documented in `../../docs/database/README.md`.

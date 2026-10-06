@@ -20,6 +20,12 @@ public interface ClubApplicationRepository extends JpaRepository<ClubApplication
     @EntityGraph(attributePaths = {"applicant", "club", "reviewedBy"})
     Optional<ClubApplication> findByIdAndApplicant_Id(UUID id, UUID applicantId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM ClubApplication a JOIN FETCH a.applicant JOIN FETCH a.club LEFT JOIN FETCH a.reviewedBy "
+            + "WHERE a.id = :id AND a.applicant.id = :applicantId")
+    Optional<ClubApplication> findForUpdateByIdAndApplicant_Id(@Param("id") UUID id,
+                                                                @Param("applicantId") UUID applicantId);
+
     @EntityGraph(attributePaths = {"applicant", "club", "reviewedBy"})
     Optional<ClubApplication> findByIdAndClub_Id(UUID id, UUID clubId);
 
@@ -29,8 +35,7 @@ public interface ClubApplicationRepository extends JpaRepository<ClubApplication
     @Query("SELECT a FROM ClubApplication a JOIN FETCH a.club "
             + "WHERE a.applicant.id = :applicantId "
             + "AND (:status IS NULL OR a.status = :status) "
-            + "AND (:clubId IS NULL OR a.club.id = :clubId) "
-            + "ORDER BY a.createdAt DESC, a.id DESC")
+            + "AND (:clubId IS NULL OR a.club.id = :clubId)")
     List<ClubApplication> findPageByApplicant(@Param("applicantId") UUID applicantId,
                                                @Param("status") ClubApplicationStatus status,
                                                @Param("clubId") UUID clubId, Pageable pageable);
@@ -46,10 +51,10 @@ public interface ClubApplicationRepository extends JpaRepository<ClubApplication
     @Query("SELECT a FROM ClubApplication a JOIN FETCH a.applicant JOIN FETCH a.club LEFT JOIN FETCH a.reviewedBy "
             + "WHERE a.club.id = :clubId "
             + "AND (:status IS NULL OR a.status = :status) "
-            + "AND (:search IS NULL OR lower(a.applicant.email) LIKE :search OR lower(a.applicant.fullName) LIKE :search) "
-            + "AND (:createdFrom IS NULL OR a.createdAt >= :createdFrom) "
-            + "AND (:createdTo IS NULL OR a.createdAt < :createdTo) "
-            + "ORDER BY a.createdAt DESC, a.id DESC")
+            + "AND (:search IS NULL OR lower(a.applicant.email) LIKE :search OR lower(a.applicant.fullName) LIKE :search "
+            + "OR lower(coalesce(a.applicant.studentCode, '')) LIKE :search) "
+            + "AND a.createdAt >= :createdFrom "
+            + "AND a.createdAt < :createdTo")
     List<ClubApplication> findPageByClub(@Param("clubId") UUID clubId,
                                          @Param("status") ClubApplicationStatus status,
                                          @Param("search") String search,
@@ -60,9 +65,10 @@ public interface ClubApplicationRepository extends JpaRepository<ClubApplication
     @Query("SELECT count(a) FROM ClubApplication a "
             + "WHERE a.club.id = :clubId "
             + "AND (:status IS NULL OR a.status = :status) "
-            + "AND (:search IS NULL OR lower(a.applicant.email) LIKE :search OR lower(a.applicant.fullName) LIKE :search) "
-            + "AND (:createdFrom IS NULL OR a.createdAt >= :createdFrom) "
-            + "AND (:createdTo IS NULL OR a.createdAt < :createdTo)")
+            + "AND (:search IS NULL OR lower(a.applicant.email) LIKE :search OR lower(a.applicant.fullName) LIKE :search "
+            + "OR lower(coalesce(a.applicant.studentCode, '')) LIKE :search) "
+            + "AND a.createdAt >= :createdFrom "
+            + "AND a.createdAt < :createdTo")
     long countByClub(@Param("clubId") UUID clubId,
                      @Param("status") ClubApplicationStatus status,
                      @Param("search") String search,

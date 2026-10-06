@@ -5,6 +5,7 @@ import com.vju.club.entity.Membership;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import java.util.List;
 
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public record MyMembershipResponse(
@@ -16,11 +17,17 @@ public record MyMembershipResponse(
         OffsetDateTime joinedAt,
         OffsetDateTime leftAt,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        List<MembershipDepartmentResponse> departments
 ) {
     public static MyMembershipResponse from(Membership membership) {
+        return from(membership, List.of());
+    }
+
+    public static MyMembershipResponse from(Membership membership, List<MembershipDepartmentResponse> departments) {
         return new MyMembershipResponse(membership.getId(), membership.getClub().getId(),
                 membership.getClub().getCode(), membership.getClub().getName(), membership.getStatus().name(),
-                membership.getJoinedAt(), membership.getLeftAt(), membership.getCreatedAt(), membership.getUpdatedAt());
+                membership.getJoinedAt(), membership.getLeftAt(), membership.getCreatedAt(), membership.getUpdatedAt(),
+                List.copyOf(departments));
     }
 }

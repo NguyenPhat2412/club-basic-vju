@@ -15,6 +15,7 @@ import com.vju.club.error.ApiException;
 import com.vju.club.membership.dto.CreateMembershipRequest;
 import com.vju.club.membership.dto.MembershipResponse;
 import com.vju.club.membership.dto.MyMembershipResponse;
+import com.vju.club.membership.dto.MembershipDepartmentResponse;
 import com.vju.club.membership.dto.UpdateMembershipRequest;
 import com.vju.club.repository.ClubRepository;
 import com.vju.club.repository.DepartmentMemberRepository;
@@ -29,6 +30,8 @@ import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class MembershipService {
@@ -77,8 +80,13 @@ public class MembershipService {
     @Transactional(readOnly = true)
     public PageResponse<MyMembershipResponse> listMine(Actor actor, MembershipStatus status, int offset, int limit) {
         OffsetLimitRequest page = new OffsetLimitRequest(offset, limit);
-        var items = membershipRepository.findPageByUser(actor.id(), status, page).stream()
-                .map(MyMembershipResponse::from).toList();
+        var memberships = membershipRepository.findPageByUser(actor.id(), status, page);
+        Map<UUID, List<MembershipDepartmentResponse>> departments = memberships.isEmpty() ? Map.of()
+                : departmentMemberRepository.findForMemberships(memberships.stream().map(Membership::getId).toList())
+                    .stream().collect(Collectors.groupingBy(assignment -> assignment.getMembership().getId(),
+                            Collectors.mapping(MembershipDepartmentResponse::from, Collectors.toList())));
+        var items = memberships.stream().map(membership -> MyMembershipResponse.from(membership,
+                departments.getOrDefault(membership.getId(), List.of()))).toList();
         return new PageResponse<>(items, membershipRepository.countByUser(actor.id(), status), offset, limit);
     }
 
