@@ -1,0 +1,61 @@
+package com.vju.club.application;
+
+import com.vju.club.application.dto.ClubApplicationResponse;
+import com.vju.club.application.dto.ClubApplicationSummaryResponse;
+import com.vju.club.application.dto.CreateClubApplicationRequest;
+import com.vju.club.common.dto.PageResponse;
+import com.vju.club.entity.ClubApplicationStatus;
+import com.vju.club.security.Actor;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/v1")
+public class ClubApplicationController {
+
+    private final ClubApplicationService applicationService;
+
+    public ClubApplicationController(ClubApplicationService applicationService) {
+        this.applicationService = applicationService;
+    }
+
+    @PostMapping("/clubs/{clubId}/applications")
+    public ResponseEntity<ClubApplicationResponse> create(Actor actor, @PathVariable UUID clubId,
+                                                          @Valid @RequestBody CreateClubApplicationRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(applicationService.create(actor, clubId, request));
+    }
+
+    @GetMapping("/users/me/applications")
+    public PageResponse<ClubApplicationSummaryResponse> listMine(
+            Actor actor,
+            @RequestParam(required = false) ClubApplicationStatus status,
+            @RequestParam(required = false) UUID clubId,
+            @RequestParam(defaultValue = "0") @Min(0) int offset,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
+        return applicationService.listMine(actor, status, clubId, offset, limit);
+    }
+
+    @GetMapping("/users/me/applications/{applicationId}")
+    public ClubApplicationResponse getMine(Actor actor, @PathVariable UUID applicationId) {
+        return applicationService.getMine(actor, applicationId);
+    }
+
+    @PatchMapping("/users/me/applications/{applicationId}/cancel")
+    public ClubApplicationResponse cancel(Actor actor, @PathVariable UUID applicationId) {
+        return applicationService.cancel(actor, applicationId);
+    }
+}
