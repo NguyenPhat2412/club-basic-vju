@@ -1,7 +1,7 @@
 package com.vju.club.config;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
-import com.vju.club.auth.JwtTokenService;
+import com.vju.club.modules.auth.service.JwtTokenService;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;

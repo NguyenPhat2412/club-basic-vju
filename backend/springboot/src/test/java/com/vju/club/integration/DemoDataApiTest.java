@@ -2,15 +2,15 @@ package com.vju.club.integration;
 
 import com.vju.club.bootstrap.DemoDataSeeder;
 import com.vju.club.config.DemoDataProperties;
-import com.vju.club.repository.ClubRepository;
-import com.vju.club.repository.DepartmentMemberRepository;
-import com.vju.club.repository.DepartmentRepository;
-import com.vju.club.repository.MembershipRepository;
-import com.vju.club.repository.PermissionRepository;
-import com.vju.club.repository.RoleRepository;
-import com.vju.club.repository.UserPermissionRepository;
-import com.vju.club.repository.UserRepository;
-import com.vju.club.repository.UserRoleRepository;
+import com.vju.club.modules.club.repository.ClubRepository;
+import com.vju.club.modules.departmentmember.repository.DepartmentMemberRepository;
+import com.vju.club.modules.department.repository.DepartmentRepository;
+import com.vju.club.modules.membership.repository.MembershipRepository;
+import com.vju.club.modules.permission.repository.PermissionRepository;
+import com.vju.club.modules.role.repository.RoleRepository;
+import com.vju.club.modules.permission.repository.UserPermissionRepository;
+import com.vju.club.modules.user.repository.UserRepository;
+import com.vju.club.modules.role.repository.UserRoleRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 

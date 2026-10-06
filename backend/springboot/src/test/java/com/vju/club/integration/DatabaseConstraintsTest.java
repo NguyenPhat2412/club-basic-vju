@@ -1,6 +1,6 @@
 package com.vju.club.integration;
 
-import com.vju.club.auth.RefreshTokenCleanupJob;
+import com.vju.club.modules.auth.service.RefreshTokenCleanupJob;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;

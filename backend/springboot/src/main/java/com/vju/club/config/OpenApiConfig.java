@@ -1,5 +1,7 @@
 package com.vju.club.config;
 
+import com.vju.club.modules.club.entity.Club;
+
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.info.Info;

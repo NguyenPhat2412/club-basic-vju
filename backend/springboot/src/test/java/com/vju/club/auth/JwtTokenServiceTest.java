@@ -1,8 +1,10 @@
 package com.vju.club.auth;
 
+import com.vju.club.modules.auth.service.JwtTokenService;
+
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.vju.club.config.JwtProperties;
-import com.vju.club.entity.User;
+import com.vju.club.modules.user.entity.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;

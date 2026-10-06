@@ -1,5 +1,7 @@
 package com.vju.club.config;
 
+import com.vju.club.modules.permission.entity.Permission;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;

@@ -1,5 +1,7 @@
 package com.vju.club.integration;
 
+import com.vju.club.modules.club.entity.Club;
+
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,8 +1,8 @@
 package com.vju.club.security;
 
-import com.vju.club.entity.UserStatus;
+import com.vju.club.modules.user.entity.UserStatus;
 import com.vju.club.error.ProblemResponses;
-import com.vju.club.repository.UserRepository;
+import com.vju.club.modules.user.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

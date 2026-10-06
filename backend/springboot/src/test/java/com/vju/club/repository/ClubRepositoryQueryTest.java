@@ -1,5 +1,7 @@
 package com.vju.club.repository;
 
+import com.vju.club.modules.club.repository.ClubRepository;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.data.jpa.repository.Query;
 

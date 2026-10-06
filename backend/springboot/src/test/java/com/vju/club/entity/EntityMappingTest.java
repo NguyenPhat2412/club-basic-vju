@@ -1,6 +1,20 @@
 package com.vju.club.entity;
 
-import com.vju.club.audit.AuditAction;
+import com.vju.club.modules.audit.entity.PermissionAuditLog;
+import com.vju.club.modules.club.entity.Club;
+import com.vju.club.modules.clubapplication.entity.ClubApplication;
+import com.vju.club.modules.clubapplication.entity.ClubApplicationStatus;
+import com.vju.club.modules.department.entity.Department;
+import com.vju.club.modules.departmentmember.entity.DepartmentMember;
+import com.vju.club.modules.membership.entity.Membership;
+import com.vju.club.modules.membership.entity.MembershipStatus;
+import com.vju.club.modules.permission.entity.Permission;
+import com.vju.club.modules.permission.entity.PermissionScope;
+import com.vju.club.modules.permission.entity.UserPermission;
+import com.vju.club.modules.user.entity.User;
+import com.vju.club.modules.user.entity.UserStatus;
+
+import com.vju.club.modules.audit.entity.AuditAction;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import org.junit.jupiter.api.Test;

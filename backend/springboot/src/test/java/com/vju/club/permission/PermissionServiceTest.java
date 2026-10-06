@@ -1,20 +1,24 @@
 package com.vju.club.permission;
 
-import com.vju.club.audit.AuditAction;
-import com.vju.club.audit.AuditService;
-import com.vju.club.entity.Club;
-import com.vju.club.entity.Permission;
-import com.vju.club.entity.PermissionScope;
-import com.vju.club.entity.User;
-import com.vju.club.entity.UserPermission;
-import com.vju.club.permission.dto.GrantPermissionRequest;
-import com.vju.club.permission.dto.ReplacePermissionsRequest;
-import com.vju.club.repository.ClubRepository;
-import com.vju.club.repository.DepartmentRepository;
-import com.vju.club.repository.PermissionAuditLogRepository;
-import com.vju.club.repository.PermissionRepository;
-import com.vju.club.repository.UserPermissionRepository;
-import com.vju.club.repository.UserRepository;
+import com.vju.club.modules.permission.service.PermissionService;
+
+import com.vju.club.modules.permission.service.impl.IPermissionService;
+
+import com.vju.club.modules.audit.entity.AuditAction;
+import com.vju.club.modules.audit.service.AuditService;
+import com.vju.club.modules.club.entity.Club;
+import com.vju.club.modules.permission.entity.Permission;
+import com.vju.club.modules.permission.entity.PermissionScope;
+import com.vju.club.modules.user.entity.User;
+import com.vju.club.modules.permission.entity.UserPermission;
+import com.vju.club.modules.permission.config.request.GrantPermissionRequest;
+import com.vju.club.modules.permission.config.request.ReplacePermissionsRequest;
+import com.vju.club.modules.club.repository.ClubRepository;
+import com.vju.club.modules.department.repository.DepartmentRepository;
+import com.vju.club.modules.audit.repository.PermissionAuditLogRepository;
+import com.vju.club.modules.permission.repository.PermissionRepository;
+import com.vju.club.modules.permission.repository.UserPermissionRepository;
+import com.vju.club.modules.user.repository.UserRepository;
 import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -85,7 +89,7 @@ class PermissionServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PermissionService(permissionRepository, userPermissionRepository, permissionAuditLogRepository,
+        service = new IPermissionService(permissionRepository, userPermissionRepository, permissionAuditLogRepository,
                 userRepository, clubRepository, departmentRepository, authorization, Clock.systemUTC(), audit);
         club.setId(UUID.randomUUID());
         when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));

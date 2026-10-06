@@ -1,7 +1,9 @@
 package com.vju.club.integration;
 
+import com.vju.club.modules.permission.entity.Permission;
+
 import com.fasterxml.jackson.databind.JsonNode;
-import com.vju.club.auth.JwtTokenService;
+import com.vju.club.modules.auth.service.JwtTokenService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletResponse;

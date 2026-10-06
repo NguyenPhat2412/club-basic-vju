@@ -1,7 +1,9 @@
 package com.vju.club.integration;
 
+import com.vju.club.modules.user.entity.User;
+
 import com.fasterxml.jackson.databind.JsonNode;
-import com.vju.club.auth.JwtTokenService;
+import com.vju.club.modules.auth.service.JwtTokenService;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;

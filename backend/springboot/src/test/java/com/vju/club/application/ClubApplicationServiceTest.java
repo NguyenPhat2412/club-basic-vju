@@ -1,21 +1,25 @@
 package com.vju.club.application;
 
-import com.vju.club.audit.AuditAction;
-import com.vju.club.audit.AuditService;
-import com.vju.club.application.dto.CreateClubApplicationRequest;
-import com.vju.club.application.dto.ReviewClubApplicationRequest;
-import com.vju.club.entity.Club;
-import com.vju.club.entity.ClubApplication;
-import com.vju.club.entity.ClubApplicationStatus;
-import com.vju.club.entity.ClubStatus;
-import com.vju.club.entity.Membership;
-import com.vju.club.entity.MembershipStatus;
-import com.vju.club.entity.User;
-import com.vju.club.entity.UserStatus;
-import com.vju.club.repository.ClubApplicationRepository;
-import com.vju.club.repository.ClubRepository;
-import com.vju.club.repository.MembershipRepository;
-import com.vju.club.repository.UserRepository;
+import com.vju.club.modules.clubapplication.service.ClubApplicationService;
+
+import com.vju.club.modules.clubapplication.service.impl.IClubApplicationService;
+
+import com.vju.club.modules.audit.entity.AuditAction;
+import com.vju.club.modules.audit.service.AuditService;
+import com.vju.club.modules.clubapplication.config.request.CreateClubApplicationRequest;
+import com.vju.club.modules.clubapplication.config.request.ReviewClubApplicationRequest;
+import com.vju.club.modules.club.entity.Club;
+import com.vju.club.modules.clubapplication.entity.ClubApplication;
+import com.vju.club.modules.clubapplication.entity.ClubApplicationStatus;
+import com.vju.club.modules.club.entity.ClubStatus;
+import com.vju.club.modules.membership.entity.Membership;
+import com.vju.club.modules.membership.entity.MembershipStatus;
+import com.vju.club.modules.user.entity.User;
+import com.vju.club.modules.user.entity.UserStatus;
+import com.vju.club.modules.clubapplication.repository.ClubApplicationRepository;
+import com.vju.club.modules.club.repository.ClubRepository;
+import com.vju.club.modules.membership.repository.MembershipRepository;
+import com.vju.club.modules.user.repository.UserRepository;
 import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,7 +61,7 @@ class ClubApplicationServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ClubApplicationService(applicationRepository, clubRepository, userRepository,
+        service = new IClubApplicationService(applicationRepository, clubRepository, userRepository,
                 membershipRepository, authorization, auditService, clock);
     }
 
@@ -105,7 +109,7 @@ class ClubApplicationServiceTest {
         when(userRepository.findById(actor.id())).thenReturn(Optional.of(user(UserStatus.ACTIVE)));
         when(clubRepository.findById(club.getId())).thenReturn(Optional.of(club));
         when(membershipRepository.findFirstByUser_IdAndClub_IdAndStatusNot(actor.id(), club.getId(),
-                com.vju.club.entity.MembershipStatus.LEFT)).thenReturn(Optional.of(new Membership()));
+                com.vju.club.modules.membership.entity.MembershipStatus.LEFT)).thenReturn(Optional.of(new Membership()));
 
         assertApiError(() -> service.create(actor, club.getId(), new CreateClubApplicationRequest("message")),
                 HttpStatus.CONFLICT, "ALREADY_CLUB_MEMBER");
@@ -120,7 +124,7 @@ class ClubApplicationServiceTest {
         when(userRepository.findById(actor.id())).thenReturn(Optional.of(user));
         when(clubRepository.findById(club.getId())).thenReturn(Optional.of(club));
         when(membershipRepository.findFirstByUser_IdAndClub_IdAndStatusNot(actor.id(), club.getId(),
-                com.vju.club.entity.MembershipStatus.LEFT)).thenReturn(Optional.empty());
+                com.vju.club.modules.membership.entity.MembershipStatus.LEFT)).thenReturn(Optional.empty());
         when(applicationRepository.findByApplicant_IdAndClub_IdAndStatus(actor.id(), club.getId(),
                 ClubApplicationStatus.PENDING)).thenReturn(Optional.of(pending));
 
@@ -135,7 +139,7 @@ class ClubApplicationServiceTest {
         when(userRepository.findById(actor.id())).thenReturn(Optional.of(user));
         when(clubRepository.findById(club.getId())).thenReturn(Optional.of(club));
         when(membershipRepository.findFirstByUser_IdAndClub_IdAndStatusNot(actor.id(), club.getId(),
-                com.vju.club.entity.MembershipStatus.LEFT)).thenReturn(Optional.empty());
+                com.vju.club.modules.membership.entity.MembershipStatus.LEFT)).thenReturn(Optional.empty());
         when(applicationRepository.findByApplicant_IdAndClub_IdAndStatus(actor.id(), club.getId(),
                 ClubApplicationStatus.PENDING)).thenReturn(Optional.empty());
         when(applicationRepository.saveAndFlush(any(ClubApplication.class))).thenAnswer(invocation -> {
@@ -230,7 +234,7 @@ class ClubApplicationServiceTest {
         when(authorization.hasPermission(actor, "application.approve", clubId, null)).thenReturn(true);
         when(applicationRepository.findForReview(application.getId(), clubId)).thenReturn(Optional.of(application));
         when(membershipRepository.findFirstByUser_IdAndClub_IdAndStatusNot(
-                actor.id(), clubId, com.vju.club.entity.MembershipStatus.LEFT)).thenReturn(Optional.empty());
+                actor.id(), clubId, com.vju.club.modules.membership.entity.MembershipStatus.LEFT)).thenReturn(Optional.empty());
         when(userRepository.findById(actor.id())).thenReturn(Optional.of(user(UserStatus.ACTIVE)));
         when(membershipRepository.saveAndFlush(any(Membership.class))).thenAnswer(invocation -> {
             Membership membership = invocation.getArgument(0);
@@ -315,7 +319,7 @@ class ClubApplicationServiceTest {
         when(authorization.hasPermission(actor, "application.approve", clubId, null)).thenReturn(true);
         when(applicationRepository.findForReview(application.getId(), clubId)).thenReturn(Optional.of(application));
         when(membershipRepository.findFirstByUser_IdAndClub_IdAndStatusNot(
-                actor.id(), clubId, com.vju.club.entity.MembershipStatus.LEFT)).thenReturn(Optional.empty());
+                actor.id(), clubId, com.vju.club.modules.membership.entity.MembershipStatus.LEFT)).thenReturn(Optional.empty());
         when(userRepository.findById(actor.id())).thenReturn(Optional.of(user(UserStatus.ACTIVE)));
         doThrow(new IllegalStateException("membership insert failed"))
                 .when(membershipRepository).saveAndFlush(any(Membership.class));

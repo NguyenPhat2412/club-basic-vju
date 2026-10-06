@@ -1,13 +1,17 @@
 package com.vju.club.club;
 
-import com.vju.club.audit.AuditAction;
-import com.vju.club.audit.AuditService;
-import com.vju.club.club.dto.ClubPatchRequest;
-import com.vju.club.club.dto.ClubRequest;
-import com.vju.club.club.dto.ClubStatusRequest;
-import com.vju.club.entity.Club;
-import com.vju.club.entity.ClubStatus;
-import com.vju.club.repository.ClubRepository;
+import com.vju.club.modules.club.service.ClubService;
+
+import com.vju.club.modules.club.service.impl.IClubService;
+
+import com.vju.club.modules.audit.entity.AuditAction;
+import com.vju.club.modules.audit.service.AuditService;
+import com.vju.club.modules.club.config.request.ClubPatchRequest;
+import com.vju.club.modules.club.config.request.ClubRequest;
+import com.vju.club.modules.club.config.request.ClubStatusRequest;
+import com.vju.club.modules.club.entity.Club;
+import com.vju.club.modules.club.entity.ClubStatus;
+import com.vju.club.modules.club.repository.ClubRepository;
 import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,7 +54,7 @@ class ClubServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ClubService(clubRepository, authorization, audit);
+        service = new IClubService(clubRepository, authorization, audit);
         when(clubRepository.saveAndFlush(any(Club.class))).thenAnswer(invocation -> {
             Club club = invocation.getArgument(0);
             if (club.getId() == null) club.setId(UUID.randomUUID());

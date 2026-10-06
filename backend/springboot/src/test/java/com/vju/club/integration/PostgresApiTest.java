@@ -1,9 +1,11 @@
 package com.vju.club.integration;
 
+import com.vju.club.modules.club.entity.Club;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.vju.club.auth.JwtTokenService;
-import com.vju.club.entity.User;
+import com.vju.club.modules.auth.service.JwtTokenService;
+import com.vju.club.modules.user.entity.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

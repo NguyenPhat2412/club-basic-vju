@@ -1,6 +1,6 @@
 package com.vju.club.config;
 
-import com.vju.club.auth.JwtTokenService;
+import com.vju.club.modules.auth.service.JwtTokenService;
 import com.vju.club.security.AccountStatusFilter;
 import com.vju.club.security.ClubUserDetailsService;
 import com.vju.club.security.RateLimitFilter;

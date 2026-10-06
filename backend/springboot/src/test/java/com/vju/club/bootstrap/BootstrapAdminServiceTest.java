@@ -1,13 +1,13 @@
 package com.vju.club.bootstrap;
 
 import com.vju.club.config.BootstrapAdminProperties;
-import com.vju.club.entity.PermissionScope;
-import com.vju.club.entity.Role;
-import com.vju.club.entity.User;
-import com.vju.club.entity.UserRole;
-import com.vju.club.repository.RoleRepository;
-import com.vju.club.repository.UserRepository;
-import com.vju.club.repository.UserRoleRepository;
+import com.vju.club.modules.permission.entity.PermissionScope;
+import com.vju.club.modules.role.entity.Role;
+import com.vju.club.modules.user.entity.User;
+import com.vju.club.modules.role.entity.UserRole;
+import com.vju.club.modules.role.repository.RoleRepository;
+import com.vju.club.modules.user.repository.UserRepository;
+import com.vju.club.modules.role.repository.UserRoleRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
