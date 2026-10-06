@@ -47,6 +47,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         CONSTRAINT_CODES.put("uq_user_permissions_active_", "PERMISSION_ALREADY_GRANTED");
         CONSTRAINT_CODES.put("uq_user_roles_active_", "ROLE_ALREADY_ASSIGNED");
         CONSTRAINT_CODES.put("uq_roles_code_ci", "ROLE_CODE_ALREADY_EXISTS");
+        CONSTRAINT_CODES.put("uq_club_applications_pending", "APPLICATION_ALREADY_PENDING");
     }
 
     @ExceptionHandler(ApiException.class)

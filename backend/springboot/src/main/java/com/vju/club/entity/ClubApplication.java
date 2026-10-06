@@ -24,7 +24,7 @@ public class ClubApplication extends TimestampedEntity {
     @JoinColumn(name = "club_id", nullable = false)
     private Club club;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(nullable = false, length = 2000)
     private String message;
 
     @Enumerated(EnumType.STRING)
@@ -38,7 +38,7 @@ public class ClubApplication extends TimestampedEntity {
     @Column(name = "reviewed_at")
     private OffsetDateTime reviewedAt;
 
-    @Column(name = "review_note", columnDefinition = "TEXT")
+    @Column(name = "review_note", length = 1000)
     private String reviewNote;
 
     @Column(name = "cancelled_at")

@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -126,7 +127,12 @@ public class ClubApplicationService {
                                                               ClubApplicationStatus status, String search,
                                                               OffsetDateTime createdFrom, OffsetDateTime createdTo,
                                                               int offset, int limit) {
-        requireAnyPermission(actor, clubId, "application.view", "application.view_detail");
+        if (!authorizationService.hasPermission(actor, "application.view", clubId, null)) {
+            throw forbidden();
+        }
+        if (!clubRepository.existsById(clubId)) {
+            throw notFound("CLUB_NOT_FOUND", "Club not found");
+        }
         String normalizedSearch = search == null || search.isBlank()
                 ? null : "%" + search.trim().toLowerCase(java.util.Locale.ROOT) + "%";
         OffsetLimitRequest page = new OffsetLimitRequest(offset, limit);
@@ -169,12 +175,18 @@ public class ClubApplicationService {
         application.setReviewedAt(now());
         application.setReviewNote(normalizeNote(request));
         ClubApplication saved = applicationRepository.saveAndFlush(application);
+        Map<String, Object> membershipAfter = new LinkedHashMap<>();
+        membershipAfter.put("userId", application.getApplicant().getId());
+        membershipAfter.put("clubId", clubId);
+        membershipAfter.put("applicationId", saved.getId());
+        membershipAfter.put("status", MembershipStatus.ACTIVE);
         auditService.record(actor.id(), AuditAction.MEMBERSHIP_CREATED, savedMembership.getId(), clubId, null,
-                Map.of("userId", application.getApplicant().getId(), "status", MembershipStatus.ACTIVE));
+                membershipAfter);
+        Map<String, Object> approvalBefore = pendingAuditValues(application);
+        Map<String, Object> approvalAfter = applicationAuditValues(application, saved.getStatus(), savedMembership.getId());
         auditService.record(actor.id(), AuditAction.CLUB_APPLICATION_APPROVED, saved.getId(), clubId,
-                Map.of("status", ClubApplicationStatus.PENDING), Map.of("status", saved.getStatus(),
-                        "membershipId", savedMembership.getId()));
-        return ClubApplicationResponse.from(saved);
+                approvalBefore, approvalAfter);
+        return ClubApplicationResponse.from(saved, savedMembership);
     }
 
     @Transactional
@@ -191,7 +203,8 @@ public class ClubApplicationService {
         application.setReviewNote(normalizeNote(request));
         ClubApplication saved = applicationRepository.saveAndFlush(application);
         auditService.record(actor.id(), AuditAction.CLUB_APPLICATION_REJECTED, saved.getId(), clubId,
-                Map.of("status", ClubApplicationStatus.PENDING), Map.of("status", saved.getStatus()));
+                pendingAuditValues(application),
+                applicationAuditValues(saved, saved.getStatus(), null));
         return ClubApplicationResponse.from(saved);
     }
 
@@ -221,11 +234,36 @@ public class ClubApplicationService {
                 ? null : request.reviewNote().trim();
     }
 
+    private static Map<String, Object> applicationAuditValues(ClubApplication application,
+                                                                ClubApplicationStatus status,
+                                                                UUID membershipId) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("status", status);
+        values.put("applicantId", application.getApplicant().getId());
+        values.put("clubId", application.getClub().getId());
+        if (application.getReviewedBy() != null) values.put("reviewerId", application.getReviewedBy().getId());
+        if (application.getReviewNote() != null) values.put("reviewNote", application.getReviewNote());
+        if (membershipId != null) values.put("membershipId", membershipId);
+        return values;
+    }
+
+    private static Map<String, Object> pendingAuditValues(ClubApplication application) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("status", ClubApplicationStatus.PENDING);
+        values.put("applicantId", application.getApplicant().getId());
+        values.put("clubId", application.getClub().getId());
+        return values;
+    }
+
     private static ApiException notFound(String code, String message) {
         return new ApiException(HttpStatus.NOT_FOUND, code, message);
     }
 
     private static ApiException conflict(String code, String message) {
         return new ApiException(HttpStatus.CONFLICT, code, message);
+    }
+
+    private static ApiException forbidden() {
+        return new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
     }
 }

@@ -51,5 +51,7 @@ class MigrationScriptTest {
             assertTrue(sql.contains("'" + permission + "'"), "missing permission " + permission);
         }
         assertTrue(sql.contains("APPLICATION"));
+        assertTrue(sql.contains("message VARCHAR(2000)"));
+        assertTrue(sql.contains("review_note VARCHAR(1000)"));
     }
 }

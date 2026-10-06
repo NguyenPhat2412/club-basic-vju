@@ -2101,7 +2101,7 @@ paths:
       operationId: clubApplication.listForClub
       summary: List club applications
       tags: [ClubApplication]
-      x-permission: application.view | application.view_detail
+      x-permission: application.view
       x-scope: CLUB
       x-implementation-status: IMPLEMENTED
       parameters:
@@ -2216,11 +2216,6 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/ClubApplication'}
-        '201':
-          description: Approved application and atomically created membership
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/ClubApplication'}
         '400': {$ref: '#/components/responses/BadRequest'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
@@ -2250,11 +2245,6 @@ paths:
             schema: {$ref: '#/components/schemas/ReviewClubApplicationRequest'}
       responses:
         '200':
-          description: Rejected application
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/ClubApplication'}
-        '201':
           description: Rejected application
           content:
             application/json:
@@ -2289,7 +2279,7 @@ paths:
           description: My applications
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/ClubApplicationListResponse'}
+              schema: {$ref: '#/components/schemas/MyClubApplicationListResponse'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
   /users/me/applications/{applicationId}:
@@ -2430,6 +2420,9 @@ components:
         cancelledAt: {type: [string, 'null'], format: date-time}
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}
+        membershipId: {type: [string, 'null'], format: uuid}
+        membershipStatus: {type: [string, 'null'], enum: [ACTIVE, INACTIVE, LEFT, SUSPENDED]}
+        membershipJoinedAt: {type: [string, 'null'], format: date-time}
     ClubApplicationListResponse:
       type: object
       required: [items, total, offset, limit]
@@ -2437,6 +2430,27 @@ components:
         items:
           type: array
           items: {$ref: '#/components/schemas/ClubApplication'}
+        total: {type: integer, format: int64}
+        offset: {type: integer}
+        limit: {type: integer}
+    MyClubApplicationListResponse:
+      type: object
+      required: [items, total, offset, limit]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, clubId, clubCode, clubName, status, createdAt]
+            properties:
+              id: {type: string, format: uuid}
+              clubId: {type: string, format: uuid}
+              clubCode: {type: string}
+              clubName: {type: string}
+              status: {type: string, enum: [PENDING, APPROVED, REJECTED, CANCELLED]}
+              createdAt: {type: string, format: date-time}
+              reviewedAt: {type: [string, 'null'], format: date-time}
+              cancelledAt: {type: [string, 'null'], format: date-time}
         total: {type: integer, format: int64}
         offset: {type: integer}
         limit: {type: integer}

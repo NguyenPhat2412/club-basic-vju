@@ -9,6 +9,7 @@ import com.vju.club.entity.ClubApplication;
 import com.vju.club.entity.ClubApplicationStatus;
 import com.vju.club.entity.ClubStatus;
 import com.vju.club.entity.Membership;
+import com.vju.club.entity.MembershipStatus;
 import com.vju.club.entity.User;
 import com.vju.club.entity.UserStatus;
 import com.vju.club.repository.ClubApplicationRepository;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
@@ -234,11 +236,17 @@ class ClubApplicationServiceTest {
         var response = service.approve(actor, clubId, application.getId(), new ReviewClubApplicationRequest(" Approved "));
 
         assertThat(response.status()).isEqualTo(ClubApplicationStatus.APPROVED.name());
+        assertThat(response.membershipId()).isNotNull();
+        assertThat(response.membershipStatus()).isEqualTo(MembershipStatus.ACTIVE.name());
         assertThat(application.getReviewedBy().getId()).isEqualTo(actor.id());
         assertThat(application.getReviewNote()).isEqualTo("Approved");
         verify(auditService).record(eq(actor.id()), eq(AuditAction.MEMBERSHIP_CREATED), any(), eq(clubId), eq(null), any());
+        ArgumentCaptor<java.util.Map> approvalAfter = ArgumentCaptor.forClass(java.util.Map.class);
         verify(auditService).record(eq(actor.id()), eq(AuditAction.CLUB_APPLICATION_APPROVED),
-                eq(application.getId()), eq(clubId), any(), any());
+                eq(application.getId()), eq(clubId), any(), approvalAfter.capture());
+        assertThat(approvalAfter.getValue()).containsEntry("reviewerId", actor.id())
+                .containsEntry("applicantId", actor.id()).containsEntry("clubId", clubId)
+                .containsEntry("reviewNote", "Approved");
     }
 
     @Test
@@ -254,8 +262,12 @@ class ClubApplicationServiceTest {
 
         assertThat(response.status()).isEqualTo(ClubApplicationStatus.REJECTED.name());
         verify(membershipRepository, never()).saveAndFlush(any());
+        ArgumentCaptor<java.util.Map> rejectionAfter = ArgumentCaptor.forClass(java.util.Map.class);
         verify(auditService).record(eq(actor.id()), eq(AuditAction.CLUB_APPLICATION_REJECTED),
-                eq(application.getId()), eq(clubId), any(), any());
+                eq(application.getId()), eq(clubId), any(), rejectionAfter.capture());
+        assertThat(rejectionAfter.getValue()).containsEntry("reviewerId", actor.id())
+                .containsEntry("applicantId", actor.id()).containsEntry("clubId", clubId)
+                .containsEntry("reviewNote", "No");
     }
 
     @Test
@@ -269,6 +281,25 @@ class ClubApplicationServiceTest {
         assertApiError(() -> service.reject(actor, clubId, application.getId(), new ReviewClubApplicationRequest(null)),
                 HttpStatus.CONFLICT, "APPLICATION_ALREADY_REVIEWED");
         verify(membershipRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void reviewerListOfMissingClubIsNotFound() {
+        UUID missingClub = UUID.randomUUID();
+        when(authorization.hasPermission(actor, "application.view", missingClub, null)).thenReturn(true);
+        when(clubRepository.existsById(missingClub)).thenReturn(false);
+
+        assertApiError(() -> service.listForClub(actor, missingClub, null, null, null, null, 0, 20),
+                HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND");
+    }
+
+    @Test
+    void reviewerDetailPermissionDoesNotGrantReviewerListPermission() {
+        UUID clubId = UUID.randomUUID();
+        when(authorization.hasPermission(actor, "application.view", clubId, null)).thenReturn(false);
+
+        assertApiError(() -> service.listForClub(actor, clubId, null, null, null, null, 0, 20),
+                HttpStatus.FORBIDDEN, "PERMISSION_DENIED");
     }
 
     @Test

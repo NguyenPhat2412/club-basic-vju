@@ -176,6 +176,15 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
         db.update("DELETE FROM permissions WHERE permission_key = 'club.purge'");
     }
 
+    @Test
+    void applicationTextBoundsAreEnforcedByDatabase() {
+        UUID applicant = user("application-bounds@test.local");
+        assertThatThrownBy(() -> db.update(
+                "INSERT INTO club_applications(applicant_id, club_id, message) VALUES (?, ?, ?)",
+                applicant, clubA, "x".repeat(2001)))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
     // ---- 7. indexes are usable --------------------------------------------------------------------
 
     private String plan(String sql) {

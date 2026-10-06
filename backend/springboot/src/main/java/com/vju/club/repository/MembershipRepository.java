@@ -22,7 +22,8 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID> {
     @Query("SELECT count(m) FROM Membership m WHERE m.club.id = :clubId AND (:status IS NULL OR m.status = :status)")
     long countByClub(@Param("clubId") UUID clubId, @Param("status") MembershipStatus status);
 
-    @Query("SELECT DISTINCT m FROM Membership m LEFT JOIN DepartmentMember dm ON dm.membership.id = m.id "
+    @Query("SELECT DISTINCT m FROM Membership m JOIN FETCH m.user JOIN FETCH m.club "
+            + "LEFT JOIN DepartmentMember dm ON dm.membership.id = m.id "
             + "WHERE m.club.id = :clubId AND (:status IS NULL OR m.status = :status) "
             + "AND (:departmentId IS NULL OR dm.department.id = :departmentId) "
             + "AND (:search IS NULL OR lower(m.user.email) LIKE :search "
@@ -45,7 +46,7 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID> {
                              @Param("departmentId") UUID departmentId,
                              @Param("search") String search);
 
-    @Query("SELECT m FROM Membership m JOIN FETCH m.club "
+    @Query("SELECT m FROM Membership m JOIN FETCH m.user JOIN FETCH m.club "
             + "WHERE m.user.id = :userId AND (:status IS NULL OR m.status = :status) "
             + "ORDER BY m.joinedAt DESC, m.id ASC")
     List<Membership> findPageByUser(@Param("userId") UUID userId,

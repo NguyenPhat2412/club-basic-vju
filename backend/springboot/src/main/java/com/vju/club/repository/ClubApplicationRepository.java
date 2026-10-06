@@ -3,6 +3,7 @@ package com.vju.club.repository;
 import com.vju.club.entity.ClubApplication;
 import com.vju.club.entity.ClubApplicationStatus;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -16,8 +17,10 @@ import java.util.UUID;
 
 public interface ClubApplicationRepository extends JpaRepository<ClubApplication, UUID> {
 
+    @EntityGraph(attributePaths = {"applicant", "club", "reviewedBy"})
     Optional<ClubApplication> findByIdAndApplicant_Id(UUID id, UUID applicantId);
 
+    @EntityGraph(attributePaths = {"applicant", "club", "reviewedBy"})
     Optional<ClubApplication> findByIdAndClub_Id(UUID id, UUID clubId);
 
     Optional<ClubApplication> findByApplicant_IdAndClub_IdAndStatus(
@@ -40,7 +43,7 @@ public interface ClubApplicationRepository extends JpaRepository<ClubApplication
                           @Param("status") ClubApplicationStatus status,
                           @Param("clubId") UUID clubId);
 
-    @Query("SELECT a FROM ClubApplication a JOIN FETCH a.applicant JOIN FETCH a.club "
+    @Query("SELECT a FROM ClubApplication a JOIN FETCH a.applicant JOIN FETCH a.club LEFT JOIN FETCH a.reviewedBy "
             + "WHERE a.club.id = :clubId "
             + "AND (:status IS NULL OR a.status = :status) "
             + "AND (:search IS NULL OR lower(a.applicant.email) LIKE :search OR lower(a.applicant.fullName) LIKE :search) "
@@ -67,7 +70,7 @@ public interface ClubApplicationRepository extends JpaRepository<ClubApplication
                      @Param("createdTo") OffsetDateTime createdTo);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT a FROM ClubApplication a JOIN FETCH a.applicant JOIN FETCH a.club "
+    @Query("SELECT a FROM ClubApplication a JOIN FETCH a.applicant JOIN FETCH a.club LEFT JOIN FETCH a.reviewedBy "
             + "WHERE a.id = :id AND a.club.id = :clubId")
     Optional<ClubApplication> findForReview(@Param("id") UUID id, @Param("clubId") UUID clubId);
 }

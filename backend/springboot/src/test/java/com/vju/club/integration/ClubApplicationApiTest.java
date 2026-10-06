@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -78,5 +79,71 @@ class ClubApplicationApiTest extends ApiIntegrationTest {
 
         JsonNode audit = call(get("/api/v1/audit-logs").param("resourceType", "APPLICATION"), adminToken, null, 200);
         assertThat(audit.path("items").toString()).contains("CLUB_APPLICATION_APPROVED");
+    }
+
+    @Test
+    void concurrentPendingCreatesHaveOneWinnerAndMappedConflict() throws Exception {
+        List<Integer> statuses = concurrently(8, () -> () ->
+                send(post(applications(clubA)), memberToken, Map.of("message", "race")).getStatus());
+
+        assertThat(statuses).containsOnly(201, 409);
+        assertThat(statuses).filteredOn(status -> status == 201).hasSize(1);
+        assertThat(count("SELECT count(*) FROM club_applications WHERE applicant_id = ? AND club_id = ? "
+                + "AND status = 'PENDING'", member, clubA)).isEqualTo(1);
+    }
+
+    @Test
+    void concurrentApprovalsCreateOneMembershipAndOneTerminalWinner() throws Exception {
+        UUID applicant = user("approve-race@test.local");
+        JsonNode application = call(post(applications(clubA)), token(applicant), Map.of("message", "race"), 201);
+
+        List<Integer> statuses = concurrently(8, () -> () ->
+                send(post(applications(clubA) + "/" + id(application) + "/approve"), adminToken, Map.of()).getStatus());
+
+        assertThat(statuses).containsOnly(200, 409);
+        assertThat(statuses).filteredOn(status -> status == 200).hasSize(1);
+        assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ? AND status = 'ACTIVE'",
+                applicant, clubA)).isEqualTo(1);
+    }
+
+    @Test
+    void ownerEndpointsDoNotExposeAnotherUsersApplication() throws Exception {
+        UUID applicant = user("owner-isolation@test.local");
+        JsonNode application = call(post(applications(clubA)), token(applicant), Map.of("message", "private"), 201);
+        String mine = "/api/v1/users/me/applications/" + id(application);
+
+        problem(get(mine), memberToken, null, 404, "CLUB_APPLICATION_NOT_FOUND");
+        problem(patch(mine + "/cancel"), memberToken, null, 404, "CLUB_APPLICATION_NOT_FOUND");
+    }
+
+    @Test
+    void reviewerPathClubMustMatchApplicationClub() throws Exception {
+        UUID applicant = user("path-mismatch@test.local");
+        JsonNode application = call(post(applications(clubB)), token(applicant), Map.of("message", "club B"), 201);
+        grant(member, "application.view", "CLUB", clubA, null);
+
+        problem(get(applications(clubA) + "/" + id(application)), memberToken, null, 404,
+                "CLUB_APPLICATION_NOT_FOUND");
+    }
+
+    @Test
+    void approvalRollsBackApplicationWhenMembershipInsertFails() throws Exception {
+        UUID applicant = user("rollback@test.local");
+        JsonNode application = call(post(applications(clubA)), token(applicant), Map.of("message", "rollback"), 201);
+        db.execute("CREATE OR REPLACE FUNCTION phase2_fail_membership() RETURNS trigger LANGUAGE plpgsql AS $$ "
+                + "BEGIN RAISE EXCEPTION 'forced phase2 membership failure'; END; $$");
+        db.execute("CREATE TRIGGER phase2_fail_membership BEFORE INSERT ON memberships "
+                + "FOR EACH ROW EXECUTE FUNCTION phase2_fail_membership()");
+        try {
+            problem(post(applications(clubA) + "/" + id(application) + "/approve"), adminToken,
+                    Map.of(), 500, "INTERNAL_ERROR");
+        } finally {
+            db.execute("DROP TRIGGER IF EXISTS phase2_fail_membership ON memberships");
+            db.execute("DROP FUNCTION IF EXISTS phase2_fail_membership()");
+        }
+        assertThat(db.queryForObject("SELECT status FROM club_applications WHERE id = ?", String.class, id(application)))
+                .isEqualTo("PENDING");
+        assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ?", applicant, clubA))
+                .isZero();
     }
 }

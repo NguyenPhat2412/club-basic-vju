@@ -376,7 +376,7 @@ entries:
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: application.view | application.view_detail
+  permission: application.view
 - method: GET
   path: /api/v1/clubs/{clubId}/applications/{applicationId}
   module: club-application
