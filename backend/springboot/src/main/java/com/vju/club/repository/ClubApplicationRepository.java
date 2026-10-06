@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -38,6 +39,32 @@ public interface ClubApplicationRepository extends JpaRepository<ClubApplication
     long countByApplicant(@Param("applicantId") UUID applicantId,
                           @Param("status") ClubApplicationStatus status,
                           @Param("clubId") UUID clubId);
+
+    @Query("SELECT a FROM ClubApplication a JOIN FETCH a.applicant JOIN FETCH a.club "
+            + "WHERE a.club.id = :clubId "
+            + "AND (:status IS NULL OR a.status = :status) "
+            + "AND (:search IS NULL OR lower(a.applicant.email) LIKE :search OR lower(a.applicant.fullName) LIKE :search) "
+            + "AND (:createdFrom IS NULL OR a.createdAt >= :createdFrom) "
+            + "AND (:createdTo IS NULL OR a.createdAt < :createdTo) "
+            + "ORDER BY a.createdAt DESC, a.id DESC")
+    List<ClubApplication> findPageByClub(@Param("clubId") UUID clubId,
+                                         @Param("status") ClubApplicationStatus status,
+                                         @Param("search") String search,
+                                         @Param("createdFrom") OffsetDateTime createdFrom,
+                                         @Param("createdTo") OffsetDateTime createdTo,
+                                         Pageable pageable);
+
+    @Query("SELECT count(a) FROM ClubApplication a "
+            + "WHERE a.club.id = :clubId "
+            + "AND (:status IS NULL OR a.status = :status) "
+            + "AND (:search IS NULL OR lower(a.applicant.email) LIKE :search OR lower(a.applicant.fullName) LIKE :search) "
+            + "AND (:createdFrom IS NULL OR a.createdAt >= :createdFrom) "
+            + "AND (:createdTo IS NULL OR a.createdAt < :createdTo)")
+    long countByClub(@Param("clubId") UUID clubId,
+                     @Param("status") ClubApplicationStatus status,
+                     @Param("search") String search,
+                     @Param("createdFrom") OffsetDateTime createdFrom,
+                     @Param("createdTo") OffsetDateTime createdTo);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT a FROM ClubApplication a JOIN FETCH a.applicant JOIN FETCH a.club "

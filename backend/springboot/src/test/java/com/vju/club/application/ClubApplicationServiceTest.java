@@ -3,6 +3,7 @@ package com.vju.club.application;
 import com.vju.club.audit.AuditAction;
 import com.vju.club.audit.AuditService;
 import com.vju.club.application.dto.CreateClubApplicationRequest;
+import com.vju.club.application.dto.ReviewClubApplicationRequest;
 import com.vju.club.entity.Club;
 import com.vju.club.entity.ClubApplication;
 import com.vju.club.entity.ClubApplicationStatus;
@@ -34,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -187,6 +189,104 @@ class ClubApplicationServiceTest {
 
         assertApiError(() -> service.cancel(actor, application.getId()), HttpStatus.CONFLICT,
                 "APPLICATION_CANNOT_BE_CANCELLED");
+        verify(applicationRepository, never()).saveAndFlush(any());
+    }
+
+    private ClubApplication pendingApplication(UUID clubId) {
+        ClubApplication application = new ClubApplication();
+        application.setId(UUID.randomUUID());
+        application.setApplicant(user(UserStatus.ACTIVE));
+        Club club = club(ClubStatus.ACTIVE);
+        club.setId(clubId);
+        application.setClub(club);
+        application.setMessage("message");
+        application.setStatus(ClubApplicationStatus.PENDING);
+        return application;
+    }
+
+    @Test
+    void reviewerWithoutClubPermissionCannotApprove() {
+        UUID clubId = UUID.randomUUID();
+        when(authorization.hasPermission(actor, "application.approve", clubId, null)).thenReturn(false);
+        when(authorization.hasPermission(actor, "application.review", clubId, null)).thenReturn(false);
+
+        assertApiError(() -> service.approve(actor, clubId, UUID.randomUUID(), new ReviewClubApplicationRequest("ok")),
+                HttpStatus.FORBIDDEN, "PERMISSION_DENIED");
+        verify(applicationRepository, never()).findForReview(any(), any());
+    }
+
+    @Test
+    void approveCreatesMembershipAndAuditsBothResources() {
+        UUID clubId = UUID.randomUUID();
+        ClubApplication application = pendingApplication(clubId);
+        when(authorization.hasPermission(actor, "application.approve", clubId, null)).thenReturn(true);
+        when(applicationRepository.findForReview(application.getId(), clubId)).thenReturn(Optional.of(application));
+        when(membershipRepository.findFirstByUser_IdAndClub_IdAndStatusNot(
+                actor.id(), clubId, com.vju.club.entity.MembershipStatus.LEFT)).thenReturn(Optional.empty());
+        when(userRepository.findById(actor.id())).thenReturn(Optional.of(user(UserStatus.ACTIVE)));
+        when(membershipRepository.saveAndFlush(any(Membership.class))).thenAnswer(invocation -> {
+            Membership membership = invocation.getArgument(0);
+            membership.setId(UUID.randomUUID());
+            return membership;
+        });
+        when(applicationRepository.saveAndFlush(application)).thenReturn(application);
+
+        var response = service.approve(actor, clubId, application.getId(), new ReviewClubApplicationRequest(" Approved "));
+
+        assertThat(response.status()).isEqualTo(ClubApplicationStatus.APPROVED.name());
+        assertThat(application.getReviewedBy().getId()).isEqualTo(actor.id());
+        assertThat(application.getReviewNote()).isEqualTo("Approved");
+        verify(auditService).record(eq(actor.id()), eq(AuditAction.MEMBERSHIP_CREATED), any(), eq(clubId), eq(null), any());
+        verify(auditService).record(eq(actor.id()), eq(AuditAction.CLUB_APPLICATION_APPROVED),
+                eq(application.getId()), eq(clubId), any(), any());
+    }
+
+    @Test
+    void rejectChangesStatusWithoutCreatingMembership() {
+        UUID clubId = UUID.randomUUID();
+        ClubApplication application = pendingApplication(clubId);
+        when(authorization.hasPermission(actor, "application.reject", clubId, null)).thenReturn(true);
+        when(applicationRepository.findForReview(application.getId(), clubId)).thenReturn(Optional.of(application));
+        when(userRepository.findById(actor.id())).thenReturn(Optional.of(user(UserStatus.ACTIVE)));
+        when(applicationRepository.saveAndFlush(application)).thenReturn(application);
+
+        var response = service.reject(actor, clubId, application.getId(), new ReviewClubApplicationRequest("No"));
+
+        assertThat(response.status()).isEqualTo(ClubApplicationStatus.REJECTED.name());
+        verify(membershipRepository, never()).saveAndFlush(any());
+        verify(auditService).record(eq(actor.id()), eq(AuditAction.CLUB_APPLICATION_REJECTED),
+                eq(application.getId()), eq(clubId), any(), any());
+    }
+
+    @Test
+    void reviewedApplicationCannotBeProcessedAgain() {
+        UUID clubId = UUID.randomUUID();
+        ClubApplication application = pendingApplication(clubId);
+        application.setStatus(ClubApplicationStatus.APPROVED);
+        when(authorization.hasPermission(actor, "application.reject", clubId, null)).thenReturn(true);
+        when(applicationRepository.findForReview(application.getId(), clubId)).thenReturn(Optional.of(application));
+
+        assertApiError(() -> service.reject(actor, clubId, application.getId(), new ReviewClubApplicationRequest(null)),
+                HttpStatus.CONFLICT, "APPLICATION_ALREADY_REVIEWED");
+        verify(membershipRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void membershipFailureLeavesApplicationPendingBeforeTransactionCommit() {
+        UUID clubId = UUID.randomUUID();
+        ClubApplication application = pendingApplication(clubId);
+        when(authorization.hasPermission(actor, "application.approve", clubId, null)).thenReturn(true);
+        when(applicationRepository.findForReview(application.getId(), clubId)).thenReturn(Optional.of(application));
+        when(membershipRepository.findFirstByUser_IdAndClub_IdAndStatusNot(
+                actor.id(), clubId, com.vju.club.entity.MembershipStatus.LEFT)).thenReturn(Optional.empty());
+        when(userRepository.findById(actor.id())).thenReturn(Optional.of(user(UserStatus.ACTIVE)));
+        doThrow(new IllegalStateException("membership insert failed"))
+                .when(membershipRepository).saveAndFlush(any(Membership.class));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.approve(
+                        actor, clubId, application.getId(), new ReviewClubApplicationRequest(null)))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(application.getStatus()).isEqualTo(ClubApplicationStatus.PENDING);
         verify(applicationRepository, never()).saveAndFlush(any());
     }
 }

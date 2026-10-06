@@ -121,12 +121,104 @@ public class ClubApplicationService {
         return ClubApplicationResponse.from(saved);
     }
 
+    @Transactional(readOnly = true)
+    public PageResponse<ClubApplicationResponse> listForClub(Actor actor, UUID clubId,
+                                                              ClubApplicationStatus status, String search,
+                                                              OffsetDateTime createdFrom, OffsetDateTime createdTo,
+                                                              int offset, int limit) {
+        requireAnyPermission(actor, clubId, "application.view", "application.view_detail");
+        String normalizedSearch = search == null || search.isBlank()
+                ? null : "%" + search.trim().toLowerCase(java.util.Locale.ROOT) + "%";
+        OffsetLimitRequest page = new OffsetLimitRequest(offset, limit);
+        List<ClubApplicationResponse> items = applicationRepository.findPageByClub(
+                        clubId, status, normalizedSearch, createdFrom, createdTo, page).stream()
+                .map(ClubApplicationResponse::from).toList();
+        long total = applicationRepository.countByClub(clubId, status, normalizedSearch, createdFrom, createdTo);
+        return new PageResponse<>(items, total, offset, limit);
+    }
+
+    @Transactional(readOnly = true)
+    public ClubApplicationResponse getForClub(Actor actor, UUID clubId, UUID applicationId) {
+        requireAnyPermission(actor, clubId, "application.view", "application.view_detail");
+        return ClubApplicationResponse.from(applicationRepository.findByIdAndClub_Id(applicationId, clubId)
+                .orElseThrow(() -> notFound("CLUB_APPLICATION_NOT_FOUND", "Club application not found")));
+    }
+
+    @Transactional
+    public ClubApplicationResponse approve(Actor actor, UUID clubId, UUID applicationId,
+                                           com.vju.club.application.dto.ReviewClubApplicationRequest request) {
+        requireAnyPermission(actor, clubId, "application.approve", "application.review");
+        ClubApplication application = applicationRepository.findForReview(applicationId, clubId)
+                .orElseThrow(() -> notFound("CLUB_APPLICATION_NOT_FOUND", "Club application not found"));
+        ensurePending(application);
+        if (membershipRepository.findFirstByUser_IdAndClub_IdAndStatusNot(
+                application.getApplicant().getId(), clubId, MembershipStatus.LEFT).isPresent()) {
+            throw conflict("DUPLICATE_MEMBERSHIP", "User already has a current membership in this club");
+        }
+
+        User reviewer = findUser(actor.id());
+        com.vju.club.entity.Membership membership = new com.vju.club.entity.Membership();
+        membership.setUser(application.getApplicant());
+        membership.setClub(application.getClub());
+        membership.setStatus(MembershipStatus.ACTIVE);
+        membership.setJoinedAt(now());
+        com.vju.club.entity.Membership savedMembership = membershipRepository.saveAndFlush(membership);
+
+        application.setStatus(ClubApplicationStatus.APPROVED);
+        application.setReviewedBy(reviewer);
+        application.setReviewedAt(now());
+        application.setReviewNote(normalizeNote(request));
+        ClubApplication saved = applicationRepository.saveAndFlush(application);
+        auditService.record(actor.id(), AuditAction.MEMBERSHIP_CREATED, savedMembership.getId(), clubId, null,
+                Map.of("userId", application.getApplicant().getId(), "status", MembershipStatus.ACTIVE));
+        auditService.record(actor.id(), AuditAction.CLUB_APPLICATION_APPROVED, saved.getId(), clubId,
+                Map.of("status", ClubApplicationStatus.PENDING), Map.of("status", saved.getStatus(),
+                        "membershipId", savedMembership.getId()));
+        return ClubApplicationResponse.from(saved);
+    }
+
+    @Transactional
+    public ClubApplicationResponse reject(Actor actor, UUID clubId, UUID applicationId,
+                                          com.vju.club.application.dto.ReviewClubApplicationRequest request) {
+        requireAnyPermission(actor, clubId, "application.reject", "application.review");
+        ClubApplication application = applicationRepository.findForReview(applicationId, clubId)
+                .orElseThrow(() -> notFound("CLUB_APPLICATION_NOT_FOUND", "Club application not found"));
+        ensurePending(application);
+        User reviewer = findUser(actor.id());
+        application.setStatus(ClubApplicationStatus.REJECTED);
+        application.setReviewedBy(reviewer);
+        application.setReviewedAt(now());
+        application.setReviewNote(normalizeNote(request));
+        ClubApplication saved = applicationRepository.saveAndFlush(application);
+        auditService.record(actor.id(), AuditAction.CLUB_APPLICATION_REJECTED, saved.getId(), clubId,
+                Map.of("status", ClubApplicationStatus.PENDING), Map.of("status", saved.getStatus()));
+        return ClubApplicationResponse.from(saved);
+    }
+
     private User findUser(UUID id) {
         return userRepository.findById(id).orElseThrow(() -> notFound("USER_NOT_FOUND", "User not found"));
     }
 
     private OffsetDateTime now() {
         return OffsetDateTime.now(clock).withOffsetSameInstant(ZoneOffset.UTC);
+    }
+
+    private void requireAnyPermission(Actor actor, UUID clubId, String first, String second) {
+        if (!authorizationService.hasPermission(actor, first, clubId, null)
+                && !authorizationService.hasPermission(actor, second, clubId, null)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
+        }
+    }
+
+    private static void ensurePending(ClubApplication application) {
+        if (application.getStatus() != ClubApplicationStatus.PENDING) {
+            throw conflict("APPLICATION_ALREADY_REVIEWED", "Application has already been reviewed");
+        }
+    }
+
+    private static String normalizeNote(com.vju.club.application.dto.ReviewClubApplicationRequest request) {
+        return request == null || request.reviewNote() == null || request.reviewNote().isBlank()
+                ? null : request.reviewNote().trim();
     }
 
     private static ApiException notFound(String code, String message) {

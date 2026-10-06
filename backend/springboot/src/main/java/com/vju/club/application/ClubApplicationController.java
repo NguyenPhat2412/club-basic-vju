@@ -3,6 +3,7 @@ package com.vju.club.application;
 import com.vju.club.application.dto.ClubApplicationResponse;
 import com.vju.club.application.dto.ClubApplicationSummaryResponse;
 import com.vju.club.application.dto.CreateClubApplicationRequest;
+import com.vju.club.application.dto.ReviewClubApplicationRequest;
 import com.vju.club.common.dto.PageResponse;
 import com.vju.club.entity.ClubApplicationStatus;
 import com.vju.club.security.Actor;
@@ -20,8 +21,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.util.UUID;
+import java.time.OffsetDateTime;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -57,5 +60,37 @@ public class ClubApplicationController {
     @PatchMapping("/users/me/applications/{applicationId}/cancel")
     public ClubApplicationResponse cancel(Actor actor, @PathVariable UUID applicationId) {
         return applicationService.cancel(actor, applicationId);
+    }
+
+    @GetMapping("/clubs/{clubId}/applications")
+    public PageResponse<ClubApplicationResponse> listForClub(
+            Actor actor, @PathVariable UUID clubId,
+            @RequestParam(required = false) ClubApplicationStatus status,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime createdFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime createdTo,
+            @RequestParam(defaultValue = "0") @Min(0) int offset,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
+        return applicationService.listForClub(actor, clubId, status, search, createdFrom, createdTo, offset, limit);
+    }
+
+    @GetMapping("/clubs/{clubId}/applications/{applicationId}")
+    public ClubApplicationResponse getForClub(Actor actor, @PathVariable UUID clubId,
+                                              @PathVariable UUID applicationId) {
+        return applicationService.getForClub(actor, clubId, applicationId);
+    }
+
+    @PostMapping("/clubs/{clubId}/applications/{applicationId}/approve")
+    public ClubApplicationResponse approve(Actor actor, @PathVariable UUID clubId,
+                                           @PathVariable UUID applicationId,
+                                           @Valid @RequestBody(required = false) ReviewClubApplicationRequest request) {
+        return applicationService.approve(actor, clubId, applicationId, request);
+    }
+
+    @PostMapping("/clubs/{clubId}/applications/{applicationId}/reject")
+    public ClubApplicationResponse reject(Actor actor, @PathVariable UUID clubId,
+                                          @PathVariable UUID applicationId,
+                                          @Valid @RequestBody(required = false) ReviewClubApplicationRequest request) {
+        return applicationService.reject(actor, clubId, applicationId, request);
     }
 }
