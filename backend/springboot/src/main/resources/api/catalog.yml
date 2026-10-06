@@ -342,3 +342,66 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: audit.view
+- method: POST
+  path: /api/v1/clubs/{clubId}/applications
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.create (owner)
+- method: GET
+  path: /api/v1/users/me/applications
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/users/me/applications/{applicationId}
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: PATCH
+  path: /api/v1/users/me/applications/{applicationId}/cancel
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.cancel (owner)
+- method: GET
+  path: /api/v1/clubs/{clubId}/applications
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.view | application.view_detail
+- method: GET
+  path: /api/v1/clubs/{clubId}/applications/{applicationId}
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.view | application.view_detail
+- method: POST
+  path: /api/v1/clubs/{clubId}/applications/{applicationId}/approve
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.approve | application.review
+- method: POST
+  path: /api/v1/clubs/{clubId}/applications/{applicationId}/reject
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.reject | application.review
+- method: GET
+  path: /api/v1/users/me/memberships
+  module: membership
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null

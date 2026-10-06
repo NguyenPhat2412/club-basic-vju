@@ -2096,6 +2096,270 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /clubs/{clubId}/applications:
+    get:
+      operationId: clubApplication.listForClub
+      summary: List club applications
+      tags: [ClubApplication]
+      x-permission: application.view | application.view_detail
+      x-scope: CLUB
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: status
+        in: query
+        schema: {type: string, enum: [PENDING, APPROVED, REJECTED, CANCELLED]}
+      - name: search
+        in: query
+        schema: {type: string}
+      - name: createdFrom
+        in: query
+        schema: {type: string, format: date-time}
+      - name: createdTo
+        in: query
+        schema: {type: string, format: date-time}
+      - name: offset
+        in: query
+        schema: {type: integer, minimum: 0, default: 0}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: Club applications
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClubApplicationListResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+    post:
+      operationId: clubApplication.create
+      summary: Submit a club application
+      tags: [ClubApplication]
+      x-permission: application.create (owner)
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateClubApplicationRequest'}
+      responses:
+        '201':
+          description: Pending application
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClubApplication'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /clubs/{clubId}/applications/{applicationId}:
+    get:
+      operationId: clubApplication.getForClub
+      summary: Get a club application
+      tags: [ClubApplication]
+      x-permission: application.view | application.view_detail
+      x-scope: CLUB
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: applicationId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Application
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClubApplication'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /clubs/{clubId}/applications/{applicationId}/approve:
+    post:
+      operationId: clubApplication.approve
+      summary: Approve a club application and create membership
+      tags: [ClubApplication]
+      x-permission: application.approve | application.review
+      x-scope: CLUB
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: applicationId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ReviewClubApplicationRequest'}
+      responses:
+        '200':
+          description: Approved application and atomically created membership
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClubApplication'}
+        '201':
+          description: Approved application and atomically created membership
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClubApplication'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /clubs/{clubId}/applications/{applicationId}/reject:
+    post:
+      operationId: clubApplication.reject
+      summary: Reject a club application
+      tags: [ClubApplication]
+      x-permission: application.reject | application.review
+      x-scope: CLUB
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: applicationId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ReviewClubApplicationRequest'}
+      responses:
+        '200':
+          description: Rejected application
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClubApplication'}
+        '201':
+          description: Rejected application
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClubApplication'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /users/me/applications:
+    get:
+      operationId: clubApplication.listMine
+      summary: List my club applications
+      tags: [ClubApplication]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: status
+        in: query
+        schema: {type: string, enum: [PENDING, APPROVED, REJECTED, CANCELLED]}
+      - name: clubId
+        in: query
+        schema: {type: string, format: uuid}
+      - name: offset
+        in: query
+        schema: {type: integer, minimum: 0, default: 0}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: My applications
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClubApplicationListResponse'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /users/me/applications/{applicationId}:
+    get:
+      operationId: clubApplication.getMine
+      summary: Get my club application
+      tags: [ClubApplication]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: applicationId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: My application
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClubApplication'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /users/me/applications/{applicationId}/cancel:
+    patch:
+      operationId: clubApplication.cancel
+      summary: Cancel a pending club application
+      tags: [ClubApplication]
+      x-permission: application.cancel (owner)
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: applicationId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Cancelled application
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClubApplication'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /users/me/memberships:
+    get:
+      operationId: membership.listMine
+      summary: List my club membership history
+      tags: [Membership]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: status
+        in: query
+        schema: {type: string, enum: [ACTIVE, INACTIVE, LEFT, SUSPENDED]}
+      - name: offset
+        in: query
+        schema: {type: integer, minimum: 0, default: 0}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: My memberships
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MyMembershipListResponse'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
 components:
   securitySchemes:
     bearerAuth:
@@ -2135,6 +2399,70 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
   schemas:
+    CreateClubApplicationRequest:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    ReviewClubApplicationRequest:
+      type: object
+      properties:
+        reviewNote:
+          type: string
+          maxLength: 1000
+    ClubApplication:
+      type: object
+      required: [id, applicantId, clubId, clubCode, clubName, message, status, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        applicantId: {type: string, format: uuid}
+        clubId: {type: string, format: uuid}
+        clubCode: {type: string}
+        clubName: {type: string}
+        message: {type: string}
+        status: {type: string, enum: [PENDING, APPROVED, REJECTED, CANCELLED]}
+        reviewedBy: {type: [string, 'null'], format: uuid}
+        reviewedAt: {type: [string, 'null'], format: date-time}
+        reviewNote: {type: [string, 'null']}
+        cancelledAt: {type: [string, 'null'], format: date-time}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    ClubApplicationListResponse:
+      type: object
+      required: [items, total, offset, limit]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/ClubApplication'}
+        total: {type: integer, format: int64}
+        offset: {type: integer}
+        limit: {type: integer}
+    MyMembershipListResponse:
+      type: object
+      required: [items, total, offset, limit]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/MyMembership'}
+        total: {type: integer, format: int64}
+        offset: {type: integer}
+        limit: {type: integer}
+    MyMembership:
+      type: object
+      required: [id, clubId, clubCode, clubName, status, joinedAt, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        clubId: {type: string, format: uuid}
+        clubCode: {type: string}
+        clubName: {type: string}
+        status: {type: string, enum: [ACTIVE, INACTIVE, LEFT, SUSPENDED]}
+        joinedAt: {type: string, format: date-time}
+        leftAt: {type: [string, 'null'], format: date-time}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
     RegisterRequest:
       type: object
       required:

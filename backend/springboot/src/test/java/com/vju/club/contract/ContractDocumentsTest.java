@@ -25,4 +25,20 @@ class ContractDocumentsTest {
         assertThat(Files.mismatch(DOCS.resolve("catalog.yml"), RUNTIME.resolve("catalog.yml")))
                 .as("Copy docs/api/catalog.yml to src/main/resources/api/catalog.yml").isEqualTo(-1L);
     }
+
+    @Test
+    void phaseTwoContractDocumentsContainApplicationWorkflowAndPermissions() throws IOException {
+        String openApi = Files.readString(DOCS.resolve("openapi.yaml"));
+        String catalog = Files.readString(DOCS.resolve("catalog.yml"));
+        for (String path : new String[]{
+                "/clubs/{clubId}/applications",
+                "/users/me/applications",
+                "/users/me/memberships",
+                "/clubs/{clubId}/applications/{applicationId}/approve",
+                "/clubs/{clubId}/applications/{applicationId}/reject"}) {
+            assertThat(openApi).contains(path);
+            assertThat(catalog).contains(path);
+        }
+        assertThat(openApi).contains("application.approve").contains("application.reject");
+    }
 }

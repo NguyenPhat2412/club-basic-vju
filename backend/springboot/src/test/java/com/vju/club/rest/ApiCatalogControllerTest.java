@@ -24,6 +24,9 @@ class ApiCatalogControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.path == '/api/v1/api-catalog')].status", hasItem("IMPLEMENTED")))
                 .andExpect(jsonPath("$[?(@.path == '/api/v1/auth/register')].status", hasItem("IMPLEMENTED")))
+                .andExpect(jsonPath("$[?(@.path == '/api/v1/clubs/{clubId}/applications')].status", hasItem("IMPLEMENTED")))
+                .andExpect(jsonPath("$[?(@.path == '/api/v1/users/me/applications')].status", hasItem("IMPLEMENTED")))
+                .andExpect(jsonPath("$[?(@.path == '/api/v1/users/me/memberships')].status", hasItem("IMPLEMENTED")))
                 .andExpect(jsonPath("$[*].backend", everyItem(equalTo("backend/springboot"))));
     }
 

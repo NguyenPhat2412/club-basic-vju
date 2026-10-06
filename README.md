@@ -355,6 +355,25 @@ GitHub Actions ([.github/workflows/backend.yml](.github/workflows/backend.yml)) 
 - **Thêm endpoint có kiểm tra quyền:** khai báo tham số `Actor actor` trong controller, rồi trong service gọi `PermissionAuthorizationService.require(actor, ...)`. Truyền cả `clubId` lẫn `departmentId` khi có để cơ chế kế thừa phạm vi hoạt động. Với ID không tồn tại, dùng `missingResource(...)`.
 - **Trước khi push:** chạy `./mvnw test` và bộ test contract.
 
+## Phase 2: Tuyển thành viên
+
+Phase 2 bổ sung luồng:
+
+`Student -> xem CLB ACTIVE -> gửi đơn -> theo dõi/hủy đơn -> reviewer theo scope CLB duyệt/từ chối -> APPROVED tạo Membership ACTIVE -> phân vào Department`.
+
+Endpoint chính:
+
+- `POST /api/v1/clubs/{clubId}/applications` tạo đơn `PENDING`.
+- `GET /api/v1/users/me/applications` và `GET /api/v1/users/me/applications/{applicationId}` xem đơn của mình.
+- `PATCH /api/v1/users/me/applications/{applicationId}/cancel` hủy đơn đang `PENDING`.
+- `GET /api/v1/clubs/{clubId}/applications` xem đơn theo scope CLB.
+- `POST /api/v1/clubs/{clubId}/applications/{applicationId}/approve` hoặc `/reject` xử lý đơn. Approve tạo Membership trong cùng transaction với cập nhật application.
+- `GET /api/v1/users/me/memberships` xem lịch sử membership cá nhân.
+
+Quyền mới gồm `application.view`, `application.view_detail`, `application.create`, `application.cancel`, `application.review`, `application.approve`, và `application.reject`; quyền quản lý đơn dùng scope `CLUB`. Applicant dùng ownership cho các thao tác cá nhân. Notification email/push/WebSocket chưa có hạ tầng nên được deferred sang phase sau.
+
+Migration `V7__club_applications.sql` tạo bảng application, partial unique index ngăn hai đơn `PENDING` trùng user/CLB, seed permission, và mở rộng audit resource type `APPLICATION`.
+
 ## Tài liệu liên quan
 
 - [Backend README](backend/springboot/README.md): chi tiết chạy và kiểm thử backend
