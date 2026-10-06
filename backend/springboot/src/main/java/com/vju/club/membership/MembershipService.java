@@ -14,6 +14,7 @@ import com.vju.club.entity.UserStatus;
 import com.vju.club.error.ApiException;
 import com.vju.club.membership.dto.CreateMembershipRequest;
 import com.vju.club.membership.dto.MembershipResponse;
+import com.vju.club.membership.dto.MyMembershipResponse;
 import com.vju.club.membership.dto.UpdateMembershipRequest;
 import com.vju.club.repository.ClubRepository;
 import com.vju.club.repository.DepartmentMemberRepository;
@@ -56,11 +57,29 @@ public class MembershipService {
     @Transactional(readOnly = true)
     public PageResponse<MembershipResponse> list(Actor actor, UUID clubId, MembershipStatus status,
                                                  int offset, int limit) {
+        return list(actor, clubId, status, null, null, offset, limit);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<MembershipResponse> list(Actor actor, UUID clubId, MembershipStatus status,
+                                                 UUID departmentId, String search, int offset, int limit) {
         authorizationService.require(actor, "member.view", clubId, null);
         if (!clubRepository.existsById(clubId)) throw notFound("CLUB_NOT_FOUND", "Club not found");
-        var items = membershipRepository.findPageByClub(clubId, status, new OffsetLimitRequest(offset, limit)).stream()
+        String normalizedSearch = search == null || search.isBlank()
+                ? null : "%" + search.trim().toLowerCase(java.util.Locale.ROOT) + "%";
+        var items = membershipRepository.findPageByClubFiltered(clubId, status, departmentId, normalizedSearch,
+                new OffsetLimitRequest(offset, limit)).stream()
                 .map(MembershipResponse::from).toList();
-        return new PageResponse<>(items, membershipRepository.countByClub(clubId, status), offset, limit);
+        return new PageResponse<>(items, membershipRepository.countByClubFiltered(clubId, status, departmentId,
+                normalizedSearch), offset, limit);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<MyMembershipResponse> listMine(Actor actor, MembershipStatus status, int offset, int limit) {
+        OffsetLimitRequest page = new OffsetLimitRequest(offset, limit);
+        var items = membershipRepository.findPageByUser(actor.id(), status, page).stream()
+                .map(MyMembershipResponse::from).toList();
+        return new PageResponse<>(items, membershipRepository.countByUser(actor.id(), status), offset, limit);
     }
 
     @Transactional(readOnly = true)

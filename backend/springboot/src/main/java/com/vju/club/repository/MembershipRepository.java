@@ -22,6 +22,39 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID> {
     @Query("SELECT count(m) FROM Membership m WHERE m.club.id = :clubId AND (:status IS NULL OR m.status = :status)")
     long countByClub(@Param("clubId") UUID clubId, @Param("status") MembershipStatus status);
 
+    @Query("SELECT DISTINCT m FROM Membership m LEFT JOIN DepartmentMember dm ON dm.membership.id = m.id "
+            + "WHERE m.club.id = :clubId AND (:status IS NULL OR m.status = :status) "
+            + "AND (:departmentId IS NULL OR dm.department.id = :departmentId) "
+            + "AND (:search IS NULL OR lower(m.user.email) LIKE :search "
+            + "OR lower(m.user.fullName) LIKE :search "
+            + "OR lower(coalesce(m.user.studentCode, '')) LIKE :search) "
+            + "ORDER BY m.joinedAt DESC, m.id ASC")
+    List<Membership> findPageByClubFiltered(@Param("clubId") UUID clubId,
+                                            @Param("status") MembershipStatus status,
+                                            @Param("departmentId") UUID departmentId,
+                                            @Param("search") String search, Pageable pageable);
+
+    @Query("SELECT count(DISTINCT m) FROM Membership m LEFT JOIN DepartmentMember dm ON dm.membership.id = m.id "
+            + "WHERE m.club.id = :clubId AND (:status IS NULL OR m.status = :status) "
+            + "AND (:departmentId IS NULL OR dm.department.id = :departmentId) "
+            + "AND (:search IS NULL OR lower(m.user.email) LIKE :search "
+            + "OR lower(m.user.fullName) LIKE :search "
+            + "OR lower(coalesce(m.user.studentCode, '')) LIKE :search)")
+    long countByClubFiltered(@Param("clubId") UUID clubId,
+                             @Param("status") MembershipStatus status,
+                             @Param("departmentId") UUID departmentId,
+                             @Param("search") String search);
+
+    @Query("SELECT m FROM Membership m JOIN FETCH m.club "
+            + "WHERE m.user.id = :userId AND (:status IS NULL OR m.status = :status) "
+            + "ORDER BY m.joinedAt DESC, m.id ASC")
+    List<Membership> findPageByUser(@Param("userId") UUID userId,
+                                    @Param("status") MembershipStatus status, Pageable pageable);
+
+    @Query("SELECT count(m) FROM Membership m WHERE m.user.id = :userId "
+            + "AND (:status IS NULL OR m.status = :status)")
+    long countByUser(@Param("userId") UUID userId, @Param("status") MembershipStatus status);
+
     /** The user's current membership in the club: at most one row is not LEFT. */
     Optional<Membership> findFirstByUser_IdAndClub_IdAndStatusNot(UUID userId, UUID clubId, MembershipStatus status);
 }

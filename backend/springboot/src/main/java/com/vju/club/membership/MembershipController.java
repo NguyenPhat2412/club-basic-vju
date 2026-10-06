@@ -5,6 +5,7 @@ import com.vju.club.common.dto.PageResponse;
 import com.vju.club.entity.MembershipStatus;
 import com.vju.club.membership.dto.CreateMembershipRequest;
 import com.vju.club.membership.dto.MembershipResponse;
+import com.vju.club.membership.dto.MyMembershipResponse;
 import com.vju.club.membership.dto.UpdateMembershipRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -32,9 +33,19 @@ public class MembershipController {
     @GetMapping("/clubs/{clubId}/memberships")
     public PageResponse<MembershipResponse> list(Actor actor, @PathVariable UUID clubId,
                                                  @RequestParam(required = false) MembershipStatus status,
+                                                 @RequestParam(required = false) UUID departmentId,
+                                                 @RequestParam(required = false) String search,
                                                  @RequestParam(defaultValue = "0") @Min(0) int offset,
                                                  @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
-        return membershipService.list(actor, clubId, status, offset, limit);
+        return membershipService.list(actor, clubId, status, departmentId, search, offset, limit);
+    }
+
+    @GetMapping("/users/me/memberships")
+    public PageResponse<MyMembershipResponse> listMine(Actor actor,
+                                                       @RequestParam(required = false) MembershipStatus status,
+                                                       @RequestParam(defaultValue = "0") @Min(0) int offset,
+                                                       @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
+        return membershipService.listMine(actor, status, offset, limit);
     }
     @GetMapping("/memberships/{membershipId}")
     public MembershipResponse get(Actor actor, @PathVariable UUID membershipId) {

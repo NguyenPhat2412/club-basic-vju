@@ -37,6 +37,7 @@ import static com.vju.club.support.ApiErrors.assertApiError;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -161,5 +162,35 @@ class MembershipServiceTest {
         UUID missing = UUID.randomUUID();
         when(clubRepository.existsById(missing)).thenReturn(false);
         assertApiError(() -> service.list(actor, missing, null, 0, 20), HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND");
+    }
+
+    @Test
+    void listSupportsSearchAndDepartmentFilters() {
+        UUID departmentId = UUID.randomUUID();
+        when(clubRepository.existsById(club.getId())).thenReturn(true);
+        when(membershipRepository.findPageByClubFiltered(eq(club.getId()), eq(MembershipStatus.ACTIVE),
+                eq(departmentId), eq("%student%"), any())).thenReturn(java.util.List.of());
+        when(membershipRepository.countByClubFiltered(club.getId(), MembershipStatus.ACTIVE,
+                departmentId, "%student%")).thenReturn(0L);
+
+        service.list(actor, club.getId(), MembershipStatus.ACTIVE, departmentId, "student", 0, 20);
+
+        verify(membershipRepository).findPageByClubFiltered(eq(club.getId()), eq(MembershipStatus.ACTIVE),
+                eq(departmentId), eq("%student%"), any());
+    }
+
+    @Test
+    void userCanReadOwnMembershipHistoryWithoutGlobalPermission() {
+        Membership own = membership(MembershipStatus.ACTIVE);
+        own.setUser(user);
+        when(membershipRepository.findPageByUser(eq(actor.id()), isNull(), any())).thenReturn(java.util.List.of(own));
+        when(membershipRepository.countByUser(eq(actor.id()), isNull())).thenReturn(1L);
+
+        var page = service.listMine(actor, null, 0, 20);
+
+        assertThat(page.total()).isEqualTo(1L);
+        assertThat(page.items()).hasSize(1);
+        assertThat(page.items().getFirst().clubId()).isEqualTo(club.getId());
+        verify(authorization, never()).require(any(), eq("member.view"), any(), any());
     }
 }
