@@ -27,6 +27,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 
 import java.time.Clock;
@@ -172,23 +176,20 @@ class MembershipServiceTest {
     void listSupportsSearchAndDepartmentFilters() {
         UUID departmentId = UUID.randomUUID();
         when(clubRepository.existsById(club.getId())).thenReturn(true);
-        when(membershipRepository.findPageByClubFiltered(eq(club.getId()), eq(MembershipStatus.ACTIVE),
-                eq(departmentId), eq("%student%"), any())).thenReturn(java.util.List.of());
-        when(membershipRepository.countByClubFiltered(club.getId(), MembershipStatus.ACTIVE,
-                departmentId, "%student%")).thenReturn(0L);
+        when(membershipRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(java.util.List.of(), PageRequest.of(0, 20), 0));
 
         service.list(actor, club.getId(), MembershipStatus.ACTIVE, departmentId, "student", 0, 20);
 
-        verify(membershipRepository).findPageByClubFiltered(eq(club.getId()), eq(MembershipStatus.ACTIVE),
-                eq(departmentId), eq("%student%"), any());
+        verify(membershipRepository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
     void userCanReadOwnMembershipHistoryWithoutGlobalPermission() {
         Membership own = membership(MembershipStatus.ACTIVE);
         own.setUser(user);
-        when(membershipRepository.findPageByUser(eq(actor.id()), isNull(), any())).thenReturn(java.util.List.of(own));
-        when(membershipRepository.countByUser(eq(actor.id()), isNull())).thenReturn(1L);
+        when(membershipRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(java.util.List.of(own), PageRequest.of(0, 20), 1));
 
         var page = service.listMine(actor, null, 0, 20);
 

@@ -25,12 +25,17 @@ import com.vju.club.modules.departmentmember.repository.DepartmentMemberReposito
 import com.vju.club.modules.membership.repository.MembershipRepository;
 import com.vju.club.modules.user.repository.UserRepository;
 import com.vju.club.security.PermissionAuthorizationService;
+import com.vju.club.modules.membership.specification.MembershipSpecifications;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.List;
@@ -71,26 +76,35 @@ public class IMembershipService implements MembershipService {
                                                  UUID departmentId, String search, int offset, int limit) {
         authorizationService.require(actor, MembershipConstants.PERMISSION_VIEW, clubId, null);
         if (!clubRepository.existsById(clubId)) throw notFound("CLUB_NOT_FOUND", "Club not found");
-        String normalizedSearch = search == null || search.isBlank()
-                ? null : "%" + search.trim().toLowerCase(java.util.Locale.ROOT) + "%";
-        var items = membershipRepository.findPageByClubFiltered(clubId, status, departmentId, normalizedSearch,
-                new OffsetLimitRequest(offset, limit)).stream()
-                .map(MembershipResponse::from).toList();
-        return new PageResponse<>(items, membershipRepository.countByClubFiltered(clubId, status, departmentId,
-                normalizedSearch), offset, limit);
+
+        Specification<Membership> spec = Specification.where(MembershipSpecifications.hasClubId(clubId))
+                .and(MembershipSpecifications.hasStatus(status))
+                .and(MembershipSpecifications.inDepartment(departmentId))
+                .and(MembershipSpecifications.userKeyword(search));
+
+        Sort sort = Sort.by(Sort.Order.desc("joinedAt"), Sort.Order.asc("id"));
+        OffsetLimitRequest page = new OffsetLimitRequest(offset, limit, sort);
+        Page<Membership> membershipPage = membershipRepository.findAll(spec, page);
+        var items = membershipPage.getContent().stream().map(MembershipResponse::from).toList();
+        return new PageResponse<>(items, membershipPage.getTotalElements(), offset, limit);
     }
 
     @Transactional(readOnly = true)
     public PageResponse<MyMembershipResponse> listMine(Actor actor, MembershipStatus status, int offset, int limit) {
-        OffsetLimitRequest page = new OffsetLimitRequest(offset, limit);
-        var memberships = membershipRepository.findPageByUser(actor.id(), status, page);
+        Specification<Membership> spec = Specification.where(MembershipSpecifications.hasUserId(actor.id()))
+                .and(MembershipSpecifications.hasStatus(status));
+
+        Sort sort = Sort.by(Sort.Order.desc("joinedAt"), Sort.Order.asc("id"));
+        OffsetLimitRequest page = new OffsetLimitRequest(offset, limit, sort);
+        Page<Membership> membershipPage = membershipRepository.findAll(spec, page);
+        var memberships = membershipPage.getContent();
         Map<UUID, List<MembershipDepartmentResponse>> departments = memberships.isEmpty() ? Map.of()
                 : departmentMemberRepository.findForMemberships(memberships.stream().map(Membership::getId).toList())
                     .stream().collect(Collectors.groupingBy(assignment -> assignment.getMembership().getId(),
                             Collectors.mapping(MembershipDepartmentResponse::from, Collectors.toList())));
         var items = memberships.stream().map(membership -> MyMembershipResponse.from(membership,
                 departments.getOrDefault(membership.getId(), List.of()))).toList();
-        return new PageResponse<>(items, membershipRepository.countByUser(actor.id(), status), offset, limit);
+        return new PageResponse<>(items, membershipPage.getTotalElements(), offset, limit);
     }
 
     @Transactional(readOnly = true)
