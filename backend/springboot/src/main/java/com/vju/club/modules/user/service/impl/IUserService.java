@@ -16,10 +16,13 @@ import com.vju.club.modules.user.repository.UserRepository;
 import com.vju.club.security.PermissionAuthorizationService;
 import com.vju.club.modules.user.config.request.UpdateProfileRequest;
 import com.vju.club.modules.user.config.request.UpdateUserStatusRequest;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.vju.club.modules.user.specification.UserSpecifications;
 
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -77,10 +80,11 @@ public class IUserService implements UserService {
     public PageResponse<UserResponse> search(Actor actor, String query, int offset, int limit,
                                              String orderBy, String orderType) {
         authorizationService.require(actor, UserConstants.PERMISSION_VIEW, null, null);
-        String pattern = "%" + (query == null ? "" : query.trim().toLowerCase(Locale.ROOT)) + "%";
         OffsetLimitRequest page = new OffsetLimitRequest(offset, limit, sort(orderBy, orderType));
-        var users = userRepository.search(pattern, page).stream().map(UserResponse::from).toList();
-        return new PageResponse<>(users, userRepository.countSearch(pattern), offset, limit);
+        Specification<User> spec = UserSpecifications.hasKeyword(query);
+        Page<User> userPage = userRepository.findAll(spec, page);
+        var users = userPage.getContent().stream().map(UserResponse::from).toList();
+        return new PageResponse<>(users, userPage.getTotalElements(), offset, limit);
     }
 
     /** Only whitelisted fields can be sorted on; id breaks ties so paging is stable. */
