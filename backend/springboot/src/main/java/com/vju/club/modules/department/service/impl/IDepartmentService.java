@@ -1,6 +1,7 @@
 package com.vju.club.modules.department.service.impl;
 
 import com.vju.club.modules.department.service.DepartmentService;
+import com.vju.club.modules.department.common.DepartmentConstants;
 
 import com.vju.club.security.Actor;
 import com.vju.club.modules.audit.entity.AuditAction;
@@ -44,7 +45,7 @@ public class IDepartmentService implements DepartmentService {
 
     @Transactional(readOnly = true)
     public PageResponse<DepartmentResponse> list(Actor actor, UUID clubId, int offset, int limit) {
-        authorizationService.require(actor, "department.view", clubId, null);
+        authorizationService.require(actor, DepartmentConstants.PERMISSION_VIEW, clubId, null);
         if (!clubRepository.existsById(clubId)) throw notFound("CLUB_NOT_FOUND", "Club not found");
         var items = departmentRepository.findByClub_IdOrderByNameAscIdAsc(clubId, new OffsetLimitRequest(offset, limit)).stream().map(DepartmentResponse::from).toList();
         return new PageResponse<>(items, departmentRepository.countByClub_Id(clubId), offset, limit);
@@ -52,12 +53,12 @@ public class IDepartmentService implements DepartmentService {
 
     @Transactional(readOnly = true)
     public DepartmentResponse get(Actor actor, UUID departmentId) {
-        return DepartmentResponse.from(authorize(actor, "department.view", departmentId));
+        return DepartmentResponse.from(authorize(actor, DepartmentConstants.PERMISSION_VIEW, departmentId));
     }
 
     @Transactional
     public DepartmentResponse create(Actor actor, UUID clubId, DepartmentRequest request) {
-        authorizationService.require(actor, "department.create", clubId, null);
+        authorizationService.require(actor, DepartmentConstants.PERMISSION_CREATE, clubId, null);
         Club club = clubRepository.findById(clubId).orElseThrow(() -> notFound("CLUB_NOT_FOUND", "Club not found"));
         if (club.getStatus() != ClubStatus.ACTIVE) {
             throw new ApiException(HttpStatus.CONFLICT, "CLUB_INACTIVE", "Club is inactive");

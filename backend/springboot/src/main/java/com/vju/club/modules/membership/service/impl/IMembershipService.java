@@ -1,6 +1,7 @@
 package com.vju.club.modules.membership.service.impl;
 
 import com.vju.club.modules.membership.service.MembershipService;
+import com.vju.club.modules.membership.common.MembershipConstants;
 
 import com.vju.club.security.Actor;
 import com.vju.club.modules.audit.entity.AuditAction;
@@ -68,7 +69,7 @@ public class IMembershipService implements MembershipService {
     @Transactional(readOnly = true)
     public PageResponse<MembershipResponse> list(Actor actor, UUID clubId, MembershipStatus status,
                                                  UUID departmentId, String search, int offset, int limit) {
-        authorizationService.require(actor, "member.view", clubId, null);
+        authorizationService.require(actor, MembershipConstants.PERMISSION_VIEW, clubId, null);
         if (!clubRepository.existsById(clubId)) throw notFound("CLUB_NOT_FOUND", "Club not found");
         String normalizedSearch = search == null || search.isBlank()
                 ? null : "%" + search.trim().toLowerCase(java.util.Locale.ROOT) + "%";
@@ -94,14 +95,14 @@ public class IMembershipService implements MembershipService {
 
     @Transactional(readOnly = true)
     public MembershipResponse get(Actor actor, UUID membershipId) {
-        Membership membership = find(actor, "member.view_detail", membershipId);
-        authorizationService.require(actor, "member.view_detail", membership.getClub().getId(), null);
+        Membership membership = find(actor, MembershipConstants.PERMISSION_VIEW_DETAIL, membershipId);
+        authorizationService.require(actor, MembershipConstants.PERMISSION_VIEW_DETAIL, membership.getClub().getId(), null);
         return MembershipResponse.from(membership);
     }
 
     @Transactional
     public MembershipResponse create(Actor actor, UUID clubId, CreateMembershipRequest request) {
-        authorizationService.require(actor, "member.add", clubId, null);
+        authorizationService.require(actor, MembershipConstants.PERMISSION_ADD, clubId, null);
         Club club = clubRepository.findById(clubId).orElseThrow(() -> notFound("CLUB_NOT_FOUND", "Club not found"));
         if (club.getStatus() != ClubStatus.ACTIVE) {
             throw new ApiException(HttpStatus.CONFLICT, "CLUB_INACTIVE", "Club is inactive");
@@ -127,16 +128,16 @@ public class IMembershipService implements MembershipService {
 
     @Transactional
     public MembershipResponse update(Actor actor, UUID membershipId, UpdateMembershipRequest request) {
-        Membership membership = find(actor, "member.update", membershipId);
-        authorizationService.require(actor, "member.update", membership.getClub().getId(), null);
+        Membership membership = find(actor, MembershipConstants.PERMISSION_UPDATE, membershipId);
+        authorizationService.require(actor, MembershipConstants.PERMISSION_UPDATE, membership.getClub().getId(), null);
         changeStatus(actor, membership, request.status());
         return MembershipResponse.from(membershipRepository.saveAndFlush(membership));
     }
 
     @Transactional
     public void remove(Actor actor, UUID membershipId) {
-        Membership membership = find(actor, "member.remove", membershipId);
-        authorizationService.require(actor, "member.remove", membership.getClub().getId(), null);
+        Membership membership = find(actor, MembershipConstants.PERMISSION_REMOVE, membershipId);
+        authorizationService.require(actor, MembershipConstants.PERMISSION_REMOVE, membership.getClub().getId(), null);
         changeStatus(actor, membership, MembershipStatus.LEFT);
         membershipRepository.saveAndFlush(membership);
     }

@@ -1,6 +1,7 @@
 package com.vju.club.modules.club.service.impl;
 
 import com.vju.club.modules.club.service.ClubService;
+import com.vju.club.modules.club.common.ClubConstants;
 
 import com.vju.club.security.Actor;
 import com.vju.club.modules.audit.entity.AuditAction;
@@ -53,10 +54,10 @@ public class IClubService implements ClubService {
         OffsetLimitRequest page = new OffsetLimitRequest(offset, limit);
         List<ClubResponse> clubs;
         long total;
-        if (authorizationService.hasGlobalPermission(actor, "club.view")) {
+        if (authorizationService.hasGlobalPermission(actor, ClubConstants.PERMISSION_VIEW)) {
             clubs = clubRepository.search(pattern, normalizedCategory, status, page).stream().map(ClubResponse::from).toList();
             total = clubRepository.countSearch(pattern, normalizedCategory, status);
-        } else if (authorizationService.hasAnyPermission(actor, "club.view")) {
+        } else if (authorizationService.hasAnyPermission(actor, ClubConstants.PERMISSION_VIEW)) {
             String statusName = status == null ? "" : status.name();
             clubs = clubRepository.searchVisibleTo(actor.id(), pattern, normalizedCategory, statusName, page)
                     .stream().map(ClubResponse::from).toList();
@@ -71,8 +72,8 @@ public class IClubService implements ClubService {
 
     @Transactional(readOnly = true)
     public ClubResponse get(Actor actor, UUID clubId) {
-        if (authorizationService.hasAnyPermission(actor, "club.view")) {
-            authorizationService.require(actor, "club.view", clubId, null);
+        if (authorizationService.hasAnyPermission(actor, ClubConstants.PERMISSION_VIEW)) {
+            authorizationService.require(actor, ClubConstants.PERMISSION_VIEW, clubId, null);
             return ClubResponse.from(findClub(clubId));
         }
         return ClubResponse.from(clubRepository.findByIdAndStatus(clubId, ClubStatus.ACTIVE)
@@ -81,7 +82,7 @@ public class IClubService implements ClubService {
 
     @Transactional
     public ClubResponse create(Actor actor, ClubRequest request) {
-        authorizationService.require(actor, "club.create", null, null);
+        authorizationService.require(actor, ClubConstants.PERMISSION_CREATE, null, null);
         String code = request.code().trim();
         if (clubRepository.existsByCodeIgnoreCase(code)) {
             throw new ApiException(HttpStatus.CONFLICT, "CLUB_CODE_ALREADY_EXISTS", "Club code is already used");
@@ -96,7 +97,7 @@ public class IClubService implements ClubService {
 
     @Transactional
     public ClubResponse update(Actor actor, UUID clubId, ClubPatchRequest request) {
-        authorizationService.require(actor, "club.update", clubId, null);
+        authorizationService.require(actor, ClubConstants.PERMISSION_UPDATE, clubId, null);
         Club club = findClub(clubId);
         if (request.code() != null && !club.getCode().equalsIgnoreCase(request.code().trim())
                 && clubRepository.existsByCodeIgnoreCase(request.code().trim())) {
