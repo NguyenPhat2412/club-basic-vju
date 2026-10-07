@@ -121,15 +121,20 @@ class ContractTest(unittest.TestCase):
             self.assertEqual(schema['items']['$ref'], '#/components/schemas/UserPermission')
 
     def test_response_fields_match_java_records(self):
-        mapping = {'User': 'user/dto/UserResponse.java', 'TokenResponse': 'auth/dto/TokenResponse.java',
-                   'Club': 'club/dto/ClubResponse.java', 'Department': 'department/dto/DepartmentResponse.java',
-                   'Membership': 'membership/dto/MembershipResponse.java',
-                   'DepartmentMember': 'departmentmember/dto/DepartmentMemberResponse.java',
-                   'Permission': 'permission/dto/PermissionResponse.java',
-                   'UserPermission': 'permission/dto/UserPermissionResponse.java',
-                   'Role': 'role/dto/RoleResponse.java', 'UserRole': 'role/dto/UserRoleResponse.java',
-                   'EffectivePermission': 'permission/dto/EffectivePermissionResponse.java',
-                   'AuditLog': 'audit/dto/AuditLogResponse.java'}
+        mapping = {
+            'User': 'modules/user/config/response/UserResponse.java',
+            'TokenResponse': 'modules/auth/config/response/TokenResponse.java',
+            'Club': 'modules/club/config/response/ClubResponse.java',
+            'Department': 'modules/department/config/response/DepartmentResponse.java',
+            'Membership': 'modules/membership/config/response/MembershipResponse.java',
+            'DepartmentMember': 'modules/departmentmember/config/response/DepartmentMemberResponse.java',
+            'Permission': 'modules/permission/config/response/PermissionResponse.java',
+            'UserPermission': 'modules/permission/config/response/UserPermissionResponse.java',
+            'Role': 'modules/role/config/response/RoleResponse.java',
+            'UserRole': 'modules/role/config/response/UserRoleResponse.java',
+            'EffectivePermission': 'modules/permission/config/response/EffectivePermissionResponse.java',
+            'AuditLog': 'modules/audit/config/response/AuditLogResponse.java',
+        }
         for schema_name, java_path in mapping.items():
             src = (ROOT / 'backend/springboot/src/main/java/com/vju/club' / java_path).read_text()
             fields = set(re.findall(r'(?:UUID|String|boolean|Instant|OffsetDateTime|PermissionScope|List<String>|Map<String, Object>)\s+(\w+)', src.split('public record', 1)[1].split('{', 1)[0]))
