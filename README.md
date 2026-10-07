@@ -110,7 +110,7 @@ Profile `local` cung cấp sẵn một JWT secret dùng cho phát triển:
 
 ```bash
 cd backend/springboot
-./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+./mvnw spring-boot:run "-Dspring-boot.run.profiles=local"
 ```
 
 Flyway tự chạy migration khi khởi động. Backend lắng nghe ở `http://localhost:8080`.
@@ -120,7 +120,7 @@ Flyway tự chạy migration khi khởi động. Backend lắng nghe ở `http:/
 Migration chỉ seed danh mục quyền và vai trò hệ thống, không tạo người dùng nào. Để tự tạo admin mang vai trò `SYSTEM_ADMIN` (phạm vi `GLOBAL`), chạy profile `local` kèm hai biến môi trường. Thao tác này an toàn khi chạy lại nhiều lần.
 
 ```bash
-BOOTSTRAP_ADMIN_EMAIL=admin@vju.local BOOTSTRAP_ADMIN_PASSWORD='ChangeMe123!' ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+BOOTSTRAP_ADMIN_EMAIL=admin@vju.local BOOTSTRAP_ADMIN_PASSWORD='ChangeMe123!' ./mvnw spring-boot:run "-Dspring-boot.run.profiles=local"
 ```
 
 ### 4. Dữ liệu demo (tuỳ chọn)

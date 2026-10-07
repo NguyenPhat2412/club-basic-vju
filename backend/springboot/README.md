@@ -13,7 +13,7 @@ docker compose up -d postgres
 Run the backend with the `local` profile (it supplies a development JWT secret and can bootstrap an admin via `BOOTSTRAP_ADMIN_EMAIL`/`BOOTSTRAP_ADMIN_PASSWORD`):
 
 ```bash
-./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+./mvnw spring-boot:run "-Dspring-boot.run.profiles=local"
 ```
 
 Any other profile requires `JWT_SECRET` (at least 32 bytes); startup fails without it. Behind a reverse proxy, `server.forward-headers-strategy=native` makes the rate limiter see the real client IP (only private/loopback proxies are trusted).
