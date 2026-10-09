@@ -1,7 +1,7 @@
 package com.vju.club.modules.clubapplication.specification;
 
 import com.vju.club.modules.clubapplication.entity.ClubApplication;
-import com.vju.club.modules.clubapplication.entity.ClubApplicationStatus;
+import com.vju.club.modules.clubapplication.enums.ClubApplicationStatus;
 import com.vju.club.modules.user.entity.User;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;

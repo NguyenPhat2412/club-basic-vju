@@ -1,7 +1,7 @@
 package com.vju.club.modules.membership.repository;
 
 import com.vju.club.modules.membership.entity.Membership;
-import com.vju.club.modules.membership.entity.MembershipStatus;
+import com.vju.club.modules.membership.enums.MembershipStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;

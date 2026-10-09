@@ -1,6 +1,6 @@
 package com.vju.club.modules.audit.service;
 
-import com.vju.club.modules.audit.entity.AuditAction;
+import com.vju.club.modules.audit.enums.AuditAction;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

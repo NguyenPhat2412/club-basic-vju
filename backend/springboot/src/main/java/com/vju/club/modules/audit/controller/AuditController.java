@@ -4,7 +4,7 @@ import com.vju.club.modules.audit.service.AuditQueryService;
 
 import com.vju.club.modules.audit.service.AuditService;
 
-import com.vju.club.modules.audit.config.response.AuditLogResponse;
+import com.vju.club.modules.audit.dto.response.AuditLogResponse;
 import com.vju.club.common.dto.PageResponse;
 import com.vju.club.security.Actor;
 import jakarta.validation.constraints.Max;

@@ -3,11 +3,11 @@ package com.vju.club.modules.role.controller;
 import com.vju.club.modules.role.service.RoleService;
 
 import com.vju.club.security.Actor;
-import com.vju.club.modules.role.config.request.AssignRoleRequest;
-import com.vju.club.modules.role.config.request.CreateRoleRequest;
-import com.vju.club.modules.role.config.response.RoleResponse;
-import com.vju.club.modules.role.config.request.UpdateRoleRequest;
-import com.vju.club.modules.role.config.response.UserRoleResponse;
+import com.vju.club.modules.role.dto.request.AssignRoleRequest;
+import com.vju.club.modules.role.dto.request.CreateRoleRequest;
+import com.vju.club.modules.role.dto.response.RoleResponse;
+import com.vju.club.modules.role.dto.request.UpdateRoleRequest;
+import com.vju.club.modules.role.dto.response.UserRoleResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

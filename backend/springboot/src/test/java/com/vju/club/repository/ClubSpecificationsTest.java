@@ -1,7 +1,7 @@
 package com.vju.club.repository;
 
 import com.vju.club.modules.club.entity.Club;
-import com.vju.club.modules.club.entity.ClubStatus;
+import com.vju.club.modules.club.enums.ClubStatus;
 import com.vju.club.modules.club.specification.ClubSpecifications;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;

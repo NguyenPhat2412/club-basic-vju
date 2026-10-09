@@ -1,7 +1,7 @@
 package com.vju.club.modules.user.repository;
 
 import com.vju.club.modules.user.entity.User;
-import com.vju.club.modules.user.entity.UserStatus;
+import com.vju.club.modules.user.enums.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;

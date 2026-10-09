@@ -1,8 +1,8 @@
 package com.vju.club.modules.audit.service;
 
-import com.vju.club.modules.audit.entity.AuditAction;
+import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.audit.entity.AuditLog;
-import com.vju.club.modules.audit.config.response.AuditLogResponse;
+import com.vju.club.modules.audit.dto.response.AuditLogResponse;
 import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.common.dto.PageResponse;
 import com.vju.club.error.ApiException;

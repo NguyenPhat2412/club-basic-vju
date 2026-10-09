@@ -2,17 +2,17 @@ package com.vju.club.department;
 
 import com.vju.club.modules.department.service.DepartmentService;
 
-import com.vju.club.modules.department.service.impl.IDepartmentService;
+import com.vju.club.modules.department.service.impl.DepartmentServiceImpl;
 
-import com.vju.club.modules.audit.entity.AuditAction;
+import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.audit.service.AuditService;
-import com.vju.club.modules.department.config.request.DepartmentPatchRequest;
-import com.vju.club.modules.department.config.request.DepartmentRequest;
-import com.vju.club.modules.department.config.request.DepartmentStatusRequest;
+import com.vju.club.modules.department.dto.request.DepartmentPatchRequest;
+import com.vju.club.modules.department.dto.request.DepartmentRequest;
+import com.vju.club.modules.department.dto.request.DepartmentStatusRequest;
 import com.vju.club.modules.club.entity.Club;
-import com.vju.club.modules.club.entity.ClubStatus;
+import com.vju.club.modules.club.enums.ClubStatus;
 import com.vju.club.modules.department.entity.Department;
-import com.vju.club.modules.department.entity.DepartmentStatus;
+import com.vju.club.modules.department.enums.DepartmentStatus;
 import com.vju.club.error.ApiException;
 import com.vju.club.modules.club.repository.ClubRepository;
 import com.vju.club.modules.department.repository.DepartmentRepository;
@@ -58,7 +58,7 @@ class DepartmentServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new IDepartmentService(departmentRepository, clubRepository, audit, authorization);
+        service = new DepartmentServiceImpl(departmentRepository, clubRepository, audit, authorization);
         club.setId(UUID.randomUUID());
         club.setStatus(ClubStatus.ACTIVE);
         department.setId(UUID.randomUUID());

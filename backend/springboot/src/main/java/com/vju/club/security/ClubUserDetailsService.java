@@ -1,6 +1,6 @@
 package com.vju.club.security;
 
-import com.vju.club.modules.user.entity.UserStatus;
+import com.vju.club.modules.user.enums.UserStatus;
 
 import com.vju.club.modules.user.entity.User;
 import com.vju.club.modules.user.repository.UserRepository;
@@ -34,7 +34,7 @@ public class ClubUserDetailsService implements UserDetailsService {
     private UserDetails toUserDetails(User user) {
         return org.springframework.security.core.userdetails.User.withUsername(user.getEmail())
                 .password(user.getPasswordHash())
-                .disabled(user.getStatus() != com.vju.club.modules.user.entity.UserStatus.ACTIVE)
+                .disabled(user.getStatus() != com.vju.club.modules.user.enums.UserStatus.ACTIVE)
                 .authorities(List.of())
                 .build();
     }

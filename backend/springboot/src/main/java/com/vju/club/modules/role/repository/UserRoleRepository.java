@@ -1,6 +1,6 @@
 package com.vju.club.modules.role.repository;
 
-import com.vju.club.modules.permission.entity.PermissionScope;
+import com.vju.club.modules.permission.enums.PermissionScope;
 import com.vju.club.modules.role.entity.UserRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

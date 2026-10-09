@@ -3,12 +3,12 @@ package com.vju.club.modules.permission.controller;
 import com.vju.club.modules.permission.service.PermissionService;
 
 import com.vju.club.security.Actor;
-import com.vju.club.modules.permission.config.response.EffectivePermissionResponse;
-import com.vju.club.modules.permission.config.request.GrantPermissionRequest;
-import com.vju.club.modules.permission.config.response.PermissionGroupResponse;
-import com.vju.club.modules.permission.config.request.ReplacePermissionsRequest;
-import com.vju.club.modules.permission.config.response.PermissionResponse;
-import com.vju.club.modules.permission.config.response.UserPermissionResponse;
+import com.vju.club.modules.permission.dto.response.EffectivePermissionResponse;
+import com.vju.club.modules.permission.dto.request.GrantPermissionRequest;
+import com.vju.club.modules.permission.dto.response.PermissionGroupResponse;
+import com.vju.club.modules.permission.dto.request.ReplacePermissionsRequest;
+import com.vju.club.modules.permission.dto.response.PermissionResponse;
+import com.vju.club.modules.permission.dto.response.UserPermissionResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
-import com.vju.club.modules.permission.entity.PermissionScope;
+import com.vju.club.modules.permission.enums.PermissionScope;
 
 @RestController
 @RequestMapping("/api/v1")

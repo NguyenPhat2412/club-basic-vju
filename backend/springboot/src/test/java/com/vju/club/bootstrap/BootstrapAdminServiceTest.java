@@ -1,7 +1,7 @@
 package com.vju.club.bootstrap;
 
 import com.vju.club.config.BootstrapAdminProperties;
-import com.vju.club.modules.permission.entity.PermissionScope;
+import com.vju.club.modules.permission.enums.PermissionScope;
 import com.vju.club.modules.role.entity.Role;
 import com.vju.club.modules.user.entity.User;
 import com.vju.club.modules.role.entity.UserRole;

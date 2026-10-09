@@ -3,12 +3,12 @@ package com.vju.club.modules.club.controller;
 import com.vju.club.modules.club.service.ClubService;
 
 import com.vju.club.security.Actor;
-import com.vju.club.modules.club.config.request.ClubRequest;
-import com.vju.club.modules.club.config.request.ClubPatchRequest;
-import com.vju.club.modules.club.config.response.ClubResponse;
-import com.vju.club.modules.club.config.request.ClubStatusRequest;
+import com.vju.club.modules.club.dto.request.ClubRequest;
+import com.vju.club.modules.club.dto.request.ClubPatchRequest;
+import com.vju.club.modules.club.dto.response.ClubResponse;
+import com.vju.club.modules.club.dto.request.ClubStatusRequest;
 import com.vju.club.common.dto.PageResponse;
-import com.vju.club.modules.club.entity.ClubStatus;
+import com.vju.club.modules.club.enums.ClubStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

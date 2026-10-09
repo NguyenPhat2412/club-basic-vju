@@ -2,7 +2,7 @@ package com.vju.club.modules.membership.specification;
 
 import com.vju.club.modules.departmentmember.entity.DepartmentMember;
 import com.vju.club.modules.membership.entity.Membership;
-import com.vju.club.modules.membership.entity.MembershipStatus;
+import com.vju.club.modules.membership.enums.MembershipStatus;
 import com.vju.club.modules.user.entity.User;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;

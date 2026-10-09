@@ -3,10 +3,10 @@ package com.vju.club.modules.user.controller;
 import com.vju.club.modules.user.service.UserService;
 
 import com.vju.club.security.Actor;
-import com.vju.club.modules.user.config.response.UserResponse;
+import com.vju.club.modules.user.dto.response.UserResponse;
 import com.vju.club.common.dto.PageResponse;
-import com.vju.club.modules.user.config.request.UpdateProfileRequest;
-import com.vju.club.modules.user.config.request.UpdateUserStatusRequest;
+import com.vju.club.modules.user.dto.request.UpdateProfileRequest;
+import com.vju.club.modules.user.dto.request.UpdateUserStatusRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

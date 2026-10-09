@@ -4,11 +4,11 @@ import com.vju.club.modules.membership.service.MembershipService;
 
 import com.vju.club.security.Actor;
 import com.vju.club.common.dto.PageResponse;
-import com.vju.club.modules.membership.entity.MembershipStatus;
-import com.vju.club.modules.membership.config.request.CreateMembershipRequest;
-import com.vju.club.modules.membership.config.response.MembershipResponse;
-import com.vju.club.modules.membership.config.response.MyMembershipResponse;
-import com.vju.club.modules.membership.config.request.UpdateMembershipRequest;
+import com.vju.club.modules.membership.enums.MembershipStatus;
+import com.vju.club.modules.membership.dto.request.CreateMembershipRequest;
+import com.vju.club.modules.membership.dto.response.MembershipResponse;
+import com.vju.club.modules.membership.dto.response.MyMembershipResponse;
+import com.vju.club.modules.membership.dto.request.UpdateMembershipRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
