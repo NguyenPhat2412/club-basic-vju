@@ -127,34 +127,38 @@ Quy ước:
 - Node.js 20+ và pnpm (nếu chạy frontend)
 - Python 3 + PyYAML (nếu chạy test contract)
 
+> Hướng dẫn chi tiết từng bước cho **macOS và Windows** (cài JDK/Docker, lệnh PowerShell/CMD, xử lý sự cố): xem [backend/springboot/README.md](backend/springboot/README.md).
+
 ### 1. Khởi động PostgreSQL
 
 ```bash
 docker compose up -d postgres
 ```
 
-### 2. Chạy backend
+### 2. Tạo `backend/springboot/.env.local`
 
-Profile `local` cung cấp sẵn một JWT secret dùng cho phát triển:
+Profile `local` tự đọc file này (trên mọi hệ điều hành), nên không cần đặt biến môi trường bằng tay:
+
+```bash
+cp backend/springboot/.env.local.example backend/springboot/.env.local
+```
+
+Sửa lại `BOOTSTRAP_ADMIN_EMAIL`/`BOOTSTRAP_ADMIN_PASSWORD` (admin đầu tiên, được gán vai trò `SYSTEM_ADMIN`) và `DEMO_USER_PASSWORD` (dữ liệu demo). File này đã được gitignore.
+
+### 3. Chạy backend
 
 ```bash
 cd backend/springboot
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-Flyway tự chạy migration khi khởi động. Backend lắng nghe ở `http://localhost:8080`.
+Trên Windows: `.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=local"` (PowerShell) hoặc `mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local` (CMD).
 
-### 3. Tạo tài khoản admin đầu tiên
-
-Migration chỉ seed danh mục quyền và vai trò hệ thống, không tạo người dùng nào. Để tự tạo admin mang vai trò `SYSTEM_ADMIN` (phạm vi `GLOBAL`), chạy profile `local` kèm hai biến môi trường. Thao tác này an toàn khi chạy lại nhiều lần.
-
-```bash
-BOOTSTRAP_ADMIN_EMAIL=admin@vju.local BOOTSTRAP_ADMIN_PASSWORD='ChangeMe123!' ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
-```
+Flyway tự chạy migration khi khởi động. Backend lắng nghe ở `http://localhost:8080`. Profile `local` có sẵn JWT secret dùng cho phát triển; mọi môi trường khác bắt buộc đặt `JWT_SECRET`.
 
 ### 4. Dữ liệu demo (tuỳ chọn)
 
-Đặt thêm `DEMO_USER_PASSWORD` khi chạy profile `local`, backend sẽ tạo sẵn một bộ dữ liệu demo. Việc này chỉ diễn ra một lần: nếu CLB VJUA đã tồn tại thì bỏ qua.
+Khi `.env.local` có `DEMO_USER_PASSWORD`, backend sẽ tạo sẵn một bộ dữ liệu demo. Việc này chỉ diễn ra một lần: nếu CLB VJUA đã tồn tại thì bỏ qua.
 
 | Dữ liệu | Chi tiết |
 |---|---|
