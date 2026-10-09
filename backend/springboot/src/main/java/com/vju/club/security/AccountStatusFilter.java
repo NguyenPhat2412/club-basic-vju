@@ -1,5 +1,6 @@
 package com.vju.club.security;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.user.enums.UserStatus;
 import com.vju.club.error.ProblemResponses;
 import com.vju.club.modules.user.repository.UserRepository;
@@ -17,10 +18,9 @@ import java.io.IOException;
 import java.util.UUID;
 
 @Component
+@RequiredArgsConstructor
 public class AccountStatusFilter extends OncePerRequestFilter {
     private final UserRepository userRepository;
-
-    public AccountStatusFilter(UserRepository userRepository) { this.userRepository = userRepository; }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)

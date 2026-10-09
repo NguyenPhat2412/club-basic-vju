@@ -1,5 +1,7 @@
 package com.vju.club.common.entity;
 
+import lombok.Setter;
+import lombok.Getter;
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
 import org.hibernate.annotations.CreationTimestamp;
@@ -8,6 +10,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.OffsetDateTime;
 
 @MappedSuperclass
+@Getter
+@Setter
 public abstract class TimestampedEntity extends BaseEntity {
 
     @CreationTimestamp
@@ -17,20 +21,4 @@ public abstract class TimestampedEntity extends BaseEntity {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(OffsetDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public OffsetDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(OffsetDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
 }

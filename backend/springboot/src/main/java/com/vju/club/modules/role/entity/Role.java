@@ -1,5 +1,7 @@
 package com.vju.club.modules.role.entity;
 
+import lombok.Setter;
+import lombok.Getter;
 import com.vju.club.common.entity.TimestampedEntity;
 import com.vju.club.modules.permission.entity.Permission;
 import com.vju.club.modules.permission.enums.PermissionScope;
@@ -19,6 +21,8 @@ import java.util.Set;
 /** A named bundle of permissions, e.g. a club position such as president or department head. */
 @Entity
 @Table(name = "roles")
+@Getter
+@Setter
 public class Role extends TimestampedEntity {
 
     @Column(nullable = false, length = 64)
@@ -46,19 +50,4 @@ public class Role extends TimestampedEntity {
             joinColumns = @JoinColumn(name = "role_id"),
             inverseJoinColumns = @JoinColumn(name = "permission_id"))
     private Set<Permission> permissions = new LinkedHashSet<>();
-
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-    public PermissionScope getScope() { return scope; }
-    public void setScope(PermissionScope scope) { this.scope = scope; }
-    public boolean isSystem() { return system; }
-    public void setSystem(boolean system) { this.system = system; }
-    public boolean isActive() { return active; }
-    public void setActive(boolean active) { this.active = active; }
-    public Set<Permission> getPermissions() { return permissions; }
-    public void setPermissions(Set<Permission> permissions) { this.permissions = permissions; }
 }

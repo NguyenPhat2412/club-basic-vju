@@ -1,5 +1,6 @@
 package com.vju.club.modules.membership.service.impl;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.membership.mapper.MembershipMapper;
 import com.vju.club.modules.membership.service.MembershipService;
 import com.vju.club.modules.membership.common.MembershipConstants;
@@ -43,31 +44,16 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class MembershipServiceImpl implements MembershipService {
     private final MembershipRepository membershipRepository;
-    private final AuditService auditService;
     private final ClubRepository clubRepository;
     private final UserRepository userRepository;
     private final DepartmentMemberRepository departmentMemberRepository;
     private final PermissionAuthorizationService authorizationService;
     private final Clock clock;
+    private final AuditService auditService;
     private final MembershipMapper membershipMapper;
-
-    public MembershipServiceImpl(MembershipRepository membershipRepository,
-                                 ClubRepository clubRepository, UserRepository userRepository,
-                                 DepartmentMemberRepository departmentMemberRepository,
-                                 PermissionAuthorizationService authorizationService, Clock clock,
-                                 AuditService auditService,
-            MembershipMapper membershipMapper) {
-        this.membershipMapper = membershipMapper;
-        this.auditService = auditService;
-        this.membershipRepository = membershipRepository;
-        this.clubRepository = clubRepository;
-        this.userRepository = userRepository;
-        this.departmentMemberRepository = departmentMemberRepository;
-        this.authorizationService = authorizationService;
-        this.clock = clock;
-    }
 
     @Transactional(readOnly = true)
     public PageResponse<MembershipResponse> list(Actor actor, UUID clubId, MembershipStatus status,

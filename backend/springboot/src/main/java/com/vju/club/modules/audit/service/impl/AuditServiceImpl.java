@@ -1,5 +1,6 @@
 package com.vju.club.modules.audit.service.impl;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.audit.enums.AuditAction;
 
 import com.vju.club.modules.audit.service.AuditService;
@@ -20,15 +21,12 @@ import java.util.UUID;
  * are committed (or rolled back) together.
  */
 @Service
+@RequiredArgsConstructor
 public class AuditServiceImpl implements AuditService {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final AuditLogRepository auditLogRepository;
-
-    public AuditServiceImpl(AuditLogRepository auditLogRepository) {
-        this.auditLogRepository = auditLogRepository;
-    }
 
     /**
      * @param actorUserId who acted; {@code null} only when nobody is signed in (self-registration)

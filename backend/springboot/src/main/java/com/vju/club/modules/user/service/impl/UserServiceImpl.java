@@ -1,5 +1,6 @@
 package com.vju.club.modules.user.service.impl;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.user.mapper.UserMapper;
 import com.vju.club.modules.user.service.UserService;
 import com.vju.club.modules.user.common.UserConstants;
@@ -32,25 +33,15 @@ import java.util.Set;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private static final Set<String> SORTABLE = Set.of("email", "fullName", "createdAt", "status");
 
     private final UserRepository userRepository;
-    private final AuditService auditService;
     private final PermissionAuthorizationService authorizationService;
+    private final AuditService auditService;
     private final UserMapper userMapper;
-
-    public UserServiceImpl(
-            UserRepository userRepository,
-            PermissionAuthorizationService authorizationService,
-            AuditService auditService,
-            UserMapper userMapper) {
-        this.userMapper = userMapper;
-        this.userRepository = userRepository;
-        this.auditService = auditService;
-        this.authorizationService = authorizationService;
-    }
 
     @Transactional(readOnly = true)
     public UserResponse getCurrent(Actor actor) {
@@ -99,7 +90,6 @@ public class UserServiceImpl implements UserService {
         }
         return Sort.by(asc ? Sort.Direction.ASC : Sort.Direction.DESC, orderBy).and(Sort.by("id"));
     }
-
 
     @Transactional
     public UserResponse updateStatus(Actor actor, UUID userId, UpdateUserStatusRequest request) {

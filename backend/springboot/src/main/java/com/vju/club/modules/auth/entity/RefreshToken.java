@@ -1,5 +1,7 @@
 package com.vju.club.modules.auth.entity;
 
+import lombok.Setter;
+import lombok.Getter;
 import com.vju.club.common.entity.CreatedEntity;
 import com.vju.club.modules.user.entity.User;
 
@@ -14,6 +16,8 @@ import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "refresh_tokens")
+@Getter
+@Setter
 public class RefreshToken extends CreatedEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -28,15 +32,6 @@ public class RefreshToken extends CreatedEntity {
 
     @Column(name = "revoked_at")
     private OffsetDateTime revokedAt;
-
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
-    public String getTokenHash() { return tokenHash; }
-    public void setTokenHash(String tokenHash) { this.tokenHash = tokenHash; }
-    public OffsetDateTime getExpiresAt() { return expiresAt; }
-    public void setExpiresAt(OffsetDateTime expiresAt) { this.expiresAt = expiresAt; }
-    public OffsetDateTime getRevokedAt() { return revokedAt; }
-    public void setRevokedAt(OffsetDateTime revokedAt) { this.revokedAt = revokedAt; }
 
     public boolean isActive(OffsetDateTime now) {
         return revokedAt == null && expiresAt.isAfter(now);

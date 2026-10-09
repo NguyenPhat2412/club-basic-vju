@@ -1,5 +1,7 @@
 package com.vju.club.modules.membership.entity;
 
+import lombok.Setter;
+import lombok.Getter;
 import com.vju.club.modules.membership.enums.MembershipStatus;
 import com.vju.club.common.entity.TimestampedEntity;
 import com.vju.club.modules.club.entity.Club;
@@ -18,6 +20,8 @@ import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "memberships")
+@Getter
+@Setter
 public class Membership extends TimestampedEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -37,15 +41,4 @@ public class Membership extends TimestampedEntity {
 
     @Column(name = "left_at")
     private OffsetDateTime leftAt;
-
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
-    public Club getClub() { return club; }
-    public void setClub(Club club) { this.club = club; }
-    public MembershipStatus getStatus() { return status; }
-    public void setStatus(MembershipStatus status) { this.status = status; }
-    public OffsetDateTime getJoinedAt() { return joinedAt; }
-    public void setJoinedAt(OffsetDateTime joinedAt) { this.joinedAt = joinedAt; }
-    public OffsetDateTime getLeftAt() { return leftAt; }
-    public void setLeftAt(OffsetDateTime leftAt) { this.leftAt = leftAt; }
 }

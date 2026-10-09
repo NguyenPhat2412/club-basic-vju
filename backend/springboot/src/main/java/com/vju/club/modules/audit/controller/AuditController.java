@@ -1,5 +1,6 @@
 package com.vju.club.modules.audit.controller;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.audit.service.AuditQueryService;
 
 import com.vju.club.modules.audit.service.AuditService;
@@ -18,13 +19,10 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/audit-logs")
+@RequiredArgsConstructor
 public class AuditController {
 
     private final AuditQueryService auditQueryService;
-
-    public AuditController(AuditQueryService auditQueryService) {
-        this.auditQueryService = auditQueryService;
-    }
 
     @GetMapping
     public PageResponse<AuditLogResponse> search(Actor actor,

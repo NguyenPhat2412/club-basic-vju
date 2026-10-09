@@ -1,5 +1,6 @@
 package com.vju.club.modules.notification.service.impl;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.notification.mapper.NotificationMapper;
 import com.vju.club.modules.notification.dto.response.NotificationResponse;
 
@@ -18,14 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notifications;
     private final UserRepository users;
     private final NotificationMapper notificationMapper;
-    public NotificationServiceImpl(NotificationRepository notifications, UserRepository users,
-            NotificationMapper notificationMapper) {
-        this.notificationMapper = notificationMapper; this.notifications = notifications; this.users = users; }
-
     @Transactional
     public void create(UUID userId, String title, String message, UUID referenceId) {
         User user = users.findById(userId).orElseThrow();

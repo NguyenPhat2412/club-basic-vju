@@ -1,5 +1,7 @@
 package com.vju.club.modules.user.entity;
 
+import lombok.Setter;
+import lombok.Getter;
 import com.vju.club.modules.user.enums.UserStatus;
 import com.vju.club.common.entity.TimestampedEntity;
 
@@ -11,6 +13,8 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "users")
+@Getter
+@Setter
 public class User extends TimestampedEntity {
 
     @Column(nullable = false, length = 320)
@@ -34,19 +38,4 @@ public class User extends TimestampedEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private UserStatus status = UserStatus.ACTIVE;
-
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
-    public String getPasswordHash() { return passwordHash; }
-    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
-    public String getFullName() { return fullName; }
-    public void setFullName(String fullName) { this.fullName = fullName; }
-    public String getStudentCode() { return studentCode; }
-    public void setStudentCode(String studentCode) { this.studentCode = studentCode; }
-    public String getPhone() { return phone; }
-    public void setPhone(String phone) { this.phone = phone; }
-    public String getAvatarUrl() { return avatarUrl; }
-    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
-    public UserStatus getStatus() { return status; }
-    public void setStatus(UserStatus status) { this.status = status; }
 }

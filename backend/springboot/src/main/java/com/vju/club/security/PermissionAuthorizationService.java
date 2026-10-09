@@ -1,5 +1,6 @@
 package com.vju.club.security;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.permission.entity.Permission;
 
 import com.vju.club.error.ApiException;
@@ -14,13 +15,10 @@ import java.util.UUID;
  * active role, at the department, the department's club, or globally.
  */
 @Component
+@RequiredArgsConstructor
 public class PermissionAuthorizationService {
 
     private final UserPermissionRepository userPermissionRepository;
-
-    public PermissionAuthorizationService(UserPermissionRepository userPermissionRepository) {
-        this.userPermissionRepository = userPermissionRepository;
-    }
 
     public boolean hasPermission(Actor actor, String permissionKey, UUID clubId, UUID departmentId) {
         if (actor == null) {

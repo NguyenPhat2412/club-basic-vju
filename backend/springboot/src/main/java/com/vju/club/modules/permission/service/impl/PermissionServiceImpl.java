@@ -1,5 +1,6 @@
 package com.vju.club.modules.permission.service.impl;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.permission.mapper.PermissionMapper;
 import com.vju.club.modules.permission.service.PermissionService;
 
@@ -48,6 +49,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class PermissionServiceImpl implements PermissionService {
 
     private final PermissionRepository permissionRepository;
@@ -60,29 +62,6 @@ public class PermissionServiceImpl implements PermissionService {
     private final Clock clock;
     private final AuditService auditService;
     private final PermissionMapper permissionMapper;
-
-    public PermissionServiceImpl(
-            PermissionRepository permissionRepository,
-            UserPermissionRepository userPermissionRepository,
-            PermissionAuditLogRepository auditLogRepository,
-            UserRepository userRepository,
-            ClubRepository clubRepository,
-            DepartmentRepository departmentRepository,
-            PermissionAuthorizationService authorizationService,
-            Clock clock,
-            AuditService auditService,
-            PermissionMapper permissionMapper) {
-        this.permissionMapper = permissionMapper;
-        this.auditService = auditService;
-        this.permissionRepository = permissionRepository;
-        this.userPermissionRepository = userPermissionRepository;
-        this.auditLogRepository = auditLogRepository;
-        this.userRepository = userRepository;
-        this.clubRepository = clubRepository;
-        this.departmentRepository = departmentRepository;
-        this.authorizationService = authorizationService;
-        this.clock = clock;
-    }
 
     @Transactional(readOnly = true)
     public List<PermissionResponse> list(Actor actor) {

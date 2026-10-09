@@ -1,5 +1,6 @@
 package com.vju.club.modules.audit.service;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.audit.mapper.AuditMapper;
 import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.audit.entity.AuditLog;
@@ -23,19 +24,12 @@ import java.util.UUID;
 
 /** Read side of the audit trail; requires the global audit.view permission. */
 @Service
+@RequiredArgsConstructor
 public class AuditQueryService {
 
     private final AuditLogRepository auditLogRepository;
     private final PermissionAuthorizationService authorizationService;
     private final AuditMapper auditMapper;
-
-    public AuditQueryService(AuditLogRepository auditLogRepository,
-                             PermissionAuthorizationService authorizationService,
-            AuditMapper auditMapper) {
-        this.auditMapper = auditMapper;
-        this.auditLogRepository = auditLogRepository;
-        this.authorizationService = authorizationService;
-    }
 
     @Transactional(readOnly = true)
     public PageResponse<AuditLogResponse> search(Actor actor, String resourceType, UUID resourceId, UUID actorUserId,

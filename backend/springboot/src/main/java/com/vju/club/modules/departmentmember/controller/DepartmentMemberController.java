@@ -1,5 +1,6 @@
 package com.vju.club.modules.departmentmember.controller;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.departmentmember.service.DepartmentMemberService;
 
 import com.vju.club.security.Actor;
@@ -26,10 +27,9 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/departments/{departmentId}/members")
+@RequiredArgsConstructor
 public class DepartmentMemberController {
     private final DepartmentMemberService service;
-    public DepartmentMemberController(DepartmentMemberService service) { this.service = service; }
-
     @GetMapping
     public PageResponse<DepartmentMemberResponse> list(Actor actor, @PathVariable UUID departmentId,
                                                        @RequestParam(defaultValue = "0") @Min(0) int offset,

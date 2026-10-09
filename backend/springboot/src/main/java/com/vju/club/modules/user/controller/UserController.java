@@ -1,5 +1,6 @@
 package com.vju.club.modules.user.controller;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.user.service.UserService;
 
 import com.vju.club.security.Actor;
@@ -22,13 +23,10 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/users")
+@RequiredArgsConstructor
 public class UserController {
 
     private final UserService userService;
-
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
 
     @GetMapping("/me")
     public UserResponse me(Actor actor) {

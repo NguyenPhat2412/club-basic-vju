@@ -1,5 +1,6 @@
 package com.vju.club.modules.department.controller;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.department.service.DepartmentService;
 
 import com.vju.club.security.Actor;
@@ -26,10 +27,9 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1")
+@RequiredArgsConstructor
 public class DepartmentController {
     private final DepartmentService departmentService;
-
-    public DepartmentController(DepartmentService departmentService) { this.departmentService = departmentService; }
 
     @GetMapping("/clubs/{clubId}/departments")
     public PageResponse<DepartmentResponse> list(Actor actor, @PathVariable UUID clubId,

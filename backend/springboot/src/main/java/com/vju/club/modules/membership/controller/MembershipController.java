@@ -1,5 +1,6 @@
 package com.vju.club.modules.membership.controller;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.membership.service.MembershipService;
 
 import com.vju.club.security.Actor;
@@ -28,10 +29,9 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1")
+@RequiredArgsConstructor
 public class MembershipController {
     private final MembershipService membershipService;
-    public MembershipController(MembershipService membershipService) { this.membershipService = membershipService; }
-
     @GetMapping("/clubs/{clubId}/memberships")
     public PageResponse<MembershipResponse> list(Actor actor, @PathVariable UUID clubId,
                                                  @RequestParam(required = false) MembershipStatus status,

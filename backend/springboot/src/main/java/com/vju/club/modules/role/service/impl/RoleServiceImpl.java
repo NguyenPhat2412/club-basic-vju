@@ -1,5 +1,6 @@
 package com.vju.club.modules.role.service.impl;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.role.mapper.RoleMapper;
 import com.vju.club.modules.role.service.RoleService;
 
@@ -48,6 +49,7 @@ import java.util.UUID;
  * same scope rules as direct grants and are audited in permission_audit_logs.
  */
 @Service
+@RequiredArgsConstructor
 public class RoleServiceImpl implements RoleService {
 
     private final RoleRepository roleRepository;
@@ -61,25 +63,6 @@ public class RoleServiceImpl implements RoleService {
     private final Clock clock;
     private final AuditService auditService;
     private final RoleMapper roleMapper;
-
-    public RoleServiceImpl(RoleRepository roleRepository, UserRoleRepository userRoleRepository,
-                       PermissionRepository permissionRepository, PermissionAuditLogRepository auditLogRepository,
-                       UserRepository userRepository, ClubRepository clubRepository,
-                       DepartmentRepository departmentRepository, PermissionAuthorizationService authorizationService,
-                       Clock clock, AuditService auditService,
-            RoleMapper roleMapper) {
-        this.roleMapper = roleMapper;
-        this.auditService = auditService;
-        this.roleRepository = roleRepository;
-        this.userRoleRepository = userRoleRepository;
-        this.permissionRepository = permissionRepository;
-        this.auditLogRepository = auditLogRepository;
-        this.userRepository = userRepository;
-        this.clubRepository = clubRepository;
-        this.departmentRepository = departmentRepository;
-        this.authorizationService = authorizationService;
-        this.clock = clock;
-    }
 
     // ---- role definitions -----------------------------------------------------------------------
 

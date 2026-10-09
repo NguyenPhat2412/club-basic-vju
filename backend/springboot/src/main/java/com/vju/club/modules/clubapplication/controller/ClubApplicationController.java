@@ -1,5 +1,6 @@
 package com.vju.club.modules.clubapplication.controller;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.clubapplication.service.ClubApplicationService;
 
 import com.vju.club.modules.clubapplication.dto.response.ClubApplicationResponse;
@@ -30,13 +31,10 @@ import java.time.OffsetDateTime;
 
 @RestController
 @RequestMapping("/api/v1")
+@RequiredArgsConstructor
 public class ClubApplicationController {
 
     private final ClubApplicationService applicationService;
-
-    public ClubApplicationController(ClubApplicationService applicationService) {
-        this.applicationService = applicationService;
-    }
 
     @PostMapping("/clubs/{clubId}/applications")
     public ResponseEntity<ClubApplicationResponse> create(Actor actor, @PathVariable UUID clubId,

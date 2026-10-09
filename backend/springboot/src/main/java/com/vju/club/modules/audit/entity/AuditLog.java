@@ -1,5 +1,6 @@
 package com.vju.club.modules.audit.entity;
 
+import lombok.Getter;
 import com.vju.club.common.entity.CreatedEntity;
 
 import jakarta.persistence.Column;
@@ -13,6 +14,7 @@ import java.util.UUID;
 @Entity
 @Immutable
 @Table(name = "audit_logs")
+@Getter
 public class AuditLog extends CreatedEntity {
 
     @Column(name = "actor_user_id")
@@ -48,12 +50,4 @@ public class AuditLog extends CreatedEntity {
         this.oldValue = oldValue;
         this.newValue = newValue;
     }
-
-    public UUID getActorUserId() { return actorUserId; }
-    public String getAction() { return action; }
-    public String getResourceType() { return resourceType; }
-    public UUID getResourceId() { return resourceId; }
-    public UUID getClubId() { return clubId; }
-    public String getOldValue() { return oldValue; }
-    public String getNewValue() { return newValue; }
 }
