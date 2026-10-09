@@ -4,9 +4,9 @@ import com.vju.club.modules.departmentmember.service.DepartmentMemberService;
 
 import com.vju.club.security.Actor;
 import com.vju.club.common.dto.PageResponse;
-import com.vju.club.modules.departmentmember.config.request.AddDepartmentMemberRequest;
-import com.vju.club.modules.departmentmember.config.response.DepartmentMemberResponse;
-import com.vju.club.modules.departmentmember.config.request.MoveDepartmentMemberRequest;
+import com.vju.club.modules.departmentmember.dto.request.AddDepartmentMemberRequest;
+import com.vju.club.modules.departmentmember.dto.response.DepartmentMemberResponse;
+import com.vju.club.modules.departmentmember.dto.request.MoveDepartmentMemberRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

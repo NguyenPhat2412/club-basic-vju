@@ -1,7 +1,7 @@
 package com.vju.club.modules.membership.specification;
 
 import com.vju.club.modules.membership.entity.Membership;
-import com.vju.club.modules.membership.entity.MembershipStatus;
+import com.vju.club.modules.membership.enums.MembershipStatus;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Path;

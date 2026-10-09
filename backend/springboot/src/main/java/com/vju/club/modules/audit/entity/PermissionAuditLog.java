@@ -1,10 +1,11 @@
 package com.vju.club.modules.audit.entity;
 
+import com.vju.club.modules.audit.enums.PermissionAuditAction;
 import com.vju.club.common.entity.CreatedEntity;
 import com.vju.club.modules.club.entity.Club;
 import com.vju.club.modules.department.entity.Department;
 import com.vju.club.modules.permission.entity.Permission;
-import com.vju.club.modules.permission.entity.PermissionScope;
+import com.vju.club.modules.permission.enums.PermissionScope;
 import com.vju.club.modules.role.entity.Role;
 import com.vju.club.modules.user.entity.User;
 

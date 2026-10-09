@@ -1,5 +1,6 @@
 package com.vju.club.modules.permission.entity;
 
+import com.vju.club.modules.permission.enums.PermissionScope;
 import com.vju.club.common.entity.CreatedEntity;
 
 import jakarta.persistence.Column;

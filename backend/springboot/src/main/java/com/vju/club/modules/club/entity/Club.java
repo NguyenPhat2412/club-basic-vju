@@ -1,5 +1,6 @@
 package com.vju.club.modules.club.entity;
 
+import com.vju.club.modules.club.enums.ClubStatus;
 import com.vju.club.common.entity.TimestampedEntity;
 
 import jakarta.persistence.Column;

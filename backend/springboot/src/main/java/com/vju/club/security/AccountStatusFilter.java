@@ -1,6 +1,6 @@
 package com.vju.club.security;
 
-import com.vju.club.modules.user.entity.UserStatus;
+import com.vju.club.modules.user.enums.UserStatus;
 import com.vju.club.error.ProblemResponses;
 import com.vju.club.modules.user.repository.UserRepository;
 import jakarta.servlet.FilterChain;

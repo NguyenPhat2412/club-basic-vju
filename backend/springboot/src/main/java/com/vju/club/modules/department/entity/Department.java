@@ -1,5 +1,6 @@
 package com.vju.club.modules.department.entity;
 
+import com.vju.club.modules.department.enums.DepartmentStatus;
 import com.vju.club.common.entity.TimestampedEntity;
 import com.vju.club.modules.club.entity.Club;
 

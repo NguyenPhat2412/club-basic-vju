@@ -3,7 +3,7 @@ package com.vju.club.modules.role.entity;
 import com.vju.club.common.entity.BaseEntity;
 import com.vju.club.modules.club.entity.Club;
 import com.vju.club.modules.department.entity.Department;
-import com.vju.club.modules.permission.entity.PermissionScope;
+import com.vju.club.modules.permission.enums.PermissionScope;
 import com.vju.club.modules.user.entity.User;
 
 import jakarta.persistence.Column;

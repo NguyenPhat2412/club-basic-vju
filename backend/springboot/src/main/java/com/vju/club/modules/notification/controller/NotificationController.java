@@ -1,6 +1,6 @@
 package com.vju.club.modules.notification.controller;
 
-import com.vju.club.modules.notification.config.response.NotificationResponse;
+import com.vju.club.modules.notification.dto.response.NotificationResponse;
 
 import com.vju.club.modules.notification.service.NotificationService;
 import com.vju.club.common.dto.PageResponse;

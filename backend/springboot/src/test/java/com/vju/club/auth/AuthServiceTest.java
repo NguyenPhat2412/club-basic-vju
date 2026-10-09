@@ -3,17 +3,17 @@ package com.vju.club.auth;
 import com.vju.club.modules.auth.service.AuthService;
 import com.vju.club.modules.auth.service.JwtTokenService;
 
-import com.vju.club.modules.auth.service.impl.IAuthService;
+import com.vju.club.modules.auth.service.impl.AuthServiceImpl;
 
 import com.vju.club.modules.audit.service.AuditService;
-import com.vju.club.modules.auth.config.request.ChangePasswordRequest;
-import com.vju.club.modules.auth.config.request.LoginRequest;
-import com.vju.club.modules.auth.config.request.RefreshTokenRequest;
-import com.vju.club.modules.auth.config.request.RegisterRequest;
+import com.vju.club.modules.auth.dto.request.ChangePasswordRequest;
+import com.vju.club.modules.auth.dto.request.LoginRequest;
+import com.vju.club.modules.auth.dto.request.RefreshTokenRequest;
+import com.vju.club.modules.auth.dto.request.RegisterRequest;
 import com.vju.club.config.JwtProperties;
 import com.vju.club.modules.auth.entity.RefreshToken;
 import com.vju.club.modules.user.entity.User;
-import com.vju.club.modules.user.entity.UserStatus;
+import com.vju.club.modules.user.enums.UserStatus;
 import com.vju.club.error.ApiException;
 import com.vju.club.modules.auth.repository.RefreshTokenRepository;
 import com.vju.club.modules.user.repository.UserRepository;
@@ -67,7 +67,7 @@ class AuthServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new IAuthService(userRepository, refreshTokenRepository, ENCODER,
+        service = new AuthServiceImpl(userRepository, refreshTokenRepository, ENCODER,
                 authenticationManager, tokenService, properties, Clock.fixed(NOW, ZoneOffset.UTC), auditService);
         when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(refreshTokenRepository.saveAndFlush(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));

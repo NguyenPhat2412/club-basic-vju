@@ -1,11 +1,11 @@
 package com.vju.club.bootstrap;
 
 import com.vju.club.config.BootstrapAdminProperties;
-import com.vju.club.modules.permission.entity.PermissionScope;
+import com.vju.club.modules.permission.enums.PermissionScope;
 import com.vju.club.modules.role.entity.Role;
 import com.vju.club.modules.user.entity.User;
 import com.vju.club.modules.role.entity.UserRole;
-import com.vju.club.modules.user.entity.UserStatus;
+import com.vju.club.modules.user.enums.UserStatus;
 import com.vju.club.modules.role.repository.RoleRepository;
 import com.vju.club.modules.user.repository.UserRepository;
 import com.vju.club.modules.role.repository.UserRoleRepository;

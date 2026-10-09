@@ -1,18 +1,18 @@
 package com.vju.club.modules.auth.service;
 
-import com.vju.club.modules.audit.entity.AuditAction;
+import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.audit.service.AuditService;
-import com.vju.club.modules.auth.config.response.AuthResponse;
-import com.vju.club.modules.auth.config.request.ChangePasswordRequest;
-import com.vju.club.modules.auth.config.request.LoginRequest;
-import com.vju.club.modules.auth.config.request.RefreshTokenRequest;
-import com.vju.club.modules.auth.config.request.RegisterRequest;
-import com.vju.club.modules.auth.config.response.TokenResponse;
-import com.vju.club.modules.user.config.response.UserResponse;
+import com.vju.club.modules.auth.dto.response.AuthResponse;
+import com.vju.club.modules.auth.dto.request.ChangePasswordRequest;
+import com.vju.club.modules.auth.dto.request.LoginRequest;
+import com.vju.club.modules.auth.dto.request.RefreshTokenRequest;
+import com.vju.club.modules.auth.dto.request.RegisterRequest;
+import com.vju.club.modules.auth.dto.response.TokenResponse;
+import com.vju.club.modules.user.dto.response.UserResponse;
 import com.vju.club.config.JwtProperties;
 import com.vju.club.modules.auth.entity.RefreshToken;
 import com.vju.club.modules.user.entity.User;
-import com.vju.club.modules.user.entity.UserStatus;
+import com.vju.club.modules.user.enums.UserStatus;
 import com.vju.club.error.ApiException;
 import com.vju.club.modules.auth.repository.RefreshTokenRepository;
 import com.vju.club.modules.user.repository.UserRepository;

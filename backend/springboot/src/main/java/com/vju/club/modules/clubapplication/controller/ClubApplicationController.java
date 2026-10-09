@@ -2,12 +2,12 @@ package com.vju.club.modules.clubapplication.controller;
 
 import com.vju.club.modules.clubapplication.service.ClubApplicationService;
 
-import com.vju.club.modules.clubapplication.config.response.ClubApplicationResponse;
-import com.vju.club.modules.clubapplication.config.response.ClubApplicationSummaryResponse;
-import com.vju.club.modules.clubapplication.config.request.CreateClubApplicationRequest;
-import com.vju.club.modules.clubapplication.config.request.ReviewClubApplicationRequest;
+import com.vju.club.modules.clubapplication.dto.response.ClubApplicationResponse;
+import com.vju.club.modules.clubapplication.dto.response.ClubApplicationSummaryResponse;
+import com.vju.club.modules.clubapplication.dto.request.CreateClubApplicationRequest;
+import com.vju.club.modules.clubapplication.dto.request.ReviewClubApplicationRequest;
 import com.vju.club.common.dto.PageResponse;
-import com.vju.club.modules.clubapplication.entity.ClubApplicationStatus;
+import com.vju.club.modules.clubapplication.enums.ClubApplicationStatus;
 import com.vju.club.security.Actor;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;

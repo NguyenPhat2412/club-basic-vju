@@ -1,7 +1,7 @@
 package com.vju.club.modules.clubapplication.repository;
 
 import com.vju.club.modules.clubapplication.entity.ClubApplication;
-import com.vju.club.modules.clubapplication.entity.ClubApplicationStatus;
+import com.vju.club.modules.clubapplication.enums.ClubApplicationStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

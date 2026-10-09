@@ -122,18 +122,18 @@ class ContractTest(unittest.TestCase):
 
     def test_response_fields_match_java_records(self):
         mapping = {
-            'User': 'modules/user/config/response/UserResponse.java',
-            'TokenResponse': 'modules/auth/config/response/TokenResponse.java',
-            'Club': 'modules/club/config/response/ClubResponse.java',
-            'Department': 'modules/department/config/response/DepartmentResponse.java',
-            'Membership': 'modules/membership/config/response/MembershipResponse.java',
-            'DepartmentMember': 'modules/departmentmember/config/response/DepartmentMemberResponse.java',
-            'Permission': 'modules/permission/config/response/PermissionResponse.java',
-            'UserPermission': 'modules/permission/config/response/UserPermissionResponse.java',
-            'Role': 'modules/role/config/response/RoleResponse.java',
-            'UserRole': 'modules/role/config/response/UserRoleResponse.java',
-            'EffectivePermission': 'modules/permission/config/response/EffectivePermissionResponse.java',
-            'AuditLog': 'modules/audit/config/response/AuditLogResponse.java',
+            'User': 'modules/user/dto/response/UserResponse.java',
+            'TokenResponse': 'modules/auth/dto/response/TokenResponse.java',
+            'Club': 'modules/club/dto/response/ClubResponse.java',
+            'Department': 'modules/department/dto/response/DepartmentResponse.java',
+            'Membership': 'modules/membership/dto/response/MembershipResponse.java',
+            'DepartmentMember': 'modules/departmentmember/dto/response/DepartmentMemberResponse.java',
+            'Permission': 'modules/permission/dto/response/PermissionResponse.java',
+            'UserPermission': 'modules/permission/dto/response/UserPermissionResponse.java',
+            'Role': 'modules/role/dto/response/RoleResponse.java',
+            'UserRole': 'modules/role/dto/response/UserRoleResponse.java',
+            'EffectivePermission': 'modules/permission/dto/response/EffectivePermissionResponse.java',
+            'AuditLog': 'modules/audit/dto/response/AuditLogResponse.java',
         }
         for schema_name, java_path in mapping.items():
             src = (ROOT / 'backend/springboot/src/main/java/com/vju/club' / java_path).read_text()

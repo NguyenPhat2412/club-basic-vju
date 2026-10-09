@@ -1,7 +1,7 @@
 package com.vju.club.modules.club.repository;
 
 import com.vju.club.modules.club.entity.Club;
-import com.vju.club.modules.club.entity.ClubStatus;
+import com.vju.club.modules.club.enums.ClubStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;

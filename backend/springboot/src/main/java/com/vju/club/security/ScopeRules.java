@@ -1,6 +1,6 @@
 package com.vju.club.security;
 
-import com.vju.club.modules.permission.entity.PermissionScope;
+import com.vju.club.modules.permission.enums.PermissionScope;
 
 import java.util.UUID;
 

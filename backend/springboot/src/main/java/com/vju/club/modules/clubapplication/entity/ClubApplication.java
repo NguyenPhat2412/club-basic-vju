@@ -1,5 +1,6 @@
 package com.vju.club.modules.clubapplication.entity;
 
+import com.vju.club.modules.clubapplication.enums.ClubApplicationStatus;
 import com.vju.club.common.entity.TimestampedEntity;
 import com.vju.club.modules.club.entity.Club;
 import com.vju.club.modules.user.entity.User;

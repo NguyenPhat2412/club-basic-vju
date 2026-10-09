@@ -1,19 +1,19 @@
 package com.vju.club.departmentmember;
 
-import com.vju.club.modules.audit.entity.AuditAction;
+import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.departmentmember.entity.DepartmentMember;
 import com.vju.club.modules.departmentmember.service.DepartmentMemberService;
 import com.vju.club.modules.user.entity.User;
 
-import com.vju.club.modules.departmentmember.service.impl.IDepartmentMemberService;
+import com.vju.club.modules.departmentmember.service.impl.DepartmentMemberServiceImpl;
 
 import com.vju.club.modules.audit.service.AuditService;
-import com.vju.club.modules.departmentmember.config.request.AddDepartmentMemberRequest;
+import com.vju.club.modules.departmentmember.dto.request.AddDepartmentMemberRequest;
 import com.vju.club.modules.club.entity.Club;
 import com.vju.club.modules.department.entity.Department;
-import com.vju.club.modules.department.entity.DepartmentStatus;
+import com.vju.club.modules.department.enums.DepartmentStatus;
 import com.vju.club.modules.membership.entity.Membership;
-import com.vju.club.modules.membership.entity.MembershipStatus;
+import com.vju.club.modules.membership.enums.MembershipStatus;
 import com.vju.club.modules.departmentmember.repository.DepartmentMemberRepository;
 import com.vju.club.modules.department.repository.DepartmentRepository;
 import com.vju.club.modules.membership.repository.MembershipRepository;
@@ -59,7 +59,7 @@ class DepartmentMemberServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new IDepartmentMemberService(departmentMemberRepository, departmentRepository,
+        service = new DepartmentMemberServiceImpl(departmentMemberRepository, departmentRepository,
                 membershipRepository, authorization, Clock.fixed(Instant.parse("2026-10-06T00:00:00Z"), ZoneOffset.UTC),
                 auditService);
         clubA = club(UUID.randomUUID());
@@ -127,7 +127,7 @@ class DepartmentMemberServiceTest {
 
         assertThat(response.departmentId()).isEqualTo(departmentA.getId());
         verify(authorization).require(actor, "department.member.add", clubA.getId(), departmentA.getId());
-        verify(auditService).record(eq(actor.id()), eq(com.vju.club.modules.audit.entity.AuditAction.DEPARTMENT_MEMBER_ADDED),
+        verify(auditService).record(eq(actor.id()), eq(com.vju.club.modules.audit.enums.AuditAction.DEPARTMENT_MEMBER_ADDED),
                 any(), eq(clubA.getId()), eq(null), any());
     }
 }

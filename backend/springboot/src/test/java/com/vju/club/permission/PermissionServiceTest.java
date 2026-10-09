@@ -2,17 +2,17 @@ package com.vju.club.permission;
 
 import com.vju.club.modules.permission.service.PermissionService;
 
-import com.vju.club.modules.permission.service.impl.IPermissionService;
+import com.vju.club.modules.permission.service.impl.PermissionServiceImpl;
 
-import com.vju.club.modules.audit.entity.AuditAction;
+import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.modules.club.entity.Club;
 import com.vju.club.modules.permission.entity.Permission;
-import com.vju.club.modules.permission.entity.PermissionScope;
+import com.vju.club.modules.permission.enums.PermissionScope;
 import com.vju.club.modules.user.entity.User;
 import com.vju.club.modules.permission.entity.UserPermission;
-import com.vju.club.modules.permission.config.request.GrantPermissionRequest;
-import com.vju.club.modules.permission.config.request.ReplacePermissionsRequest;
+import com.vju.club.modules.permission.dto.request.GrantPermissionRequest;
+import com.vju.club.modules.permission.dto.request.ReplacePermissionsRequest;
 import com.vju.club.modules.club.repository.ClubRepository;
 import com.vju.club.modules.department.repository.DepartmentRepository;
 import com.vju.club.modules.audit.repository.PermissionAuditLogRepository;
@@ -89,7 +89,7 @@ class PermissionServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new IPermissionService(permissionRepository, userPermissionRepository, permissionAuditLogRepository,
+        service = new PermissionServiceImpl(permissionRepository, userPermissionRepository, permissionAuditLogRepository,
                 userRepository, clubRepository, departmentRepository, authorization, Clock.systemUTC(), audit);
         club.setId(UUID.randomUUID());
         when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));

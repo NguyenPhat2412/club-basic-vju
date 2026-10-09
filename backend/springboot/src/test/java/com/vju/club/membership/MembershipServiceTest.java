@@ -2,18 +2,18 @@ package com.vju.club.membership;
 
 import com.vju.club.modules.membership.service.MembershipService;
 
-import com.vju.club.modules.membership.service.impl.IMembershipService;
+import com.vju.club.modules.membership.service.impl.MembershipServiceImpl;
 
-import com.vju.club.modules.audit.entity.AuditAction;
+import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.modules.club.entity.Club;
-import com.vju.club.modules.club.entity.ClubStatus;
+import com.vju.club.modules.club.enums.ClubStatus;
 import com.vju.club.modules.membership.entity.Membership;
-import com.vju.club.modules.membership.entity.MembershipStatus;
+import com.vju.club.modules.membership.enums.MembershipStatus;
 import com.vju.club.modules.user.entity.User;
-import com.vju.club.modules.user.entity.UserStatus;
-import com.vju.club.modules.membership.config.request.CreateMembershipRequest;
-import com.vju.club.modules.membership.config.request.UpdateMembershipRequest;
+import com.vju.club.modules.user.enums.UserStatus;
+import com.vju.club.modules.membership.dto.request.CreateMembershipRequest;
+import com.vju.club.modules.membership.dto.request.UpdateMembershipRequest;
 import com.vju.club.modules.club.repository.ClubRepository;
 import com.vju.club.modules.departmentmember.repository.DepartmentMemberRepository;
 import com.vju.club.modules.membership.repository.MembershipRepository;
@@ -71,7 +71,7 @@ class MembershipServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new IMembershipService(membershipRepository, clubRepository, userRepository, departmentMemberRepository,
+        service = new MembershipServiceImpl(membershipRepository, clubRepository, userRepository, departmentMemberRepository,
                 authorization, Clock.fixed(NOW, ZoneOffset.UTC), audit);
         club.setId(UUID.randomUUID());
         club.setStatus(ClubStatus.ACTIVE);

@@ -2,7 +2,7 @@ package com.vju.club.modules.role.entity;
 
 import com.vju.club.common.entity.TimestampedEntity;
 import com.vju.club.modules.permission.entity.Permission;
-import com.vju.club.modules.permission.entity.PermissionScope;
+import com.vju.club.modules.permission.enums.PermissionScope;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

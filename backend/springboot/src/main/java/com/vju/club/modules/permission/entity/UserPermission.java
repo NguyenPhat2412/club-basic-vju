@@ -1,5 +1,6 @@
 package com.vju.club.modules.permission.entity;
 
+import com.vju.club.modules.permission.enums.PermissionScope;
 import com.vju.club.common.entity.BaseEntity;
 import com.vju.club.modules.club.entity.Club;
 import com.vju.club.modules.department.entity.Department;

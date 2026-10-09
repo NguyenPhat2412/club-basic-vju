@@ -1,7 +1,7 @@
 package com.vju.club.modules.club.specification;
 
 import com.vju.club.modules.club.entity.Club;
-import com.vju.club.modules.club.entity.ClubStatus;
+import com.vju.club.modules.club.enums.ClubStatus;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.Collection;

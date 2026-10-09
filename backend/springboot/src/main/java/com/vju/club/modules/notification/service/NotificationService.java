@@ -1,6 +1,6 @@
 package com.vju.club.modules.notification.service;
 
-import com.vju.club.modules.notification.config.response.NotificationResponse;
+import com.vju.club.modules.notification.dto.response.NotificationResponse;
 
 import com.vju.club.common.dto.PageResponse;
 import com.vju.club.common.OffsetLimitRequest;
