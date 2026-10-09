@@ -1,5 +1,6 @@
 package com.vju.club.modules.departmentmember.service.impl;
 
+import com.vju.club.modules.departmentmember.mapper.DepartmentMemberMapper;
 import com.vju.club.modules.departmentmember.service.DepartmentMemberService;
 
 import com.vju.club.security.Actor;
@@ -37,13 +38,16 @@ public class DepartmentMemberServiceImpl implements DepartmentMemberService {
     private final MembershipRepository membershipRepository;
     private final PermissionAuthorizationService authorizationService;
     private final Clock clock;
+    private final DepartmentMemberMapper departmentMemberMapper;
 
     public DepartmentMemberServiceImpl(DepartmentMemberRepository departmentMemberRepository,
                                        DepartmentRepository departmentRepository,
                                        MembershipRepository membershipRepository,
                                        PermissionAuthorizationService authorizationService,
                                        Clock clock,
-                                       AuditService auditService) {
+                                       AuditService auditService,
+            DepartmentMemberMapper departmentMemberMapper) {
+        this.departmentMemberMapper = departmentMemberMapper;
         this.auditService = auditService;
         this.departmentMemberRepository = departmentMemberRepository;
         this.departmentRepository = departmentRepository;
@@ -57,7 +61,7 @@ public class DepartmentMemberServiceImpl implements DepartmentMemberService {
         authorize(actor, "department.member.view", departmentId);
         var items = departmentMemberRepository
                 .findPageByDepartment(departmentId, new OffsetLimitRequest(offset, limit)).stream()
-                .map(DepartmentMemberResponse::from).toList();
+                .map(departmentMemberMapper::toResponse).toList();
         return new PageResponse<>(items, departmentMemberRepository.countByDepartment_Id(departmentId), offset, limit);
     }
 
@@ -81,7 +85,7 @@ public class DepartmentMemberServiceImpl implements DepartmentMemberService {
         DepartmentMember saved = departmentMemberRepository.saveAndFlush(member);
         auditService.record(actor.id(), AuditAction.DEPARTMENT_MEMBER_ADDED, saved.getId(), saved.getClubId(), null,
                 Map.of("departmentId", departmentId, "membershipId", membership.getId()));
-        return DepartmentMemberResponse.from(saved);
+        return departmentMemberMapper.toResponse(saved);
     }
 
     @Transactional
@@ -113,7 +117,7 @@ public class DepartmentMemberServiceImpl implements DepartmentMemberService {
         DepartmentMember saved = departmentMemberRepository.saveAndFlush(assignment);
         auditService.record(actor.id(), AuditAction.DEPARTMENT_MEMBER_MOVED, saved.getId(), saved.getClubId(),
                 Map.of("departmentId", departmentId), Map.of("departmentId", target.getId()));
-        return DepartmentMemberResponse.from(saved);
+        return departmentMemberMapper.toResponse(saved);
     }
 
     /** Loads the department and checks the permission at department scope or at its club's scope. */

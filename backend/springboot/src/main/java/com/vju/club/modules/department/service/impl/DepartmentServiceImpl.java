@@ -1,5 +1,6 @@
 package com.vju.club.modules.department.service.impl;
 
+import com.vju.club.modules.department.mapper.DepartmentMapper;
 import com.vju.club.modules.department.service.DepartmentService;
 import com.vju.club.modules.department.common.DepartmentConstants;
 
@@ -34,9 +35,12 @@ public class DepartmentServiceImpl implements DepartmentService {
     private final AuditService auditService;
     private final ClubRepository clubRepository;
     private final PermissionAuthorizationService authorizationService;
+    private final DepartmentMapper departmentMapper;
 
     public DepartmentServiceImpl(DepartmentRepository departmentRepository,
-                                 ClubRepository clubRepository, AuditService auditService, PermissionAuthorizationService authorizationService) {
+                                 ClubRepository clubRepository, AuditService auditService, PermissionAuthorizationService authorizationService,
+            DepartmentMapper departmentMapper) {
+        this.departmentMapper = departmentMapper;
         this.departmentRepository = departmentRepository;
         this.auditService = auditService;
         this.clubRepository = clubRepository;
@@ -47,13 +51,13 @@ public class DepartmentServiceImpl implements DepartmentService {
     public PageResponse<DepartmentResponse> list(Actor actor, UUID clubId, int offset, int limit) {
         authorizationService.require(actor, DepartmentConstants.PERMISSION_VIEW, clubId, null);
         if (!clubRepository.existsById(clubId)) throw notFound("CLUB_NOT_FOUND", "Club not found");
-        var items = departmentRepository.findByClub_IdOrderByNameAscIdAsc(clubId, new OffsetLimitRequest(offset, limit)).stream().map(DepartmentResponse::from).toList();
+        var items = departmentRepository.findByClub_IdOrderByNameAscIdAsc(clubId, new OffsetLimitRequest(offset, limit)).stream().map(departmentMapper::toResponse).toList();
         return new PageResponse<>(items, departmentRepository.countByClub_Id(clubId), offset, limit);
     }
 
     @Transactional(readOnly = true)
     public DepartmentResponse get(Actor actor, UUID departmentId) {
-        return DepartmentResponse.from(authorize(actor, DepartmentConstants.PERMISSION_VIEW, departmentId));
+        return departmentMapper.toResponse(authorize(actor, DepartmentConstants.PERMISSION_VIEW, departmentId));
     }
 
     @Transactional
@@ -73,7 +77,7 @@ public class DepartmentServiceImpl implements DepartmentService {
         department.setDescription(request.description());
         Department saved = departmentRepository.saveAndFlush(department);
         auditService.record(actor.id(), AuditAction.DEPARTMENT_CREATED, saved.getId(), clubId, null, snapshot(saved));
-        return DepartmentResponse.from(saved);
+        return departmentMapper.toResponse(saved);
     }
 
     @Transactional
@@ -95,7 +99,7 @@ public class DepartmentServiceImpl implements DepartmentService {
         Department saved = departmentRepository.saveAndFlush(department);
         auditService.recordChange(actor.id(), AuditAction.DEPARTMENT_UPDATED, departmentId, saved.getClub().getId(),
                 before, snapshot(saved));
-        return DepartmentResponse.from(saved);
+        return departmentMapper.toResponse(saved);
     }
 
     @Transactional
@@ -108,7 +112,7 @@ public class DepartmentServiceImpl implements DepartmentService {
         auditService.recordChange(actor.id(), request.status() == DepartmentStatus.ACTIVE
                 ? AuditAction.DEPARTMENT_ACTIVATED : AuditAction.DEPARTMENT_DEACTIVATED, departmentId,
                 saved.getClub().getId(), before, Map.of("status", saved.getStatus()));
-        return DepartmentResponse.from(saved);
+        return departmentMapper.toResponse(saved);
     }
 
     private static Map<String, Object> snapshot(Department department) {

@@ -1,5 +1,6 @@
 package com.vju.club.modules.role.service.impl;
 
+import com.vju.club.modules.role.mapper.RoleMapper;
 import com.vju.club.modules.role.service.RoleService;
 
 import com.vju.club.security.Actor;
@@ -59,12 +60,15 @@ public class RoleServiceImpl implements RoleService {
     private final PermissionAuthorizationService authorizationService;
     private final Clock clock;
     private final AuditService auditService;
+    private final RoleMapper roleMapper;
 
     public RoleServiceImpl(RoleRepository roleRepository, UserRoleRepository userRoleRepository,
                        PermissionRepository permissionRepository, PermissionAuditLogRepository auditLogRepository,
                        UserRepository userRepository, ClubRepository clubRepository,
                        DepartmentRepository departmentRepository, PermissionAuthorizationService authorizationService,
-                       Clock clock, AuditService auditService) {
+                       Clock clock, AuditService auditService,
+            RoleMapper roleMapper) {
+        this.roleMapper = roleMapper;
         this.auditService = auditService;
         this.roleRepository = roleRepository;
         this.userRoleRepository = userRoleRepository;
@@ -82,13 +86,13 @@ public class RoleServiceImpl implements RoleService {
     @Transactional(readOnly = true)
     public List<RoleResponse> list(Actor actor) {
         authorizationService.require(actor, "role.view", null, null);
-        return roleRepository.findAllWithPermissions().stream().map(RoleResponse::from).toList();
+        return roleRepository.findAllWithPermissions().stream().map(roleMapper::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
     public RoleResponse get(Actor actor, UUID roleId) {
         authorizationService.require(actor, "role.view", null, null);
-        return RoleResponse.from(findRole(roleId));
+        return roleMapper.toResponse(findRole(roleId));
     }
 
     @Transactional
@@ -106,7 +110,7 @@ public class RoleServiceImpl implements RoleService {
         role.setPermissions(resolvePermissions(request.permissionIds(), role));
         Role saved = roleRepository.saveAndFlush(role);
         auditService.record(actor.id(), AuditAction.ROLE_CREATED, saved.getId(), null, null, snapshot(saved));
-        return RoleResponse.from(saved);
+        return roleMapper.toResponse(saved);
     }
 
     @Transactional
@@ -128,7 +132,7 @@ public class RoleServiceImpl implements RoleService {
         if (request.permissionIds() != null) role.setPermissions(resolvePermissions(request.permissionIds(), role));
         Role saved = roleRepository.saveAndFlush(role);
         auditService.recordChange(actor.id(), AuditAction.ROLE_UPDATED, roleId, null, before, snapshot(saved));
-        return RoleResponse.from(saved);
+        return roleMapper.toResponse(saved);
     }
 
     /** Every permission must exist, be active and be no broader than the role's scope. */
@@ -159,7 +163,7 @@ public class RoleServiceImpl implements RoleService {
             authorizationService.require(actor, "permission.view", null, null);
         }
         findUser(userId);
-        return userRoleRepository.findActiveByUser(userId).stream().map(UserRoleResponse::from).toList();
+        return userRoleRepository.findActiveByUser(userId).stream().map(roleMapper::toUserRoleResponse).toList();
     }
 
     @Transactional
@@ -198,7 +202,7 @@ public class RoleServiceImpl implements RoleService {
         audit(actorUser, saved, PermissionAuditAction.GRANT, request.reason());
         auditService.record(actorUser.getId(), AuditAction.ROLE_ASSIGNED, saved.getId(), clubOf(saved), null,
                 assignmentValues(saved, request.reason()));
-        return UserRoleResponse.from(saved);
+        return roleMapper.toUserRoleResponse(saved);
     }
 
     @Transactional

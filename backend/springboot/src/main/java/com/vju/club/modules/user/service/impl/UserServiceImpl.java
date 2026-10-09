@@ -1,5 +1,6 @@
 package com.vju.club.modules.user.service.impl;
 
+import com.vju.club.modules.user.mapper.UserMapper;
 import com.vju.club.modules.user.service.UserService;
 import com.vju.club.modules.user.common.UserConstants;
 
@@ -38,11 +39,14 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final AuditService auditService;
     private final PermissionAuthorizationService authorizationService;
+    private final UserMapper userMapper;
 
     public UserServiceImpl(
             UserRepository userRepository,
             PermissionAuthorizationService authorizationService,
-            AuditService auditService) {
+            AuditService auditService,
+            UserMapper userMapper) {
+        this.userMapper = userMapper;
         this.userRepository = userRepository;
         this.auditService = auditService;
         this.authorizationService = authorizationService;
@@ -50,7 +54,7 @@ public class UserServiceImpl implements UserService {
 
     @Transactional(readOnly = true)
     public UserResponse getCurrent(Actor actor) {
-        return UserResponse.from(findUser(actor.id()));
+        return userMapper.toResponse(findUser(actor.id()));
     }
 
     @Transactional
@@ -67,13 +71,13 @@ public class UserServiceImpl implements UserService {
         if (request.avatarUrl() != null) user.setAvatarUrl(blankToNull(request.avatarUrl()));
         User saved = userRepository.saveAndFlush(user);
         auditService.recordChange(actor.id(), AuditAction.USER_PROFILE_UPDATED, saved.getId(), null, before, profile(saved));
-        return UserResponse.from(saved);
+        return userMapper.toResponse(saved);
     }
 
     @Transactional(readOnly = true)
     public UserResponse getById(Actor actor, UUID userId) {
         authorizationService.require(actor, UserConstants.PERMISSION_VIEW, null, null);
-        return UserResponse.from(findUser(userId));
+        return userMapper.toResponse(findUser(userId));
     }
 
     @Transactional(readOnly = true)
@@ -83,7 +87,7 @@ public class UserServiceImpl implements UserService {
         OffsetLimitRequest page = new OffsetLimitRequest(offset, limit, sort(orderBy, orderType));
         Specification<User> spec = UserSpecifications.hasKeyword(query);
         Page<User> userPage = userRepository.findAll(spec, page);
-        var users = userPage.getContent().stream().map(UserResponse::from).toList();
+        var users = userPage.getContent().stream().map(userMapper::toResponse).toList();
         return new PageResponse<>(users, userPage.getTotalElements(), offset, limit);
     }
 
@@ -108,7 +112,7 @@ public class UserServiceImpl implements UserService {
         auditService.recordChange(actor.id(), request.status() == UserStatus.ACTIVE
                 ? AuditAction.USER_UNLOCKED : AuditAction.USER_LOCKED, userId, null, before,
                 Map.of("status", saved.getStatus()));
-        return UserResponse.from(saved);
+        return userMapper.toResponse(saved);
     }
 
     private static Map<String, Object> profile(User user) {

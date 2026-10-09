@@ -1,5 +1,6 @@
 package com.vju.club.modules.membership.service.impl;
 
+import com.vju.club.modules.membership.mapper.MembershipMapper;
 import com.vju.club.modules.membership.service.MembershipService;
 import com.vju.club.modules.membership.common.MembershipConstants;
 
@@ -50,12 +51,15 @@ public class MembershipServiceImpl implements MembershipService {
     private final DepartmentMemberRepository departmentMemberRepository;
     private final PermissionAuthorizationService authorizationService;
     private final Clock clock;
+    private final MembershipMapper membershipMapper;
 
     public MembershipServiceImpl(MembershipRepository membershipRepository,
                                  ClubRepository clubRepository, UserRepository userRepository,
                                  DepartmentMemberRepository departmentMemberRepository,
                                  PermissionAuthorizationService authorizationService, Clock clock,
-                                 AuditService auditService) {
+                                 AuditService auditService,
+            MembershipMapper membershipMapper) {
+        this.membershipMapper = membershipMapper;
         this.auditService = auditService;
         this.membershipRepository = membershipRepository;
         this.clubRepository = clubRepository;
@@ -85,7 +89,7 @@ public class MembershipServiceImpl implements MembershipService {
         Sort sort = Sort.by(Sort.Order.desc("joinedAt"), Sort.Order.asc("id"));
         OffsetLimitRequest page = new OffsetLimitRequest(offset, limit, sort);
         Page<Membership> membershipPage = membershipRepository.findAll(spec, page);
-        var items = membershipPage.getContent().stream().map(MembershipResponse::from).toList();
+        var items = membershipPage.getContent().stream().map(membershipMapper::toResponse).toList();
         return new PageResponse<>(items, membershipPage.getTotalElements(), offset, limit);
     }
 
@@ -101,8 +105,8 @@ public class MembershipServiceImpl implements MembershipService {
         Map<UUID, List<MembershipDepartmentResponse>> departments = memberships.isEmpty() ? Map.of()
                 : departmentMemberRepository.findForMemberships(memberships.stream().map(Membership::getId).toList())
                     .stream().collect(Collectors.groupingBy(assignment -> assignment.getMembership().getId(),
-                            Collectors.mapping(MembershipDepartmentResponse::from, Collectors.toList())));
-        var items = memberships.stream().map(membership -> MyMembershipResponse.from(membership,
+                            Collectors.mapping(membershipMapper::toDepartmentResponse, Collectors.toList())));
+        var items = memberships.stream().map(membership -> membershipMapper.toMyResponse(membership,
                 departments.getOrDefault(membership.getId(), List.of()))).toList();
         return new PageResponse<>(items, membershipPage.getTotalElements(), offset, limit);
     }
@@ -111,7 +115,7 @@ public class MembershipServiceImpl implements MembershipService {
     public MembershipResponse get(Actor actor, UUID membershipId) {
         Membership membership = find(actor, MembershipConstants.PERMISSION_VIEW_DETAIL, membershipId);
         authorizationService.require(actor, MembershipConstants.PERMISSION_VIEW_DETAIL, membership.getClub().getId(), null);
-        return MembershipResponse.from(membership);
+        return membershipMapper.toResponse(membership);
     }
 
     @Transactional
@@ -137,7 +141,7 @@ public class MembershipServiceImpl implements MembershipService {
         Membership saved = membershipRepository.saveAndFlush(membership);
         auditService.record(actor.id(), AuditAction.MEMBER_ADDED, saved.getId(), clubId, null,
                 Map.of("userId", user.getId(), "status", saved.getStatus()));
-        return MembershipResponse.from(saved);
+        return membershipMapper.toResponse(saved);
     }
 
     @Transactional
@@ -145,7 +149,7 @@ public class MembershipServiceImpl implements MembershipService {
         Membership membership = find(actor, MembershipConstants.PERMISSION_UPDATE, membershipId);
         authorizationService.require(actor, MembershipConstants.PERMISSION_UPDATE, membership.getClub().getId(), null);
         changeStatus(actor, membership, request.status());
-        return MembershipResponse.from(membershipRepository.saveAndFlush(membership));
+        return membershipMapper.toResponse(membershipRepository.saveAndFlush(membership));
     }
 
     @Transactional

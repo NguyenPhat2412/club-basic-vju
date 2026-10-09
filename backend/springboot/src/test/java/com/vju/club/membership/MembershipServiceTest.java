@@ -1,5 +1,6 @@
 package com.vju.club.membership;
 
+import com.vju.club.modules.membership.mapper.MembershipMapperImpl;
 import com.vju.club.modules.membership.service.MembershipService;
 
 import com.vju.club.modules.membership.service.impl.MembershipServiceImpl;
@@ -72,7 +73,7 @@ class MembershipServiceTest {
     @BeforeEach
     void setUp() {
         service = new MembershipServiceImpl(membershipRepository, clubRepository, userRepository, departmentMemberRepository,
-                authorization, Clock.fixed(NOW, ZoneOffset.UTC), audit);
+                authorization, Clock.fixed(NOW, ZoneOffset.UTC), audit, new MembershipMapperImpl());
         club.setId(UUID.randomUUID());
         club.setStatus(ClubStatus.ACTIVE);
         user.setId(UUID.randomUUID());

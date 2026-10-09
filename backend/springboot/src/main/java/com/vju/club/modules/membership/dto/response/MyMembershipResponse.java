@@ -1,7 +1,6 @@
 package com.vju.club.modules.membership.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.vju.club.modules.membership.entity.Membership;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -19,15 +18,4 @@ public record MyMembershipResponse(
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
         List<MembershipDepartmentResponse> departments
-) {
-    public static MyMembershipResponse from(Membership membership) {
-        return from(membership, List.of());
-    }
-
-    public static MyMembershipResponse from(Membership membership, List<MembershipDepartmentResponse> departments) {
-        return new MyMembershipResponse(membership.getId(), membership.getClub().getId(),
-                membership.getClub().getCode(), membership.getClub().getName(), membership.getStatus().name(),
-                membership.getJoinedAt(), membership.getLeftAt(), membership.getCreatedAt(), membership.getUpdatedAt(),
-                List.copyOf(departments));
-    }
-}
+) { }

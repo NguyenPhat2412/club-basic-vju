@@ -13,4 +13,12 @@ public final class UserConstants {
 
     public static final int MIN_PASSWORD_LENGTH = 8;
     public static final int MAX_PASSWORD_LENGTH = 100;
+    /** BCrypt refuses longer input, so this is the real upper bound (accented characters take 2-3 bytes). */
+    public static final int MAX_PASSWORD_BYTES = 72;
+    public static final String PHONE_PATTERN = "^[0-9+().\\- ]*$";
+    /**
+     * Images and links shown by the frontend must be plain web URLs (no javascript: or data: URLs).
+     * An empty string stays allowed because PATCH uses it to clear the field.
+     */
+    public static final String WEB_URL_PATTERN = "^(https?://.+)?$";
 }

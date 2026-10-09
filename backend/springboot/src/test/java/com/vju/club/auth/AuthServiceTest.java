@@ -1,5 +1,6 @@
 package com.vju.club.auth;
 
+import com.vju.club.modules.user.mapper.UserMapperImpl;
 import com.vju.club.modules.auth.service.AuthService;
 import com.vju.club.modules.auth.service.JwtTokenService;
 
@@ -68,7 +69,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         service = new AuthServiceImpl(userRepository, refreshTokenRepository, ENCODER,
-                authenticationManager, tokenService, properties, Clock.fixed(NOW, ZoneOffset.UTC), auditService);
+                authenticationManager, tokenService, properties, Clock.fixed(NOW, ZoneOffset.UTC), auditService, new UserMapperImpl());
         when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(refreshTokenRepository.saveAndFlush(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(tokenService.issueAccessToken(any(User.class)))

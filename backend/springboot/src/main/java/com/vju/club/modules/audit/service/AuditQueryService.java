@@ -1,5 +1,6 @@
 package com.vju.club.modules.audit.service;
 
+import com.vju.club.modules.audit.mapper.AuditMapper;
 import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.audit.entity.AuditLog;
 import com.vju.club.modules.audit.dto.response.AuditLogResponse;
@@ -26,9 +27,12 @@ public class AuditQueryService {
 
     private final AuditLogRepository auditLogRepository;
     private final PermissionAuthorizationService authorizationService;
+    private final AuditMapper auditMapper;
 
     public AuditQueryService(AuditLogRepository auditLogRepository,
-                             PermissionAuthorizationService authorizationService) {
+                             PermissionAuthorizationService authorizationService,
+            AuditMapper auditMapper) {
+        this.auditMapper = auditMapper;
         this.auditLogRepository = auditLogRepository;
         this.authorizationService = authorizationService;
     }
@@ -49,7 +53,7 @@ public class AuditQueryService {
         Sort sort = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
         OffsetLimitRequest page = new OffsetLimitRequest(offset, limit, sort);
         Page<AuditLog> auditPage = auditLogRepository.findAll(spec, page);
-        var items = auditPage.getContent().stream().map(AuditLogResponse::from).toList();
+        var items = auditPage.getContent().stream().map(auditMapper::toResponse).toList();
         return new PageResponse<>(items, auditPage.getTotalElements(), offset, limit);
     }
 

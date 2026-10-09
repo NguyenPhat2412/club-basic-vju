@@ -1,5 +1,6 @@
 package com.vju.club.permission;
 
+import com.vju.club.modules.permission.mapper.PermissionMapperImpl;
 import com.vju.club.modules.permission.service.PermissionService;
 
 import com.vju.club.modules.permission.service.impl.PermissionServiceImpl;
@@ -90,7 +91,7 @@ class PermissionServiceTest {
     @BeforeEach
     void setUp() {
         service = new PermissionServiceImpl(permissionRepository, userPermissionRepository, permissionAuditLogRepository,
-                userRepository, clubRepository, departmentRepository, authorization, Clock.systemUTC(), audit);
+                userRepository, clubRepository, departmentRepository, authorization, Clock.systemUTC(), audit, new PermissionMapperImpl());
         club.setId(UUID.randomUUID());
         when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
         when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));

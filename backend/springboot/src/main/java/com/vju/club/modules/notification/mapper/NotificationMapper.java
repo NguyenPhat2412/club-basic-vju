@@ -1,10 +1,10 @@
 package com.vju.club.modules.notification.mapper;
 
+import com.vju.club.modules.notification.dto.response.NotificationResponse;
 import com.vju.club.modules.notification.entity.Notification;
+import org.mapstruct.Mapper;
 
-import org.springframework.stereotype.Component;
-
-@Component
-public class NotificationMapper {
-    // Mapper component for Notification module
+@Mapper
+public interface NotificationMapper {
+    NotificationResponse toResponse(Notification notification);
 }

@@ -1,5 +1,6 @@
 package com.vju.club.club;
 
+import com.vju.club.modules.club.mapper.ClubMapperImpl;
 import com.vju.club.modules.club.service.ClubService;
 
 import com.vju.club.modules.club.service.impl.ClubServiceImpl;
@@ -57,7 +58,7 @@ class ClubServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ClubServiceImpl(clubRepository, authorization, audit);
+        service = new ClubServiceImpl(clubRepository, authorization, audit, new ClubMapperImpl());
         when(clubRepository.saveAndFlush(any(Club.class))).thenAnswer(invocation -> {
             Club club = invocation.getArgument(0);
             if (club.getId() == null) club.setId(UUID.randomUUID());

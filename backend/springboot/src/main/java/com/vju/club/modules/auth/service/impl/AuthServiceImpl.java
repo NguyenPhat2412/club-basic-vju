@@ -1,5 +1,6 @@
 package com.vju.club.modules.auth.service.impl;
 
+import com.vju.club.modules.user.mapper.UserMapper;
 import com.vju.club.modules.auth.service.JwtTokenService;
 
 import com.vju.club.modules.auth.service.AuthService;
@@ -47,6 +48,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtProperties jwtProperties;
     private final Clock clock;
     private final AuditService auditService;
+    private final UserMapper userMapper;
 
     public AuthServiceImpl(
             UserRepository userRepository,
@@ -56,7 +58,9 @@ public class AuthServiceImpl implements AuthService {
             JwtTokenService tokenService,
             JwtProperties jwtProperties,
             Clock clock,
-            AuditService auditService) {
+            AuditService auditService,
+            UserMapper userMapper) {
+        this.userMapper = userMapper;
         this.auditService = auditService;
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -87,7 +91,7 @@ public class AuthServiceImpl implements AuthService {
         User saved = userRepository.saveAndFlush(user);
         auditService.record(saved.getId(), AuditAction.USER_REGISTERED, saved.getId(), null, null,
                 Map.of("email", saved.getEmail()));
-        return UserResponse.from(saved);
+        return userMapper.toResponse(saved);
     }
 
     @Transactional
@@ -107,7 +111,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         User user = userRepository.findByEmailIgnoreCase(email).orElseThrow(this::invalidCredentials);
-        return new AuthResponse(UserResponse.from(user), issueTokens(user));
+        return new AuthResponse(userMapper.toResponse(user), issueTokens(user));
     }
 
     @Transactional
@@ -123,7 +127,7 @@ public class AuthServiceImpl implements AuthService {
             // Another request rotated this token first.
             throw invalidRefreshToken();
         }
-        return new AuthResponse(UserResponse.from(user), issueTokens(user));
+        return new AuthResponse(userMapper.toResponse(user), issueTokens(user));
     }
 
     @Transactional
@@ -137,7 +141,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Transactional(readOnly = true)
     public UserResponse getCurrentUser(UUID userId) {
-        return UserResponse.from(userRepository.findById(userId)
+        return userMapper.toResponse(userRepository.findById(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User not found")));
     }
 

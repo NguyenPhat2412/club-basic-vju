@@ -1,5 +1,6 @@
 package com.vju.club.departmentmember;
 
+import com.vju.club.modules.departmentmember.mapper.DepartmentMemberMapperImpl;
 import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.departmentmember.entity.DepartmentMember;
 import com.vju.club.modules.departmentmember.service.DepartmentMemberService;
@@ -61,7 +62,7 @@ class DepartmentMemberServiceTest {
     void setUp() {
         service = new DepartmentMemberServiceImpl(departmentMemberRepository, departmentRepository,
                 membershipRepository, authorization, Clock.fixed(Instant.parse("2026-10-06T00:00:00Z"), ZoneOffset.UTC),
-                auditService);
+                auditService, new DepartmentMemberMapperImpl());
         clubA = club(UUID.randomUUID());
         clubB = club(UUID.randomUUID());
         departmentA = department(clubA);
