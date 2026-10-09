@@ -70,7 +70,7 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 │   │   ├── bootstrap/           # Admin ban đầu và dữ liệu demo (chỉ profile local)
 │   │   └── rest/                # API catalog, phục vụ file OpenAPI
 │   ├── src/main/resources/
-│   │   ├── db/migration/        # Flyway: V1–V6 nền tảng, V7 club applications, V8 notifications
+│   │   ├── db/migration/        # Flyway: V1–V6 nền tảng, V7 club applications, V8 notifications, V9 created_by/updated_by
 │   │   └── api/                 # Bản copy runtime của OpenAPI và catalog
 │   ├── src/test/                # Unit test + integration test
 │   └── Dockerfile
@@ -108,6 +108,10 @@ Quy ước:
 - **Chỉ làm việc với DTO ở ranh giới API.** Controller và interface service chỉ nhận/trả `record` trong `dto/`. Entity chỉ tồn tại bên trong service và repository.
 - **DTO là Java `record`**: ngắn gọn, bất biến, không có logic. Response DTO không biết đến entity.
 - **Chuyển entity → DTO bằng MapStruct** (`mapper/`), không dùng ModelMapper hay ObjectMapper. Mapper được sinh lúc compile và là Spring bean. Build được cấu hình `unmappedTargetPolicy=ERROR`, nên nếu thêm một trường vào DTO mà quên map thì compile sẽ báo lỗi ngay, thay vì lặng lẽ trả `null`.
+- **Lombok cho code lặp:** entity dùng `@Getter`/`@Setter` (lớp nào cố ý không có setter cho một trường thì gắn `@Setter` theo từng trường); bean dùng `@RequiredArgsConstructor` để inject qua constructor. **Không dùng `@Data` cho entity**, vì `equals`/`hashCode`/`toString` sinh tự động sẽ chạm vào quan hệ lazy, gây load ngoài ý muốn và lặp vô hạn.
+- **Phân quyền khai báo bằng annotation:** `@RequirePermission("role.manage")` hoặc `@RequirePermission(value = "club.update", clubId = "clubId")` đặt trên method service; `RequirePermissionAspect` kiểm tra trước khi method chạy. Giữ lời gọi `PermissionAuthorizationService.require(...)` viết tay khi phải tải entity rồi mới biết CLB/ban, khi permission key phụ thuộc request, hoặc khi method được gọi từ bên trong chính lớp đó (AOP không chạy với self-invocation). `RequirePermissionUsageTest` báo lỗi nếu annotation trỏ tới tham số không tồn tại.
+- **Route công khai khai báo bằng `@PublicEndpoint`** trên handler; `SecurityConfig` tự đọc các route này, không còn danh sách URL viết cứng.
+- **JPA Auditing:** mọi entity kế thừa `TimestampedEntity` tự lưu `created_by`/`updated_by` (`@CreatedBy`/`@LastModifiedBy`, lấy từ JWT của request; NULL khi không có người đăng nhập). Thời điểm (`created_at`/`updated_at`) do Hibernate ghi.
 - **Validation** đặt trên request DTO: `@NotBlank` cho chuỗi bắt buộc, `@NotNull` cho UUID/enum/số và collection được phép rỗng, `@NotEmpty` cho collection phải có phần tử, `@Size`/`@Pattern`/`@URL` để giới hạn độ dài và định dạng. Mật khẩu dùng `@ValidPassword` (8 ký tự trở lên, tối đa 72 byte UTF-8 theo giới hạn của BCrypt).
 
 - **Service không phụ thuộc Spring Security:** controller nhận tham số `Actor` (người đang gọi, lấy từ JWT qua `ActorArgumentResolver`) và truyền xuống service. Nhờ vậy service unit test được bằng một `Actor` giả, không cần dựng security context.
@@ -341,7 +345,7 @@ Khi chạy, Hibernate chỉ `validate` schema chứ không tự sửa. Mọi tha
 ## Kiểm thử
 
 ```bash
-# 382 test backend: unit + integration (cần Docker đang chạy)
+# 394 test backend: unit + integration (cần Docker đang chạy)
 cd backend/springboot && ./mvnw test
 
 # Kiểm tra OpenAPI contract (từ thư mục gốc)
