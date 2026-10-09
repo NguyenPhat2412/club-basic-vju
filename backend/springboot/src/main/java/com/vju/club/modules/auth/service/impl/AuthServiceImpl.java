@@ -1,5 +1,6 @@
 package com.vju.club.modules.auth.service.impl;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.user.mapper.UserMapper;
 import com.vju.club.modules.auth.service.JwtTokenService;
 
@@ -38,6 +39,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
@@ -49,27 +51,6 @@ public class AuthServiceImpl implements AuthService {
     private final Clock clock;
     private final AuditService auditService;
     private final UserMapper userMapper;
-
-    public AuthServiceImpl(
-            UserRepository userRepository,
-            RefreshTokenRepository refreshTokenRepository,
-            PasswordEncoder passwordEncoder,
-            AuthenticationManager authenticationManager,
-            JwtTokenService tokenService,
-            JwtProperties jwtProperties,
-            Clock clock,
-            AuditService auditService,
-            UserMapper userMapper) {
-        this.userMapper = userMapper;
-        this.auditService = auditService;
-        this.userRepository = userRepository;
-        this.refreshTokenRepository = refreshTokenRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.authenticationManager = authenticationManager;
-        this.tokenService = tokenService;
-        this.jwtProperties = jwtProperties;
-        this.clock = clock;
-    }
 
     @Transactional
     public UserResponse register(RegisterRequest request) {

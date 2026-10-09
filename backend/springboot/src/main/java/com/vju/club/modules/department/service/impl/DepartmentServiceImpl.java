@@ -1,5 +1,6 @@
 package com.vju.club.modules.department.service.impl;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.department.mapper.DepartmentMapper;
 import com.vju.club.modules.department.service.DepartmentService;
 import com.vju.club.modules.department.common.DepartmentConstants;
@@ -30,22 +31,13 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class DepartmentServiceImpl implements DepartmentService {
     private final DepartmentRepository departmentRepository;
-    private final AuditService auditService;
     private final ClubRepository clubRepository;
+    private final AuditService auditService;
     private final PermissionAuthorizationService authorizationService;
     private final DepartmentMapper departmentMapper;
-
-    public DepartmentServiceImpl(DepartmentRepository departmentRepository,
-                                 ClubRepository clubRepository, AuditService auditService, PermissionAuthorizationService authorizationService,
-            DepartmentMapper departmentMapper) {
-        this.departmentMapper = departmentMapper;
-        this.departmentRepository = departmentRepository;
-        this.auditService = auditService;
-        this.clubRepository = clubRepository;
-        this.authorizationService = authorizationService;
-    }
 
     @Transactional(readOnly = true)
     public PageResponse<DepartmentResponse> list(Actor actor, UUID clubId, int offset, int limit) {

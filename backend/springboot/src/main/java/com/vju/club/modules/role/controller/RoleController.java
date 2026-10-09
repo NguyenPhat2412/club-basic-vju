@@ -1,5 +1,6 @@
 package com.vju.club.modules.role.controller;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.role.service.RoleService;
 
 import com.vju.club.security.Actor;
@@ -25,13 +26,10 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1")
+@RequiredArgsConstructor
 public class RoleController {
 
     private final RoleService roleService;
-
-    public RoleController(RoleService roleService) {
-        this.roleService = roleService;
-    }
 
     @GetMapping("/roles")
     public List<RoleResponse> list(Actor actor) {

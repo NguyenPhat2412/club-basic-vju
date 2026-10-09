@@ -1,5 +1,6 @@
 package com.vju.club.modules.auth.controller;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.auth.service.AuthService;
 
 import com.vju.club.security.Actor;
@@ -19,16 +20,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-
 @RestController
 @RequestMapping("/api/v1/auth")
+@RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
-
-    public AuthController(AuthService authService) {
-        this.authService = authService;
-    }
 
     @PostMapping("/register")
     public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request) {

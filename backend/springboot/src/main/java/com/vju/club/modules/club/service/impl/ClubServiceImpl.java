@@ -1,5 +1,6 @@
 package com.vju.club.modules.club.service.impl;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.club.mapper.ClubMapper;
 import com.vju.club.modules.club.service.ClubService;
 import com.vju.club.modules.club.common.ClubConstants;
@@ -33,21 +34,13 @@ import java.util.Locale;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class ClubServiceImpl implements ClubService {
 
     private final ClubRepository clubRepository;
-    private final AuditService auditService;
     private final PermissionAuthorizationService authorizationService;
+    private final AuditService auditService;
     private final ClubMapper clubMapper;
-
-    public ClubServiceImpl(ClubRepository clubRepository, PermissionAuthorizationService authorizationService,
-                       AuditService auditService,
-            ClubMapper clubMapper) {
-        this.clubMapper = clubMapper;
-        this.clubRepository = clubRepository;
-        this.auditService = auditService;
-        this.authorizationService = authorizationService;
-    }
 
     @Transactional(readOnly = true)
     public PageResponse<ClubResponse> list(Actor actor, String query, int offset, int limit) {

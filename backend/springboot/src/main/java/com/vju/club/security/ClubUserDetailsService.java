@@ -1,5 +1,6 @@
 package com.vju.club.security;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.user.enums.UserStatus;
 
 import com.vju.club.modules.user.entity.User;
@@ -12,13 +13,10 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class ClubUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
-
-    public ClubUserDetailsService(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {

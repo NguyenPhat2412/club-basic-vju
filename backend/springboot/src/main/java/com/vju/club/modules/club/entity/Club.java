@@ -1,5 +1,7 @@
 package com.vju.club.modules.club.entity;
 
+import lombok.Setter;
+import lombok.Getter;
 import com.vju.club.modules.club.enums.ClubStatus;
 import com.vju.club.common.entity.TimestampedEntity;
 
@@ -11,6 +13,8 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "clubs")
+@Getter
+@Setter
 public class Club extends TimestampedEntity {
 
     @Column(nullable = false, length = 50)
@@ -36,21 +40,4 @@ public class Club extends TimestampedEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private ClubStatus status = ClubStatus.ACTIVE;
-
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getLogoUrl() { return logoUrl; }
-    public void setLogoUrl(String logoUrl) { this.logoUrl = logoUrl; }
-    public String getCoverUrl() { return coverUrl; }
-    public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-    public String getActivityField() { return activityField; }
-    public void setActivityField(String activityField) { this.activityField = activityField; }
-    public String getContactEmail() { return contactEmail; }
-    public void setContactEmail(String contactEmail) { this.contactEmail = contactEmail; }
-    public ClubStatus getStatus() { return status; }
-    public void setStatus(ClubStatus status) { this.status = status; }
 }

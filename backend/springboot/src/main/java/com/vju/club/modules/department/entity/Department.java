@@ -1,5 +1,7 @@
 package com.vju.club.modules.department.entity;
 
+import lombok.Setter;
+import lombok.Getter;
 import com.vju.club.modules.department.enums.DepartmentStatus;
 import com.vju.club.common.entity.TimestampedEntity;
 import com.vju.club.modules.club.entity.Club;
@@ -15,6 +17,8 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "departments")
+@Getter
+@Setter
 public class Department extends TimestampedEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -29,13 +33,4 @@ public class Department extends TimestampedEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private DepartmentStatus status = DepartmentStatus.ACTIVE;
-
-    public Club getClub() { return club; }
-    public void setClub(Club club) { this.club = club; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-    public DepartmentStatus getStatus() { return status; }
-    public void setStatus(DepartmentStatus status) { this.status = status; }
 }

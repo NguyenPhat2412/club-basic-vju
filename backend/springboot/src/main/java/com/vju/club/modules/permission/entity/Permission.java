@@ -1,5 +1,7 @@
 package com.vju.club.modules.permission.entity;
 
+import lombok.Setter;
+import lombok.Getter;
 import com.vju.club.modules.permission.enums.PermissionScope;
 import com.vju.club.common.entity.CreatedEntity;
 
@@ -11,6 +13,8 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "permissions")
+@Getter
+@Setter
 public class Permission extends CreatedEntity {
 
     @Column(name = "permission_key", nullable = false, unique = true, length = 120)
@@ -30,17 +34,4 @@ public class Permission extends CreatedEntity {
 
     @Column(nullable = false)
     private boolean active = true;
-
-    public String getPermissionKey() { return permissionKey; }
-    public void setPermissionKey(String permissionKey) { this.permissionKey = permissionKey; }
-    public String getModule() { return module; }
-    public void setModule(String module) { this.module = module; }
-    public String getAction() { return action; }
-    public void setAction(String action) { this.action = action; }
-    public PermissionScope getScope() { return scope; }
-    public void setScope(PermissionScope scope) { this.scope = scope; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-    public boolean isActive() { return active; }
-    public void setActive(boolean active) { this.active = active; }
 }

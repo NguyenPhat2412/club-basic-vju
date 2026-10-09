@@ -1,5 +1,6 @@
 package com.vju.club.modules.permission.controller;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.permission.service.PermissionService;
 
 import com.vju.club.security.Actor;
@@ -28,13 +29,10 @@ import com.vju.club.modules.permission.enums.PermissionScope;
 
 @RestController
 @RequestMapping("/api/v1")
+@RequiredArgsConstructor
 public class PermissionController {
 
     private final PermissionService permissionService;
-
-    public PermissionController(PermissionService permissionService) {
-        this.permissionService = permissionService;
-    }
 
     @GetMapping("/permissions")
     public List<PermissionResponse> list(Actor actor) {

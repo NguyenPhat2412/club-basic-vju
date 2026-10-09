@@ -1,5 +1,6 @@
 package com.vju.club.modules.auth.service;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.config.JwtProperties;
 import com.vju.club.modules.user.entity.User;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -19,6 +20,7 @@ import java.util.Base64;
 import java.util.HexFormat;
 
 @Service
+@RequiredArgsConstructor
 public class JwtTokenService {
 
     public static final String ISSUER = "club-backend";
@@ -27,12 +29,6 @@ public class JwtTokenService {
     private final JwtProperties properties;
     private final Clock clock;
     private final SecureRandom secureRandom = new SecureRandom();
-
-    public JwtTokenService(JwtEncoder jwtEncoder, JwtProperties properties, Clock clock) {
-        this.jwtEncoder = jwtEncoder;
-        this.properties = properties;
-        this.clock = clock;
-    }
 
     public AccessToken issueAccessToken(User user) {
         Instant issuedAt = clock.instant();

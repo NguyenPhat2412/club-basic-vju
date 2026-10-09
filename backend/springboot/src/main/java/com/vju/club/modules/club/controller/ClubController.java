@@ -1,5 +1,6 @@
 package com.vju.club.modules.club.controller;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.club.service.ClubService;
 
 import com.vju.club.security.Actor;
@@ -28,11 +29,10 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/clubs")
+@RequiredArgsConstructor
 public class ClubController {
 
     private final ClubService clubService;
-
-    public ClubController(ClubService clubService) { this.clubService = clubService; }
 
     @GetMapping
     public PageResponse<ClubResponse> list(Actor actor,

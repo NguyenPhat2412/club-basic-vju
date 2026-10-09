@@ -1,5 +1,6 @@
 package com.vju.club.bootstrap;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.config.BootstrapAdminProperties;
 import com.vju.club.modules.permission.enums.PermissionScope;
 import com.vju.club.modules.role.entity.Role;
@@ -20,6 +21,7 @@ import java.time.ZoneOffset;
 /** Creates the local administrator and gives it the SYSTEM_ADMIN role; safe to run on every start. */
 @Service
 @Profile("local")
+@RequiredArgsConstructor
 public class BootstrapAdminService {
 
     static final String ADMIN_ROLE = "SYSTEM_ADMIN";
@@ -29,19 +31,6 @@ public class BootstrapAdminService {
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
     private final PasswordEncoder passwordEncoder;
-
-    public BootstrapAdminService(
-            BootstrapAdminProperties properties,
-            UserRepository userRepository,
-            RoleRepository roleRepository,
-            UserRoleRepository userRoleRepository,
-            PasswordEncoder passwordEncoder) {
-        this.properties = properties;
-        this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
-        this.userRoleRepository = userRoleRepository;
-        this.passwordEncoder = passwordEncoder;
-    }
 
     @Transactional
     public void bootstrap() {

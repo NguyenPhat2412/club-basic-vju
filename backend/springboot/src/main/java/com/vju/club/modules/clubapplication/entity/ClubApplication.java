@@ -1,5 +1,7 @@
 package com.vju.club.modules.clubapplication.entity;
 
+import lombok.Setter;
+import lombok.Getter;
 import com.vju.club.modules.clubapplication.enums.ClubApplicationStatus;
 import com.vju.club.common.entity.TimestampedEntity;
 import com.vju.club.modules.club.entity.Club;
@@ -19,6 +21,8 @@ import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "club_applications")
+@Getter
+@Setter
 public class ClubApplication extends TimestampedEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -52,23 +56,4 @@ public class ClubApplication extends TimestampedEntity {
     @Version
     @Column(nullable = false)
     private long version;
-
-    public User getApplicant() { return applicant; }
-    public void setApplicant(User applicant) { this.applicant = applicant; }
-    public Club getClub() { return club; }
-    public void setClub(Club club) { this.club = club; }
-    public String getMessage() { return message; }
-    public void setMessage(String message) { this.message = message; }
-    public ClubApplicationStatus getStatus() { return status; }
-    public void setStatus(ClubApplicationStatus status) { this.status = status; }
-    public User getReviewedBy() { return reviewedBy; }
-    public void setReviewedBy(User reviewedBy) { this.reviewedBy = reviewedBy; }
-    public OffsetDateTime getReviewedAt() { return reviewedAt; }
-    public void setReviewedAt(OffsetDateTime reviewedAt) { this.reviewedAt = reviewedAt; }
-    public String getReviewNote() { return reviewNote; }
-    public void setReviewNote(String reviewNote) { this.reviewNote = reviewNote; }
-    public OffsetDateTime getCancelledAt() { return cancelledAt; }
-    public void setCancelledAt(OffsetDateTime cancelledAt) { this.cancelledAt = cancelledAt; }
-    public long getVersion() { return version; }
-    public void setVersion(long version) { this.version = version; }
 }
