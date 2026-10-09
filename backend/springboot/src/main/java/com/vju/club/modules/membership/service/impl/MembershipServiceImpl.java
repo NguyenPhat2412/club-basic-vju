@@ -1,5 +1,6 @@
 package com.vju.club.modules.membership.service.impl;
 
+import com.vju.club.modules.permission.annotation.RequirePermission;
 import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.membership.mapper.MembershipMapper;
 import com.vju.club.modules.membership.service.MembershipService;
@@ -105,8 +106,8 @@ public class MembershipServiceImpl implements MembershipService {
     }
 
     @Transactional
+    @RequirePermission(value = MembershipConstants.PERMISSION_ADD, clubId = "clubId")
     public MembershipResponse create(Actor actor, UUID clubId, CreateMembershipRequest request) {
-        authorizationService.require(actor, MembershipConstants.PERMISSION_ADD, clubId, null);
         Club club = clubRepository.findById(clubId).orElseThrow(() -> notFound("CLUB_NOT_FOUND", "Club not found"));
         if (club.getStatus() != ClubStatus.ACTIVE) {
             throw new ApiException(HttpStatus.CONFLICT, "CLUB_INACTIVE", "Club is inactive");

@@ -1,5 +1,6 @@
 package com.vju.club.rest;
 
+import com.vju.club.modules.auth.annotation.PublicEndpoint;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class ApiDocsController {
+    @PublicEndpoint(reason = "Published API contract")
     @GetMapping(value = "/api-docs/phase1.yaml", produces = "application/yaml")
     public ResponseEntity<Resource> phase1Contract() {
         return ResponseEntity.ok()

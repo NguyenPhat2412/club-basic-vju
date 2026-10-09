@@ -1,5 +1,6 @@
 package com.vju.club.modules.department.service.impl;
 
+import com.vju.club.modules.permission.annotation.RequirePermission;
 import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.department.mapper.DepartmentMapper;
 import com.vju.club.modules.department.service.DepartmentService;
@@ -40,8 +41,8 @@ public class DepartmentServiceImpl implements DepartmentService {
     private final DepartmentMapper departmentMapper;
 
     @Transactional(readOnly = true)
+    @RequirePermission(value = DepartmentConstants.PERMISSION_VIEW, clubId = "clubId")
     public PageResponse<DepartmentResponse> list(Actor actor, UUID clubId, int offset, int limit) {
-        authorizationService.require(actor, DepartmentConstants.PERMISSION_VIEW, clubId, null);
         if (!clubRepository.existsById(clubId)) throw notFound("CLUB_NOT_FOUND", "Club not found");
         var items = departmentRepository.findByClub_IdOrderByNameAscIdAsc(clubId, new OffsetLimitRequest(offset, limit)).stream().map(departmentMapper::toResponse).toList();
         return new PageResponse<>(items, departmentRepository.countByClub_Id(clubId), offset, limit);
@@ -53,8 +54,8 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Transactional
+    @RequirePermission(value = DepartmentConstants.PERMISSION_CREATE, clubId = "clubId")
     public DepartmentResponse create(Actor actor, UUID clubId, DepartmentRequest request) {
-        authorizationService.require(actor, DepartmentConstants.PERMISSION_CREATE, clubId, null);
         Club club = clubRepository.findById(clubId).orElseThrow(() -> notFound("CLUB_NOT_FOUND", "Club not found"));
         if (club.getStatus() != ClubStatus.ACTIVE) {
             throw new ApiException(HttpStatus.CONFLICT, "CLUB_INACTIVE", "Club is inactive");

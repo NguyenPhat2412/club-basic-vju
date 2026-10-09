@@ -1,5 +1,6 @@
 package com.vju.club.modules.audit.service;
 
+import com.vju.club.modules.permission.annotation.RequirePermission;
 import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.audit.mapper.AuditMapper;
 import com.vju.club.modules.audit.enums.AuditAction;
@@ -32,9 +33,9 @@ public class AuditQueryService {
     private final AuditMapper auditMapper;
 
     @Transactional(readOnly = true)
+    @RequirePermission("audit.view")
     public PageResponse<AuditLogResponse> search(Actor actor, String resourceType, UUID resourceId, UUID actorUserId,
                                                  UUID clubId, String action, int offset, int limit) {
-        authorizationService.require(actor, "audit.view", null, null);
         requireKnown(resourceType, AuditAction.ResourceType.values(), "resourceType");
         requireKnown(action, AuditAction.values(), "action");
 

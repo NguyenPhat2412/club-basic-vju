@@ -37,6 +37,7 @@ import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.vju.club.support.PermissionChecks.withPermissionChecks;
 import static com.vju.club.support.ApiErrors.assertApiError;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -62,8 +63,8 @@ class ClubApplicationServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ClubApplicationServiceImpl(applicationRepository, clubRepository, userRepository,
-                membershipRepository, authorization, auditService, clock, new ClubApplicationMapperImpl());
+        service = withPermissionChecks(new ClubApplicationServiceImpl(applicationRepository, clubRepository, userRepository,
+                membershipRepository, authorization, auditService, clock, new ClubApplicationMapperImpl()), authorization);
     }
 
     private User user(UserStatus status) {

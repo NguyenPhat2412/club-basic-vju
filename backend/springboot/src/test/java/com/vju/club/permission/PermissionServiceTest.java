@@ -38,6 +38,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import static com.vju.club.support.PermissionChecks.withPermissionChecks;
 import static com.vju.club.support.ApiErrors.FORBIDDEN;
 import static com.vju.club.support.ApiErrors.assertApiError;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -90,8 +91,8 @@ class PermissionServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PermissionServiceImpl(permissionRepository, userPermissionRepository, permissionAuditLogRepository,
-                userRepository, clubRepository, departmentRepository, authorization, Clock.systemUTC(), audit, new PermissionMapperImpl());
+        service = withPermissionChecks(new PermissionServiceImpl(permissionRepository, userPermissionRepository, permissionAuditLogRepository,
+                userRepository, clubRepository, departmentRepository, authorization, Clock.systemUTC(), audit, new PermissionMapperImpl()), authorization);
         club.setId(UUID.randomUUID());
         when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
         when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));

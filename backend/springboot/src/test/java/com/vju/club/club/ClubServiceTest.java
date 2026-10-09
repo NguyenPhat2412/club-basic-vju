@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.vju.club.support.PermissionChecks.withPermissionChecks;
 import static com.vju.club.support.ApiErrors.FORBIDDEN;
 import static com.vju.club.support.ApiErrors.assertApiError;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -58,7 +59,7 @@ class ClubServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ClubServiceImpl(clubRepository, authorization, audit, new ClubMapperImpl());
+        service = withPermissionChecks(new ClubServiceImpl(clubRepository, authorization, audit, new ClubMapperImpl()), authorization);
         when(clubRepository.saveAndFlush(any(Club.class))).thenAnswer(invocation -> {
             Club club = invocation.getArgument(0);
             if (club.getId() == null) club.setId(UUID.randomUUID());

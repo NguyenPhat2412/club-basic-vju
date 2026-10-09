@@ -1,5 +1,6 @@
 package com.vju.club.modules.club.service.impl;
 
+import com.vju.club.modules.permission.annotation.RequirePermission;
 import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.club.mapper.ClubMapper;
 import com.vju.club.modules.club.service.ClubService;
@@ -81,8 +82,8 @@ public class ClubServiceImpl implements ClubService {
     }
 
     @Transactional
+    @RequirePermission(ClubConstants.PERMISSION_CREATE)
     public ClubResponse create(Actor actor, ClubRequest request) {
-        authorizationService.require(actor, ClubConstants.PERMISSION_CREATE, null, null);
         String code = request.code().trim();
         if (clubRepository.existsByCodeIgnoreCase(code)) {
             throw new ApiException(HttpStatus.CONFLICT, "CLUB_CODE_ALREADY_EXISTS", "Club code is already used");
@@ -96,8 +97,8 @@ public class ClubServiceImpl implements ClubService {
     }
 
     @Transactional
+    @RequirePermission(value = ClubConstants.PERMISSION_UPDATE, clubId = "clubId")
     public ClubResponse update(Actor actor, UUID clubId, ClubPatchRequest request) {
-        authorizationService.require(actor, ClubConstants.PERMISSION_UPDATE, clubId, null);
         Club club = findClub(clubId);
         if (request.code() != null && !club.getCode().equalsIgnoreCase(request.code().trim())
                 && clubRepository.existsByCodeIgnoreCase(request.code().trim())) {

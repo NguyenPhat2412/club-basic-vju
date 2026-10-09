@@ -4,7 +4,11 @@ import com.vju.club.modules.permission.entity.Permission;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import com.vju.club.modules.auth.annotation.PublicEndpoint;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpMethod;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -19,6 +23,10 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import jakarta.servlet.http.HttpServletResponse;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
@@ -27,7 +35,8 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             AccountStatusFilter accountStatusFilter,
-            RateLimitFilter rateLimitFilter) throws Exception {
+            RateLimitFilter rateLimitFilter,
+            @Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping handlerMapping) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
@@ -35,12 +44,13 @@ public class SecurityConfig {
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(authenticationEntryPoint())
                         .accessDeniedHandler(accessDeniedHandler()))
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.GET, "/api/v1/api-catalog").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api-docs/phase1.yaml").permitAll()
-                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh-token").permitAll()
-                        .anyRequest().authenticated());
+                .authorizeHttpRequests(authorize -> {
+                    // Handlers annotated with @PublicEndpoint are open; everything else needs a token.
+                    publicRoutes(handlerMapping).forEach(route ->
+                            authorize.requestMatchers(route.method(), route.pattern()).permitAll());
+                    authorize.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll();
+                    authorize.anyRequest().authenticated();
+                });
         http.oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(Customizer.withDefaults())
                 .authenticationEntryPoint(authenticationEntryPoint())
@@ -48,6 +58,25 @@ public class SecurityConfig {
         http.addFilterBefore(rateLimitFilter, BearerTokenAuthenticationFilter.class);
         http.addFilterAfter(accountStatusFilter, BearerTokenAuthenticationFilter.class);
         return http.build();
+    }
+
+    record PublicRoute(HttpMethod method, String pattern) { }
+
+    /** Every (method, path) served by a handler annotated with {@link PublicEndpoint}. */
+    static List<PublicRoute> publicRoutes(RequestMappingHandlerMapping handlerMapping) {
+        List<PublicRoute> routes = new ArrayList<>();
+        handlerMapping.getHandlerMethods().forEach((info, handler) -> {
+            if (!handler.hasMethodAnnotation(PublicEndpoint.class)) return;
+            Set<RequestMethod> methods = info.getMethodsCondition().getMethods();
+            for (String pattern : info.getPatternValues()) {
+                if (methods.isEmpty()) {
+                    routes.add(new PublicRoute(null, pattern));
+                } else {
+                    methods.forEach(m -> routes.add(new PublicRoute(HttpMethod.valueOf(m.name()), pattern)));
+                }
+            }
+        });
+        return routes;
     }
 
     private AuthenticationEntryPoint authenticationEntryPoint() {

@@ -31,6 +31,7 @@ import org.springframework.http.HttpStatus;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.vju.club.support.PermissionChecks.withPermissionChecks;
 import static com.vju.club.support.ApiErrors.FORBIDDEN;
 import static com.vju.club.support.ApiErrors.assertApiError;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -59,7 +60,7 @@ class DepartmentServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DepartmentServiceImpl(departmentRepository, clubRepository, audit, authorization, new DepartmentMapperImpl());
+        service = withPermissionChecks(new DepartmentServiceImpl(departmentRepository, clubRepository, audit, authorization, new DepartmentMapperImpl()), authorization);
         club.setId(UUID.randomUUID());
         club.setStatus(ClubStatus.ACTIVE);
         department.setId(UUID.randomUUID());

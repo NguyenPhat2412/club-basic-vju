@@ -1,5 +1,6 @@
 package com.vju.club.modules.role.service.impl;
 
+import com.vju.club.modules.permission.annotation.RequirePermission;
 import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.role.mapper.RoleMapper;
 import com.vju.club.modules.role.service.RoleService;
@@ -67,20 +68,20 @@ public class RoleServiceImpl implements RoleService {
     // ---- role definitions -----------------------------------------------------------------------
 
     @Transactional(readOnly = true)
+    @RequirePermission("role.view")
     public List<RoleResponse> list(Actor actor) {
-        authorizationService.require(actor, "role.view", null, null);
         return roleRepository.findAllWithPermissions().stream().map(roleMapper::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
+    @RequirePermission("role.view")
     public RoleResponse get(Actor actor, UUID roleId) {
-        authorizationService.require(actor, "role.view", null, null);
         return roleMapper.toResponse(findRole(roleId));
     }
 
     @Transactional
+    @RequirePermission("role.manage")
     public RoleResponse create(Actor actor, CreateRoleRequest request) {
-        authorizationService.require(actor, "role.manage", null, null);
         String code = request.code().trim().toUpperCase(Locale.ROOT);
         if (roleRepository.existsByCodeIgnoreCase(code)) {
             throw new ApiException(HttpStatus.CONFLICT, "ROLE_CODE_ALREADY_EXISTS", "Role code is already used");
@@ -97,8 +98,8 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Transactional
+    @RequirePermission("role.manage")
     public RoleResponse update(Actor actor, UUID roleId, UpdateRoleRequest request) {
-        authorizationService.require(actor, "role.manage", null, null);
         Role role = findRole(roleId);
         if (role.isSystem()) {
             throw new ApiException(HttpStatus.CONFLICT, "SYSTEM_ROLE_IMMUTABLE", "System roles cannot be changed");
@@ -150,8 +151,8 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Transactional
+    @RequirePermission("permission.assign")
     public UserRoleResponse assign(Actor actor, UUID userId, AssignRoleRequest request) {
-        authorizationService.require(actor, "permission.assign", null, null);
         User actorUser = findUser(actor.id());
         User target = findUser(userId);
         Role role = findRole(request.roleId());
@@ -189,8 +190,8 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Transactional
+    @RequirePermission("permission.revoke")
     public void revoke(Actor actor, UUID userId, UUID assignmentId) {
-        authorizationService.require(actor, "permission.revoke", null, null);
         User actorUser = findUser(actor.id());
         UserRole assignment = userRoleRepository.findByIdAndUser_Id(assignmentId, userId)
                 .filter(found -> found.getRevokedAt() == null)
