@@ -1,5 +1,6 @@
 package com.vju.club.modules.club.service.impl;
 
+import com.vju.club.modules.club.mapper.ClubMapper;
 import com.vju.club.modules.club.service.ClubService;
 import com.vju.club.modules.club.common.ClubConstants;
 
@@ -37,9 +38,12 @@ public class ClubServiceImpl implements ClubService {
     private final ClubRepository clubRepository;
     private final AuditService auditService;
     private final PermissionAuthorizationService authorizationService;
+    private final ClubMapper clubMapper;
 
     public ClubServiceImpl(ClubRepository clubRepository, PermissionAuthorizationService authorizationService,
-                       AuditService auditService) {
+                       AuditService auditService,
+            ClubMapper clubMapper) {
+        this.clubMapper = clubMapper;
         this.clubRepository = clubRepository;
         this.auditService = auditService;
         this.authorizationService = authorizationService;
@@ -69,7 +73,7 @@ public class ClubServiceImpl implements ClubService {
         Sort sort = Sort.by(Sort.Order.asc("name"), Sort.Order.asc("id"));
         OffsetLimitRequest page = new OffsetLimitRequest(offset, limit, sort);
         Page<Club> clubPage = clubRepository.findAll(spec, page);
-        List<ClubResponse> clubs = clubPage.getContent().stream().map(ClubResponse::from).toList();
+        List<ClubResponse> clubs = clubPage.getContent().stream().map(clubMapper::toResponse).toList();
         return new PageResponse<>(clubs, clubPage.getTotalElements(), offset, limit);
     }
 
@@ -77,9 +81,9 @@ public class ClubServiceImpl implements ClubService {
     public ClubResponse get(Actor actor, UUID clubId) {
         if (authorizationService.hasAnyPermission(actor, ClubConstants.PERMISSION_VIEW)) {
             authorizationService.require(actor, ClubConstants.PERMISSION_VIEW, clubId, null);
-            return ClubResponse.from(findClub(clubId));
+            return clubMapper.toResponse(findClub(clubId));
         }
-        return ClubResponse.from(clubRepository.findByIdAndStatus(clubId, ClubStatus.ACTIVE)
+        return clubMapper.toResponse(clubRepository.findByIdAndStatus(clubId, ClubStatus.ACTIVE)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND", "Club not found")));
     }
 
@@ -95,7 +99,7 @@ public class ClubServiceImpl implements ClubService {
         apply(club, request);
         Club saved = clubRepository.saveAndFlush(club);
         auditService.record(actor.id(), AuditAction.CLUB_CREATED, saved.getId(), saved.getId(), null, snapshot(saved));
-        return ClubResponse.from(saved);
+        return clubMapper.toResponse(saved);
     }
 
     @Transactional
@@ -110,7 +114,7 @@ public class ClubServiceImpl implements ClubService {
         applyPatch(club, request);
         Club saved = clubRepository.saveAndFlush(club);
         auditService.recordChange(actor.id(), AuditAction.CLUB_UPDATED, clubId, clubId, before, snapshot(saved));
-        return ClubResponse.from(saved);
+        return clubMapper.toResponse(saved);
     }
 
     @Transactional
@@ -125,7 +129,7 @@ public class ClubServiceImpl implements ClubService {
         auditService.recordChange(actor.id(), request.status() == ClubStatus.ACTIVE
                 ? AuditAction.CLUB_ACTIVATED : AuditAction.CLUB_DEACTIVATED, clubId, clubId,
                 before, Map.of("status", saved.getStatus()));
-        return ClubResponse.from(saved);
+        return clubMapper.toResponse(saved);
     }
 
     private static Map<String, Object> snapshot(Club club) {

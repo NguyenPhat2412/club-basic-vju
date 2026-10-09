@@ -1,5 +1,6 @@
 package com.vju.club.application;
 
+import com.vju.club.modules.clubapplication.mapper.ClubApplicationMapperImpl;
 import com.vju.club.modules.clubapplication.service.ClubApplicationService;
 
 import com.vju.club.modules.clubapplication.service.impl.ClubApplicationServiceImpl;
@@ -62,7 +63,7 @@ class ClubApplicationServiceTest {
     @BeforeEach
     void setUp() {
         service = new ClubApplicationServiceImpl(applicationRepository, clubRepository, userRepository,
-                membershipRepository, authorization, auditService, clock);
+                membershipRepository, authorization, auditService, clock, new ClubApplicationMapperImpl());
     }
 
     private User user(UserStatus status) {

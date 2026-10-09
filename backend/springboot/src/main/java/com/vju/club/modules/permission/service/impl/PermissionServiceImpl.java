@@ -1,5 +1,6 @@
 package com.vju.club.modules.permission.service.impl;
 
+import com.vju.club.modules.permission.mapper.PermissionMapper;
 import com.vju.club.modules.permission.service.PermissionService;
 
 import com.vju.club.security.Actor;
@@ -58,6 +59,7 @@ public class PermissionServiceImpl implements PermissionService {
     private final PermissionAuthorizationService authorizationService;
     private final Clock clock;
     private final AuditService auditService;
+    private final PermissionMapper permissionMapper;
 
     public PermissionServiceImpl(
             PermissionRepository permissionRepository,
@@ -68,7 +70,9 @@ public class PermissionServiceImpl implements PermissionService {
             DepartmentRepository departmentRepository,
             PermissionAuthorizationService authorizationService,
             Clock clock,
-            AuditService auditService) {
+            AuditService auditService,
+            PermissionMapper permissionMapper) {
+        this.permissionMapper = permissionMapper;
         this.auditService = auditService;
         this.permissionRepository = permissionRepository;
         this.userPermissionRepository = userPermissionRepository;
@@ -84,7 +88,7 @@ public class PermissionServiceImpl implements PermissionService {
     public List<PermissionResponse> list(Actor actor) {
         authorizationService.require(actor, "permission.view", null, null);
         return permissionRepository.findAllByActiveTrueOrderByModuleAscActionAsc().stream()
-                .map(PermissionResponse::from)
+                .map(permissionMapper::toResponse)
                 .toList();
     }
 
@@ -94,7 +98,7 @@ public class PermissionServiceImpl implements PermissionService {
         Map<String, List<PermissionResponse>> byModule = new TreeMap<>();
         permissionRepository.findAllByActiveTrueOrderByModuleAscActionAsc().forEach(permission ->
                 byModule.computeIfAbsent(permission.getModule(), module -> new ArrayList<>())
-                        .add(PermissionResponse.from(permission)));
+                        .add(permissionMapper.toResponse(permission)));
         return byModule.entrySet().stream()
                 .map(entry -> new PermissionGroupResponse(entry.getKey(), entry.getValue())).toList();
     }
@@ -106,7 +110,7 @@ public class PermissionServiceImpl implements PermissionService {
         }
         findUser(targetUserId);
         return userPermissionRepository.findByUser_IdAndRevokedAtIsNullOrderByGrantedAtDesc(targetUserId).stream()
-                .map(UserPermissionResponse::from).toList();
+                .map(permissionMapper::toUserPermissionResponse).toList();
     }
 
     /** Direct grants and role-based permissions together: what the user can actually do. */
@@ -117,7 +121,7 @@ public class PermissionServiceImpl implements PermissionService {
         }
         findUser(targetUserId);
         return userPermissionRepository.findEffective(targetUserId).stream()
-                .map(EffectivePermissionResponse::from).toList();
+                .map(permissionMapper::toEffectiveResponse).toList();
     }
 
     @Transactional
@@ -142,7 +146,7 @@ public class PermissionServiceImpl implements PermissionService {
 
         Club club = request.clubId() == null ? null : findClub(request.clubId());
         Department department = request.departmentId() == null ? null : findDepartment(request.departmentId());
-        return UserPermissionResponse.from(
+        return permissionMapper.toUserPermissionResponse(
                 createGrant(actorUser, target, permission, request.scope(), club, department, request.reason()));
     }
 
@@ -203,7 +207,7 @@ public class PermissionServiceImpl implements PermissionService {
         }
         return result.stream()
                 .sorted(Comparator.comparing(grant -> grant.getPermission().getPermissionKey()))
-                .map(UserPermissionResponse::from).toList();
+                .map(permissionMapper::toUserPermissionResponse).toList();
     }
 
     @Transactional

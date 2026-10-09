@@ -1,5 +1,6 @@
 package com.vju.club.department;
 
+import com.vju.club.modules.department.mapper.DepartmentMapperImpl;
 import com.vju.club.modules.department.service.DepartmentService;
 
 import com.vju.club.modules.department.service.impl.DepartmentServiceImpl;
@@ -58,7 +59,7 @@ class DepartmentServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DepartmentServiceImpl(departmentRepository, clubRepository, audit, authorization);
+        service = new DepartmentServiceImpl(departmentRepository, clubRepository, audit, authorization, new DepartmentMapperImpl());
         club.setId(UUID.randomUUID());
         club.setStatus(ClubStatus.ACTIVE);
         department.setId(UUID.randomUUID());

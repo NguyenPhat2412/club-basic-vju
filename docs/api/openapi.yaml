@@ -2624,7 +2624,8 @@ components:
           type: string
           format: password
           minLength: 8
-          maxLength: 128
+          maxLength: 72
+          description: '8+ ký tự, tối đa 72 byte UTF-8 (giới hạn của BCrypt; chữ có dấu tốn 2–3 byte)'
         fullName:
           type: string
           maxLength: 200
@@ -2638,6 +2639,7 @@ components:
           - string
           - 'null'
           maxLength: 32
+          pattern: '^[0-9+().\- ]*$'
       examples:
       - email: phat@example.test
         password: DemoPassword123!
@@ -2666,6 +2668,7 @@ components:
       properties:
         refreshToken:
           type: string
+          maxLength: 512
       examples:
       - refreshToken: example-refresh-token-replace-after-login
     ChangePasswordRequest:
@@ -2681,7 +2684,8 @@ components:
           type: string
           format: password
           minLength: 8
-          maxLength: 128
+          maxLength: 72
+          description: '8+ ký tự, tối đa 72 byte UTF-8 (giới hạn của BCrypt; chữ có dấu tốn 2–3 byte)'
       examples:
       - currentPassword: DemoPassword123!
         newPassword: NewDemoPassword456!
@@ -2802,11 +2806,14 @@ components:
           - string
           - 'null'
           maxLength: 32
+          pattern: '^[0-9+().\- ]*$'
         avatarUrl:
           type:
           - string
           - 'null'
           maxLength: 500
+          format: uri
+          pattern: '^(https?://.+)?$'
       examples:
       - fullName: Nguyễn Xuân Phát
         phone: 0900000000
@@ -2839,15 +2846,20 @@ components:
           - string
           - 'null'
           maxLength: 500
+          format: uri
+          pattern: '^(https?://.+)?$'
         coverUrl:
           type:
           - string
           - 'null'
           maxLength: 500
+          format: uri
+          pattern: '^(https?://.+)?$'
         description:
           type:
           - string
           - 'null'
+          maxLength: 2000
         activityField:
           type:
           - string
@@ -2962,6 +2974,7 @@ components:
           type:
           - string
           - 'null'
+          maxLength: 2000
       examples:
       - name: Ban truyền thông
         description: Truyền thông CLB
@@ -3190,6 +3203,7 @@ components:
           type:
           - string
           - 'null'
+          maxLength: 1000
       description: >-
         GLOBAL bỏ clubId và departmentId; CLUB cần clubId và bỏ departmentId; DEPARTMENT cần
         departmentId và bỏ clubId. Permission được cấp ở đúng scope của nó hoặc scope rộng hơn
@@ -3499,6 +3513,7 @@ components:
         code:
           type: string
           maxLength: 50
+          pattern: '^[A-Za-z0-9_.-]{1,50}$'
         name:
           type: string
           maxLength: 200
@@ -3507,15 +3522,20 @@ components:
           - string
           - 'null'
           maxLength: 500
+          format: uri
+          pattern: '^(https?://.+)?$'
         coverUrl:
           type:
           - string
           - 'null'
           maxLength: 500
+          format: uri
+          pattern: '^(https?://.+)?$'
         description:
           type:
           - string
           - 'null'
+          maxLength: 2000
         activityField:
           type:
           - string
@@ -3542,6 +3562,7 @@ components:
           type:
           - string
           - 'null'
+          maxLength: 2000
       description: Mỗi field đều tùy chọn. Field bỏ qua hoặc null giữ nguyên giá trị
         hiện có. Gửi chuỗi rỗng để xóa nội dung field văn bản tùy chọn; code/name
         không được trống.

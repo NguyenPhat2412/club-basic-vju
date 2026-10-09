@@ -1,5 +1,6 @@
 package com.vju.club.modules.permission.dto.request;
 
+import jakarta.validation.constraints.Size;
 import com.vju.club.modules.permission.enums.PermissionScope;
 import jakarta.validation.constraints.NotNull;
 
@@ -10,5 +11,5 @@ public record GrantPermissionRequest(
         @NotNull PermissionScope scope,
         UUID clubId,
         UUID departmentId,
-        String reason
+        @Size(max = 1000) String reason
 ) { }

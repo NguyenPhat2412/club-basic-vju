@@ -51,19 +51,21 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 .
 ├── backend/springboot/          # Backend Spring Boot (dịch vụ duy nhất)
 │   ├── src/main/java/com/vju/club/
-│   │   ├── auth/                # Đăng ký, đăng nhập, JWT, refresh token
-│   │   ├── user/                # Hồ sơ và quản trị người dùng
-│   │   ├── club/                # Câu lạc bộ
-│   │   ├── department/          # Ban
-│   │   ├── membership/          # Thành viên CLB
-│   │   ├── departmentmember/    # Thành viên ban
-│   │   ├── permission/          # Cấp/thu hồi quyền, quyền hiệu lực, audit log
-│   │   ├── role/                # Vai trò và gán vai trò
-│   │   ├── audit/               # Ghi và tra cứu audit log
+│   │   ├── modules/             # Mỗi tính năng một module (xem cấu trúc module bên dưới)
+│   │   │   ├── auth/            # Đăng ký, đăng nhập, JWT, refresh token
+│   │   │   ├── user/            # Hồ sơ và quản trị người dùng
+│   │   │   ├── club/            # Câu lạc bộ
+│   │   │   ├── clubapplication/ # Đơn xin vào CLB, duyệt/từ chối
+│   │   │   ├── department/      # Ban
+│   │   │   ├── membership/      # Thành viên CLB
+│   │   │   ├── departmentmember/# Thành viên ban
+│   │   │   ├── permission/      # Cấp/thu hồi quyền, quyền hiệu lực
+│   │   │   ├── role/            # Vai trò và gán vai trò
+│   │   │   ├── notification/    # Thông báo
+│   │   │   └── audit/           # Ghi và tra cứu audit log
 │   │   ├── security/            # Kiểm tra quyền, rate limit, filter trạng thái tài khoản
-│   │   ├── config/              # Cấu hình security, JWT, CORS
+│   │   ├── config/              # Cấu hình ứng dụng: security, JWT, CORS, OpenAPI (không chứa DTO)
 │   │   ├── error/               # Xử lý lỗi chung (ProblemDetail)
-│   │   ├── entity/, repository/ # Domain model và truy vấn dùng chung cho mọi module
 │   │   ├── common/              # Phân trang (PageResponse, OffsetLimitRequest)
 │   │   ├── bootstrap/           # Admin ban đầu và dữ liệu demo (chỉ profile local)
 │   │   └── rest/                # API catalog, phục vụ file OpenAPI
@@ -83,7 +85,30 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 └── .github/workflows/backend.yml
 ```
 
-Mỗi module nghiệp vụ theo cùng một khuôn: `Controller` → `Service` → `Repository` (Spring Data) → `Entity`. Controller và service chia theo tính năng (`club/`, `role/`, …) kèm DTO của tính năng đó. Entity và repository nằm chung ở `entity/`, `repository/` vì nhiều tính năng cùng dùng một bảng (ví dụ quyền, thành viên).
+Mỗi module trong `modules/` theo cùng một khuôn:
+
+```text
+modules/<module>/
+├── controller/          # REST controller: chỉ nhận và trả DTO, không bao giờ để lộ entity
+├── service/             # Interface service (API của module)
+│   └── impl/            # XxxServiceImpl: nghiệp vụ, kiểm tra quyền, audit
+├── dto/
+│   ├── request/         # Java record cho request body, kèm Bean Validation
+│   └── response/        # Java record cho response, bất biến và không phụ thuộc entity
+├── mapper/              # MapStruct: entity → DTO, code sinh lúc compile
+├── entity/              # JPA entity, chỉ dùng bên trong service/repository
+├── enums/               # Enum dùng chung cho entity, DTO và controller
+├── repository/          # Spring Data repository
+├── specification/       # JPA Specification cho tìm kiếm động (nếu có)
+├── annotation/          # Annotation validation riêng của module
+└── common/              # Hằng số của module
+```
+
+Quy ước:
+- **Chỉ làm việc với DTO ở ranh giới API.** Controller và interface service chỉ nhận/trả `record` trong `dto/`. Entity chỉ tồn tại bên trong service và repository.
+- **DTO là Java `record`**: ngắn gọn, bất biến, không có logic. Response DTO không biết đến entity.
+- **Chuyển entity → DTO bằng MapStruct** (`mapper/`), không dùng ModelMapper hay ObjectMapper. Mapper được sinh lúc compile và là Spring bean. Build được cấu hình `unmappedTargetPolicy=ERROR`, nên nếu thêm một trường vào DTO mà quên map thì compile sẽ báo lỗi ngay, thay vì lặng lẽ trả `null`.
+- **Validation** đặt trên request DTO: `@NotBlank` cho chuỗi bắt buộc, `@NotNull` cho UUID/enum/số và collection được phép rỗng, `@NotEmpty` cho collection phải có phần tử, `@Size`/`@Pattern`/`@URL` để giới hạn độ dài và định dạng. Mật khẩu dùng `@ValidPassword` (8 ký tự trở lên, tối đa 72 byte UTF-8 theo giới hạn của BCrypt).
 
 - **Service không phụ thuộc Spring Security:** controller nhận tham số `Actor` (người đang gọi, lấy từ JWT qua `ActorArgumentResolver`) và truyền xuống service. Nhờ vậy service unit test được bằng một `Actor` giả, không cần dựng security context.
 - **Kiểm tra quyền** nằm trong service và dùng chung `PermissionAuthorizationService`, vốn đọc view `effective_user_permissions` (gộp quyền trực tiếp và quyền từ vai trò).
@@ -316,7 +341,7 @@ Khi chạy, Hibernate chỉ `validate` schema chứ không tự sửa. Mọi tha
 ## Kiểm thử
 
 ```bash
-# 309 test backend: unit + integration (cần Docker đang chạy)
+# 382 test backend: unit + integration (cần Docker đang chạy)
 cd backend/springboot && ./mvnw test
 
 # Kiểm tra OpenAPI contract (từ thư mục gốc)

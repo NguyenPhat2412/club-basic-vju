@@ -1,5 +1,6 @@
 package com.vju.club.modules.clubapplication.service.impl;
 
+import com.vju.club.modules.clubapplication.mapper.ClubApplicationMapper;
 import com.vju.club.modules.membership.entity.Membership;
 import com.vju.club.modules.permission.entity.Permission;
 
@@ -58,6 +59,7 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
     private final AuditService auditService;
     private final Clock clock;
     private final NotificationService notificationService;
+    private final ClubApplicationMapper clubApplicationMapper;
 
     public ClubApplicationServiceImpl(ClubApplicationRepository applicationRepository,
                                   ClubRepository clubRepository,
@@ -65,8 +67,9 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
                                   MembershipRepository membershipRepository,
                                   PermissionAuthorizationService authorizationService,
                                   AuditService auditService,
-                                  Clock clock) {
-        this(applicationRepository, clubRepository, userRepository, membershipRepository, authorizationService, auditService, clock, null);
+                                  Clock clock,
+            ClubApplicationMapper clubApplicationMapper) {
+        this(applicationRepository, clubRepository, userRepository, membershipRepository, authorizationService, auditService, clock, null, clubApplicationMapper);
     }
 
     @Autowired
@@ -77,7 +80,9 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
                                   PermissionAuthorizationService authorizationService,
                                   AuditService auditService,
                                   Clock clock,
-                                  NotificationService notificationService) {
+                                  NotificationService notificationService,
+            ClubApplicationMapper clubApplicationMapper) {
+        this.clubApplicationMapper = clubApplicationMapper;
         this.applicationRepository = applicationRepository;
         this.clubRepository = clubRepository;
         this.userRepository = userRepository;
@@ -116,7 +121,7 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         ClubApplication saved = applicationRepository.saveAndFlush(application);
         auditService.record(actor.id(), AuditAction.CLUB_APPLICATION_CREATED, saved.getId(), clubId, null,
                 Map.of("applicantId", actor.id(), "clubId", clubId, "status", saved.getStatus()));
-        return ClubApplicationResponse.from(saved);
+        return clubApplicationMapper.toResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -128,13 +133,13 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
                 .and(ClubApplicationSpecifications.forClub(clubId));
         Page<ClubApplication> applicationPage = applicationRepository.findAll(spec, page);
         List<ClubApplicationSummaryResponse> items = applicationPage.getContent().stream()
-                .map(ClubApplicationSummaryResponse::from).toList();
+                .map(clubApplicationMapper::toSummary).toList();
         return new PageResponse<>(items, applicationPage.getTotalElements(), offset, limit);
     }
 
     @Transactional(readOnly = true)
     public ClubApplicationResponse getMine(Actor actor, UUID applicationId) {
-        return ClubApplicationResponse.from(applicationRepository.findByIdAndApplicant_Id(applicationId, actor.id())
+        return clubApplicationMapper.toResponse(applicationRepository.findByIdAndApplicant_Id(applicationId, actor.id())
                 .orElseThrow(() -> notFound("CLUB_APPLICATION_NOT_FOUND", "Club application not found")));
     }
 
@@ -151,7 +156,7 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         ClubApplication saved = applicationRepository.saveAndFlush(application);
         auditService.record(actor.id(), AuditAction.CLUB_APPLICATION_CANCELLED, saved.getId(), saved.getClub().getId(),
                 before, applicationAuditValues(saved, saved.getStatus(), null));
-        return ClubApplicationResponse.from(saved);
+        return clubApplicationMapper.toResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -172,14 +177,14 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
                 .and(ClubApplicationSpecifications.createdBetween(createdFrom, createdTo));
         Page<ClubApplication> applicationPage = applicationRepository.findAll(spec, page);
         List<ClubApplicationResponse> items = applicationPage.getContent().stream()
-                .map(ClubApplicationResponse::from).toList();
+                .map(clubApplicationMapper::toResponse).toList();
         return new PageResponse<>(items, applicationPage.getTotalElements(), offset, limit);
     }
 
     @Transactional(readOnly = true)
     public ClubApplicationResponse getForClub(Actor actor, UUID clubId, UUID applicationId) {
         requireAnyPermission(actor, clubId, "application.view", "application.view_detail");
-        return ClubApplicationResponse.from(applicationRepository.findByIdAndClub_Id(applicationId, clubId)
+        return clubApplicationMapper.toResponse(applicationRepository.findByIdAndClub_Id(applicationId, clubId)
                 .orElseThrow(() -> notFound("CLUB_APPLICATION_NOT_FOUND", "Club application not found")));
     }
 
@@ -220,7 +225,7 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         auditService.record(actor.id(), AuditAction.CLUB_APPLICATION_APPROVED, saved.getId(), clubId,
                 approvalBefore, approvalAfter);
         if (notificationService != null) notificationService.create(application.getApplicant().getId(), "Đơn đăng ký được duyệt", "Bạn đã được chấp nhận vào " + application.getClub().getName() + ".", saved.getId());
-        return ClubApplicationResponse.from(saved, savedMembership);
+        return clubApplicationMapper.toResponse(saved, savedMembership);
     }
 
     @Transactional
@@ -241,7 +246,7 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
                 rejectionBefore,
                 applicationAuditValues(saved, saved.getStatus(), null));
         if (notificationService != null) notificationService.create(application.getApplicant().getId(), "Đơn đăng ký bị từ chối", "Đơn đăng ký vào " + application.getClub().getName() + " đã bị từ chối.", saved.getId());
-        return ClubApplicationResponse.from(saved);
+        return clubApplicationMapper.toResponse(saved);
     }
 
     private User findUser(UUID id) {

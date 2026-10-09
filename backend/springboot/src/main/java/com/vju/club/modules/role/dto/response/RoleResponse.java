@@ -1,8 +1,5 @@
 package com.vju.club.modules.role.dto.response;
 
-import com.vju.club.modules.permission.entity.Permission;
-import com.vju.club.modules.role.entity.Role;
-
 import java.util.List;
 import java.util.UUID;
 
@@ -15,10 +12,4 @@ public record RoleResponse(
         boolean system,
         boolean active,
         List<String> permissionKeys
-) {
-    public static RoleResponse from(Role role) {
-        return new RoleResponse(role.getId(), role.getCode(), role.getName(), role.getDescription(),
-                role.getScope().name(), role.isSystem(), role.isActive(),
-                role.getPermissions().stream().map(Permission::getPermissionKey).sorted().toList());
-    }
-}
+) { }

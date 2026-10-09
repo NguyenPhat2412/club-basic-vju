@@ -1,8 +1,29 @@
 package com.vju.club.modules.audit.mapper;
 
-import org.springframework.stereotype.Component;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.vju.club.modules.audit.dto.response.AuditLogResponse;
+import com.vju.club.modules.audit.entity.AuditLog;
+import org.mapstruct.Mapper;
 
-@Component
-public class AuditMapper {
-    // Mapper component for Audit module
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.Map;
+
+@Mapper
+public interface AuditMapper {
+
+    /** ObjectMapper is only used for its real job here: parsing the stored JSON snapshots. */
+    ObjectMapper JSON = new ObjectMapper();
+
+    AuditLogResponse toResponse(AuditLog log);
+
+    default Map<String, Object> jsonToMap(String json) {
+        if (json == null) return null;
+        try {
+            return JSON.readValue(json, new TypeReference<>() { });
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
+    }
 }

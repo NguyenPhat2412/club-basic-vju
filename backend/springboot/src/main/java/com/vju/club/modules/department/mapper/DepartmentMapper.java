@@ -1,10 +1,12 @@
 package com.vju.club.modules.department.mapper;
 
+import com.vju.club.modules.department.dto.response.DepartmentResponse;
 import com.vju.club.modules.department.entity.Department;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
-import org.springframework.stereotype.Component;
-
-@Component
-public class DepartmentMapper {
-    // Mapper component for Department module
+@Mapper
+public interface DepartmentMapper {
+    @Mapping(target = "clubId", source = "club.id")
+    DepartmentResponse toResponse(Department department);
 }
