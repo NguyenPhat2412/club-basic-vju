@@ -1,5 +1,6 @@
 package com.vju.club.modules.user.service.impl;
 
+import com.vju.club.modules.permission.annotation.RequirePermission;
 import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.user.mapper.UserMapper;
 import com.vju.club.modules.user.service.UserService;
@@ -66,15 +67,15 @@ public class UserServiceImpl implements UserService {
     }
 
     @Transactional(readOnly = true)
+    @RequirePermission(UserConstants.PERMISSION_VIEW)
     public UserResponse getById(Actor actor, UUID userId) {
-        authorizationService.require(actor, UserConstants.PERMISSION_VIEW, null, null);
         return userMapper.toResponse(findUser(userId));
     }
 
     @Transactional(readOnly = true)
+    @RequirePermission(UserConstants.PERMISSION_VIEW)
     public PageResponse<UserResponse> search(Actor actor, String query, int offset, int limit,
                                              String orderBy, String orderType) {
-        authorizationService.require(actor, UserConstants.PERMISSION_VIEW, null, null);
         OffsetLimitRequest page = new OffsetLimitRequest(offset, limit, sort(orderBy, orderType));
         Specification<User> spec = UserSpecifications.hasKeyword(query);
         Page<User> userPage = userRepository.findAll(spec, page);

@@ -33,6 +33,7 @@ import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.vju.club.support.PermissionChecks.withPermissionChecks;
 import static com.vju.club.support.ApiErrors.FORBIDDEN;
 import static com.vju.club.support.ApiErrors.assertApiError;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,9 +61,9 @@ class DepartmentMemberServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DepartmentMemberServiceImpl(departmentMemberRepository, departmentRepository,
+        service = withPermissionChecks(new DepartmentMemberServiceImpl(departmentMemberRepository, departmentRepository,
                 membershipRepository, authorization, Clock.fixed(Instant.parse("2026-10-06T00:00:00Z"), ZoneOffset.UTC),
-                auditService, new DepartmentMemberMapperImpl());
+                auditService, new DepartmentMemberMapperImpl()), authorization);
         clubA = club(UUID.randomUUID());
         clubB = club(UUID.randomUUID());
         departmentA = department(clubA);
