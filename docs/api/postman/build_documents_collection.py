@@ -1,44 +1,9 @@
 """Generates documents.postman_collection.json: black-box API checks for club documents (R2 / local storage).
 
-Run from this folder so the multipart file paths (fixtures/...) resolve:
-    postman collection run documents.postman_collection.json --env-var adminEmail=... --env-var adminPassword=...
+Run: ./run.sh documents [baseUrl]   (from any folder; fixtures/ resolve because run.sh cd's here)
 """
-import json, uuid
-
-def js(*lines): return list(lines)
-
-def url(path, query=None):
-    raw = "{{baseUrl}}" + path
-    u = {"host": ["{{baseUrl}}"], "path": path.strip("/").split("/")}
-    if query:
-        raw += "?" + "&".join(f"{k}={v}" for k, v in query)
-        u["query"] = [{"key": k, "value": v} for k, v in query]
-    u["raw"] = raw
-    return u
-
-def req(name, method, path, body=None, token="adminAccess", query=None, form=None, pre=None, tests=None):
-    headers = []
-    if body is not None: headers.append({"key": "Content-Type", "value": "application/json"})
-    if token: headers.append({"key": "Authorization", "value": "Bearer {{" + token + "}}"})
-    item = {"name": name, "request": {"method": method, "header": headers, "url": url(path, query)}, "event": []}
-    if body is not None:
-        item["request"]["body"] = {"mode": "raw", "raw": body if isinstance(body, str) else json.dumps(body, ensure_ascii=False)}
-    if form is not None:
-        fields = []
-        for key, value in form:
-            if key == "file":
-                fields.append({"key": "file", "type": "file", "src": value})
-            else:
-                fields.append({"key": key, "type": "text", "value": value})
-        item["request"]["body"] = {"mode": "formdata", "formdata": fields}
-    if pre: item["event"].append({"listen": "prerequest", "script": {"type": "text/javascript", "exec": pre}})
-    if tests: item["event"].append({"listen": "test", "script": {"type": "text/javascript", "exec": tests}})
-    return item
-
-def status(c): return f'pm.test("status {c}", () => pm.response.to.have.status({c}));'
-def code(c): return f'pm.test("code {c}", () => pm.expect(pm.response.json().code).to.eql("{c}"));'
-def problem(s, c): return js(status(s), code(c))
-def save(var, expr="pm.response.json().id"): return f'pm.collectionVariables.set("{var}", {expr});'
+import json
+from postman_common import collection, js, login, logout, problem, req, save, status
 
 UPLOAD = "/api/v1/clubs/{{clubId}}/documents"
 DOC = "/api/v1/documents/{{docId}}"
@@ -47,18 +12,15 @@ folders = []
 
 # ---------------------------------------------------------------- 0. Setup
 folders.append(("0. Chuẩn bị", [
-    req("Admin đăng nhập", "POST", "/api/v1/auth/login", '{"email":"{{adminEmail}}","password":"{{adminPassword}}"}', token=None,
-        pre=js('const id = Date.now().toString(36) + Math.floor(Math.random()*1e4).toString(36);',
-               'pm.collectionVariables.set("runId", id);'),
-        tests=js(status(200), save("adminAccess", "pm.response.json().tokens.accessToken"),
-                 save("adminId", "pm.response.json().user.id"))),
+    login("Admin đăng nhập", "adminEmail", "adminPassword", extra=(
+        'pm.collectionVariables.set("runId", Date.now().toString(36) + Math.floor(Math.random()*1e4).toString(36));',
+        save("adminId", "pm.response.json().user.id"),
+        'pm.collectionVariables.set("memberPassword", "Password123!");')),
     req("Tạo CLB riêng cho lần chạy này", "POST", "/api/v1/clubs", '{"code":"PM-{{runId}}","name":"Postman Docs {{runId}}"}',
         tests=js(status(201), save("clubId"))),
-    req("Đăng ký user thường (không có quyền)", "POST", "/api/v1/auth/register",
-        '{"email":"docs.{{runId}}@vju.local","password":"Password123!","fullName":"Docs Tester"}', token=None,
-        tests=js(status(201), save("memberId"))),
-    req("User thường đăng nhập", "POST", "/api/v1/auth/login", '{"email":"docs.{{runId}}@vju.local","password":"Password123!"}',
-        token=None, tests=js(status(200), save("memberAccess", "pm.response.json().tokens.accessToken"))),
+    req("Admin tạo tài khoản thành viên (không có quyền)", "POST", "/api/v1/users",
+        '{"email":"docs.{{runId}}@vju.local","password":"{{memberPassword}}","fullName":"Docs Tester"}',
+        tests=js(status(201), save("memberId"), save("memberEmail", "pm.response.json().email"))),
     req("Lấy id quyền document.view", "GET", "/api/v1/permissions",
         tests=js(status(200),
                  'const p = pm.response.json().find(x => x.permissionKey === "document.view");',
@@ -188,7 +150,7 @@ folders.append(("4. Phiên bản và tải file", [
                  '  pm.test("local: trả về đường dẫn API", () => pm.expect(l.url).to.include("/download?version=2"));',
                  '}',
                  'console.log("download-url: " + (l.expiresAt ? "R2 presigned" : "local storage"));')),
-    req("Mở link presigned (bỏ qua khi dùng local)", "GET", "/api/v1/api-catalog", token=None,
+    req("Mở link presigned (bỏ qua khi dùng local)", "GET", "/api/v1/api-catalog",
         pre=js('const u = pm.collectionVariables.get("presignedUrl");',
                'if (u) { pm.request.url = u; } else { pm.execution.skipRequest(); }'),
         tests=js(status(200), 'pm.test("nội dung v2 từ R2", () => pm.expect(pm.response.text()).to.include("fixture v2"));')),
@@ -209,24 +171,30 @@ folders.append(("5. Đổi tên", [
 ]))
 
 # ---------------------------------------------------------------- 6. Permissions
-M = "memberAccess"
+MEMBER = login("Thành viên đăng nhập", "memberEmail", "memberPassword")
+ADMIN = login("Admin đăng nhập lại", "adminEmail", "adminPassword")
 folders.append(("6. Phân quyền", [
-    req("Không có token → 401", "GET", LIST, token=None, tests=problem(401, "UNAUTHORIZED")),
-    req("User không quyền xem danh sách → 403", "GET", LIST, token=M, tests=problem(403, "PERMISSION_DENIED")),
-    req("User không quyền xem tài liệu → 403", "GET", DOC, token=M, tests=problem(403, "PERMISSION_DENIED")),
-    req("User không quyền dò id ngẫu nhiên → 403 (không lộ 404)", "GET", "/api/v1/documents/00000000-0000-0000-0000-000000000001",
-        token=M, tests=problem(403, "PERMISSION_DENIED")),
     req("Admin với id ngẫu nhiên → 404", "GET", "/api/v1/documents/00000000-0000-0000-0000-000000000001",
         tests=problem(404, "DOCUMENT_NOT_FOUND")),
-    req("Cấp document.view trong CLB cho user", "POST", "/api/v1/users/{{memberId}}/permissions",
-        '{"permissionId":"{{documentViewPermissionId}}","scope":"CLUB","clubId":"{{clubId}}"}', tests=js(status(201))),
-    req("User xem được danh sách", "GET", LIST, token=M, tests=js(status(200))),
-    req("User tải được file", "GET", DOC + "/download", token=M, tests=js(status(200))),
-    req("User vẫn không upload được → 403", "POST", UPLOAD, token=M, form=[("file", F + "v1.pdf"), ("name", "member.pdf")],
+    MEMBER,
+    req("Thành viên không quyền xem danh sách → 403", "GET", LIST, tests=problem(403, "PERMISSION_DENIED")),
+    req("Thành viên không quyền xem tài liệu → 403", "GET", DOC, tests=problem(403, "PERMISSION_DENIED")),
+    req("Dò id ngẫu nhiên → 403 (không lộ 404)", "GET", "/api/v1/documents/00000000-0000-0000-0000-000000000001",
         tests=problem(403, "PERMISSION_DENIED")),
-    req("User không xoá được file người khác → 403", "DELETE", DOC, token=M, tests=problem(403, "PERMISSION_DENIED")),
-    req("User không đổi tên file người khác → 403", "PATCH", DOC, '{"name":"x.pdf"}', token=M, tests=problem(403, "PERMISSION_DENIED")),
-    req("User không xem thùng rác → 403", "GET", LIST, token=M, query=[("deleted", "true")], tests=problem(403, "PERMISSION_DENIED")),
+    logout("Thành viên đăng xuất"),
+    req("Chưa đăng nhập → 401", "GET", LIST, tests=problem(401, "UNAUTHORIZED")),
+    ADMIN,
+    req("Cấp document.view trong CLB cho thành viên", "POST", "/api/v1/users/{{memberId}}/permissions",
+        '{"permissionId":"{{documentViewPermissionId}}","scope":"CLUB","clubId":"{{clubId}}"}', tests=js(status(201))),
+    MEMBER,
+    req("Thành viên xem được danh sách", "GET", LIST, tests=js(status(200))),
+    req("Thành viên tải được file", "GET", DOC + "/download", tests=js(status(200))),
+    req("Vẫn không upload được → 403", "POST", UPLOAD, form=[("file", F + "v1.pdf"), ("name", "member.pdf")],
+        tests=problem(403, "PERMISSION_DENIED")),
+    req("Không xoá được file người khác → 403", "DELETE", DOC, tests=problem(403, "PERMISSION_DENIED")),
+    req("Không đổi tên file người khác → 403", "PATCH", DOC, '{"name":"x.pdf"}', tests=problem(403, "PERMISSION_DENIED")),
+    req("Không xem thùng rác → 403", "GET", LIST, query=[("deleted", "true")], tests=problem(403, "PERMISSION_DENIED")),
+    ADMIN,
 ]))
 
 # ---------------------------------------------------------------- 7. Soft delete and restore
@@ -245,7 +213,9 @@ folders.append(("7. Xoá mềm và khôi phục", [
     req("Tải file đã xoá → 410", "GET", D2 + "/download", tests=problem(410, "DOCUMENT_DELETED")),
     req("Upload phiên bản cho file đã xoá → 410", "POST", D2 + "/versions", form=[("file", F + "v2.pdf")],
         tests=problem(410, "DOCUMENT_DELETED")),
-    req("User chỉ có view: tài liệu đã xoá → 404", "GET", D2, token=M, tests=problem(404, "DOCUMENT_NOT_FOUND")),
+    MEMBER,
+    req("Thành viên chỉ có view: tài liệu đã xoá → 404", "GET", D2, tests=problem(404, "DOCUMENT_NOT_FOUND")),
+    ADMIN,
     req("Upload tài liệu mới trùng tên tài liệu đã xoá", "POST", UPLOAD, form=[("file", F + "v2.pdf"), ("name", "{{doc2Name}}")],
         tests=js(status(201), save("doc2ReplacementId"))),
     req("Khôi phục khi tên đã bị dùng → 409", "POST", D2 + "/restore", tests=problem(409, "DOCUMENT_NAME_ALREADY_EXISTS")),
@@ -262,12 +232,8 @@ folders.append(("7. Xoá mềm và khôi phục", [
                  'pm.test("có DOCUMENT_DELETED và DOCUMENT_RESTORED", () => { pm.expect(actions).to.include("DOCUMENT_DELETED"); pm.expect(actions).to.include("DOCUMENT_RESTORED"); });')),
 ]))
 
-collection = {
-    "info": {"_postman_id": str(uuid.uuid5(uuid.NAMESPACE_URL, "club-basic-vju/documents")), "name": "VJU Club – Documents",
-             "description": "Black-box checks for club documents: upload, abnormal names/content, list/count/names, versions, download, presigned links, rename, permissions, soft delete and restore. Requires baseUrl, adminEmail, adminPassword; run from docs/api/postman so fixtures/ resolves.",
-             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
-    "item": [{"name": n, "item": items} for n, items in folders],
-    "variable": [{"key": "baseUrl", "value": "http://localhost:8080"}],
-}
-json.dump(collection, open("documents.postman_collection.json", "w"), ensure_ascii=False, indent=2)
+coll = collection("documents", "VJU Club – Documents",
+    "Tài liệu CLB: upload, file bất thường, danh sách/đếm/tên, phiên bản, tải xuống, link presigned R2, đổi tên, phân quyền, xoá mềm và khôi phục. Đăng nhập bằng cookie phiên + CSRF. Cần baseUrl, adminEmail, adminPassword.",
+    folders, [("baseUrl", "http://localhost:8080")])
+json.dump(coll, open("documents.postman_collection.json", "w"), ensure_ascii=False, indent=2)
 print(sum(len(i) for _, i in folders), "requests")

@@ -358,15 +358,33 @@ CDN nên dùng cho file công khai như logo, ảnh bìa CLB hay avatar. Hãy đ
 
 Ví dụ upload (macOS / Linux):
 
+Sau khi đăng nhập bằng curl với file cookie `jar.txt` (xem README gốc):
+
 ```bash
-curl -X POST http://localhost:8080/api/v1/clubs/<clubId>/documents -H "Authorization: Bearer <token>" -F "file=@noi-quy.pdf" -F appDetailKey=club.rules
+curl -b jar.txt -X POST http://localhost:8080/api/v1/clubs/<clubId>/documents -H "X-XSRF-TOKEN: $(awk '/XSRF-TOKEN/{print $7}' jar.txt)" -F "file=@noi-quy.pdf" -F appDetailKey=club.rules
 ```
 
-Windows PowerShell 7 trở lên:
+### Kiểm thử API bằng Postman CLI
 
-```powershell
-Invoke-RestMethod -Method Post "http://localhost:8080/api/v1/clubs/<clubId>/documents" -Headers @{Authorization="Bearer <token>"} -Form @{file=Get-Item .\noi-quy.pdf; appDetailKey="club.rules"}
+Hai collection trong `docs/api/postman/` dùng đúng cơ chế đăng nhập thật (cookie `CLUB_SESSION` + header `X-XSRF-TOKEN`), đổi người dùng bằng cách đăng nhập lại:
+
+| Collection | Nội dung |
+|---|---|
+| `auth` | CSRF, đăng nhập/sai mật khẩu, không có API đăng ký, admin tạo tài khoản, đổi mật khẩu, đăng xuất, admin đặt lại mật khẩu, khoá/mở khoá, giới hạn đăng nhập |
+| `documents` | Upload, file bất thường, danh sách/đếm/tên, phiên bản, tải xuống, link R2, đổi tên, phân quyền, xoá mềm/khôi phục |
+
+```bash
+docs/api/postman/run.sh documents
 ```
+
+```bash
+docs/api/postman/run.sh auth
+```
+
+- Mặc định chạy với `http://localhost:8080`; truyền URL khác ở tham số thứ hai.
+- Tài khoản admin: biến `ADMIN_EMAIL`/`ADMIN_PASSWORD`, nếu không có thì lấy `BOOTSTRAP_ADMIN_*` trong `.env.local`, cuối cùng là `admin123@gmail.com` / `Admin123@`.
+- Chạy `documents` trước `auth`: nhóm cuối của `auth` cố ý làm cạn giới hạn đăng nhập, các lần đăng nhập trong 1 phút sau đó sẽ bị trả `429`.
+- Sau khi sửa bộ sinh (`build_auth_collection.py`, `build_documents_collection.py`), chạy lại `python3 <file>` để tạo file `.postman_collection.json`.
 
 Quyền theo vai trò:
 - `SYSTEM_ADMIN` và `CLUB_PRESIDENT`: đủ 5 quyền.

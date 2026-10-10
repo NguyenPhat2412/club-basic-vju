@@ -181,13 +181,15 @@ Cả 4 user dùng chung mật khẩu `DEMO_USER_PASSWORD`. Dữ liệu demo khô
 - Contract giai đoạn 1: http://localhost:8080/api-docs/phase1.yaml
 - Danh mục API: http://localhost:8080/api/v1/api-catalog
 
+Đăng nhập dùng **cookie phiên** `CLUB_SESSION` (HttpOnly) và **CSRF**: request ghi dữ liệu phải gửi header `X-XSRF-TOKEN` bằng giá trị cookie `XSRF-TOKEN` (lấy qua `GET /api/v1/auth/csrf`). Ví dụ với curl, cookie được lưu trong file `jar.txt`:
+
 ```bash
-curl -s -X POST localhost:8080/api/v1/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"admin123@gmail.com","password":"Admin123@"}'
+curl -s -c jar.txt localhost:8080/api/v1/auth/csrf
+curl -s -b jar.txt -c jar.txt -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' -H "X-XSRF-TOKEN: $(awk '/XSRF-TOKEN/{print $7}' jar.txt)" -d '{"email":"admin123@gmail.com","password":"Admin123@"}'
+curl -s -b jar.txt localhost:8080/api/v1/auth/me
 ```
 
-Dùng `tokens.accessToken` trong kết quả làm header `Authorization: Bearer <token>` cho các request tiếp theo.
+Kiểm thử toàn bộ API bằng Postman CLI: `docs/api/postman/run.sh auth` và `docs/api/postman/run.sh documents` (xem [README backend](backend/springboot/README.md#kiểm-thử-api-bằng-postman-cli)).
 
 ### 6. Chạy frontend (tuỳ chọn)
 
@@ -225,12 +227,12 @@ Các biến `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`
 
 ## Tổng quan API
 
-Mọi route nghiệp vụ nằm dưới `/api/v1`. Chỉ các route đăng ký, đăng nhập, làm mới token, API catalog và tài liệu API là công khai; mọi route còn lại cần Bearer token.
+Mọi route nghiệp vụ nằm dưới `/api/v1`. Chỉ đăng nhập, lấy cookie CSRF, API catalog và tài liệu API là công khai; mọi route còn lại cần cookie phiên `CLUB_SESSION`. Không có API tự đăng ký: tài khoản do admin tạo.
 
 | Nhóm | Route |
 |---|---|
-| **Auth** | `POST /auth/register` · `POST /auth/login` · `POST /auth/refresh-token` · `POST /auth/logout` · `POST /auth/change-password` · `GET /auth/me` |
-| **Users** | `GET /users/me` · `PATCH /users/me` · `GET /users` · `GET /users/{userId}` · `PATCH /users/{userId}/status` |
+| **Auth** | `GET /auth/csrf` · `POST /auth/login` · `POST /auth/logout` · `POST /auth/change-password` · `GET /auth/me` |
+| **Users** | `GET /users/me` · `PATCH /users/me` · `GET /users` · `POST /users` (admin tạo tài khoản) · `GET /users/{userId}` · `PATCH /users/{userId}/password` (admin đặt lại mật khẩu) · `PATCH /users/{userId}/status` |
 | **Clubs** | `GET /clubs` · `POST /clubs` · `GET /clubs/{clubId}` · `PATCH /clubs/{clubId}` · `PATCH /clubs/{clubId}/status` |
 | **Departments** | `GET /clubs/{clubId}/departments` · `POST /clubs/{clubId}/departments` · `GET /departments/{id}` · `PATCH /departments/{id}` · `PATCH /departments/{id}/status` |
 | **Memberships** | `GET /clubs/{clubId}/memberships` (lọc `?status=`) · `POST /clubs/{clubId}/memberships` · `GET /memberships/{id}` · `PATCH /memberships/{id}` · `DELETE /memberships/{id}` |

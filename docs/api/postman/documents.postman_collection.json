@@ -2,9 +2,43 @@
   "info": {
     "_postman_id": "21d89aff-200f-58eb-8dc1-be65277ae2f8",
     "name": "VJU Club – Documents",
-    "description": "Black-box checks for club documents: upload, abnormal names/content, list/count/names, versions, download, presigned links, rename, permissions, soft delete and restore. Requires baseUrl, adminEmail, adminPassword; run from docs/api/postman so fixtures/ resolves.",
+    "description": "Tài liệu CLB: upload, file bất thường, danh sách/đếm/tên, phiên bản, tải xuống, link presigned R2, đổi tên, phân quyền, xoá mềm và khôi phục. Đăng nhập bằng cookie phiên + CSRF. Cần baseUrl, adminEmail, adminPassword.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const unsafe = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(pm.request.method);",
+          "const skip = pm.request.headers.has('X-No-Csrf');",
+          "if (skip) pm.request.headers.remove('X-No-Csrf');",
+          "const apply = () => pm.request.headers.upsert({ key: 'X-XSRF-TOKEN', value: pm.collectionVariables.get('xsrf') || '' });",
+          "if (skip) { /* sent without a CSRF token on purpose */ }",
+          "else if (unsafe && !pm.collectionVariables.get('xsrf')) {",
+          "  pm.sendRequest({ url: pm.variables.get('baseUrl') + '/api/v1/auth/csrf', method: 'GET' }, (err, res) => {",
+          "    if (!err) res.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').forEach(h => {",
+          "      const m = h.value.match(/^XSRF-TOKEN=([^;]*)/); if (m && m[1]) pm.collectionVariables.set('xsrf', decodeURIComponent(m[1]));",
+          "    });",
+          "    apply();",
+          "  });",
+          "} else if (unsafe) { apply(); }"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').forEach(h => {",
+          "  const m = h.value.match(/^XSRF-TOKEN=([^;]*)/); if (m) pm.collectionVariables.set('xsrf', decodeURIComponent(m[1]));",
+          "});"
+        ]
+      }
+    }
+  ],
   "item": [
     {
       "name": "0. Chuẩn bị",
@@ -38,23 +72,16 @@
           },
           "event": [
             {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const id = Date.now().toString(36) + Math.floor(Math.random()*1e4).toString(36);",
-                  "pm.collectionVariables.set(\"runId\", id);"
-                ]
-              }
-            },
-            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
-                  "pm.collectionVariables.set(\"adminAccess\", pm.response.json().tokens.accessToken);",
-                  "pm.collectionVariables.set(\"adminId\", pm.response.json().user.id);"
+                  "pm.collectionVariables.unset(\"xsrf\");",
+                  "pm.test(\"có cookie phiên CLUB_SESSION\", () => pm.expect(pm.cookies.has(\"CLUB_SESSION\")).to.be.true);",
+                  "pm.collectionVariables.set(\"runId\", Date.now().toString(36) + Math.floor(Math.random()*1e4).toString(36));",
+                  "pm.collectionVariables.set(\"adminId\", pm.response.json().user.id);",
+                  "pm.collectionVariables.set(\"memberPassword\", \"Password123!\");"
                 ]
               }
             }
@@ -68,10 +95,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
               }
             ],
             "url": {
@@ -104,7 +127,7 @@
           ]
         },
         {
-          "name": "Đăng ký user thường (không có quyền)",
+          "name": "Admin tạo tài khoản thành viên (không có quyền)",
           "request": {
             "method": "POST",
             "header": [
@@ -120,14 +143,13 @@
               "path": [
                 "api",
                 "v1",
-                "auth",
-                "register"
+                "users"
               ],
-              "raw": "{{baseUrl}}/api/v1/auth/register"
+              "raw": "{{baseUrl}}/api/v1/users"
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"email\":\"docs.{{runId}}@vju.local\",\"password\":\"Password123!\",\"fullName\":\"Docs Tester\"}"
+              "raw": "{\"email\":\"docs.{{runId}}@vju.local\",\"password\":\"{{memberPassword}}\",\"fullName\":\"Docs Tester\"}"
             }
           },
           "event": [
@@ -137,47 +159,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set(\"memberId\", pm.response.json().id);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "User thường đăng nhập",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "login"
-              ],
-              "raw": "{{baseUrl}}/api/v1/auth/login"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\"email\":\"docs.{{runId}}@vju.local\",\"password\":\"Password123!\"}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
-                  "pm.collectionVariables.set(\"memberAccess\", pm.response.json().tokens.accessToken);"
+                  "pm.collectionVariables.set(\"memberId\", pm.response.json().id);",
+                  "pm.collectionVariables.set(\"memberEmail\", pm.response.json().email);"
                 ]
               }
             }
@@ -187,12 +170,7 @@
           "name": "Lấy id quyền document.view",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -230,12 +208,7 @@
           "name": "Upload PDF (tên tiếng Việt, appDetailKey)",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -297,12 +270,7 @@
           "name": "Upload PDF thứ hai",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -350,12 +318,7 @@
           "name": "Upload ảnh PNG",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -404,12 +367,7 @@
           "name": "Trùng tên (khác hoa thường) → 409",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -456,12 +414,7 @@
           "name": "Thiếu phần file → 400",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -503,12 +456,7 @@
           "name": "CLB không tồn tại → 404",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -555,12 +503,7 @@
           "name": "Path traversal ../../etc/passwd.pdf",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -607,12 +550,7 @@
           "name": "Đường dẫn Windows C:\\\\x.pdf",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -659,12 +597,7 @@
           "name": "Tên thiết bị Windows CON.pdf",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -711,12 +644,7 @@
           "name": "File ẩn .env.pdf",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -763,12 +691,7 @@
           "name": "Không có đuôi",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -815,12 +738,7 @@
           "name": "Ký tự cấm a?b.pdf",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -867,12 +785,7 @@
           "name": "Tên dài 300 byte",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -919,12 +832,7 @@
           "name": "Đuôi kép invoice.exe.pdf",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -971,12 +879,7 @@
           "name": "Ký tự đảo chiều U+202E",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1023,12 +926,7 @@
           "name": "Ký tự vô hình U+200B",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1075,12 +973,7 @@
           "name": "Đệm dấu cách che đuôi",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1127,12 +1020,7 @@
           "name": "Chương trình setup.exe",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1179,12 +1067,7 @@
           "name": "Đuôi không cho phép .json",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1231,12 +1114,7 @@
           "name": "File .exe đổi tên thành .pdf",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1278,12 +1156,7 @@
           "name": "PNG đặt tên .pdf",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1330,12 +1203,7 @@
           "name": "File rỗng",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1377,12 +1245,7 @@
           "name": "appDetailKey sai định dạng",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1434,12 +1297,7 @@
           "name": "Không file bất thường nào được lưu",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1477,12 +1335,7 @@
           "name": "Danh sách (mới nhất trước)",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1516,12 +1369,7 @@
           "name": "Phân trang limit=1 offset=1",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1563,12 +1411,7 @@
           "name": "Lọc theo tên (không phân biệt hoa thường)",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1606,12 +1449,7 @@
           "name": "Lọc theo appDetailKey",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1649,12 +1487,7 @@
           "name": "Ký tự % được hiểu theo nghĩa đen",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1692,12 +1525,7 @@
           "name": "getDocCount",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1730,12 +1558,7 @@
           "name": "getDocCount theo appDetailKey",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1774,12 +1597,7 @@
           "name": "getDocumentNames (A–Z)",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1814,12 +1632,7 @@
           "name": "CLB không tồn tại → 404",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1856,12 +1669,7 @@
           "name": "Xem chi tiết",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1892,12 +1700,7 @@
           "name": "Upload phiên bản 2 (expectedVersion=1)",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1947,12 +1750,7 @@
           "name": "expectedVersion cũ → 409",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -1999,12 +1797,7 @@
           "name": "Nội dung trùng phiên bản hiện tại → 409",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -2046,12 +1839,7 @@
           "name": "Đổi kiểu file .pdf → .png → 400",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -2093,12 +1881,7 @@
           "name": "Phiên bản là file .exe giả → 400",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -2140,12 +1923,7 @@
           "name": "Lịch sử phiên bản",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -2179,12 +1957,7 @@
           "name": "Tải phiên bản hiện tại",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -2220,12 +1993,7 @@
           "name": "Tải phiên bản 1",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -2263,12 +2031,7 @@
           "name": "Phiên bản không tồn tại → 404",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -2306,12 +2069,7 @@
           "name": "Phiên bản 0 → 400",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -2349,12 +2107,7 @@
           "name": "Link tải (presigned khi dùng R2)",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -2443,10 +2196,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
               }
             ],
             "url": {
@@ -2487,10 +2236,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
               }
             ],
             "url": {
@@ -2531,10 +2276,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
               }
             ],
             "url": {
@@ -2575,10 +2316,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
               }
             ],
             "url": {
@@ -2620,10 +2357,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
               }
             ],
             "url": {
@@ -2662,7 +2395,203 @@
       "name": "6. Phân quyền",
       "item": [
         {
-          "name": "Không có token → 401",
+          "name": "Admin với id ngẫu nhiên → 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "00000000-0000-0000-0000-000000000001"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/00000000-0000-0000-0000-000000000001"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"code DOCUMENT_NOT_FOUND\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_NOT_FOUND\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Thành viên đăng nhập",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{memberEmail}}\",\"password\":\"{{memberPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.unset(\"xsrf\");",
+                  "pm.test(\"có cookie phiên CLUB_SESSION\", () => pm.expect(pm.cookies.has(\"CLUB_SESSION\")).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Thành viên không quyền xem danh sách → 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"code PERMISSION_DENIED\", () => pm.expect(pm.response.json().code).to.eql(\"PERMISSION_DENIED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Thành viên không quyền xem tài liệu → 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{docId}}"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{docId}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"code PERMISSION_DENIED\", () => pm.expect(pm.response.json().code).to.eql(\"PERMISSION_DENIED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dò id ngẫu nhiên → 403 (không lộ 404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "00000000-0000-0000-0000-000000000001"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/00000000-0000-0000-0000-000000000001"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"code PERMISSION_DENIED\", () => pm.expect(pm.response.json().code).to.eql(\"PERMISSION_DENIED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Thành viên đăng xuất",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/logout"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Chưa đăng nhập → 401",
           "request": {
             "method": "GET",
             "header": [],
@@ -2694,162 +2623,54 @@
           ]
         },
         {
-          "name": "User không quyền xem danh sách → 403",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{memberAccess}}"
-              }
-            ],
-            "url": {
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "clubs",
-                "{{clubId}}",
-                "documents"
-              ],
-              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
-                  "pm.test(\"code PERMISSION_DENIED\", () => pm.expect(pm.response.json().code).to.eql(\"PERMISSION_DENIED\"));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "User không quyền xem tài liệu → 403",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{memberAccess}}"
-              }
-            ],
-            "url": {
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "documents",
-                "{{docId}}"
-              ],
-              "raw": "{{baseUrl}}/api/v1/documents/{{docId}}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
-                  "pm.test(\"code PERMISSION_DENIED\", () => pm.expect(pm.response.json().code).to.eql(\"PERMISSION_DENIED\"));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "User không quyền dò id ngẫu nhiên → 403 (không lộ 404)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{memberAccess}}"
-              }
-            ],
-            "url": {
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "documents",
-                "00000000-0000-0000-0000-000000000001"
-              ],
-              "raw": "{{baseUrl}}/api/v1/documents/00000000-0000-0000-0000-000000000001"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
-                  "pm.test(\"code PERMISSION_DENIED\", () => pm.expect(pm.response.json().code).to.eql(\"PERMISSION_DENIED\"));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Admin với id ngẫu nhiên → 404",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
-            "url": {
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "documents",
-                "00000000-0000-0000-0000-000000000001"
-              ],
-              "raw": "{{baseUrl}}/api/v1/documents/00000000-0000-0000-0000-000000000001"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));",
-                  "pm.test(\"code DOCUMENT_NOT_FOUND\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_NOT_FOUND\"));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Cấp document.view trong CLB cho user",
+          "name": "Admin đăng nhập lại",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{adminEmail}}\",\"password\":\"{{adminPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.unset(\"xsrf\");",
+                  "pm.test(\"có cookie phiên CLUB_SESSION\", () => pm.expect(pm.cookies.has(\"CLUB_SESSION\")).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cấp document.view trong CLB cho thành viên",
+          "request": {
+            "method": "POST",
+            "header": [
               {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "url": {
@@ -2883,15 +2704,51 @@
           ]
         },
         {
-          "name": "User xem được danh sách",
+          "name": "Thành viên đăng nhập",
           "request": {
-            "method": "GET",
+            "method": "POST",
             "header": [
               {
-                "key": "Authorization",
-                "value": "Bearer {{memberAccess}}"
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{memberEmail}}\",\"password\":\"{{memberPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.unset(\"xsrf\");",
+                  "pm.test(\"có cookie phiên CLUB_SESSION\", () => pm.expect(pm.cookies.has(\"CLUB_SESSION\")).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Thành viên xem được danh sách",
+          "request": {
+            "method": "GET",
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -2919,15 +2776,10 @@
           ]
         },
         {
-          "name": "User tải được file",
+          "name": "Thành viên tải được file",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{memberAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -2955,15 +2807,10 @@
           ]
         },
         {
-          "name": "User vẫn không upload được → 403",
+          "name": "Vẫn không upload được → 403",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{memberAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -3007,15 +2854,10 @@
           ]
         },
         {
-          "name": "User không xoá được file người khác → 403",
+          "name": "Không xoá được file người khác → 403",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{memberAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -3043,17 +2885,13 @@
           ]
         },
         {
-          "name": "User không đổi tên file người khác → 403",
+          "name": "Không đổi tên file người khác → 403",
           "request": {
             "method": "PATCH",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{memberAccess}}"
               }
             ],
             "url": {
@@ -3087,15 +2925,10 @@
           ]
         },
         {
-          "name": "User không xem thùng rác → 403",
+          "name": "Không xem thùng rác → 403",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{memberAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -3128,6 +2961,47 @@
               }
             }
           ]
+        },
+        {
+          "name": "Admin đăng nhập lại",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{adminEmail}}\",\"password\":\"{{adminPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.unset(\"xsrf\");",
+                  "pm.test(\"có cookie phiên CLUB_SESSION\", () => pm.expect(pm.cookies.has(\"CLUB_SESSION\")).to.be.true);"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -3138,12 +3012,7 @@
           "name": "Xoá mềm",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -3173,12 +3042,7 @@
           "name": "Không còn trong danh sách",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -3211,12 +3075,7 @@
           "name": "Có trong thùng rác (deleted=true)",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -3256,12 +3115,7 @@
           "name": "getDocCount deleted=true",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -3300,12 +3154,7 @@
           "name": "Xoá lần nữa → 410",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -3336,12 +3185,7 @@
           "name": "Tải file đã xoá → 410",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -3373,12 +3217,7 @@
           "name": "Upload phiên bản cho file đã xoá → 410",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -3417,15 +3256,51 @@
           ]
         },
         {
-          "name": "User chỉ có view: tài liệu đã xoá → 404",
+          "name": "Thành viên đăng nhập",
           "request": {
-            "method": "GET",
+            "method": "POST",
             "header": [
               {
-                "key": "Authorization",
-                "value": "Bearer {{memberAccess}}"
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{memberEmail}}\",\"password\":\"{{memberPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.unset(\"xsrf\");",
+                  "pm.test(\"có cookie phiên CLUB_SESSION\", () => pm.expect(pm.cookies.has(\"CLUB_SESSION\")).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Thành viên chỉ có view: tài liệu đã xoá → 404",
+          "request": {
+            "method": "GET",
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -3453,15 +3328,51 @@
           ]
         },
         {
-          "name": "Upload tài liệu mới trùng tên tài liệu đã xoá",
+          "name": "Admin đăng nhập lại",
           "request": {
             "method": "POST",
             "header": [
               {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{adminEmail}}\",\"password\":\"{{adminPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.unset(\"xsrf\");",
+                  "pm.test(\"có cookie phiên CLUB_SESSION\", () => pm.expect(pm.cookies.has(\"CLUB_SESSION\")).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload tài liệu mới trùng tên tài liệu đã xoá",
+          "request": {
+            "method": "POST",
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -3508,12 +3419,7 @@
           "name": "Khôi phục khi tên đã bị dùng → 409",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -3549,10 +3455,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
               }
             ],
             "url": {
@@ -3588,12 +3490,7 @@
           "name": "Khôi phục",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -3625,12 +3522,7 @@
           "name": "Tải lại được sau khôi phục",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -3662,12 +3554,7 @@
           "name": "Khôi phục tài liệu chưa xoá → 409",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
@@ -3699,12 +3586,7 @@
           "name": "Audit log ghi lại xoá và khôi phục",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccess}}"
-              }
-            ],
+            "header": [],
             "url": {
               "host": [
                 "{{baseUrl}}"
