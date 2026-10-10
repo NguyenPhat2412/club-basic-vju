@@ -1,17 +1,22 @@
 package com.vju.club.security;
 
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public final class SecurityIdentity {
     private SecurityIdentity() { }
 
     public static UUID userId(Authentication authentication) {
-        if (!(authentication instanceof JwtAuthenticationToken jwt)) {
-            throw new IllegalStateException("JWT authentication is required");
+        return currentUserId(authentication)
+                .orElseThrow(() -> new IllegalStateException("A signed-in session is required"));
+    }
+
+    public static Optional<UUID> currentUserId(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof ClubPrincipal principal) {
+            return Optional.of(principal.id());
         }
-        return UUID.fromString(jwt.getToken().getSubject());
+        return Optional.empty();
     }
 }

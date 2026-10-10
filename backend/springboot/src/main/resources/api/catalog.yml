@@ -7,13 +7,6 @@ entries:
   authRequired: false
   permission: null
 - method: POST
-  path: /api/v1/auth/register
-  module: authentication
-  backend: backend/springboot
-  status: IMPLEMENTED
-  authRequired: false
-  permission: null
-- method: POST
   path: /api/v1/auth/login
   module: authentication
   backend: backend/springboot
@@ -27,8 +20,8 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: null
-- method: POST
-  path: /api/v1/auth/refresh-token
+- method: GET
+  path: /api/v1/auth/csrf
   module: authentication
   backend: backend/springboot
   status: IMPLEMENTED
@@ -41,6 +34,13 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: null
+- method: POST
+  path: /api/v1/users
+  module: user-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: user.create
 - method: GET
   path: /api/v1/users/me
   module: user-profile
@@ -69,6 +69,13 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: user.view
+- method: PATCH
+  path: /api/v1/users/{userId}/password
+  module: user-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: user.reset_password
 - method: PATCH
   path: /api/v1/users/{userId}/status
   module: user-profile

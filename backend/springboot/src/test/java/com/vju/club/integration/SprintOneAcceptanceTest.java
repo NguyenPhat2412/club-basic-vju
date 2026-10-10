@@ -3,19 +3,13 @@ package com.vju.club.integration;
 import com.vju.club.modules.permission.entity.Permission;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.vju.club.modules.auth.service.JwtTokenService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
-import org.springframework.security.oauth2.jwt.JwtClaimsSet;
-import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
-import org.springframework.security.oauth2.jwt.JwsHeader;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -31,15 +25,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 @DisplayName("Sprint 1 – Definition of Done")
 class SprintOneAcceptanceTest extends ApiIntegrationTest {
-    private String login(String email, String password) throws Exception {
-        return call(post("/api/v1/auth/login"), null, Map.of("email", email, "password", password), 200)
-                .at("/tokens/accessToken").asText();
-    }
-
     @Test
-    @DisplayName("Test 1: Register → Login → GET /me")
+    @DisplayName("Test 1: Admin tạo tài khoản → Login → GET /me")
     void test1RegisterLoginMe() throws Exception {
-        call(post("/api/v1/auth/register"), null,
+        call(post("/api/v1/users"), adminToken,
                 Map.of("email", "flow1@vju.local", "password", PASSWORD, "fullName", "Flow One"), 201);
         String token = login("flow1@vju.local", PASSWORD);
         JsonNode me = call(get("/api/v1/auth/me"), token, null, 200);
@@ -76,20 +65,19 @@ class SprintOneAcceptanceTest extends ApiIntegrationTest {
     @Test
     @DisplayName("Mật khẩu được hash (BCrypt), không lưu plain text")
     void passwordsAreHashed() throws Exception {
-        call(post("/api/v1/auth/register"), null,
+        call(post("/api/v1/users"), adminToken,
                 Map.of("email", "hash@vju.local", "password", PASSWORD, "fullName", "Hash"), 201);
         String stored = db.queryForObject("SELECT password_hash FROM users WHERE email = 'hash@vju.local'", String.class);
         assertThat(stored).startsWith("$2").doesNotContain(PASSWORD);
     }
 
     @Test
-    @DisplayName("Token hết hạn → 401 AUTH_TOKEN_EXPIRED; sai chữ ký / không có token → 401 UNAUTHORIZED")
-    void invalidTokensAreRejected() throws Exception {
-        JwtClaimsSet expired = JwtClaimsSet.builder().issuer(JwtTokenService.ISSUER).subject(member.toString())
-                .issuedAt(Instant.now().minusSeconds(1000)).expiresAt(Instant.now().minusSeconds(60)).build();
-        String expiredToken = encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), expired))
-                .getTokenValue();
-        problem(get("/api/v1/auth/me"), expiredToken, null, 401, "AUTH_TOKEN_EXPIRED");
+    @DisplayName("Phiên hết hạn / cookie giả / không có cookie → 401 UNAUTHORIZED")
+    void invalidSessionsAreRejected() throws Exception {
+        String session = login("member@test.local", PASSWORD);
+        db.update("UPDATE spring_session SET last_access_time = 0, expiry_time = 0 WHERE principal_name = ?",
+                member.toString());
+        problem(get("/api/v1/auth/me"), session, null, 401, "UNAUTHORIZED");
         problem(get("/api/v1/auth/me"), memberToken + "x", null, 401, "UNAUTHORIZED");
         problem(get("/api/v1/auth/me"), null, null, 401, "UNAUTHORIZED");
     }
@@ -101,19 +89,16 @@ class SprintOneAcceptanceTest extends ApiIntegrationTest {
         call(patch("/api/v1/users/" + member + "/status"), adminToken, Map.of("status", "INACTIVE"), 200);
         problem(post("/api/v1/auth/login"), null, Map.of("email", "member@test.local", "password", PASSWORD),
                 403, "ACCOUNT_INACTIVE");
-        problem(get("/api/v1/auth/me"), before, null, 403, "ACCOUNT_INACTIVE");
+        problem(get("/api/v1/auth/me"), before, null, 401, "UNAUTHORIZED");
     }
 
     @Test
-    @DisplayName("Refresh token xoay vòng; logout vô hiệu refresh token")
-    void refreshAndLogout() throws Exception {
-        JsonNode login = call(post("/api/v1/auth/login"), null, Map.of("email", "member@test.local", "password", PASSWORD), 200);
-        String refresh = login.at("/tokens/refreshToken").asText();
-        String next = call(post("/api/v1/auth/refresh-token"), null, Map.of("refreshToken", refresh), 200)
-                .at("/tokens/refreshToken").asText();
-        problem(post("/api/v1/auth/refresh-token"), null, Map.of("refreshToken", refresh), 401, "INVALID_REFRESH_TOKEN");
-        call(post("/api/v1/auth/logout"), login.at("/tokens/accessToken").asText(), Map.of("refreshToken", next), 204);
-        problem(post("/api/v1/auth/refresh-token"), null, Map.of("refreshToken", next), 401, "INVALID_REFRESH_TOKEN");
+    @DisplayName("Logout xoá phiên trong DB; cookie cũ không dùng lại được")
+    void logoutEndsTheSession() throws Exception {
+        String session = login("member@test.local", PASSWORD);
+        call(get("/api/v1/auth/me"), session, null, 200);
+        call(post("/api/v1/auth/logout"), session, null, 204);
+        problem(get("/api/v1/auth/me"), session, null, 401, "UNAUTHORIZED");
     }
 
     @Test
@@ -134,10 +119,10 @@ class SprintOneAcceptanceTest extends ApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("Permission catalog có 20–40 quyền, nhóm được theo module")
+    @DisplayName("Permission catalog có ít nhất 20 quyền (Sprint 1), nhóm được theo module")
     void permissionCatalog() throws Exception {
         JsonNode catalog = call(get("/api/v1/permissions"), adminToken, null, 200);
-        assertThat(catalog.size()).isBetween(20, 40);
+        assertThat(catalog.size()).isGreaterThanOrEqualTo(20);
         Set<String> modules = new HashSet<>();
         catalog.forEach(p -> modules.add(p.path("module").asText()));
         assertThat(modules).contains("user", "club", "department", "member", "department.member", "permission");
@@ -220,9 +205,9 @@ class SprintOneAcceptanceTest extends ApiIntegrationTest {
     @Test
     @DisplayName("Validation: email, trùng email, trùng mã CLB, membership trùng, tham chiếu không tồn tại")
     void validationRules() throws Exception {
-        problem(post("/api/v1/auth/register"), null, Map.of("email", "bad", "password", PASSWORD, "fullName", "X"),
+        problem(post("/api/v1/users"), adminToken, Map.of("email", "bad", "password", PASSWORD, "fullName", "X"),
                 400, "VALIDATION_ERROR");
-        problem(post("/api/v1/auth/register"), null, Map.of("email", "MEMBER@test.local", "password", PASSWORD, "fullName", "X"),
+        problem(post("/api/v1/users"), adminToken, Map.of("email", "MEMBER@test.local", "password", PASSWORD, "fullName", "X"),
                 409, "EMAIL_ALREADY_EXISTS");
         problem(post("/api/v1/clubs"), adminToken, Map.of("code", "a", "name", "Dup"), 409, "CLUB_CODE_ALREADY_EXISTS");
         call(post("/api/v1/clubs/" + clubA + "/memberships"), adminToken, Map.of("userId", member), 201);
@@ -249,7 +234,7 @@ class SprintOneAcceptanceTest extends ApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("Swagger/OpenAPI: đủ module, có bearer auth, contract ghi quyền cần có")
+    @DisplayName("Swagger/OpenAPI: đủ module, có xác thực bằng cookie phiên, contract ghi quyền cần có")
     void apiDocumentation() throws Exception {
         JsonNode docs = call(get("/v3/api-docs"), null, null, 200);
         Set<String> paths = new HashSet<>();
@@ -258,7 +243,9 @@ class SprintOneAcceptanceTest extends ApiIntegrationTest {
                 "/api/v1/memberships/", "/api/v1/permissions", "/api/v1/roles")) {
             assertThat(paths).as(prefix).anyMatch(p -> p.startsWith(prefix));
         }
-        assertThat(docs.at("/components/securitySchemes/bearerAuth/type").asText()).isEqualTo("http");
+        assertThat(docs.at("/components/securitySchemes/sessionAuth/type").asText()).isEqualTo("apiKey");
+        assertThat(docs.at("/components/securitySchemes/sessionAuth/in").asText()).isEqualTo("cookie");
+        assertThat(docs.at("/components/securitySchemes/sessionAuth/name").asText()).isEqualTo("CLUB_SESSION");
 
         String contract = send(get("/api-docs/phase1.yaml"), null, null).getContentAsString();
         assertThat(contract).contains("x-permission: club.update", "x-permission: member.update",

@@ -55,6 +55,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -165,7 +166,7 @@ public class DocumentServiceImpl implements DocumentService {
         if (documentRepository.existsLiveName(clubId, inspected.name(), null)) {
             throw new DocumentNameAlreadyExistsException();
         }
-        String path = store(clubId, inspected, file);
+        String path = store(inspected, file);
 
         Document document = new Document();
         document.setClub(club);
@@ -197,7 +198,7 @@ public class DocumentServiceImpl implements DocumentService {
             throw new DocumentVersionUnchangedException();
         }
         Map<String, Object> before = snapshot(document);
-        String path = store(clubId(document), inspected, file);
+        String path = store(inspected, file);
         point(document, document.getVersion() + 1, path, inspected);
         Document saved = documentRepository.saveAndFlush(document);
         versionRepository.saveAndFlush(version(saved, inspected, file.originalName(), actor));
@@ -297,8 +298,9 @@ public class DocumentServiceImpl implements DocumentService {
                         "Document has versions 1 to " + document.getVersion()));
     }
 
-    private String store(UUID clubId, InspectedFile inspected, UploadedFile file) {
-        String path = "clubs/" + clubId + "/documents/" + UUID.randomUUID() + "." + inspected.type().extension();
+    private String store(InspectedFile inspected, UploadedFile file) {
+        String path = LocalDate.now(DocumentConstants.STORAGE_ZONE).format(DocumentConstants.STORAGE_FOLDER) + "/"
+                + UUID.randomUUID() + "." + inspected.type().extension();
         try (InputStream content = file.content().open()) {
             storage.put(path, content, inspected.size(), inspected.type().contentType());
         } catch (IOException exception) {

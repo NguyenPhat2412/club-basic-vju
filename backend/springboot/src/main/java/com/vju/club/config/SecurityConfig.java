@@ -1,20 +1,23 @@
 package com.vju.club.config;
 
-import com.vju.club.modules.permission.entity.Permission;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import com.vju.club.modules.auth.annotation.PublicEndpoint;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.oauth2.jwt.JwtValidationException;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
+import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.csrf.CsrfException;
+import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
+import org.springframework.security.web.savedrequest.NullRequestCache;
 import com.vju.club.error.ProblemResponses;
 import com.vju.club.security.AccountStatusFilter;
 import com.vju.club.security.RateLimitFilter;
@@ -35,11 +38,17 @@ public class SecurityConfig {
             HttpSecurity http,
             AccountStatusFilter accountStatusFilter,
             RateLimitFilter rateLimitFilter,
+            SecurityContextRepository securityContextRepository,
+            CsrfTokenRepository csrfTokenRepository,
             @Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping handlerMapping) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf.spa().csrfTokenRepository(csrfTokenRepository))
                 .cors(Customizer.withDefaults())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .securityContext(context -> context.securityContextRepository(securityContextRepository))
+                .requestCache(cache -> cache.requestCache(new NullRequestCache()))
+                .logout(logout -> logout
+                        .logoutUrl("/api/v1/auth/logout")
+                        .logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT)))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(authenticationEntryPoint())
                         .accessDeniedHandler(accessDeniedHandler()))
@@ -49,12 +58,8 @@ public class SecurityConfig {
                     authorize.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll();
                     authorize.anyRequest().authenticated();
                 });
-        http.oauth2ResourceServer(oauth2 -> oauth2
-                .jwt(Customizer.withDefaults())
-                .authenticationEntryPoint(authenticationEntryPoint())
-                .accessDeniedHandler(accessDeniedHandler()));
-        http.addFilterBefore(rateLimitFilter, BearerTokenAuthenticationFilter.class);
-        http.addFilterAfter(accountStatusFilter, BearerTokenAuthenticationFilter.class);
+        http.addFilterBefore(rateLimitFilter, CsrfFilter.class);
+        http.addFilterBefore(accountStatusFilter, AuthorizationFilter.class);
         return http.build();
     }
 
@@ -77,29 +82,19 @@ public class SecurityConfig {
     }
 
     private AuthenticationEntryPoint authenticationEntryPoint() {
-        return (request, response, exception) -> {
-            if (isExpiredToken(exception)) {
-                ProblemResponses.write(response, HttpServletResponse.SC_UNAUTHORIZED,
-                        "AUTH_TOKEN_EXPIRED", "Access token has expired");
-            } else {
-                ProblemResponses.write(response, HttpServletResponse.SC_UNAUTHORIZED,
-                        "UNAUTHORIZED", "Authentication is required");
-            }
-        };
-    }
-
-    static boolean isExpiredToken(Throwable exception) {
-        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
-            if (cause instanceof JwtValidationException validation) {
-                return validation.getErrors().stream().anyMatch(error ->
-                        error.getDescription() != null && error.getDescription().startsWith("Jwt expired at"));
-            }
-        }
-        return false;
+        return (request, response, exception) -> ProblemResponses.write(response, HttpServletResponse.SC_UNAUTHORIZED,
+                "UNAUTHORIZED", "Authentication is required");
     }
 
     private AccessDeniedHandler accessDeniedHandler() {
-        return (request, response, exception) -> ProblemResponses.write(
-                response, HttpServletResponse.SC_FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
+        return (request, response, exception) -> {
+            if (exception instanceof CsrfException) {
+                ProblemResponses.write(response, HttpServletResponse.SC_FORBIDDEN,
+                        "CSRF_INVALID", "Missing or invalid CSRF token");
+            } else {
+                ProblemResponses.write(response, HttpServletResponse.SC_FORBIDDEN,
+                        "PERMISSION_DENIED", "Permission denied");
+            }
+        };
     }
 }

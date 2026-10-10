@@ -5,6 +5,8 @@ public final class UserConstants {
     }
 
     public static final String PERMISSION_VIEW = "user.view";
+    public static final String PERMISSION_CREATE = "user.create";
+    public static final String PERMISSION_RESET_PASSWORD = "user.reset_password";
     public static final String PERMISSION_MANAGE = "user.manage";
 
     public static final String DEFAULT_SORT_BY = "createdAt";

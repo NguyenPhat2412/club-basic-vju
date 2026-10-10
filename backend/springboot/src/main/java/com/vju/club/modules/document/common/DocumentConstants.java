@@ -1,10 +1,15 @@
 package com.vju.club.modules.document.common;
 
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Set;
 
 public final class DocumentConstants {
     private DocumentConstants() {
     }
+
+    public static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    public static final DateTimeFormatter STORAGE_FOLDER = DateTimeFormatter.ofPattern("yyyy/MM/dd");
 
     public static final String PERMISSION_VIEW = "document.view";
     public static final String PERMISSION_UPLOAD = "document.upload";

@@ -107,11 +107,12 @@ class AuditLogApiTest extends ApiIntegrationTest {
     }
 
     @Test
-    void registrationAndPasswordChangeAreAuditedAsTheUser() throws Exception {
-        UUID registered = id(call(post("/api/v1/auth/register"), null,
-                Map.of("email", "self@vju.local", "password", PASSWORD, "fullName", "Self"), 201));
-        JsonNode page = logs("actorUserId", registered.toString());
-        assertThat(actions(page)).containsExactly("USER_REGISTERED");
+    void accountCreationIsAuditedAsTheAdminAndPasswordChangeAsTheUser() throws Exception {
+        UUID created = id(call(post("/api/v1/users"), adminToken,
+                Map.of("email", "new@vju.local", "password", PASSWORD, "fullName", "New"), 201));
+        JsonNode page = logs("resourceId", created.toString());
+        assertThat(actions(page)).containsExactly("USER_CREATED");
+        assertThat(page.at("/items/0/actorUserId").asText()).isEqualTo(admin.toString());
         assertThat(page.at("/items/0/newValue").toString()).doesNotContain(PASSWORD);
 
         call(post("/api/v1/auth/change-password"), memberToken, Map.of("currentPassword", PASSWORD, "newPassword", "Changed123!"), 204);

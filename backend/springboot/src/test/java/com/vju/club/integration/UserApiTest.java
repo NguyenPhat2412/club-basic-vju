@@ -91,10 +91,11 @@ class UserApiTest extends ApiIntegrationTest {
     void deactivationBlocksAccessImmediatelyAndReactivationRestoresIt() throws Exception {
         problem(patch("/api/v1/users/" + member + "/status"), memberToken, Map.of("status", "INACTIVE"), 403, "PERMISSION_DENIED");
         call(patch("/api/v1/users/" + member + "/status"), adminToken, Map.of("status", "INACTIVE"), 200);
-        problem(get("/api/v1/users/me"), memberToken, null, 403, "ACCOUNT_INACTIVE");
+        problem(get("/api/v1/users/me"), memberToken, null, 401, "UNAUTHORIZED");
         problem(post("/api/v1/auth/login"), null, Map.of("email", "member@test.local", "password", PASSWORD), 403, "ACCOUNT_INACTIVE");
         call(patch("/api/v1/users/" + member + "/status"), adminToken, Map.of("status", "ACTIVE"), 200);
-        call(get("/api/v1/users/me"), memberToken, null, 200);
+        problem(get("/api/v1/users/me"), memberToken, null, 401, "UNAUTHORIZED");
+        call(get("/api/v1/users/me"), login("member@test.local", PASSWORD), null, 200);
         problem(patch("/api/v1/users/" + UUID.randomUUID() + "/status"), adminToken, Map.of("status", "ACTIVE"), 404, "USER_NOT_FOUND");
     }
 }

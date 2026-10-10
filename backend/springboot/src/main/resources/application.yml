@@ -10,6 +10,12 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: false
+  # Sign-in sessions live in PostgreSQL (tables created by Flyway V12); the browser only keeps
+  # the HttpOnly CLUB_SESSION cookie.
+  session:
+    timeout: ${SESSION_TIMEOUT:12h}
+    jdbc:
+      initialize-schema: never
   jpa:
     open-in-view: false
     hibernate:
@@ -40,20 +46,14 @@ server:
   forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:native}
 
 app:
+  # The CLUB_SESSION cookie is HttpOnly and SameSite=Lax (SessionConfig). Secure cookies are only
+  # sent over HTTPS, so the local profile turns this off.
+  session:
+    cookie-secure: ${SESSION_COOKIE_SECURE:true}
   rate-limit:
     enabled: ${RATE_LIMIT_ENABLED:true}
     max-requests: ${RATE_LIMIT_MAX_REQUESTS:60}
     window: ${RATE_LIMIT_WINDOW:1m}
-  security:
-    jwt:
-      # Required outside the local/test profiles: startup fails when JWT_SECRET is missing.
-      secret: ${JWT_SECRET:}
-      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:15m}
-      refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:30d}
-    # Expired/revoked refresh tokens are deleted daily once older than the retention period.
-    refresh-token-cleanup:
-      cron: ${REFRESH_TOKEN_CLEANUP_CRON:0 30 3 * * *}
-      retention: ${REFRESH_TOKEN_CLEANUP_RETENTION:7d}
   # Document files. local = a folder on this machine (development); r2 = Cloudflare R2 bucket.
   storage:
     type: ${STORAGE_TYPE:local}

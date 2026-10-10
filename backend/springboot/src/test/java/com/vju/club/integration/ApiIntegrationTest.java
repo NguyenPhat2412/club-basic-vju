@@ -4,21 +4,18 @@ import com.vju.club.modules.club.entity.Club;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.vju.club.modules.auth.service.JwtTokenService;
-import com.vju.club.modules.user.entity.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.session.jdbc.JdbcIndexedSessionRepository;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.util.ArrayList;
@@ -34,7 +31,7 @@ import java.util.concurrent.Future;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -54,8 +51,7 @@ abstract class ApiIntegrationTest {
     @Autowired WebApplicationContext context;
     @Autowired JdbcTemplate db;
     @Autowired PasswordEncoder passwords;
-    @Autowired JwtTokenService tokens;
-    @Autowired JwtEncoder encoder;
+    @Autowired JdbcIndexedSessionRepository sessions;
 
     MockMvc mvc;
     final ObjectMapper json = new ObjectMapper();
@@ -64,8 +60,8 @@ abstract class ApiIntegrationTest {
 
     @BeforeEach
     void resetDatabase() {
-        mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
-        db.execute("TRUNCATE users, clubs CASCADE");
+        mvc = TestSessions.mockMvc(context);
+        db.execute("TRUNCATE users, clubs, spring_session CASCADE");
         db.update("UPDATE permissions SET active = true");
         db.update("DELETE FROM roles WHERE NOT system");
         db.update("UPDATE roles SET active = true");
@@ -127,10 +123,14 @@ abstract class ApiIntegrationTest {
     }
 
     String token(UUID id) {
-        User user = new User();
-        user.setId(id);
-        user.setEmail("test@local");
-        return tokens.issueAccessToken(user).value();
+        return TestSessions.signedIn(sessions, id);
+    }
+
+    String login(String email, String password) throws Exception {
+        MockHttpServletResponse response = send(post("/api/v1/auth/login"), null,
+                Map.of("email", email, "password", password));
+        assertThat(response.getStatus()).as(response.getContentAsString()).isEqualTo(200);
+        return TestSessions.fromResponse(response);
     }
 
     UUID permission(String key) {
@@ -155,24 +155,24 @@ abstract class ApiIntegrationTest {
         return db.queryForObject(sql, Integer.class, args);
     }
 
-    MockHttpServletResponse send(AbstractMockHttpServletRequestBuilder<?> request, String bearer, Object body) throws Exception {
-        if (bearer != null) request.header("Authorization", "Bearer " + bearer);
+    MockHttpServletResponse send(AbstractMockHttpServletRequestBuilder<?> request, String session, Object body) throws Exception {
+        TestSessions.attach(request, session);
         if (body != null) request.contentType("application/json").content(json.writeValueAsString(body));
         return mvc.perform(request).andReturn().getResponse();
     }
 
-    JsonNode call(AbstractMockHttpServletRequestBuilder<?> request, String bearer, Object body, int status) throws Exception {
+    JsonNode call(AbstractMockHttpServletRequestBuilder<?> request, String session, Object body, int status) throws Exception {
         var built = request.buildRequest(context.getServletContext());
-        MockHttpServletResponse response = send(request, bearer, body);
+        MockHttpServletResponse response = send(request, session, body);
         String content = response.getContentAsString();
         assertThat(response.getStatus()).as("%s %s -> %s", built.getMethod(), built.getRequestURI(), content)
                 .isEqualTo(status);
         return content.isEmpty() ? json.nullNode() : json.readTree(content);
     }
 
-    JsonNode problem(AbstractMockHttpServletRequestBuilder<?> request, String bearer, Object body, int status, String code)
+    JsonNode problem(AbstractMockHttpServletRequestBuilder<?> request, String session, Object body, int status, String code)
             throws Exception {
-        JsonNode node = call(request, bearer, body, status);
+        JsonNode node = call(request, session, body, status);
         assertThat(node.path("code").asText()).as("error code").isEqualTo(code);
         assertThat(node.path("title").asText()).isEqualTo(code);
         assertThat(node.path("status").asInt()).isEqualTo(status);

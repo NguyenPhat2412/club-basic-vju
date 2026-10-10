@@ -97,10 +97,11 @@ class ErrorHandlingApiTest extends ApiIntegrationTest {
     }
 
     @Test
-    void generatedOpenApiHidesTheActorArgumentAndDeclaresBearerAuth() throws Exception {
+    void generatedOpenApiHidesTheActorArgumentAndDeclaresSessionCookieAuth() throws Exception {
         JsonNode docs = call(get("/v3/api-docs"), null, null, 200);
         assertThat(docs.toString()).doesNotContain("\"name\":\"actor\"");
-        assertThat(docs.at("/components/securitySchemes/bearerAuth/scheme").asText()).isEqualTo("bearer");
+        assertThat(docs.at("/components/securitySchemes/sessionAuth/in").asText()).isEqualTo("cookie");
+        assertThat(docs.at("/components/securitySchemes/sessionAuth/name").asText()).isEqualTo("CLUB_SESSION");
         assertThat(docs.at("/paths/~1api~1v1~1roles/get/parameters").isMissingNode()).isTrue();
     }
 

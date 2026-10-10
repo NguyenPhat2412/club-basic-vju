@@ -11,13 +11,14 @@ spring:
     password: ${DB_PASSWORD:club_local}
 
 app:
+  # Local development runs over plain http.
+  session:
+    cookie-secure: ${SESSION_COOKIE_SECURE:false}
   # Demo club VJUA with 4 departments and users demo.a/b/c@vju.local; skipped without DEMO_USER_PASSWORD.
   demo-data:
     enabled: ${DEMO_DATA_ENABLED:true}
     password: ${DEMO_USER_PASSWORD:}
+  # Shared development admin, created on first start of the local profile only (never in production).
   bootstrap-admin:
-    email: ${BOOTSTRAP_ADMIN_EMAIL:}
-    password: ${BOOTSTRAP_ADMIN_PASSWORD:}
-  security:
-    jwt:
-      secret: ${JWT_SECRET:local-development-secret-change-this-value-0123456789}
+    email: ${BOOTSTRAP_ADMIN_EMAIL:admin123@gmail.com}
+    password: ${BOOTSTRAP_ADMIN_PASSWORD:Admin123@}

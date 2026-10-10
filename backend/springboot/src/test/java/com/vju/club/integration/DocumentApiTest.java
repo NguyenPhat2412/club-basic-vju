@@ -2,6 +2,7 @@ package com.vju.club.integration;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.vju.club.config.StorageProperties;
+import com.vju.club.modules.document.common.DocumentConstants;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -12,6 +13,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.util.regex.Pattern;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -53,8 +56,8 @@ class DocumentApiTest extends ApiIntegrationTest {
         return call(uploadTo(clubId, fileName, PDF_V1), adminToken, null, 201);
     }
 
-    long storedObjects(UUID clubId) throws IOException {
-        Path folder = storage.getLocal().getRoot().resolve("clubs").resolve(clubId.toString());
+    long storedObjects() throws IOException {
+        Path folder = storage.getLocal().getRoot();
         if (!Files.exists(folder)) return 0;
         try (Stream<Path> files = Files.walk(folder)) {
             return files.filter(Files::isRegularFile).count();
@@ -75,7 +78,8 @@ class DocumentApiTest extends ApiIntegrationTest {
         assertThat(created.path("appDetailKey").asText()).isEqualTo("club.minutes");
         assertThat(created.path("deleted").asBoolean()).isFalse();
         assertThat(created.path("createdAt").asText()).isNotBlank();
-        assertThat(created.path("path").asText()).startsWith("clubs/" + clubA + "/documents/").endsWith(".pdf");
+        String today = LocalDate.now(DocumentConstants.STORAGE_ZONE).format(DocumentConstants.STORAGE_FOLDER);
+        assertThat(created.path("path").asText()).matches(Pattern.quote(today) + "/[0-9a-f-]{36}\\.pdf");
 
         assertThat(Files.readAllBytes(storage.getLocal().getRoot().resolve(created.path("path").asText()))).isEqualTo(PDF_V1);
         assertThat(count("SELECT count(*) FROM document_versions WHERE document_id = ?", id(created))).isEqualTo(1);
@@ -108,12 +112,13 @@ class DocumentApiTest extends ApiIntegrationTest {
 
     @Test
     void concurrentUploadsOfOneNameKeepOneDocumentAndNoOrphanFiles() throws Exception {
+        long before = storedObjects();
         List<Integer> statuses = concurrently(6, () -> () ->
                 send(uploadTo(clubA, "race.pdf", PDF_V1), adminToken, null).getStatus());
         assertThat(statuses).containsOnly(201, 409);
         assertThat(statuses).filteredOn(s -> s == 201).hasSize(1);
         assertThat(count("SELECT count(*) FROM documents WHERE club_id = ?", clubA)).isEqualTo(1);
-        assertThat(storedObjects(clubA)).isEqualTo(1);
+        assertThat(storedObjects() - before).isEqualTo(1);
     }
 
     @Test
@@ -131,6 +136,7 @@ class DocumentApiTest extends ApiIntegrationTest {
 
     @Test
     void abnormalNamesAreRejectedWithSpecificCodes() throws Exception {
+        long before = storedObjects();
         problem(uploadTo(clubA, "../../etc/passwd.pdf", PDF_V1), adminToken, null, 400, "INVALID_DOCUMENT_NAME");
         problem(uploadTo(clubA, "CON.pdf", PDF_V1), adminToken, null, 400, "INVALID_DOCUMENT_NAME");
         problem(uploadTo(clubA, "noextension", PDF_V1), adminToken, null, 400, "INVALID_DOCUMENT_NAME");
@@ -142,7 +148,7 @@ class DocumentApiTest extends ApiIntegrationTest {
         problem(uploadTo(clubA, "a.pdf", PDF_V1).param("appDetailKey", "Not A Key"), adminToken, null, 400,
                 "INVALID_APP_DETAIL_KEY");
         assertThat(count("SELECT count(*) FROM documents")).isZero();
-        assertThat(storedObjects(clubA)).isZero();
+        assertThat(storedObjects()).isEqualTo(before);
     }
 
     @Test

@@ -126,11 +126,14 @@ Copy-Item backend\springboot\.env.local.example backend\springboot\.env.local
 copy backend\springboot\.env.local.example backend\springboot\.env.local
 ```
 
-Mở `backend/springboot/.env.local` và sửa lại các giá trị:
+> **Tài khoản admin dùng chung khi phát triển:** `admin123@gmail.com` / `Admin123@`. Tài khoản này được tạo tự động ở lần chạy đầu tiên với profile `local`, kể cả khi không có `.env.local`, và có vai trò `SYSTEM_ADMIN`. Nó **chỉ** tồn tại ở profile `local`; môi trường thật không bao giờ tạo tài khoản này.
+
+Mở `backend/springboot/.env.local` và sửa lại các giá trị nếu cần:
 
 ```properties
-BOOTSTRAP_ADMIN_EMAIL=admin@vju.local
-BOOTSTRAP_ADMIN_PASSWORD=mat-khau-admin-cua-ban
+# Chỉ đặt nếu muốn admin khác với admin123@gmail.com / Admin123@:
+# BOOTSTRAP_ADMIN_EMAIL=...
+# BOOTSTRAP_ADMIN_PASSWORD=...
 DEMO_USER_PASSWORD=mat-khau-demo-cua-ban
 # Bỏ dấu # nếu PostgreSQL chạy ở cổng khác 5432:
 # DB_URL=jdbc:postgresql://localhost:5433/club
@@ -139,7 +142,7 @@ DEMO_USER_PASSWORD=mat-khau-demo-cua-ban
 - `.env.local` đã nằm trong `.gitignore`, nên **không bao giờ bị commit**.
 - Mật khẩu cần từ 8 ký tự trở lên và tối đa 72 byte (giới hạn của BCrypt; mỗi chữ có dấu chiếm 2–3 byte).
 - Biến môi trường thật, nếu có đặt, luôn được ưu tiên hơn giá trị trong `.env.local`.
-- Không tạo file này cũng được: backend vẫn chạy, chỉ là không có admin và dữ liệu demo.
+- Không tạo file này cũng được: backend vẫn chạy và có admin dùng chung ở trên, chỉ là không có dữ liệu demo.
 
 ## 4. Chạy backend
 
@@ -191,13 +194,13 @@ Cách thử trên Swagger:
 **macOS**:
 
 ```bash
-curl -s -X POST http://localhost:8080/api/v1/auth/login -H "Content-Type: application/json" -d '{"email":"admin@vju.local","password":"mat-khau-admin-cua-ban"}'
+curl -s -X POST http://localhost:8080/api/v1/auth/login -H "Content-Type: application/json" -d '{"email":"admin123@gmail.com","password":"Admin123@"}'
 ```
 
 **Windows – PowerShell**:
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/v1/auth/login -ContentType "application/json" -Body '{"email":"admin@vju.local","password":"mat-khau-admin-cua-ban"}'
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/v1/auth/login -ContentType "application/json" -Body '{"email":"admin123@gmail.com","password":"Admin123@"}'
 ```
 
 Trên Windows PowerShell 5, lệnh `curl` thực chất là `Invoke-WebRequest`. Nếu muốn dùng curl thật, gõ `curl.exe`.
@@ -405,7 +408,7 @@ Có thể đặt trong `.env.local` (chỉ khi chạy profile `local`) hoặc qu
 | `SERVER_PORT` | `8080` | Cổng HTTP |
 | `JWT_SECRET` | có sẵn khi chạy `local`; **bắt buộc** ở mọi môi trường khác | Khoá ký JWT, tối thiểu 32 byte |
 | `JWT_ACCESS_TOKEN_TTL` / `JWT_REFRESH_TOKEN_TTL` | `15m` / `30d` | Thời hạn token |
-| `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | trống | Admin đầu tiên (chỉ profile `local`) |
+| `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | `admin123@gmail.com` / `Admin123@` | Admin đầu tiên (chỉ profile `local`) |
 | `DEMO_USER_PASSWORD` / `DEMO_DATA_ENABLED` | trống / `true` | Dữ liệu demo VJUA (chỉ profile `local`) |
 | `RATE_LIMIT_MAX_REQUESTS` / `RATE_LIMIT_WINDOW` | `60` / `1m` | Giới hạn đăng nhập/đăng ký/refresh theo IP |
 | `STORAGE_TYPE` | `local` | `local` hoặc `r2` (xem mục 9) |

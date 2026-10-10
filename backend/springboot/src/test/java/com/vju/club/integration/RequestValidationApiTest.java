@@ -21,15 +21,15 @@ class RequestValidationApiTest extends ApiIntegrationTest {
 
     @Test
     void passwordMayUseTheFull72ByteBcryptLimitButNotMore() throws Exception {
-        call(post("/api/v1/auth/register"), null, registration("p72@test.local", "x".repeat(72)), 201);
-        problem(post("/api/v1/auth/register"), null, registration("p73@test.local", "x".repeat(73)), 400, "VALIDATION_ERROR");
-        problem(post("/api/v1/auth/register"), null, registration("p128@test.local", "x".repeat(128)), 400, "VALIDATION_ERROR");
+        call(post("/api/v1/users"), adminToken, registration("p72@test.local", "x".repeat(72)), 201);
+        problem(post("/api/v1/users"), adminToken, registration("p73@test.local", "x".repeat(73)), 400, "VALIDATION_ERROR");
+        problem(post("/api/v1/users"), adminToken, registration("p128@test.local", "x".repeat(128)), 400, "VALIDATION_ERROR");
     }
 
     @Test
     void passwordLimitCountsBytesSoLongAccentedPasswordsAreRejected() throws Exception {
-        call(post("/api/v1/auth/register"), null, registration("vn-ok@test.local", "Mật khẩu tốt 123"), 201);
-        problem(post("/api/v1/auth/register"), null, registration("vn-long@test.local", "ậ".repeat(30)), 400, "VALIDATION_ERROR");
+        call(post("/api/v1/users"), adminToken, registration("vn-ok@test.local", "Mật khẩu tốt 123"), 201);
+        problem(post("/api/v1/users"), adminToken, registration("vn-long@test.local", "ậ".repeat(30)), 400, "VALIDATION_ERROR");
     }
 
     @Test
@@ -63,7 +63,7 @@ class RequestValidationApiTest extends ApiIntegrationTest {
         problem(patch("/api/v1/users/me"), memberToken, Map.of("phone", "<script>"), 400, "VALIDATION_ERROR");
         Map<String, Object> body = registration("phone@test.local", "Password123!");
         body.put("phone", "call me maybe");
-        problem(post("/api/v1/auth/register"), null, body, 400, "VALIDATION_ERROR");
+        problem(post("/api/v1/users"), adminToken, body, 400, "VALIDATION_ERROR");
     }
 
     @Test
@@ -78,7 +78,6 @@ class RequestValidationApiTest extends ApiIntegrationTest {
         Map<String, Object> grant = new HashMap<>(assignment("club.view", "GLOBAL", null, null));
         grant.put("reason", "r".repeat(1001));
         problem(post("/api/v1/users/" + member + "/permissions"), adminToken, grant, 400, "VALIDATION_ERROR");
-        problem(post("/api/v1/auth/refresh-token"), null, Map.of("refreshToken", "t".repeat(513)), 400, "VALIDATION_ERROR");
     }
 
     @Test
