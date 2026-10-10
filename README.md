@@ -146,7 +146,7 @@ Profile `local` tự đọc file này (trên mọi hệ điều hành), nên kh�
 cp backend/springboot/.env.local.example backend/springboot/.env.local
 ```
 
-Sửa lại `BOOTSTRAP_ADMIN_EMAIL`/`BOOTSTRAP_ADMIN_PASSWORD` (admin đầu tiên, được gán vai trò `SYSTEM_ADMIN`) và `DEMO_USER_PASSWORD` (dữ liệu demo). File này đã được gitignore.
+Đăng nhập bằng admin dùng chung `admin123@gmail.com` / `Admin123@` (tự tạo ở profile `local`, vai trò `SYSTEM_ADMIN`). Đặt `DEMO_USER_PASSWORD` nếu muốn có dữ liệu demo. File này đã được gitignore.
 
 ### 3. Chạy backend
 
@@ -184,7 +184,7 @@ Cả 4 user dùng chung mật khẩu `DEMO_USER_PASSWORD`. Dữ liệu demo khô
 ```bash
 curl -s -X POST localhost:8080/api/v1/auth/login \
   -H 'Content-Type: application/json' \
-  -d '{"email":"admin@vju.local","password":"ChangeMe123!"}'
+  -d '{"email":"admin123@gmail.com","password":"Admin123@"}'
 ```
 
 Dùng `tokens.accessToken` trong kết quả làm header `Authorization: Bearer <token>` cho các request tiếp theo.
@@ -217,7 +217,7 @@ Backend đọc cấu hình từ biến môi trường:
 | `FORWARD_HEADERS_STRATEGY` | `native` | Chỉ tin `X-Forwarded-For` đến từ proxy có IP nội bộ/loopback, để rate limit thấy đúng IP người dùng khi chạy sau nginx |
 | `REFRESH_TOKEN_CLEANUP_CRON` | `0 30 3 * * *` | Lịch chạy job dọn refresh token |
 | `REFRESH_TOKEN_CLEANUP_RETENTION` | `7d` | Thời gian giữ lại refresh token đã chết trước khi xoá |
-| `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | trống | Tạo admin ban đầu (chỉ có tác dụng ở profile `local`) |
+| `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | `admin123@gmail.com` / `Admin123@` | Tạo admin ban đầu (chỉ có tác dụng ở profile `local`) |
 | `DEMO_USER_PASSWORD` | trống | Mật khẩu của 3 user demo; có giá trị thì tạo dữ liệu demo (chỉ profile `local`) |
 | `DEMO_DATA_ENABLED` | `true` | Tắt hẳn việc tạo dữ liệu demo |
 

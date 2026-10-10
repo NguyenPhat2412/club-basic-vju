@@ -1,5 +1,7 @@
 package com.vju.club.modules.user.service;
 
+import com.vju.club.modules.user.dto.request.CreateUserRequest;
+import com.vju.club.modules.user.dto.request.ResetPasswordRequest;
 import com.vju.club.security.Actor;
 import com.vju.club.modules.user.dto.response.UserResponse;
 import com.vju.club.modules.audit.enums.AuditAction;
@@ -22,6 +24,10 @@ import java.util.Set;
 import java.util.UUID;
 
 public interface UserService {
+    UserResponse create(Actor actor, CreateUserRequest request);
+
+    void resetPassword(Actor actor, UUID userId, ResetPasswordRequest request);
+
     UserResponse getCurrent(Actor actor);
 
     UserResponse updateProfile(Actor actor, UpdateProfileRequest request);

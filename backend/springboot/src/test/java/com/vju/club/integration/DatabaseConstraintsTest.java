@@ -1,8 +1,6 @@
 package com.vju.club.integration;
 
-import com.vju.club.modules.auth.service.RefreshTokenCleanupJob;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.ConnectionCallback;
 
@@ -19,7 +17,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 class DatabaseConstraintsTest extends ApiIntegrationTest {
-    @Autowired RefreshTokenCleanupJob cleanupJob;
 
     private void rejects(String constraint, String sql, Object... args) {
         assertThatThrownBy(() -> db.update(sql, args))
@@ -58,7 +55,7 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
         int[] next = {0};
         List<Integer> statuses = concurrently(8, () -> {
             String email = variants[next[0]++ % variants.length];
-            return () -> send(post("/api/v1/auth/register"), null,
+            return () -> send(post("/api/v1/users"), adminToken,
                     Map.of("email", email, "password", PASSWORD, "fullName", "Racer")).getStatus();
         });
         assertThat(statuses).containsOnly(201, 409);
@@ -220,21 +217,5 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
         db.update("UPDATE users SET full_name = 'x', updated_at = '2030-01-01T00:00:00Z' WHERE id = ?", member);
         assertThat(db.queryForObject("SELECT updated_at FROM users WHERE id = ?", OffsetDateTime.class, member).getYear())
                 .isEqualTo(2030);
-    }
-
-    @Test
-    void cleanupDeletesOnlyTokensDeadForLongerThanRetention() {
-        String insert = "INSERT INTO refresh_tokens(user_id, token_hash, expires_at, revoked_at) VALUES (?, ?, ?::timestamptz, ?::timestamptz)";
-        db.update(insert, member, "expired-long-ago", "2000-01-01T00:00:00Z", null);
-        db.update(insert, member, "revoked-long-ago", "2999-01-01T00:00:00Z", "2000-01-01T00:00:00Z");
-        db.update(insert, member, "active", "2999-01-01T00:00:00Z", null);
-        db.update("INSERT INTO refresh_tokens(user_id, token_hash, expires_at) VALUES (?, 'just-expired', now() - interval '1 hour')", member);
-        db.update("INSERT INTO refresh_tokens(user_id, token_hash, expires_at, revoked_at) "
-                + "VALUES (?, 'just-revoked', now() + interval '1 day', now() - interval '1 hour')", member);
-
-        assertThat(cleanupJob.purge()).isEqualTo(2);
-
-        assertThat(db.queryForList("SELECT token_hash FROM refresh_tokens WHERE user_id = ? ORDER BY token_hash", String.class, member))
-                .containsExactly("active", "just-expired", "just-revoked");
     }
 }

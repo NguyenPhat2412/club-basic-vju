@@ -13,6 +13,11 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import com.vju.club.modules.user.dto.request.CreateUserRequest;
+import com.vju.club.modules.user.dto.request.ResetPasswordRequest;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -39,6 +44,11 @@ public class UserController {
         return userService.updateProfile(actor, request);
     }
 
+    @PostMapping
+    public ResponseEntity<UserResponse> create(Actor actor, @Valid @RequestBody CreateUserRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(userService.create(actor, request));
+    }
+
     @GetMapping
     public PageResponse<UserResponse> search(
             Actor actor,
@@ -53,6 +63,13 @@ public class UserController {
     @GetMapping("/{userId}")
     public UserResponse getById(Actor actor, @PathVariable UUID userId) {
         return userService.getById(actor, userId);
+    }
+
+    @PatchMapping("/{userId}/password")
+    public ResponseEntity<Void> resetPassword(Actor actor, @PathVariable UUID userId,
+                                              @Valid @RequestBody ResetPasswordRequest request) {
+        userService.resetPassword(actor, userId, request);
+        return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{userId}/status")

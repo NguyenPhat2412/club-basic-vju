@@ -4,29 +4,23 @@ import com.vju.club.modules.club.entity.Club;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.vju.club.modules.auth.service.JwtTokenService;
-import com.vju.club.modules.user.entity.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.jwt.*;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.session.jdbc.JdbcIndexedSessionRepository;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import java.time.Instant;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -45,8 +39,7 @@ public class PostgresApiTest {
     @Autowired WebApplicationContext context;
     @Autowired JdbcTemplate db;
     @Autowired PasswordEncoder passwords;
-    @Autowired JwtTokenService tokens;
-    @Autowired JwtEncoder encoder;
+    @Autowired JdbcIndexedSessionRepository sessions;
     private MockMvc mvc;
     private final ObjectMapper json = new ObjectMapper();
     private UUID admin, member, a, b, da, da2, dban;
@@ -55,8 +48,8 @@ public class PostgresApiTest {
 
     @BeforeEach
     void setup() {
-        mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
-        db.execute("TRUNCATE users, clubs CASCADE");
+        mvc = TestSessions.mockMvc(context);
+        db.execute("TRUNCATE users, clubs, spring_session CASCADE");
         db.update("UPDATE permissions SET active=true");
         admin = user("admin@test.local"); member = user("member@test.local");
         for (UUID permission : db.queryForList("SELECT id FROM permissions", UUID.class)) {
@@ -76,7 +69,15 @@ public class PostgresApiTest {
     private UUID department(UUID clubId,String name) {
         UUID id=UUID.randomUUID(); db.update("INSERT INTO departments(id,club_id,name) VALUES (?,?,?)",id,clubId,name); return id;
     }
-    private String token(UUID id) { User user=new User(); user.setId(id); user.setEmail("test@local"); return tokens.issueAccessToken(user).value(); }
+    private String token(UUID id) { return TestSessions.signedIn(sessions, id); }
+    private String login(String email, String password) throws Exception {
+        var request = post("/api/v1/auth/login").contentType("application/json")
+                .content(json.writeValueAsString(Map.of("email", email, "password", password)));
+        TestSessions.attach(request, null);
+        var response = mvc.perform(request).andReturn().getResponse();
+        assertThat(response.getStatus()).as(response.getContentAsString()).isEqualTo(200);
+        return TestSessions.fromResponse(response);
+    }
     private UUID permission(String key) { return db.queryForObject("SELECT id FROM permissions WHERE permission_key=?",UUID.class,key); }
     private void grant(UUID user,String key,String scope,UUID club,UUID dept) {
         db.update("INSERT INTO user_permissions(user_id,permission_id,scope,club_id,department_id,granted_by) VALUES (?,?,?,?,?,?)",user,permission(key),scope,club,dept,admin);
@@ -85,8 +86,8 @@ public class PostgresApiTest {
         Map<String,Object> body=new LinkedHashMap<>(); body.put("permissionId",permission(key)); body.put("scope",scope);
         if(club!=null)body.put("clubId",club); if(dept!=null)body.put("departmentId",dept); return body;
     }
-    private JsonNode call(MockHttpServletRequestBuilder req,String bearer,Object body,int status) throws Exception {
-        if(bearer!=null)req.header("Authorization","Bearer "+bearer);
+    private JsonNode call(MockHttpServletRequestBuilder req,String session,Object body,int status) throws Exception {
+        TestSessions.attach(req, session);
         if(body!=null)req.contentType("application/json").content(json.writeValueAsString(body));
         var result = mvc.perform(req).andReturn();
         var response = result.getResponse();
@@ -98,28 +99,23 @@ public class PostgresApiTest {
     private UUID id(JsonNode response) { return UUID.fromString(response.path("id").asText()); }
 
     @Test
-    void registrationLoginRotationLogoutAndExpiredJwt() throws Exception {
+    void registrationLoginLogoutAndInvalidSession() throws Exception {
         var reg=Map.of("email"," New@Test.Local ".trim(),"password",PASSWORD,"fullName","New User");
-        JsonNode created=call(post("/api/v1/auth/register"),null,reg,201);
+        JsonNode created=call(post("/api/v1/users"), adminToken,reg,201);
         assertThat(created.has("passwordHash")).isFalse();
         String stored=db.queryForObject("SELECT password_hash FROM users WHERE id=?",String.class,id(created));
         assertThat(passwords.matches(PASSWORD,stored)).isTrue();
-        assertThat(call(post("/api/v1/auth/register"),null,reg,409).path("code").asText()).isEqualTo("EMAIL_ALREADY_EXISTS");
-        call(post("/api/v1/auth/register"),null,Map.of("email","bad","password","short","fullName"," "),400);
+        assertThat(call(post("/api/v1/users"), adminToken,reg,409).path("code").asText()).isEqualTo("EMAIL_ALREADY_EXISTS");
+        call(post("/api/v1/users"), adminToken,Map.of("email","bad","password","short","fullName"," "),400);
         call(post("/api/v1/auth/login"),null,Map.of("email","new@test.local","password","wrong"),401);
-        JsonNode login=call(post("/api/v1/auth/login"),null,Map.of("email","new@test.local","password",PASSWORD),200);
-        String access=login.at("/tokens/accessToken").asText(), refresh=login.at("/tokens/refreshToken").asText();
-        call(get("/api/v1/auth/me"),access,null,200);
-        assertThat(db.queryForObject("SELECT count(*) FROM refresh_tokens WHERE token_hash=?",Integer.class,tokens.hash(refresh))).isEqualTo(1);
-        var renewed=call(post("/api/v1/auth/refresh-token"),null,Map.of("refreshToken",refresh),200);
-        call(post("/api/v1/auth/refresh-token"),null,Map.of("refreshToken",refresh),401);
-        String next=renewed.at("/tokens/refreshToken").asText();
-        call(post("/api/v1/auth/logout"),access,Map.of("refreshToken",next),204);
-        call(post("/api/v1/auth/refresh-token"),null,Map.of("refreshToken",next),401);
-        JwtClaimsSet expired=JwtClaimsSet.builder().issuer("club-backend").subject(member.toString())
-                .issuedAt(Instant.now().minusSeconds(900)).expiresAt(Instant.now().minusSeconds(120)).build();
-        String expiredJwt=encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(),expired)).getTokenValue();
-        call(get("/api/v1/auth/me"),expiredJwt,null,401);
+        String session=login("new@test.local",PASSWORD);
+        call(get("/api/v1/auth/me"),session,null,200);
+        assertThat(db.queryForObject("SELECT count(*) FROM spring_session WHERE principal_name=?",Integer.class,
+                id(created).toString())).isEqualTo(1);
+        call(post("/api/v1/auth/logout"),session,null,204);
+        call(get("/api/v1/auth/me"),session,null,401);
+        assertThat(db.queryForObject("SELECT count(*) FROM spring_session WHERE principal_name=?",Integer.class,
+                id(created).toString())).isZero();
         assertThat(call(get("/api/v1/auth/me"),"invalid",null,401).path("code").asText()).isEqualTo("UNAUTHORIZED");
         call(get("/api/v1/auth/me"),null,null,401);
     }
@@ -138,7 +134,7 @@ public class PostgresApiTest {
         call(get("/api/v1/users/not-uuid"),adminToken,null,400);
         call(get("/api/v1/users/"+UUID.randomUUID()),adminToken,null,404);
         call(patch("/api/v1/users/"+member+"/status"),adminToken,Map.of("status","INACTIVE"),200);
-        call(get("/api/v1/auth/me"),memberToken,null,403);
+        call(get("/api/v1/auth/me"),memberToken,null,401);
         call(post("/api/v1/auth/login"),null,Map.of("email","member@test.local","password",PASSWORD),403);
     }
     @Test
@@ -253,15 +249,15 @@ public class PostgresApiTest {
     }
 
     @Test
-    void changingPasswordVerifiesOldPasswordAndRevokesRefreshTokens() throws Exception {
-        var login=call(post("/api/v1/auth/login"),null,Map.of("email","member@test.local","password",PASSWORD),200);
-        String refresh=login.at("/tokens/refreshToken").asText();
+    void changingPasswordVerifiesOldPasswordAndEndsOtherSessions() throws Exception {
+        String other=login("member@test.local",PASSWORD);
         call(post("/api/v1/auth/change-password"),memberToken,Map.of("currentPassword","wrong","newPassword","NewPassword123!"),400);
         call(post("/api/v1/auth/change-password"),memberToken,Map.of("currentPassword",PASSWORD,"newPassword","short"),400);
         call(post("/api/v1/auth/change-password"),memberToken,Map.of("currentPassword",PASSWORD,"newPassword","NewPassword123!"),204);
         call(post("/api/v1/auth/login"),null,Map.of("email","member@test.local","password",PASSWORD),401);
         call(post("/api/v1/auth/login"),null,Map.of("email","member@test.local","password","NewPassword123!"),200);
-        call(post("/api/v1/auth/refresh-token"),null,Map.of("refreshToken",refresh),401);
+        call(get("/api/v1/auth/me"),other,null,401);
+        call(get("/api/v1/auth/me"),memberToken,null,200);
     }
 
     @Test

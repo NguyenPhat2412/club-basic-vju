@@ -2,83 +2,49 @@ package com.vju.club.modules.auth.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.user.mapper.UserMapper;
-import com.vju.club.modules.auth.service.JwtTokenService;
 
 import com.vju.club.modules.auth.service.AuthService;
+import com.vju.club.modules.auth.service.UserSessionService;
 
 import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.modules.auth.dto.response.AuthResponse;
 import com.vju.club.modules.auth.dto.request.ChangePasswordRequest;
 import com.vju.club.modules.auth.dto.request.LoginRequest;
-import com.vju.club.modules.auth.dto.request.RefreshTokenRequest;
-import com.vju.club.modules.auth.dto.request.RegisterRequest;
-import com.vju.club.modules.auth.dto.response.TokenResponse;
 import com.vju.club.modules.user.dto.response.UserResponse;
-import com.vju.club.config.JwtProperties;
-import com.vju.club.modules.auth.entity.RefreshToken;
 import com.vju.club.modules.user.entity.User;
 import com.vju.club.modules.user.enums.UserStatus;
 import com.vju.club.error.ApiException;
-import com.vju.club.modules.auth.repository.RefreshTokenRepository;
 import com.vju.club.modules.user.repository.UserRepository;
+import com.vju.club.security.ClubPrincipal;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-    private final JwtTokenService tokenService;
-    private final JwtProperties jwtProperties;
-    private final Clock clock;
+    private final UserSessionService userSessionService;
     private final AuditService auditService;
     private final UserMapper userMapper;
 
-    @Transactional
-    public UserResponse register(RegisterRequest request) {
+    @Transactional(readOnly = true)
+    public SignedIn login(LoginRequest request) {
         String email = normalizeEmail(request.email());
-        String studentCode = blankToNull(request.studentCode());
-        if (userRepository.existsByEmailIgnoreCase(email)) {
-            throw new ApiException(HttpStatus.CONFLICT, "EMAIL_ALREADY_EXISTS", "Email is already registered");
-        }
-        if (studentCode != null && userRepository.existsByStudentCodeIgnoreCase(studentCode)) {
-            throw new ApiException(HttpStatus.CONFLICT, "STUDENT_CODE_ALREADY_EXISTS", "Student code is already registered");
-        }
-        User user = new User();
-        user.setEmail(email);
-        user.setPasswordHash(passwordEncoder.encode(request.password()));
-        user.setFullName(request.fullName().trim());
-        user.setStudentCode(studentCode);
-        user.setPhone(blankToNull(request.phone()));
-        user.setStatus(UserStatus.ACTIVE);
-        User saved = userRepository.saveAndFlush(user);
-        auditService.record(saved.getId(), AuditAction.USER_REGISTERED, saved.getId(), null, null,
-                Map.of("email", saved.getEmail()));
-        return userMapper.toResponse(saved);
-    }
-
-    @Transactional
-    public AuthResponse login(LoginRequest request) {
-        String email = normalizeEmail(request.email());
+        Authentication authentication;
         try {
-            authenticationManager.authenticate(
+            authentication = authenticationManager.authenticate(
                     UsernamePasswordAuthenticationToken.unauthenticated(email, request.password()));
         } catch (AuthenticationException exception) {
             User user = userRepository.findByEmailIgnoreCase(email).orElse(null);
@@ -89,32 +55,9 @@ public class AuthServiceImpl implements AuthService {
             throw invalidCredentials();
         }
 
-        User user = userRepository.findByEmailIgnoreCase(email).orElseThrow(this::invalidCredentials);
-        return new AuthResponse(userMapper.toResponse(user), issueTokens(user));
-    }
-
-    @Transactional
-    public AuthResponse refresh(RefreshTokenRequest request) {
-        RefreshToken existing = refreshTokenRepository.findByTokenHash(tokenService.hash(request.refreshToken()))
-                .orElseThrow(this::invalidRefreshToken);
-        OffsetDateTime now = now();
-        User user = existing.getUser();
-        if (!existing.isActive(now) || user.getStatus() != UserStatus.ACTIVE) {
-            throw invalidRefreshToken();
-        }
-        if (refreshTokenRepository.revokeIfActive(existing.getId(), now) != 1) {
-            throw invalidRefreshToken();
-        }
-        return new AuthResponse(userMapper.toResponse(user), issueTokens(user));
-    }
-
-    @Transactional
-    public void logout(String refreshToken) {
-        if (refreshToken == null || refreshToken.isBlank()) {
-            return;
-        }
-        refreshTokenRepository.findByTokenHash(tokenService.hash(refreshToken))
-                .ifPresent(token -> refreshTokenRepository.revokeIfActive(token.getId(), now()));
+        ClubPrincipal principal = (ClubPrincipal) authentication.getPrincipal();
+        User user = userRepository.findById(principal.id()).orElseThrow(this::invalidCredentials);
+        return new SignedIn(principal, new AuthResponse(userMapper.toResponse(user)));
     }
 
     @Transactional(readOnly = true)
@@ -124,7 +67,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Transactional
-    public void changePassword(UUID userId, ChangePasswordRequest request) {
+    public void changePassword(UUID userId, ChangePasswordRequest request, String currentSessionId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User not found"));
         if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
@@ -132,41 +75,15 @@ public class AuthServiceImpl implements AuthService {
         }
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userRepository.saveAndFlush(user);
-        refreshTokenRepository.revokeAllForUser(userId, now());
+        userSessionService.endSessionsExcept(userId, currentSessionId);
         auditService.record(userId, AuditAction.USER_PASSWORD_CHANGED, userId, null, null, null);
-    }
-
-    private TokenResponse issueTokens(User user) {
-        JwtTokenService.AccessToken accessToken = tokenService.issueAccessToken(user);
-        JwtTokenService.RefreshTokenValue refreshToken = tokenService.issueRefreshToken();
-        Instant refreshExpiresAt = clock.instant().plus(jwtProperties.getRefreshTokenTtl());
-
-        RefreshToken refreshEntity = new RefreshToken();
-        refreshEntity.setUser(user);
-        refreshEntity.setTokenHash(refreshToken.hash());
-        refreshEntity.setExpiresAt(OffsetDateTime.ofInstant(refreshExpiresAt, ZoneOffset.UTC));
-        refreshTokenRepository.saveAndFlush(refreshEntity);
-        return new TokenResponse(accessToken.value(), refreshToken.value(),
-                accessToken.expiresAt(), refreshExpiresAt);
-    }
-
-    private OffsetDateTime now() {
-        return OffsetDateTime.now(clock);
     }
 
     private ApiException invalidCredentials() {
         return new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Invalid credentials");
     }
 
-    private ApiException invalidRefreshToken() {
-        return new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "Refresh token is invalid or expired");
-    }
-
     private String normalizeEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
     }
 }

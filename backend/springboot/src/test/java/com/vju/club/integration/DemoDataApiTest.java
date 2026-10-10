@@ -61,8 +61,7 @@ class DemoDataApiTest extends ApiIntegrationTest {
     }
 
     private String login(String email) throws Exception {
-        return call(post("/api/v1/auth/login"), null, Map.of("email", email, "password", DEMO_PASSWORD), 200)
-                .at("/tokens/accessToken").asText();
+        return login(email, DEMO_PASSWORD);
     }
 
     private UUID department(String name) {

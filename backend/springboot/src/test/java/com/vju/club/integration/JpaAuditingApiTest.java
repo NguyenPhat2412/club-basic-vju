@@ -38,11 +38,11 @@ class JpaAuditingApiTest extends ApiIntegrationTest {
     }
 
     @Test
-    void actionsWithoutASignedInUserLeaveItEmpty() throws Exception {
-        UUID registered = id(call(post("/api/v1/auth/register"), null,
-                Map.of("email", "anon@test.local", "password", PASSWORD, "fullName", "Anonymous"), 201));
-        assertThat(who("users", "created_by", registered)).isNull();
-        assertThat(who("users", "updated_by", registered)).isNull();
+    void accountsCreatedByAnAdminRecordTheAdmin() throws Exception {
+        UUID created = id(call(post("/api/v1/users"), adminToken,
+                Map.of("email", "new@test.local", "password", PASSWORD, "fullName", "New Account"), 201));
+        assertThat(who("users", "created_by", created)).isEqualTo(admin);
+        assertThat(who("users", "updated_by", created)).isEqualTo(admin);
     }
 
     @Test

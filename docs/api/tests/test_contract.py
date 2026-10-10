@@ -34,7 +34,9 @@ class ContractTest(unittest.TestCase):
                 self.assertTrue(successes)
                 for code, response in successes.items():
                     if str(code) != '204':
-                        self.assertIn('schema', response['content']['application/json'])
+                        content = response['content']
+                        self.assertTrue(content.get('application/json') or content.get('application/octet-stream'))
+                        self.assertTrue(all('schema' in media for media in content.values()))
 
     def test_list_envelopes_match_backend_offset_pagination(self):
         for name in ['UserListResponse', 'ClubListResponse', 'DepartmentListResponse', 'MembershipListResponse', 'DepartmentMemberListResponse']:
@@ -76,7 +78,7 @@ class ContractTest(unittest.TestCase):
     def test_post_creation_and_delete_status_codes(self):
         for path, method, op in self.operations():
             with self.subTest(path=path, method=method):
-                if method == 'post' and '/auth/' not in path and not path.endswith('/approve') and not path.endswith('/reject'):
+                if method == 'post' and '/auth/' not in path and not path.endswith('/approve') and not path.endswith('/reject') and not path.endswith('/restore'):
                     self.assertIn('201', op['responses'])
                 if method == 'delete':
                     self.assertIn('204', op['responses'])
@@ -123,7 +125,6 @@ class ContractTest(unittest.TestCase):
     def test_response_fields_match_java_records(self):
         mapping = {
             'User': 'modules/user/dto/response/UserResponse.java',
-            'TokenResponse': 'modules/auth/dto/response/TokenResponse.java',
             'Club': 'modules/club/dto/response/ClubResponse.java',
             'Department': 'modules/department/dto/response/DepartmentResponse.java',
             'Membership': 'modules/membership/dto/response/MembershipResponse.java',

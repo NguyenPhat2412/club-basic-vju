@@ -17,7 +17,11 @@ import com.vju.club.modules.user.enums.UserStatus;
 import com.vju.club.error.ApiException;
 import com.vju.club.modules.user.repository.UserRepository;
 import com.vju.club.security.PermissionAuthorizationService;
+import com.vju.club.modules.user.dto.request.CreateUserRequest;
+import com.vju.club.modules.user.dto.request.ResetPasswordRequest;
+import com.vju.club.modules.auth.service.UserSessionService;
 import com.vju.club.modules.user.dto.request.UpdateProfileRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import com.vju.club.modules.user.dto.request.UpdateUserStatusRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
@@ -42,6 +46,43 @@ public class UserServiceImpl implements UserService {
     private final PermissionAuthorizationService authorizationService;
     private final AuditService auditService;
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
+    private final UserSessionService userSessionService;
+
+    @Transactional
+    @RequirePermission(UserConstants.PERMISSION_CREATE)
+    public UserResponse create(Actor actor, CreateUserRequest request) {
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
+        String studentCode = blankToNull(request.studentCode());
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new ApiException(HttpStatus.CONFLICT, "EMAIL_ALREADY_EXISTS", "Email is already registered");
+        }
+        if (studentCode != null && userRepository.existsByStudentCodeIgnoreCase(studentCode)) {
+            throw new ApiException(HttpStatus.CONFLICT, "STUDENT_CODE_ALREADY_EXISTS", "Student code is already registered");
+        }
+        User user = new User();
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setFullName(request.fullName().trim());
+        user.setStudentCode(studentCode);
+        user.setPhone(blankToNull(request.phone()));
+        user.setStatus(UserStatus.ACTIVE);
+        User saved = userRepository.saveAndFlush(user);
+        auditService.record(actor.id(), AuditAction.USER_CREATED, saved.getId(), null, null,
+                Map.of("email", saved.getEmail()));
+        return userMapper.toResponse(saved);
+    }
+
+    @Transactional
+    @RequirePermission(UserConstants.PERMISSION_RESET_PASSWORD)
+    public void resetPassword(Actor actor, UUID userId, ResetPasswordRequest request) {
+        User user = findUser(userId);
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        userRepository.saveAndFlush(user);
+        int revoked = userSessionService.endAllSessions(userId);
+        auditService.record(actor.id(), AuditAction.USER_PASSWORD_RESET, userId, null, null,
+                Map.of("revokedSessions", revoked));
+    }
 
     @Transactional(readOnly = true)
     public UserResponse getCurrent(Actor actor) {
@@ -98,6 +139,9 @@ public class UserServiceImpl implements UserService {
         Map<String, Object> before = Map.of("status", user.getStatus());
         user.setStatus(request.status());
         User saved = userRepository.saveAndFlush(user);
+        if (saved.getStatus() != UserStatus.ACTIVE) {
+            userSessionService.endAllSessions(userId);
+        }
         auditService.recordChange(actor.id(), request.status() == UserStatus.ACTIVE
                 ? AuditAction.USER_UNLOCKED : AuditAction.USER_LOCKED, userId, null, before,
                 Map.of("status", saved.getStatus()));

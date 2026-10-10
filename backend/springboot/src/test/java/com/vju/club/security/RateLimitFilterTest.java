@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class RateLimitFilterTest {
     @Test
-    void limitsLoginRegisterAndRefreshEndpoints() throws Exception {
+    void limitsTheLoginEndpoint() throws Exception {
         RateLimitFilter filter = filter(2);
 
         MockHttpServletResponse first = invoke(filter, "/api/v1/auth/login", "10.0.0.1");
@@ -59,11 +59,11 @@ class RateLimitFilterTest {
     @Test
     void filterStopsTheChainWhenQuotaIsExceeded() throws Exception {
         RateLimitFilter filter = filter(1);
-        invoke(filter, "/api/v1/auth/refresh-token", "10.0.0.1");
+        invoke(filter, "/api/v1/auth/login", "10.0.0.1");
 
         MockFilterChain chain = new MockFilterChain();
         MockHttpServletResponse response = new MockHttpServletResponse();
-        filter.doFilter(request("/api/v1/auth/refresh-token", "10.0.0.1", "POST"), response, chain);
+        filter.doFilter(request("/api/v1/auth/login", "10.0.0.1", "POST"), response, chain);
 
         assertThat(response.getStatus()).isEqualTo(429);
         assertThat(chain.getRequest()).isNull();

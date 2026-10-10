@@ -1,44 +1,19 @@
 package com.vju.club.modules.auth.service;
 
-import com.vju.club.modules.audit.enums.AuditAction;
-import com.vju.club.modules.audit.service.AuditService;
-import com.vju.club.modules.auth.dto.response.AuthResponse;
 import com.vju.club.modules.auth.dto.request.ChangePasswordRequest;
 import com.vju.club.modules.auth.dto.request.LoginRequest;
-import com.vju.club.modules.auth.dto.request.RefreshTokenRequest;
-import com.vju.club.modules.auth.dto.request.RegisterRequest;
-import com.vju.club.modules.auth.dto.response.TokenResponse;
+import com.vju.club.modules.auth.dto.response.AuthResponse;
 import com.vju.club.modules.user.dto.response.UserResponse;
-import com.vju.club.config.JwtProperties;
-import com.vju.club.modules.auth.entity.RefreshToken;
-import com.vju.club.modules.user.entity.User;
-import com.vju.club.modules.user.enums.UserStatus;
-import com.vju.club.error.ApiException;
-import com.vju.club.modules.auth.repository.RefreshTokenRepository;
-import com.vju.club.modules.user.repository.UserRepository;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.Locale;
-import java.util.Map;
+import com.vju.club.security.ClubPrincipal;
+
 import java.util.UUID;
 
 public interface AuthService {
-    UserResponse register(RegisterRequest request);
-
-    AuthResponse login(LoginRequest request);
-
-    AuthResponse refresh(RefreshTokenRequest request);
-
-    void logout(String refreshToken);
+    SignedIn login(LoginRequest request);
 
     UserResponse getCurrentUser(UUID userId);
 
-    void changePassword(UUID userId, ChangePasswordRequest request);
+    void changePassword(UUID userId, ChangePasswordRequest request, String currentSessionId);
+
+    record SignedIn(ClubPrincipal principal, AuthResponse response) { }
 }

@@ -1,4 +1,4 @@
-package com.vju.club.modules.auth.dto.request;
+package com.vju.club.modules.user.dto.request;
 
 import static com.vju.club.modules.user.common.UserConstants.PHONE_PATTERN;
 import jakarta.validation.constraints.Pattern;
@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-public record RegisterRequest(
+public record CreateUserRequest(
         @NotBlank @Email @Size(max = 320) String email,
         @NotBlank @ValidPassword String password,
         @NotBlank @Size(max = 200) String fullName,

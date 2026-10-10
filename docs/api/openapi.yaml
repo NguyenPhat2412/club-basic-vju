@@ -11,7 +11,7 @@ servers:
 - url: http://localhost:8080/api/v1
   description: Backend local mặc định
 security:
-- bearerAuth: []
+- sessionAuth: []
 paths:
   /api-catalog:
     get:
@@ -41,54 +41,19 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
       security: []
-  /auth/register:
-    post:
-      operationId: auth.register
-      summary: Register account
+  /auth/csrf:
+    get:
+      operationId: auth.csrf
+      summary: Get CSRF cookie
       tags:
       - Auth
       x-permission: null
       x-implementation-status: IMPLEMENTED
       responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-              example:
-                id: 11111111-1111-4111-8111-111111111111
-                email: phat@example.test
-                fullName: Nguyễn Xuân Phát
-                studentCode: '23110209'
-                phone: 0900000000
-                avatarUrl: null
-                status: ACTIVE
-                createdAt: '2026-09-29T12:00:00Z'
-                updatedAt: '2026-09-29T12:00:00Z'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+        '204':
+          description: Đặt cookie XSRF-TOKEN (không HttpOnly) để frontend gửi lại trong header X-XSRF-TOKEN
       security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RegisterRequest'
-            example:
-              email: phat@example.test
-              password: DemoPassword123!
-              fullName: Nguyễn Xuân Phát
-              studentCode: '23110209'
-              phone: 0900000000
-      description: Tạo tài khoản ACTIVE, không tự cấp permission hoặc tạo membership.
-        Mật khẩu được hash. Email trùng trả 409.
+      description: 'Gọi trước request POST/PUT/PATCH/DELETE đầu tiên nếu trình duyệt chưa có cookie XSRF-TOKEN.'
   /auth/login:
     post:
       operationId: auth.login
@@ -115,11 +80,6 @@ paths:
                   status: ACTIVE
                   createdAt: '2026-09-29T12:00:00Z'
                   updatedAt: '2026-09-29T12:00:00Z'
-                tokens:
-                  accessToken: example-access-token-replace-after-login
-                  refreshToken: example-refresh-token-replace-after-login
-                  accessTokenExpiresAt: '2026-09-29T12:15:00Z'
-                  refreshTokenExpiresAt: '2026-10-29T12:00:00Z'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -138,8 +98,9 @@ paths:
             example:
               email: phat@example.test
               password: DemoPassword123!
-      description: Trả user và tokens. Tài khoản INACTIVE bị từ chối. Dùng tokens.accessToken
-        cho Bearer; giữ refreshToken để làm mới phiên.
+      description: 'Trả user và đặt cookie phiên CLUB_SESSION (HttpOnly, SameSite=Lax). Không có token trong body.
+        Gửi kèm header X-XSRF-TOKEN lấy từ cookie XSRF-TOKEN (GET /auth/csrf). Tài khoản INACTIVE bị từ chối (403).
+        Tài khoản do admin cấp (POST /users); quên mật khẩu liên hệ admin.'
   /auth/logout:
     post:
       operationId: auth.logout
@@ -159,66 +120,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RefreshTokenRequest'
-            example:
-              refreshToken: example-refresh-token-replace-after-login
-      description: Thu hồi refresh token của phiên. Frontend xóa token đã lưu sau
-        204; không parse JSON body.
-  /auth/refresh-token:
-    post:
-      operationId: auth.refreshToken
-      summary: Refresh access token
-      tags:
-      - Auth
-      x-permission: null
-      x-implementation-status: IMPLEMENTED
-      responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
-              example:
-                user:
-                  id: 11111111-1111-4111-8111-111111111111
-                  email: phat@example.test
-                  fullName: Nguyễn Xuân Phát
-                  studentCode: '23110209'
-                  phone: 0900000000
-                  avatarUrl: null
-                  status: ACTIVE
-                  createdAt: '2026-09-29T12:00:00Z'
-                  updatedAt: '2026-09-29T12:00:00Z'
-                tokens:
-                  accessToken: example-access-token-replace-after-login
-                  refreshToken: example-refresh-token-replace-after-login
-                  accessTokenExpiresAt: '2026-09-29T12:15:00Z'
-                  refreshTokenExpiresAt: '2026-10-29T12:00:00Z'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '409':
-          $ref: '#/components/responses/Conflict'
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RefreshTokenRequest'
-            example:
-              refreshToken: example-refresh-token-replace-after-login
-      description: 'Refresh token chỉ dùng một lần: lưu cặp token mới và thay refreshToken
-        cũ. Token hết hạn/đã thu hồi trả 401.'
+      description: 'Huỷ phiên đăng nhập hiện tại trên server và xoá cookie CLUB_SESSION. Không có body.'
   /auth/me:
     get:
       operationId: auth.me
@@ -358,6 +260,52 @@ paths:
       description: Cập nhật fullName, phone, avatarUrl của tài khoản hiện tại. Không
         cho sửa status, permission hay membership. Field bỏ qua/null giữ nguyên.
   /users:
+    post:
+      operationId: user.create
+      summary: Create account (admin)
+      tags:
+      - User
+      x-permission: user.create
+      x-implementation-status: IMPLEMENTED
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              example:
+                id: 11111111-1111-4111-8111-111111111111
+                email: phat@example.test
+                fullName: Nguyễn Xuân Phát
+                studentCode: '23110209'
+                phone: 0900000000
+                avatarUrl: null
+                status: ACTIVE
+                createdAt: '2026-09-29T12:00:00Z'
+                updatedAt: '2026-09-29T12:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+            example:
+              email: phat@example.test
+              password: DemoPassword123!
+              fullName: Nguyễn Xuân Phát
+              studentCode: '23110209'
+              phone: 0900000000
+      description: Chỉ admin (quyền user.create) tạo tài khoản; hệ thống không cho tự đăng ký.
+        Tài khoản tạo ra ở trạng thái ACTIVE, chưa có permission hay membership. Mật khẩu được hash. Email trùng trả 409.
     get:
       operationId: user.list
       summary: List users
@@ -473,6 +421,39 @@ paths:
         schema:
           type: string
           format: uuid
+  /users/{userId}/password:
+    patch:
+      operationId: user.reset_password
+      summary: Reset a user password (admin)
+      tags:
+      - User
+      x-permission: user.reset_password
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '204':
+          description: Password changed; every refresh token of the user is revoked
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: 'Người dùng quên mật khẩu liên hệ admin; admin đặt mật khẩu mới. Không có API tự đăng ký hay tự khôi phục mật khẩu.'
   /users/{userId}/status:
     patch:
       operationId: user.status
@@ -2453,12 +2434,461 @@ paths:
         '204': {description: Notification marked as read}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
+  /clubs/{clubId}/documents:
+    get:
+      operationId: document.list
+      summary: List club documents
+      tags:
+      - Document
+      x-permission: document.view
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: name
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: appDetailKey
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: deleted
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 20
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: 'Mới tạo trước. deleted=true (thùng rác) cần thêm document.restore.'
+    post:
+      operationId: document.upload
+      summary: Upload a document
+      tags:
+      - Document
+      x-permission: document.upload
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentUploadRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      description: 'File lưu trên R2 dưới năm/tháng/ngày/uuid.ext. Tên, đuôi và nội dung file được kiểm tra; trùng tên trả 409 DOCUMENT_NAME_ALREADY_EXISTS.'
+  /clubs/{clubId}/documents/count:
+    get:
+      operationId: document.count
+      summary: Count club documents
+      tags:
+      - Document
+      x-permission: document.view
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: appDetailKey
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: deleted
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCount'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: 'getDocCount.'
+  /clubs/{clubId}/documents/names:
+    get:
+      operationId: document.names
+      summary: List document names
+      tags:
+      - Document
+      x-permission: document.view
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: deleted
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentNames'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: 'getDocumentNames, sắp xếp A–Z.'
+  /documents/{documentId}:
+    get:
+      operationId: document.get
+      summary: Get a document
+      tags:
+      - Document
+      x-permission: document.view
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: 'Tài liệu đã xoá chỉ hiện với người có document.restore.'
+    patch:
+      operationId: document.update
+      summary: Rename a document
+      tags:
+      - Document
+      x-permission: document.update
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentPatchRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      description: 'Chủ sở hữu hoặc document.update. Tên mới phải giữ đuôi file; appDetailKey rỗng để xoá.'
+    delete:
+      operationId: document.delete
+      summary: Soft-delete a document
+      tags:
+      - Document
+      x-permission: document.delete
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: 'Xoá mềm: đánh dấu deleted, file vẫn còn trên R2. Chủ sở hữu hoặc document.delete.'
+  /documents/{documentId}/restore:
+    post:
+      operationId: document.restore
+      summary: Restore a deleted document
+      tags:
+      - Document
+      x-permission: document.restore
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      description: 'Khôi phục tài liệu đã xoá mềm; tên đã bị dùng trả 409.'
+  /documents/{documentId}/versions:
+    get:
+      operationId: document.versions
+      summary: List document versions
+      tags:
+      - Document
+      x-permission: document.view
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentVersion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: 'Mới nhất trước.'
+    post:
+      operationId: document.upload_version
+      summary: Upload a new version
+      tags:
+      - Document
+      x-permission: document.upload
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentVersionUploadRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      description: 'Cùng loại file, khác nội dung phiên bản hiện tại; expectedVersion cũ trả 409 DOCUMENT_VERSION_CONFLICT.'
+  /documents/{documentId}/download:
+    get:
+      operationId: document.download
+      summary: Download a document
+      tags:
+      - Document
+      x-permission: document.view
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: version
+        in: query
+        required: false
+        description: Bỏ trống = phiên bản hiện tại
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: File content (Content-Disposition attachment, ETag = SHA-256)
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: 'Stream file qua backend.'
+  /documents/{documentId}/download-url:
+    get:
+      operationId: document.download_url
+      summary: Get a presigned download link
+      tags:
+      - Document
+      x-permission: document.view
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: version
+        in: query
+        required: false
+        description: Bỏ trống = phiên bản hiện tại
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentDownloadUrl'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: 'Link R2 ký sẵn, hết hạn sau 5 phút; storage local trả đường dẫn /download.'
 components:
   securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: CLUB_SESSION
+      description: 'Cookie phiên do POST /auth/login đặt. Request thay đổi dữ liệu cần thêm header X-XSRF-TOKEN.'
   responses:
     BadRequest:
       description: Invalid request
@@ -2467,8 +2897,7 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
     Unauthorized:
-      description: Chưa xác thực (code UNAUTHORIZED) hoặc access token đã hết hạn (code
-        AUTH_TOKEN_EXPIRED, nên gọi /auth/refresh-token).
+      description: 'Chưa đăng nhập hoặc phiên đã hết hạn/bị huỷ (code UNAUTHORIZED); đăng nhập lại.'
       content:
         application/problem+json:
           schema:
@@ -2609,7 +3038,7 @@ components:
         total: {type: integer, format: int64}
         offset: {type: integer}
         limit: {type: integer}
-    RegisterRequest:
+    CreateUserRequest:
       type: object
       required:
       - email
@@ -2661,16 +3090,6 @@ components:
       examples:
       - email: phat@example.test
         password: DemoPassword123!
-    RefreshTokenRequest:
-      type: object
-      required:
-      - refreshToken
-      properties:
-        refreshToken:
-          type: string
-          maxLength: 512
-      examples:
-      - refreshToken: example-refresh-token-replace-after-login
     ChangePasswordRequest:
       type: object
       required:
@@ -2693,51 +3112,9 @@ components:
       type: object
       required:
       - user
-      - tokens
       properties:
         user:
           $ref: '#/components/schemas/User'
-        tokens:
-          $ref: '#/components/schemas/TokenResponse'
-      examples:
-      - user:
-          id: 11111111-1111-4111-8111-111111111111
-          email: phat@example.test
-          fullName: Nguyễn Xuân Phát
-          studentCode: '23110209'
-          phone: 0900000000
-          avatarUrl: null
-          status: ACTIVE
-          createdAt: '2026-09-29T12:00:00Z'
-          updatedAt: '2026-09-29T12:00:00Z'
-        tokens:
-          accessToken: example-access-token-replace-after-login
-          refreshToken: example-refresh-token-replace-after-login
-          accessTokenExpiresAt: '2026-09-29T12:15:00Z'
-          refreshTokenExpiresAt: '2026-10-29T12:00:00Z'
-    TokenResponse:
-      type: object
-      properties:
-        accessToken:
-          type: string
-        refreshToken:
-          type: string
-        accessTokenExpiresAt:
-          type: string
-          format: date-time
-        refreshTokenExpiresAt:
-          type: string
-          format: date-time
-      required:
-      - accessToken
-      - refreshToken
-      - accessTokenExpiresAt
-      - refreshTokenExpiresAt
-      examples:
-      - accessToken: example-access-token-replace-after-login
-        refreshToken: example-refresh-token-replace-after-login
-        accessTokenExpiresAt: '2026-09-29T12:15:00Z'
-        refreshTokenExpiresAt: '2026-10-29T12:00:00Z'
     User:
       type: object
       properties:
@@ -3922,6 +4299,91 @@ components:
           type: integer
         limit:
           type: integer
+    Document:
+      type: object
+      required: [id, clubId, ownerId, name, path, version, contentType, sizeBytes, checksumSha256, deleted, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        clubId: {type: string, format: uuid}
+        ownerId: {type: string, format: uuid}
+        name: {type: string}
+        path: {type: string, description: 'Object key trên R2: yyyy/MM/dd/uuid.ext'}
+        version: {type: integer}
+        contentType: {type: string}
+        sizeBytes: {type: integer, format: int64}
+        checksumSha256: {type: string}
+        appDetailKey: {type: [string, 'null']}
+        deleted: {type: boolean}
+        deletedAt: {type: [string, 'null'], format: date-time}
+        deletedBy: {type: [string, 'null'], format: uuid}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    DocumentListResponse:
+      type: object
+      required: [items, total, offset, limit]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Document'
+        total: {type: integer, format: int64}
+        offset: {type: integer}
+        limit: {type: integer}
+    DocumentVersion:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        documentId: {type: string, format: uuid}
+        version: {type: integer}
+        originalName: {type: string}
+        contentType: {type: string}
+        sizeBytes: {type: integer, format: int64}
+        checksumSha256: {type: string}
+        uploadedBy: {type: string, format: uuid}
+        createdAt: {type: string, format: date-time}
+    DocumentCount:
+      type: object
+      properties:
+        clubId: {type: string, format: uuid}
+        deleted: {type: boolean}
+        count: {type: integer, format: int64}
+    DocumentNames:
+      type: object
+      properties:
+        clubId: {type: string, format: uuid}
+        deleted: {type: boolean}
+        names:
+          type: array
+          items: {type: string}
+    DocumentDownloadUrl:
+      type: object
+      properties:
+        url: {type: string}
+        version: {type: integer}
+        expiresAt: {type: [string, 'null'], format: date-time}
+    DocumentPatchRequest:
+      type: object
+      properties:
+        name: {type: string, maxLength: 255}
+        appDetailKey: {type: string, maxLength: 100}
+    DocumentUploadRequest:
+      type: object
+      required: [file]
+      properties:
+        file: {type: string, format: binary}
+        name: {type: string}
+        appDetailKey: {type: string}
+    DocumentVersionUploadRequest:
+      type: object
+      required: [file]
+      properties:
+        file: {type: string, format: binary}
+        expectedVersion: {type: integer}
+    ResetPasswordRequest:
+      type: object
+      required: [newPassword]
+      properties:
+        newPassword: {type: string, minLength: 8}
 tags:
 - name: System
   description: Danh mục và trạng thái API
@@ -3945,3 +4407,5 @@ tags:
   description: Nhật ký thao tác nghiệp vụ
 - name: Notification
   description: Thông báo trong ứng dụng
+- name: Document
+  description: Tài liệu CLB lưu trên Cloudflare R2 (năm/tháng/ngày)

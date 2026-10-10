@@ -22,7 +22,7 @@ class ApiCatalogControllerTest {
         mockMvc.perform(get("/api/v1/api-catalog"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.path == '/api/v1/api-catalog')].status", hasItem("IMPLEMENTED")))
-                .andExpect(jsonPath("$[?(@.path == '/api/v1/auth/register')].status", hasItem("IMPLEMENTED")))
+                .andExpect(jsonPath("$[?(@.path == '/api/v1/users')].status", hasItem("IMPLEMENTED")))
                 .andExpect(jsonPath("$[?(@.path == '/api/v1/clubs/{clubId}/applications')].status", hasItem("IMPLEMENTED")))
                 .andExpect(jsonPath("$[?(@.path == '/api/v1/users/me/applications')].status", hasItem("IMPLEMENTED")))
                 .andExpect(jsonPath("$[?(@.path == '/api/v1/users/me/memberships')].status", hasItem("IMPLEMENTED")))

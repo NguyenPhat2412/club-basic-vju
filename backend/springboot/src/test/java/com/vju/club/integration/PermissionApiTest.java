@@ -24,9 +24,9 @@ class PermissionApiTest extends ApiIntegrationTest {
     void catalogRequiresPermissionView() throws Exception {
         problem(get("/api/v1/permissions"), memberToken, null, 403, "PERMISSION_DENIED");
         JsonNode all = call(get("/api/v1/permissions"), adminToken, null, 200);
-        assertThat(all.size()).isEqualTo(40);
+        assertThat(all.size()).isEqualTo(42);
         db.update("UPDATE permissions SET active = false WHERE permission_key = 'club.view'");
-        assertThat(call(get("/api/v1/permissions"), adminToken, null, 200).size()).isEqualTo(39);
+        assertThat(call(get("/api/v1/permissions"), adminToken, null, 200).size()).isEqualTo(41);
     }
 
     @ParameterizedTest(name = "{0} @ {1} -> {2}")
