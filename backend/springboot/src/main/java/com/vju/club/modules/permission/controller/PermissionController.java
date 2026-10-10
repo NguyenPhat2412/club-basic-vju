@@ -89,4 +89,16 @@ public class PermissionController {
         permissionService.revoke(actor, userId, permissionId, scope, clubId, departmentId);
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping("/users/{userId}/permissions/by-key/{permissionKey}")
+    public ResponseEntity<Void> revokeByKey(
+            Actor actor,
+            @PathVariable UUID userId,
+            @PathVariable String permissionKey,
+            @RequestParam(required = false) PermissionScope scope,
+            @RequestParam(required = false) UUID clubId,
+            @RequestParam(required = false) UUID departmentId) {
+        permissionService.revokeByKey(actor, userId, permissionKey, scope, clubId, departmentId);
+        return ResponseEntity.noContent().build();
+    }
 }

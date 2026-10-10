@@ -6,6 +6,9 @@ public final class UserConstants {
 
     public static final String PERMISSION_VIEW = "user.view";
     public static final String PERMISSION_CREATE = "user.create";
+    public static final String PERMISSION_UPDATE = "user.update";
+    public static final String PERMISSION_ACTIVE = "user.active";
+    public static final String PERMISSION_INACTIVE = "user.inactive";
     public static final String PERMISSION_RESET_PASSWORD = "user.reset_password";
     public static final String PERMISSION_MANAGE = "user.manage";
 

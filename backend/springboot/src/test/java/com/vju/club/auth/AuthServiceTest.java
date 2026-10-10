@@ -6,6 +6,7 @@ import com.vju.club.modules.auth.service.UserSessionService;
 
 import com.vju.club.modules.auth.service.impl.AuthServiceImpl;
 
+import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.modules.auth.dto.request.ChangePasswordRequest;
 import com.vju.club.modules.auth.dto.request.LoginRequest;
@@ -40,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -101,6 +103,7 @@ class AuthServiceTest {
             assertThat(attempt.getValue().getName()).isEqualTo("user@example.com");
             assertThat(signedIn.principal().id()).isEqualTo(user.getId());
             assertThat(signedIn.response().user().email()).isEqualTo("user@example.com");
+            verify(auditService).record(eq(user.getId()), eq(AuditAction.USER_LOGGED_IN), eq(user.getId()), eq(null), eq(null), any());
         }
 
         @Test
