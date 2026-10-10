@@ -20,6 +20,7 @@ import com.vju.club.security.PermissionAuthorizationService;
 import com.vju.club.modules.user.dto.request.CreateUserRequest;
 import com.vju.club.modules.user.dto.request.ResetPasswordRequest;
 import com.vju.club.modules.auth.service.UserSessionService;
+import com.vju.club.modules.user.dto.request.AdminUpdateUserRequest;
 import com.vju.club.modules.user.dto.request.UpdateProfileRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.vju.club.modules.user.dto.request.UpdateUserStatusRequest;
@@ -106,6 +107,32 @@ public class UserServiceImpl implements UserService {
         return userMapper.toResponse(saved);
     }
 
+    @Transactional
+    @RequirePermission(UserConstants.PERMISSION_UPDATE)
+    public UserResponse updateUser(Actor actor, UUID userId, AdminUpdateUserRequest request) {
+        User user = findUser(userId);
+        Map<String, Object> before = profile(user);
+        if (request.fullName() != null) {
+            if (request.fullName().isBlank()) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_FULL_NAME", "Full name cannot be blank");
+            }
+            user.setFullName(request.fullName().trim());
+        }
+        if (request.studentCode() != null) {
+            String code = blankToNull(request.studentCode());
+            if (code != null && !code.equalsIgnoreCase(user.getStudentCode())
+                    && userRepository.existsByStudentCodeIgnoreCase(code)) {
+                throw new ApiException(HttpStatus.CONFLICT, "STUDENT_CODE_ALREADY_EXISTS", "Student code is already registered");
+            }
+            user.setStudentCode(code);
+        }
+        if (request.phone() != null) user.setPhone(blankToNull(request.phone()));
+        if (request.avatarUrl() != null) user.setAvatarUrl(blankToNull(request.avatarUrl()));
+        User saved = userRepository.saveAndFlush(user);
+        auditService.recordChange(actor.id(), AuditAction.USER_PROFILE_UPDATED, saved.getId(), null, before, profile(saved));
+        return userMapper.toResponse(saved);
+    }
+
     @Transactional(readOnly = true)
     @RequirePermission(UserConstants.PERMISSION_VIEW)
     public UserResponse getById(Actor actor, UUID userId) {
@@ -151,6 +178,7 @@ public class UserServiceImpl implements UserService {
     private static Map<String, Object> profile(User user) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("fullName", user.getFullName());
+        values.put("studentCode", user.getStudentCode());
         values.put("phone", user.getPhone());
         values.put("avatarUrl", user.getAvatarUrl());
         return values;

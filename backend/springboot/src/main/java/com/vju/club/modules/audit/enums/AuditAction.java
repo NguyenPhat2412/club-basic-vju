@@ -4,6 +4,7 @@ public enum AuditAction {
     USER_REGISTERED(ResourceType.USER),
     USER_CREATED(ResourceType.USER),
     USER_PASSWORD_RESET(ResourceType.USER),
+    USER_LOGGED_IN(ResourceType.USER),
     USER_PROFILE_UPDATED(ResourceType.USER),
     USER_PASSWORD_CHANGED(ResourceType.USER),
     USER_LOCKED(ResourceType.USER),
