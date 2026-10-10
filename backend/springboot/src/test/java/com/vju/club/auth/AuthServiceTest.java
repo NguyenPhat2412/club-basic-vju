@@ -10,6 +10,7 @@ import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.modules.auth.dto.request.ChangePasswordRequest;
 import com.vju.club.modules.auth.dto.request.LoginRequest;
+import com.vju.club.modules.auth.dto.request.RegisterRequest;
 import com.vju.club.modules.user.entity.User;
 import com.vju.club.modules.user.enums.UserStatus;
 import com.vju.club.error.ApiException;
@@ -62,7 +63,13 @@ class AuthServiceTest {
     void setUp() {
         service = new AuthServiceImpl(userRepository, ENCODER, authenticationManager, userSessionService,
                 auditService, new UserMapperImpl());
-        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
+            User u = invocation.getArgument(0);
+            if (u.getId() == null) {
+                u.setId(UUID.randomUUID());
+            }
+            return u;
+        });
     }
 
     private static User user(String email, String password, UserStatus status) {
@@ -173,4 +180,71 @@ class AuthServiceTest {
                     HttpStatus.NOT_FOUND, "USER_NOT_FOUND");
         }
     }
+
+    @Nested
+    class Register {
+        @Test
+        void registersNewUserSuccessfully() {
+            when(userRepository.existsByEmailIgnoreCase("newuser@example.com")).thenReturn(false);
+            when(userRepository.existsByStudentCodeIgnoreCase("SV12345")).thenReturn(false);
+
+            RegisterRequest request = new RegisterRequest(
+                    " newuser@example.com ",
+                    "password123",
+                    " Le Van A ",
+                    " SV12345 ",
+                    " 0123456789 "
+            );
+
+            var response = service.register(request);
+
+            assertThat(response.email()).isEqualTo("newuser@example.com");
+            assertThat(response.fullName()).isEqualTo("Le Van A");
+            assertThat(response.studentCode()).isEqualTo("SV12345");
+            assertThat(response.phone()).isEqualTo("0123456789");
+            assertThat(response.status()).isEqualTo(UserStatus.ACTIVE.name());
+
+            ArgumentCaptor<User> savedCaptor = ArgumentCaptor.forClass(User.class);
+            verify(userRepository).saveAndFlush(savedCaptor.capture());
+            User saved = savedCaptor.getValue();
+            assertThat(saved.getEmail()).isEqualTo("newuser@example.com");
+            assertThat(ENCODER.matches("password123", saved.getPasswordHash())).isTrue();
+
+            verify(auditService).record(eq(saved.getId()), eq(AuditAction.USER_REGISTERED), eq(saved.getId()), eq(null), eq(null), any());
+        }
+
+        @Test
+        void duplicateEmailFailsWithConflict() {
+            when(userRepository.existsByEmailIgnoreCase("existing@example.com")).thenReturn(true);
+
+            RegisterRequest request = new RegisterRequest(
+                    "existing@example.com",
+                    "password123",
+                    "Duplicate User",
+                    "SV999",
+                    null
+            );
+
+            assertApiError(() -> service.register(request), HttpStatus.CONFLICT, "EMAIL_ALREADY_EXISTS");
+            verify(userRepository, never()).saveAndFlush(any());
+        }
+
+        @Test
+        void duplicateStudentCodeFailsWithConflict() {
+            when(userRepository.existsByEmailIgnoreCase("user2@example.com")).thenReturn(false);
+            when(userRepository.existsByStudentCodeIgnoreCase("SV999")).thenReturn(true);
+
+            RegisterRequest request = new RegisterRequest(
+                    "user2@example.com",
+                    "password123",
+                    "Duplicate Code",
+                    "SV999",
+                    null
+            );
+
+            assertApiError(() -> service.register(request), HttpStatus.CONFLICT, "STUDENT_CODE_ALREADY_EXISTS");
+            verify(userRepository, never()).saveAndFlush(any());
+        }
+    }
 }
+
