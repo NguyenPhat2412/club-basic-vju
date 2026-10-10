@@ -13,5 +13,5 @@ WORKDIR /app
 COPY --from=build /app/app.jar app.jar
 USER app
 EXPOSE 8080
-# JWT_SECRET and DB_* must be provided at runtime; the app refuses to start without JWT_SECRET.
+# DB_*, R2_* and the prod profile settings are provided at runtime (deploy/.env).
 ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar"]

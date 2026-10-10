@@ -19,7 +19,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
 @Service
-@Profile("local")
+@Profile({"local", "prod"})
 @RequiredArgsConstructor
 public class BootstrapAdminService {
     static final String ADMIN_ROLE = "SYSTEM_ADMIN";

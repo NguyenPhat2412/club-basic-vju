@@ -53,7 +53,12 @@ export async function apiBlob(path: string): Promise<Blob> {
 export const apiModel = {
   login: (email: string, password: string) => api<{ user: User }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   logout: () => api<void>('/auth/logout', { method: 'POST' }),
-  me: () => api<User>('/auth/me'), effectivePermissions: () => api<EffectivePermission[]>('/users/me/effective-permissions'), clubs: (query = '', category = '') => api<Page<Club>>(`/clubs?query=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}&limit=50`), club: (id: string) => api<Club>(`/clubs/${id}`),
+  changePassword: (currentPassword: string, newPassword: string) => api<void>('/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
+  users: (query = '', offset = 0, limit = 20) => api<Page<User>>(`/users?${new URLSearchParams({ query, offset: String(offset), limit: String(limit) })}`),
+  createUser: (body: { email: string; password: string; fullName: string; studentCode?: string; phone?: string }) => api<User>('/users', { method: 'POST', body: JSON.stringify(body) }),
+  resetPassword: (id: string, newPassword: string) => api<void>(`/users/${id}/password`, { method: 'PATCH', body: JSON.stringify({ newPassword }) }),
+  updateUserStatus: (id: string, status: 'ACTIVE' | 'INACTIVE') => api<User>(`/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  me: () => api<User>('/auth/me'), effectivePermissions: () => api<EffectivePermission[]>('/users/me/effective-permissions'), clubs: (query = '', category = '', offset = 0, limit = 50) => api<Page<Club>>(`/clubs?${new URLSearchParams({ query, category, offset: String(offset), limit: String(limit) })}`), club: (id: string) => api<Club>(`/clubs/${id}`),
   apply: (clubId: string, message: string) => api<Application>(`/clubs/${clubId}/applications`, { method: 'POST', body: JSON.stringify({ message }) }), myApplications: () => api<Page<ApplicationSummary>>('/users/me/applications?limit=50'), application: (id: string) => api<Application>(`/users/me/applications/${id}`), cancelApplication: (id: string) => api<Application>(`/users/me/applications/${id}/cancel`, { method: 'PATCH' }), myMemberships: () => api<Page<Membership>>('/users/me/memberships?limit=50'),
   clubApplications: (clubId: string) => api<Page<Application>>(`/clubs/${clubId}/applications?limit=50`), approve: (clubId: string, applicationId: string, note: string) => api<Application>(`/clubs/${clubId}/applications/${applicationId}/approve`, { method: 'POST', body: JSON.stringify({ reviewNote: note }) }), reject: (clubId: string, applicationId: string, note: string) => api<Application>(`/clubs/${clubId}/applications/${applicationId}/reject`, { method: 'POST', body: JSON.stringify({ reviewNote: note }) }),
   departments: (clubId: string) => api<Page<Department>>(`/clubs/${clubId}/departments?limit=50`),
@@ -80,7 +85,7 @@ export const apiModel = {
 };
 export type DocumentItem = { id: string; clubId: string; ownerId: string; name: string; path: string; version: number; contentType: string; sizeBytes: number; checksumSha256: string; appDetailKey?: string; deleted: boolean; deletedAt?: string; deletedBy?: string; createdAt: string; updatedAt: string };
 export type DocumentVersion = { id: string; documentId: string; version: number; originalName: string; contentType: string; sizeBytes: number; checksumSha256: string; uploadedBy: string; createdAt: string };
-export type User = { id: string; email: string; fullName?: string; studentCode?: string; status: string };
+export type User = { id: string; email: string; fullName?: string; studentCode?: string; phone?: string; avatarUrl?: string; status: string; createdAt?: string; updatedAt?: string };
 export type EffectivePermission = { permissionKey: string; scope: string; clubId?: string; departmentId?: string; source: string; roleCode?: string };
 export type Club = { id: string; code: string; name: string; description?: string; activityField?: string; contactEmail?: string; status: string; logoUrl?: string; coverUrl?: string };
 export type ApplicationSummary = { id: string; clubId: string; clubCode: string; clubName: string; status: string; createdAt: string; reviewedAt?: string };

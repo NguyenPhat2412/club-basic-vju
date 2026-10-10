@@ -17,6 +17,7 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 
 import java.time.Clock;
@@ -74,7 +75,13 @@ public class SecurityBeansConfig {
     }
 
     @Bean
-    CsrfTokenRepository csrfTokenRepository() {
-        return CookieCsrfTokenRepository.withHttpOnlyFalse();
+    CsrfTokenRepository csrfTokenRepository(@Value("${app.security.cookie-domain:}") String cookieDomain,
+                                            @Value("${app.session.cookie-secure:true}") boolean secure) {
+        CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        repository.setCookieCustomizer(cookie -> {
+            cookie.path("/").secure(secure).sameSite("Lax");
+            if (!cookieDomain.isBlank()) cookie.domain(cookieDomain.strip());
+        });
+        return repository;
     }
 }

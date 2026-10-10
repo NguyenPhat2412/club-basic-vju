@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("local")
+@Profile({"local", "prod"})
 @RequiredArgsConstructor
 public class BootstrapAdminRunner implements CommandLineRunner {
     private final BootstrapAdminService bootstrapAdminService;
