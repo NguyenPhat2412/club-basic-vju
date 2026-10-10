@@ -29,19 +29,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-/**
- * Acceptance checks for the Sprint 1 backend "Definition of Done". Each test names the checklist
- * item it proves, using this system's actual routes (under /api/v1).
- */
 @DisplayName("Sprint 1 – Definition of Done")
 class SprintOneAcceptanceTest extends ApiIntegrationTest {
-
     private String login(String email, String password) throws Exception {
         return call(post("/api/v1/auth/login"), null, Map.of("email", email, "password", password), 200)
                 .at("/tokens/accessToken").asText();
     }
-
-    // ---- Checklist 18: the five mandatory API flows -------------------------------------------
 
     @Test
     @DisplayName("Test 1: Register → Login → GET /me")
@@ -79,8 +72,6 @@ class SprintOneAcceptanceTest extends ApiIntegrationTest {
         problem(patch("/api/v1/memberships/" + inB), memberToken, Map.of("status", "SUSPENDED"), 403, "PERMISSION_DENIED");
         assertThat(db.queryForObject("SELECT status FROM memberships WHERE id = ?", String.class, inB)).isEqualTo("ACTIVE");
     }
-
-    // ---- Checklist 1, 19: authentication & security --------------------------------------------
 
     @Test
     @DisplayName("Mật khẩu được hash (BCrypt), không lưu plain text")
@@ -142,8 +133,6 @@ class SprintOneAcceptanceTest extends ApiIntegrationTest {
         assertThat(count("SELECT count(*) FROM users")).isEqualTo(2);
     }
 
-    // ---- Checklist 3–6: permission catalog, grants, scopes ----------------------------------------
-
     @Test
     @DisplayName("Permission catalog có 20–40 quyền, nhóm được theo module")
     void permissionCatalog() throws Exception {
@@ -199,12 +188,10 @@ class SprintOneAcceptanceTest extends ApiIntegrationTest {
     @DisplayName("Không hard-code chức vụ: code Java không kiểm tra President/Head/Member")
     void noHardCodedPositions() throws IOException {
         try (Stream<Path> files = Files.walk(Path.of("src/main/java"))) {
-            // bootstrap/ only seeds demo data (it names roles to assign them); no decision may depend on a role name.
             List<String> offenders = files.filter(f -> f.toString().endsWith(".java"))
                     .filter(f -> !f.toString().contains("/bootstrap/")).filter(f -> {
                 try {
                     String code = Files.readString(f);
-                    // This is a public conflict code, not a role lookup or authorization branch.
                     code = code.replace("ALREADY_CLUB_MEMBER", "");
                     return code.contains("PRESIDENT") || code.contains("DEPARTMENT_HEAD") || code.contains("CLUB_MEMBER");
                 } catch (IOException e) {
@@ -214,8 +201,6 @@ class SprintOneAcceptanceTest extends ApiIntegrationTest {
             assertThat(offenders).isEmpty();
         }
     }
-
-    // ---- Checklist 7–10: club, department, membership, department member -------------------------
 
     @Test
     @DisplayName("Luồng nghiệp vụ: tạo CLB → ban → thành viên → xếp vào ban")
@@ -231,8 +216,6 @@ class SprintOneAcceptanceTest extends ApiIntegrationTest {
         call(patch("/api/v1/departments/" + dept + "/status"), adminToken, Map.of("status", "INACTIVE"), 200);
         call(delete("/api/v1/memberships/" + membership), adminToken, null, 204);
     }
-
-    // ---- Checklist 13: validation ------------------------------------------------------------------
 
     @Test
     @DisplayName("Validation: email, trùng email, trùng mã CLB, membership trùng, tham chiếu không tồn tại")
@@ -252,8 +235,6 @@ class SprintOneAcceptanceTest extends ApiIntegrationTest {
                 Map.of("permissionId", UUID.randomUUID(), "scope", "GLOBAL"), 404, "PERMISSION_NOT_FOUND");
     }
 
-    // ---- Checklist 14: unified errors ----------------------------------------------------------------
-
     @Test
     @DisplayName("Lỗi thống nhất: mọi lỗi có status + code + mô tả")
     void unifiedErrors() throws Exception {
@@ -266,8 +247,6 @@ class SprintOneAcceptanceTest extends ApiIntegrationTest {
             assertThat(error.path("detail").asText()).isNotBlank();
         }
     }
-
-    // ---- Checklist 15: API documentation -------------------------------------------------------------
 
     @Test
     @DisplayName("Swagger/OpenAPI: đủ module, có bearer auth, contract ghi quyền cần có")

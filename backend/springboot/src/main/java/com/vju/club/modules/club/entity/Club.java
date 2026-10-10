@@ -16,7 +16,6 @@ import jakarta.persistence.Table;
 @Getter
 @Setter
 public class Club extends TimestampedEntity {
-
     @Column(nullable = false, length = 50)
     private String code;
 

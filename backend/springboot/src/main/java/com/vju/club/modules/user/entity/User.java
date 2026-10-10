@@ -16,7 +16,6 @@ import jakarta.persistence.Table;
 @Getter
 @Setter
 public class User extends TimestampedEntity {
-
     @Column(nullable = false, length = 320)
     private String email;
 

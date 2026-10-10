@@ -12,7 +12,6 @@ import java.util.List;
 @RequestMapping("/api/v1/api-catalog")
 @RequiredArgsConstructor
 public class ApiCatalogController {
-
     private final ApiCatalogService catalogService;
 
     @PublicEndpoint(reason = "API inventory")

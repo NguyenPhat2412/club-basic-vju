@@ -17,7 +17,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -36,17 +36,9 @@ import java.util.function.Supplier;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 
-/**
- * Base for API tests against a real PostgreSQL (docker-compose.test.yml). Every subclass shares one
- * Spring context and one isolated schema; data is wiped before each test.
- *
- * <p>Fixture: {@code admin} holds every permission globally, {@code member} holds none. Clubs A and B
- * each have departments (A1, A2 in A; B1 in B).
- */
 @SpringBootTest
 @ActiveProfiles("test")
 abstract class ApiIntegrationTest {
-
     private static final String SCHEMA = "test_it_" + UUID.randomUUID().toString().replace("-", "");
     static final String PASSWORD = "Password123!";
 
@@ -91,8 +83,6 @@ abstract class ApiIntegrationTest {
         adminToken = token(admin);
         memberToken = token(member);
     }
-
-    // ---- fixtures -------------------------------------------------------------------------------
 
     UUID user(String email) {
         return user(email, "ACTIVE");
@@ -165,16 +155,13 @@ abstract class ApiIntegrationTest {
         return db.queryForObject(sql, Integer.class, args);
     }
 
-    // ---- HTTP -----------------------------------------------------------------------------------
-
-    MockHttpServletResponse send(MockHttpServletRequestBuilder request, String bearer, Object body) throws Exception {
+    MockHttpServletResponse send(AbstractMockHttpServletRequestBuilder<?> request, String bearer, Object body) throws Exception {
         if (bearer != null) request.header("Authorization", "Bearer " + bearer);
         if (body != null) request.contentType("application/json").content(json.writeValueAsString(body));
         return mvc.perform(request).andReturn().getResponse();
     }
 
-    /** Sends the request, asserts the status and returns the parsed JSON body (null node if empty). */
-    JsonNode call(MockHttpServletRequestBuilder request, String bearer, Object body, int status) throws Exception {
+    JsonNode call(AbstractMockHttpServletRequestBuilder<?> request, String bearer, Object body, int status) throws Exception {
         var built = request.buildRequest(context.getServletContext());
         MockHttpServletResponse response = send(request, bearer, body);
         String content = response.getContentAsString();
@@ -183,8 +170,7 @@ abstract class ApiIntegrationTest {
         return content.isEmpty() ? json.nullNode() : json.readTree(content);
     }
 
-    /** Asserts an RFC 7807 error with the given status and code. */
-    JsonNode problem(MockHttpServletRequestBuilder request, String bearer, Object body, int status, String code)
+    JsonNode problem(AbstractMockHttpServletRequestBuilder<?> request, String bearer, Object body, int status, String code)
             throws Exception {
         JsonNode node = call(request, bearer, body, status);
         assertThat(node.path("code").asText()).as("error code").isEqualTo(code);
@@ -197,7 +183,6 @@ abstract class ApiIntegrationTest {
         return UUID.fromString(node.path("id").asText());
     }
 
-    /** Fires all requests at the same instant and returns their HTTP statuses. */
     List<Integer> concurrently(int threads, Supplier<Callable<Integer>> request) throws Exception {
         ExecutorService pool = Executors.newFixedThreadPool(threads);
         try {

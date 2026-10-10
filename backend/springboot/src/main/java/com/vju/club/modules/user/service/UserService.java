@@ -22,7 +22,6 @@ import java.util.Set;
 import java.util.UUID;
 
 public interface UserService {
-
     UserResponse getCurrent(Actor actor);
 
     UserResponse updateProfile(Actor actor, UpdateProfileRequest request);
@@ -32,5 +31,4 @@ public interface UserService {
     PageResponse<UserResponse> search(Actor actor, String query, int offset, int limit, String orderBy, String orderType);
 
     UserResponse updateStatus(Actor actor, UUID userId, UpdateUserStatusRequest request);
-
 }

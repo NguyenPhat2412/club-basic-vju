@@ -10,9 +10,7 @@ import java.util.Map;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-/** Bean Validation rules on request DTOs: every invalid input is a 400, never a 500. */
 class RequestValidationApiTest extends ApiIntegrationTest {
-
     private Map<String, Object> registration(String email, String password) {
         Map<String, Object> body = new HashMap<>();
         body.put("email", email);
@@ -24,7 +22,6 @@ class RequestValidationApiTest extends ApiIntegrationTest {
     @Test
     void passwordMayUseTheFull72ByteBcryptLimitButNotMore() throws Exception {
         call(post("/api/v1/auth/register"), null, registration("p72@test.local", "x".repeat(72)), 201);
-        // Used to reach BCrypt and fail with 500.
         problem(post("/api/v1/auth/register"), null, registration("p73@test.local", "x".repeat(73)), 400, "VALIDATION_ERROR");
         problem(post("/api/v1/auth/register"), null, registration("p128@test.local", "x".repeat(128)), 400, "VALIDATION_ERROR");
     }
@@ -32,7 +29,6 @@ class RequestValidationApiTest extends ApiIntegrationTest {
     @Test
     void passwordLimitCountsBytesSoLongAccentedPasswordsAreRejected() throws Exception {
         call(post("/api/v1/auth/register"), null, registration("vn-ok@test.local", "Mật khẩu tốt 123"), 201);
-        // 30 characters but 90 UTF-8 bytes.
         problem(post("/api/v1/auth/register"), null, registration("vn-long@test.local", "ậ".repeat(30)), 400, "VALIDATION_ERROR");
     }
 

@@ -10,12 +10,9 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import java.util.Optional;
 import java.util.UUID;
 
-/** Fills @CreatedBy / @LastModifiedBy with the id of the user making the current request. */
 @Configuration
 @EnableJpaAuditing(auditorAwareRef = "currentUserAuditor")
 public class JpaAuditingConfig {
-
-    /** Empty when nobody is signed in (registration, seeding, scheduled jobs), which stores NULL. */
     @Bean
     AuditorAware<UUID> currentUserAuditor() {
         return () -> Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())

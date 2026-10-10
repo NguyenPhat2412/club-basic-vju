@@ -1,7 +1,6 @@
 package com.vju.club.modules.club.common;
 
 public final class ClubConstants {
-
     private ClubConstants() {
     }
 

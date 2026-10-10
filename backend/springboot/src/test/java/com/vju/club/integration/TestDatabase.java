@@ -3,14 +3,7 @@ package com.vju.club.integration;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
-/**
- * The PostgreSQL used by integration tests. By default one throw-away container is started for the
- * whole test run (Docker required, nothing to set up). Setting {@code TEST_DB_URL} (plus
- * {@code TEST_DB_USERNAME}/{@code TEST_DB_PASSWORD}) points the tests at an existing database
- * instead, e.g. the one from docker-compose.test.yml.
- */
 final class TestDatabase {
-
     private static final String EXTERNAL_URL = System.getenv("TEST_DB_URL");
     private static PostgreSQLContainer container;
 
@@ -29,7 +22,6 @@ final class TestDatabase {
         properties.add("spring.datasource.password", postgres::getPassword);
     }
 
-    /** Started once and shared by every Spring context; Testcontainers removes it when the JVM exits. */
     private static synchronized PostgreSQLContainer container() {
         if (container == null) {
             container = new PostgreSQLContainer("postgres:16-alpine")

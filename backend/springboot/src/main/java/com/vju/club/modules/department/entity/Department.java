@@ -20,7 +20,6 @@ import jakarta.persistence.Table;
 @Getter
 @Setter
 public class Department extends TimestampedEntity {
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "club_id", nullable = false)
     private Club club;

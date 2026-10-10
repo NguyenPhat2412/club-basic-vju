@@ -22,7 +22,6 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class SecurityBeansConfigTest {
-
     private final SecurityBeansConfig config = new SecurityBeansConfig();
 
     private static JwtProperties withSecret(String secret) {

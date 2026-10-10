@@ -12,3 +12,7 @@ app:
   # Integration tests log in far more often than a real client; a dedicated test covers the limiter.
   rate-limit:
     max-requests: 100000
+  storage:
+    type: local
+    local:
+      root: ${java.io.tmpdir}/club-test-documents

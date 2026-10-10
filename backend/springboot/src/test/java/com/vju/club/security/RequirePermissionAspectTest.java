@@ -18,8 +18,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 class RequirePermissionAspectTest {
-
-    /** A stand-in service showing every supported way to declare the scope. */
     public static class SampleService {
         @RequirePermission("audit.view")
         public String global(Actor actor) { return "ran"; }

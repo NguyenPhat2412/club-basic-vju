@@ -19,23 +19,17 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * Every error leaves the API as a ProblemDetail with a stable {@code code}. Framework errors
- * (unknown route, wrong method, missing parameter, ...) keep their real HTTP status instead of
- * falling through to 500.
- */
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
-
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    /** Database constraint name -> API error code, for races that slip past service-level checks. */
     private static final Map<String, String> CONSTRAINT_CODES = new LinkedHashMap<>();
 
     static {
@@ -50,6 +44,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         CONSTRAINT_CODES.put("uq_user_roles_active_", "ROLE_ALREADY_ASSIGNED");
         CONSTRAINT_CODES.put("uq_roles_code_ci", "ROLE_CODE_ALREADY_EXISTS");
         CONSTRAINT_CODES.put("uq_club_applications_pending", "APPLICATION_ALREADY_PENDING");
+        CONSTRAINT_CODES.put("uq_documents_club_name_live", "DOCUMENT_NAME_ALREADY_EXISTS");
+        CONSTRAINT_CODES.put("uq_document_versions_number", "DOCUMENT_VERSION_CONFLICT");
+        CONSTRAINT_CODES.put("ck_document_versions_sequence", "DOCUMENT_VERSION_CONFLICT");
     }
 
     @ExceptionHandler(ApiException.class)
@@ -110,12 +107,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @Override
+    protected ResponseEntity<Object> handleMaxUploadSizeExceededException(
+            MaxUploadSizeExceededException exception, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        return asObject(problem(HttpStatus.PAYLOAD_TOO_LARGE, "DOCUMENT_TOO_LARGE", "File is larger than the allowed maximum"));
+    }
+
+    @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(
             HttpMessageNotReadableException exception, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         return asObject(problem(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Request body is invalid"));
     }
 
-    /** Gives every remaining framework exception our {@code code}/{@code title} convention. */
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(
             Exception exception, Object body, HttpHeaders headers, HttpStatusCode status, WebRequest request) {

@@ -116,7 +116,6 @@ public class DepartmentServiceImpl implements DepartmentService {
         return values;
     }
 
-    /** Checks the permission at department scope or at the scope of the department's club. */
     private Department authorize(Actor actor, String permissionKey, UUID departmentId) {
         Department department = departmentRepository.findById(departmentId).orElseThrow(() ->
                 authorizationService.missingResource(actor, permissionKey,

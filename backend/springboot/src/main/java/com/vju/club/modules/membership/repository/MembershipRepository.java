@@ -13,11 +13,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface MembershipRepository extends JpaRepository<Membership, UUID>, JpaSpecificationExecutor<Membership> {
-
     @Override
     @EntityGraph(attributePaths = {"user", "club"})
     Page<Membership> findAll(Specification<Membership> spec, Pageable pageable);
 
-    /** The user's current membership in the club: at most one row is not LEFT. */
     Optional<Membership> findFirstByUser_IdAndClub_IdAndStatusNot(UUID userId, UUID clubId, MembershipStatus status);
 }

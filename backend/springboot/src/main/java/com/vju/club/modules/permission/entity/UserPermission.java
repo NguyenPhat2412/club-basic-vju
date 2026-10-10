@@ -23,7 +23,6 @@ import java.time.OffsetDateTime;
 @Table(name = "user_permissions")
 @Getter
 public class UserPermission extends BaseEntity {
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     @Setter

@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 @Profile("local")
 @RequiredArgsConstructor
 public class BootstrapAdminRunner implements CommandLineRunner {
-
     private final BootstrapAdminService bootstrapAdminService;
     private final DemoDataSeeder demoDataSeeder;
 

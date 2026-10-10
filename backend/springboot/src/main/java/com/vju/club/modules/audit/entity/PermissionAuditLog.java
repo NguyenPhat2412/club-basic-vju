@@ -27,7 +27,6 @@ import java.time.OffsetDateTime;
 @Getter
 @Setter
 public class PermissionAuditLog extends CreatedEntity {
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "actor_user_id", nullable = false)
     private User actorUser;
@@ -36,7 +35,6 @@ public class PermissionAuditLog extends CreatedEntity {
     @JoinColumn(name = "target_user_id", nullable = false)
     private User targetUser;
 
-    /** Exactly one of permission / role is set: the audited grant is either a permission or a role. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "permission_id")
     private Permission permission;

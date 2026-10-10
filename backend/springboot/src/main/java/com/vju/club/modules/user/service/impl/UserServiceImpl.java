@@ -36,7 +36,6 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
-
     private static final Set<String> SORTABLE = Set.of("email", "fullName", "createdAt", "status");
 
     private final UserRepository userRepository;
@@ -83,7 +82,6 @@ public class UserServiceImpl implements UserService {
         return new PageResponse<>(users, userPage.getTotalElements(), offset, limit);
     }
 
-    /** Only whitelisted fields can be sorted on; id breaks ties so paging is stable. */
     private static Sort sort(String orderBy, String orderType) {
         boolean asc = "asc".equalsIgnoreCase(orderType);
         if (!SORTABLE.contains(orderBy) || !(asc || "desc".equalsIgnoreCase(orderType))) {

@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public interface MembershipService {
-
     PageResponse<MembershipResponse> list(Actor actor, UUID clubId, MembershipStatus status, int offset, int limit);
 
     PageResponse<MembershipResponse> list(Actor actor, UUID clubId, MembershipStatus status, UUID departmentId, String search, int offset, int limit);
@@ -45,5 +44,4 @@ public interface MembershipService {
     MembershipResponse update(Actor actor, UUID membershipId, UpdateMembershipRequest request);
 
     void remove(Actor actor, UUID membershipId);
-
 }

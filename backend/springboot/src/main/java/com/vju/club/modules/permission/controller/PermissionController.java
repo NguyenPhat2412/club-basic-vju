@@ -31,7 +31,6 @@ import com.vju.club.modules.permission.enums.PermissionScope;
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
 public class PermissionController {
-
     private final PermissionService permissionService;
 
     @GetMapping("/permissions")

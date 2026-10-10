@@ -29,7 +29,6 @@ import java.time.Clock;
 @Configuration
 @EnableConfigurationProperties({JwtProperties.class, BootstrapAdminProperties.class, RateLimitProperties.class})
 public class SecurityBeansConfig {
-
     @Bean
     Clock applicationClock() {
         return Clock.systemUTC();
@@ -40,7 +39,6 @@ public class SecurityBeansConfig {
         return new RateLimitFilter(rateLimitService);
     }
 
-    /** These filters belong to the security chain only; stop Boot from also adding them to the servlet chain. */
     @Bean
     FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration(RateLimitFilter filter) {
         FilterRegistrationBean<RateLimitFilter> registration = new FilterRegistrationBean<>(filter);

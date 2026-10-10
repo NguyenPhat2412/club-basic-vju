@@ -14,7 +14,6 @@ import java.lang.annotation.Target;
 @Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.RECORD_COMPONENT})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ValidClubCode {
-
     String message() default "Invalid club code format (must be 2-50 alphanumeric characters, dots, underscores, or hyphens)";
 
     Class<?>[] groups() default {};

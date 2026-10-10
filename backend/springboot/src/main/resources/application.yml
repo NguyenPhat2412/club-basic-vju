@@ -20,6 +20,11 @@ spring:
   jackson:
     deserialization:
       fail-on-unknown-properties: true
+  servlet:
+    multipart:
+      # Slightly above app.storage.max-file-size so the precise DOCUMENT_TOO_LARGE check runs in the app.
+      max-file-size: ${DOCUMENT_MAX_UPLOAD_SIZE:21MB}
+      max-request-size: ${DOCUMENT_MAX_UPLOAD_SIZE:21MB}
 
 springdoc:
   api-docs:
@@ -49,3 +54,16 @@ app:
     refresh-token-cleanup:
       cron: ${REFRESH_TOKEN_CLEANUP_CRON:0 30 3 * * *}
       retention: ${REFRESH_TOKEN_CLEANUP_RETENTION:7d}
+  # Document files. local = a folder on this machine (development); r2 = Cloudflare R2 bucket.
+  storage:
+    type: ${STORAGE_TYPE:local}
+    max-file-size: ${DOCUMENT_MAX_FILE_SIZE:20MB}
+    download-url-ttl: ${DOCUMENT_DOWNLOAD_URL_TTL:5m}
+    local:
+      root: ${STORAGE_LOCAL_ROOT:data/documents}
+    r2:
+      # https://<account-id>.r2.cloudflarestorage.com — the S3 API endpoint, not the public/CDN domain.
+      endpoint: ${R2_ENDPOINT:}
+      bucket: ${R2_BUCKET:}
+      access-key-id: ${R2_ACCESS_KEY_ID:}
+      secret-access-key: ${R2_SECRET_ACCESS_KEY:}

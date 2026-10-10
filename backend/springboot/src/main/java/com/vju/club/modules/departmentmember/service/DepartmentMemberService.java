@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.UUID;
 
 public interface DepartmentMemberService {
-
     PageResponse<DepartmentMemberResponse> list(Actor actor, UUID departmentId, int offset, int limit);
 
     DepartmentMemberResponse add(Actor actor, UUID departmentId, AddDepartmentMemberRequest request);
@@ -33,5 +32,4 @@ public interface DepartmentMemberService {
     void remove(Actor actor, UUID departmentId, UUID membershipId);
 
     DepartmentMemberResponse move(Actor actor, UUID departmentId, UUID membershipId, MoveDepartmentMemberRequest request);
-
 }

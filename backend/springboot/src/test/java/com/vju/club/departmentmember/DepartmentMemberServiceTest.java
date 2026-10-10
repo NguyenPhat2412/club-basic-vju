@@ -46,7 +46,6 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DepartmentMemberServiceTest {
-
     @Mock DepartmentMemberRepository departmentMemberRepository;
     @Mock DepartmentRepository departmentRepository;
     @Mock MembershipRepository membershipRepository;

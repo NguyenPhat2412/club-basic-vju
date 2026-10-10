@@ -6,8 +6,6 @@ import java.time.Duration;
 
 @ConfigurationProperties(prefix = "app.security.jwt")
 public class JwtProperties {
-
-    /** No default: a missing secret must fail startup instead of silently using a public value. */
     private String secret;
     private Duration accessTokenTtl = Duration.ofMinutes(15);
     private Duration refreshTokenTtl = Duration.ofDays(30);

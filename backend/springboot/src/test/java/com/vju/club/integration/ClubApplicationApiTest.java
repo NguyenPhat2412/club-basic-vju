@@ -14,7 +14,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 class ClubApplicationApiTest extends ApiIntegrationTest {
-
     @Test
     void ownerAndReviewerListsSupportValidatedSortWithPagination() throws Exception {
         JsonNode older = call(post(applications(clubA)), memberToken, Map.of("message", "older"), 201);

@@ -25,7 +25,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class JwtTokenServiceTest {
-
     private static final SecretKey KEY = new SecretKeySpec(
             "unit-test-secret-0123456789-abcdefghijkl".getBytes(StandardCharsets.UTF_8), "HmacSHA256");
 

@@ -40,7 +40,6 @@ public class RateLimitService {
         }
     }
 
-    /** Drops finished windows at most once per window so the map cannot grow without bound. */
     private void sweepExpired(long now, long windowMillis) {
         long last = lastSweepAt.get();
         if (now - last < windowMillis || !lastSweepAt.compareAndSet(last, now)) {

@@ -19,7 +19,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 class AuditLogApiTest extends ApiIntegrationTest {
-
     private JsonNode logs(String... params) throws Exception {
         var request = get("/api/v1/audit-logs").param("limit", "100");
         for (int i = 0; i < params.length; i += 2) request.param(params[i], params[i + 1]);

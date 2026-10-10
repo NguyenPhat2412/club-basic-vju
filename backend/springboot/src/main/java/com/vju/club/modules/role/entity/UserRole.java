@@ -19,12 +19,10 @@ import jakarta.persistence.Table;
 
 import java.time.OffsetDateTime;
 
-/** A role held by a user at a scope; revoked rows are kept as history. */
 @Entity
 @Table(name = "user_roles")
 @Getter
 public class UserRole extends BaseEntity {
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     @Setter

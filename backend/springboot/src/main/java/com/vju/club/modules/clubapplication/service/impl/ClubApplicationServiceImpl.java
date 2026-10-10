@@ -47,7 +47,6 @@ import java.util.UUID;
 
 @Service
 public class ClubApplicationServiceImpl implements ClubApplicationService {
-
     private static final OffsetDateTime MIN_CREATED_AT = OffsetDateTime.parse("0001-01-01T00:00:00Z");
     private static final OffsetDateTime MAX_CREATED_AT = OffsetDateTime.parse("9999-12-31T23:59:59.999999Z");
 

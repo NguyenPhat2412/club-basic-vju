@@ -23,11 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Arrays;
 import java.util.UUID;
 
-/** Read side of the audit trail; requires the global audit.view permission. */
 @Service
 @RequiredArgsConstructor
 public class AuditQueryService {
-
     private final AuditLogRepository auditLogRepository;
     private final PermissionAuthorizationService authorizationService;
     private final AuditMapper auditMapper;

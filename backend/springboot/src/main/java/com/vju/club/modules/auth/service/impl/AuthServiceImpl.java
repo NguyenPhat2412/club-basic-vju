@@ -41,7 +41,6 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
-
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
@@ -82,7 +81,6 @@ public class AuthServiceImpl implements AuthService {
             authenticationManager.authenticate(
                     UsernamePasswordAuthenticationToken.unauthenticated(email, request.password()));
         } catch (AuthenticationException exception) {
-            // Only reveal that an account is inactive to someone who proved they own it.
             User user = userRepository.findByEmailIgnoreCase(email).orElse(null);
             if (user != null && user.getStatus() != UserStatus.ACTIVE
                     && passwordEncoder.matches(request.password(), user.getPasswordHash())) {
@@ -105,7 +103,6 @@ public class AuthServiceImpl implements AuthService {
             throw invalidRefreshToken();
         }
         if (refreshTokenRepository.revokeIfActive(existing.getId(), now) != 1) {
-            // Another request rotated this token first.
             throw invalidRefreshToken();
         }
         return new AuthResponse(userMapper.toResponse(user), issueTokens(user));

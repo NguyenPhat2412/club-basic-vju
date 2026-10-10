@@ -54,7 +54,6 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class PermissionServiceTest {
-
     @Mock PermissionRepository permissionRepository;
     @Mock UserPermissionRepository userPermissionRepository;
     @Mock PermissionAuditLogRepository permissionAuditLogRepository;
@@ -128,8 +127,6 @@ class PermissionServiceTest {
         return new ReplacePermissionsRequest(PermissionScope.CLUB, club.getId(), null, Set.of(keys), null);
     }
 
-    // ---- grant / revoke ----------------------------------------------------------------------------
-
     @Test
     void grantWritesBothTheGrantAndTheAuditTrail() {
         var response = service.grant(actor, target.getId(),
@@ -202,8 +199,6 @@ class PermissionServiceTest {
         assertThat(globalGrant.getRevokedAt()).isNotNull();
         assertThat(clubGrant.getRevokedAt()).isNull();
     }
-
-    // ---- replace (PUT) ------------------------------------------------------------------------------
 
     @Test
     void replaceGrantsMissingAndRevokesExtraPermissions() {

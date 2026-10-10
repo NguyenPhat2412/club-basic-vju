@@ -15,7 +15,6 @@ import java.util.concurrent.Executors;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class RateLimitServiceTest {
-
     @Test
     void allowsRequestsUntilLimitAndReportsRemainingQuota() {
         RateLimitService service = service(3, Duration.ofMinutes(1), Clock.systemUTC());

@@ -12,7 +12,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MigrationScriptTest {
-
     private static final Path MIGRATION = Path.of("src/main/resources/db/migration/V1__create_phase1_schema.sql");
     private static final Path PHASE_TWO_MIGRATION = Path.of("src/main/resources/db/migration/V7__club_applications.sql");
     private static final Set<String> TABLES = Set.of(

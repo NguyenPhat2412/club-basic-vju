@@ -12,10 +12,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 
-/** Deletes refresh tokens that can never be used again, so the table does not grow forever. */
 @Component
 public class RefreshTokenCleanupJob {
-
     private static final Logger log = LoggerFactory.getLogger(RefreshTokenCleanupJob.class);
 
     private final RefreshTokenRepository refreshTokenRepository;
@@ -29,7 +27,6 @@ public class RefreshTokenCleanupJob {
         this.retention = retention;
     }
 
-    /** Keeps dead tokens for {@code retention} (useful when investigating a session), then drops them. */
     @Scheduled(cron = "${app.security.refresh-token-cleanup.cron:0 30 3 * * *}")
     @Transactional
     public int purge() {

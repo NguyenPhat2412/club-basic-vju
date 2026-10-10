@@ -1,7 +1,6 @@
 package com.vju.club.modules.permission.common;
 
 public final class PermissionConstants {
-
     private PermissionConstants() {
     }
 

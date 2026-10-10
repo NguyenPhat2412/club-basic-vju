@@ -11,7 +11,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface RoleRepository extends JpaRepository<Role, UUID> {
-
     @EntityGraph(attributePaths = "permissions")
     @Query("SELECT r FROM Role r ORDER BY r.system DESC, r.code ASC")
     List<Role> findAllWithPermissions();

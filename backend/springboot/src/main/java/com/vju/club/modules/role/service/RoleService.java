@@ -38,7 +38,6 @@ import java.util.Set;
 import java.util.UUID;
 
 public interface RoleService {
-
     List<RoleResponse> list(Actor actor);
 
     RoleResponse get(Actor actor, UUID roleId);
@@ -52,5 +51,4 @@ public interface RoleService {
     UserRoleResponse assign(Actor actor, UUID userId, AssignRoleRequest request);
 
     void revoke(Actor actor, UUID userId, UUID assignmentId);
-
 }

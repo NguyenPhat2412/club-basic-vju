@@ -12,7 +12,6 @@ import java.util.Locale;
 import java.util.UUID;
 
 public final class ClubApplicationSpecifications {
-
     private ClubApplicationSpecifications() {}
 
     public static Specification<ClubApplication> forApplicant(UUID applicantId) {

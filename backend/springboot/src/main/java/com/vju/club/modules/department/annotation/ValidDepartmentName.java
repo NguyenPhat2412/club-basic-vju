@@ -14,7 +14,6 @@ import java.lang.annotation.Target;
 @Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.RECORD_COMPONENT})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ValidDepartmentName {
-
     String message() default "Department name cannot exceed max length";
 
     Class<?>[] groups() default {};

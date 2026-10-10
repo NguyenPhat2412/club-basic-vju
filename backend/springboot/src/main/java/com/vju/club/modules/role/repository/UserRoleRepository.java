@@ -11,7 +11,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface UserRoleRepository extends JpaRepository<UserRole, UUID> {
-
     @Query("SELECT ur FROM UserRole ur JOIN FETCH ur.role WHERE ur.user.id = :userId AND ur.revokedAt IS NULL "
             + "ORDER BY ur.grantedAt DESC")
     List<UserRole> findActiveByUser(@Param("userId") UUID userId);

@@ -19,7 +19,6 @@ import java.time.OffsetDateTime;
 @Getter
 @Setter
 public class RefreshToken extends CreatedEntity {
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

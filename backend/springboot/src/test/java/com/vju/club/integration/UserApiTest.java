@@ -16,7 +16,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 class UserApiTest extends ApiIntegrationTest {
-
     @Test
     void profileUpdateNormalizesAndIgnoresAbsentFields() throws Exception {
         JsonNode updated = call(patch("/api/v1/users/me"), memberToken,

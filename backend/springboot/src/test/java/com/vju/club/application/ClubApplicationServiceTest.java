@@ -49,7 +49,6 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ClubApplicationServiceTest {
-
     @Mock ClubApplicationRepository applicationRepository;
     @Mock ClubRepository clubRepository;
     @Mock UserRepository userRepository;

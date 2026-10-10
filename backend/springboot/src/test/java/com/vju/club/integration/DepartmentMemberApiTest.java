@@ -15,7 +15,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 class DepartmentMemberApiTest extends ApiIntegrationTest {
-
     private String members(UUID departmentId) {
         return "/api/v1/departments/" + departmentId + "/members";
     }

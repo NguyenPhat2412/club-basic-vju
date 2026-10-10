@@ -2,7 +2,6 @@ package com.vju.club.modules.permission.dto.response;
 
 import java.util.UUID;
 
-/** One thing the user may do and where; {@code source} is DIRECT or ROLE (then {@code roleCode} is set). */
 public record EffectivePermissionResponse(
         String permissionKey,
         String scope,

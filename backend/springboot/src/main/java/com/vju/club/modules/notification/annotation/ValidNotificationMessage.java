@@ -14,7 +14,6 @@ import java.lang.annotation.Target;
 @Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.RECORD_COMPONENT})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ValidNotificationMessage {
-
     String message() default "Notification message cannot exceed maximum allowed length";
 
     Class<?>[] groups() default {};

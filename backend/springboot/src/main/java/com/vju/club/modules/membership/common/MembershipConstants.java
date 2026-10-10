@@ -1,7 +1,6 @@
 package com.vju.club.modules.membership.common;
 
 public final class MembershipConstants {
-
     private MembershipConstants() {
     }
 

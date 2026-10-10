@@ -14,7 +14,6 @@ import java.time.Duration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class RateLimitFilterTest {
-
     @Test
     void limitsLoginRegisterAndRefreshEndpoints() throws Exception {
         RateLimitFilter filter = filter(2);

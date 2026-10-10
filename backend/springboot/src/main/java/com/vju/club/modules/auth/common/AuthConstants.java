@@ -1,7 +1,6 @@
 package com.vju.club.modules.auth.common;
 
 public final class AuthConstants {
-
     private AuthConstants() {
     }
 

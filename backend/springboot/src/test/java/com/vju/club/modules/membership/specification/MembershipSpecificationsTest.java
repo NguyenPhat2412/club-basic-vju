@@ -17,7 +17,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class MembershipSpecificationsTest {
-
     @SuppressWarnings("unchecked")
     private final Root<Membership> root = mock(Root.class);
     private final CriteriaQuery<?> query = mock(CriteriaQuery.class);

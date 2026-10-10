@@ -10,14 +10,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
-/**
- * Answers "may this actor do X here?". A permission counts when granted directly or through an
- * active role, at the department, the department's club, or globally.
- */
 @Component
 @RequiredArgsConstructor
 public class PermissionAuthorizationService {
-
     private final UserPermissionRepository userPermissionRepository;
 
     public boolean hasPermission(Actor actor, String permissionKey, UUID clubId, UUID departmentId) {
@@ -58,11 +53,6 @@ public class PermissionAuthorizationService {
         }
     }
 
-    /**
-     * Error for a resource id that does not exist. Only callers holding the permission globally may
-     * learn that (404); everyone else gets the same 403 as for an existing resource they cannot
-     * access, so ids cannot be probed.
-     */
     public ApiException missingResource(Actor actor, String permissionKey, ApiException notFound) {
         return hasGlobalPermission(actor, permissionKey) ? notFound : forbidden();
     }

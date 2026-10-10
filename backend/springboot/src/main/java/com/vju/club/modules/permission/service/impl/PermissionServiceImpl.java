@@ -52,7 +52,6 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class PermissionServiceImpl implements PermissionService {
-
     private final PermissionRepository permissionRepository;
     private final UserPermissionRepository userPermissionRepository;
     private final PermissionAuditLogRepository auditLogRepository;
@@ -93,7 +92,6 @@ public class PermissionServiceImpl implements PermissionService {
                 .map(permissionMapper::toUserPermissionResponse).toList();
     }
 
-    /** Direct grants and role-based permissions together: what the user can actually do. */
     @Transactional(readOnly = true)
     public List<EffectivePermissionResponse> listEffective(Actor actor, UUID targetUserId) {
         if (!targetUserId.equals(actor.id())) {
@@ -130,11 +128,6 @@ public class PermissionServiceImpl implements PermissionService {
                 createGrant(actorUser, target, permission, request.scope(), club, department, request.reason()));
     }
 
-    /**
-     * Makes the user's direct grants at one scope target exactly {@code permissionKeys}: missing
-     * permissions are granted and extra ones revoked, each audited. Needs permission.assign, plus
-     * permission.revoke when something is removed.
-     */
     @Transactional
     @RequirePermission("permission.assign")
     public List<UserPermissionResponse> replace(Actor actor, UUID targetUserId, ReplacePermissionsRequest request) {
@@ -249,7 +242,6 @@ public class PermissionServiceImpl implements PermissionService {
         return values;
     }
 
-    /** The club an action belongs to: the club itself, or the department's club. */
     private static UUID clubOf(Club club, Department department) {
         if (club != null) return club.getId();
         return department == null ? null : department.getClub().getId();
@@ -261,10 +253,6 @@ public class PermissionServiceImpl implements PermissionService {
                 && Objects.equals(grant.getDepartment() == null ? null : grant.getDepartment().getId(), departmentId);
     }
 
-    /**
-     * A permission may be granted at its own scope or any broader one (DEPARTMENT < CLUB < GLOBAL),
-     * so a club-level grant of a department permission covers every department of that club.
-     */
     private void validateScope(Permission permission, GrantPermissionRequest request) {
         if (!ScopeRules.canGrantAt(permission.getScope(), request.scope())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "PERMISSION_SCOPE_MISMATCH", "Grant scope does not match permission scope");

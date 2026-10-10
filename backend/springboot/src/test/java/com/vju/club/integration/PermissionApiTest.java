@@ -16,7 +16,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 class PermissionApiTest extends ApiIntegrationTest {
-
     private String grants(UUID userId) {
         return "/api/v1/users/" + userId + "/permissions";
     }
@@ -25,12 +24,11 @@ class PermissionApiTest extends ApiIntegrationTest {
     void catalogRequiresPermissionView() throws Exception {
         problem(get("/api/v1/permissions"), memberToken, null, 403, "PERMISSION_DENIED");
         JsonNode all = call(get("/api/v1/permissions"), adminToken, null, 200);
-        assertThat(all.size()).isEqualTo(35);
+        assertThat(all.size()).isEqualTo(40);
         db.update("UPDATE permissions SET active = false WHERE permission_key = 'club.view'");
-        assertThat(call(get("/api/v1/permissions"), adminToken, null, 200).size()).isEqualTo(34);
+        assertThat(call(get("/api/v1/permissions"), adminToken, null, 200).size()).isEqualTo(39);
     }
 
-    /** A permission may be granted at its own scope or any broader one, never narrower. */
     @ParameterizedTest(name = "{0} @ {1} -> {2}")
     @CsvSource({
             "user.view,              GLOBAL,     201",

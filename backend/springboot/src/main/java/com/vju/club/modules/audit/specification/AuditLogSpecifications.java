@@ -6,7 +6,6 @@ import org.springframework.data.jpa.domain.Specification;
 import java.util.UUID;
 
 public final class AuditLogSpecifications {
-
     private AuditLogSpecifications() {}
 
     public static Specification<AuditLog> hasResourceType(String resourceType) {

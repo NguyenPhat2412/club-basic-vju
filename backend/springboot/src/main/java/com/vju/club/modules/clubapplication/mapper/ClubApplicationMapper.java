@@ -9,12 +9,10 @@ import org.mapstruct.Mapping;
 
 @Mapper
 public interface ClubApplicationMapper {
-
     default ClubApplicationResponse toResponse(ClubApplication application) {
         return toResponse(application, null);
     }
 
-    /** Application details; membership fields are filled once an approval created the membership. */
     @Mapping(target = "id", source = "application.id")
     @Mapping(target = "applicantId", source = "application.applicant.id")
     @Mapping(target = "clubId", source = "application.club.id")

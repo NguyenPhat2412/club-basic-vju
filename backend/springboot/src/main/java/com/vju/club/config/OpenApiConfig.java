@@ -9,10 +9,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * Declares the Bearer JWT scheme so Swagger UI shows an "Authorize" button and sends the access
- * token on every call. Public routes simply ignore the header.
- */
 @Configuration
 @OpenAPIDefinition(
         info = @Info(title = "VJU Club API", version = "v1"),

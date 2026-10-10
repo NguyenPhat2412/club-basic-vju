@@ -7,7 +7,6 @@ import org.springframework.http.ProblemDetail;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class GlobalExceptionHandlerTest {
-
     @Test
     void pendingApplicationUniqueConstraintMapsToPendingConflict() {
         GlobalExceptionHandler handler = new GlobalExceptionHandler();

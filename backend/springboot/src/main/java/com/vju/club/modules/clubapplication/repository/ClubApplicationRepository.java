@@ -17,7 +17,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ClubApplicationRepository extends JpaRepository<ClubApplication, UUID>, JpaSpecificationExecutor<ClubApplication> {
-
     @Override
     @EntityGraph(attributePaths = {"applicant", "club", "reviewedBy"})
     Page<ClubApplication> findAll(Specification<ClubApplication> spec, Pageable pageable);

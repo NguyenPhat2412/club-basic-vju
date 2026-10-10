@@ -16,31 +16,19 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-/**
- * Writes the audit trail. Callers run inside their own transaction, so an action and its audit row
- * are committed (or rolled back) together.
- */
 @Service
 @RequiredArgsConstructor
 public class AuditServiceImpl implements AuditService {
-
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final AuditLogRepository auditLogRepository;
 
-    /**
-     * @param actorUserId who acted; {@code null} only when nobody is signed in (self-registration)
-     * @param clubId      club the action belongs to, so club-level history can be filtered
-     * @param before      field values before the change ({@code null} for creations)
-     * @param after       field values after the change ({@code null} for removals)
-     */
     public void record(UUID actorUserId, AuditAction action, UUID resourceId, UUID clubId,
                        Map<String, ?> before, Map<String, ?> after) {
         auditLogRepository.save(new AuditLog(actorUserId, action.name(), action.resourceType().name(), resourceId,
                 clubId, toJson(before), toJson(after)));
     }
 
-    /** Records only the fields that actually changed; nothing is written for a no-op update. */
     public void recordChange(UUID actorUserId, AuditAction action, UUID resourceId, UUID clubId,
                              Map<String, ?> before, Map<String, ?> after) {
         Map<String, Object> oldValues = new LinkedHashMap<>();

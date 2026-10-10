@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OffsetLimitRequestTest {
-
     @Test
     void keepsArbitraryOffsetsThatAreNotPageAligned() {
         OffsetLimitRequest request = new OffsetLimitRequest(3, 2);

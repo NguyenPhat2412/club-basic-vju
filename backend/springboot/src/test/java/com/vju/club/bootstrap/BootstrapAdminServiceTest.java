@@ -28,7 +28,6 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class BootstrapAdminServiceTest {
-
     @Mock UserRepository userRepository;
     @Mock RoleRepository roleRepository;
     @Mock UserRoleRepository userRoleRepository;

@@ -10,13 +10,11 @@ import org.hibernate.annotations.Immutable;
 
 import java.util.UUID;
 
-/** One business action: who did what to which resource, with JSON snapshots before and after. */
 @Entity
 @Immutable
 @Table(name = "audit_logs")
 @Getter
 public class AuditLog extends CreatedEntity {
-
     @Column(name = "actor_user_id")
     private UUID actorUserId;
 

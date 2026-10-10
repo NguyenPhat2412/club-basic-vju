@@ -2,6 +2,9 @@ spring:
   config:
     activate:
       on-profile: local
+    # Local secrets live in backend/springboot/.env.local (KEY=value lines, git-ignored), read the same
+    # way on macOS, Linux and Windows; real environment variables still take precedence.
+    import: optional:file:.env.local[.properties]
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/club}
     username: ${DB_USERNAME:club}

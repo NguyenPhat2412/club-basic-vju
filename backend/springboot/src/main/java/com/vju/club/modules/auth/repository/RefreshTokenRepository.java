@@ -13,16 +13,11 @@ import java.util.UUID;
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID> {
     Optional<RefreshToken> findByTokenHash(String tokenHash);
 
-    /**
-     * Revokes the token only if it is still active. The row lock taken by UPDATE makes this the
-     * single winner when two requests rotate the same refresh token concurrently.
-     */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE RefreshToken t SET t.revokedAt = :now "
             + "WHERE t.id = :id AND t.revokedAt IS NULL AND t.expiresAt > :now")
     int revokeIfActive(@Param("id") UUID id, @Param("now") OffsetDateTime now);
 
-    /** Removes tokens that expired or were revoked before the cutoff; they can never be used again. */
     @Modifying
     @Query("DELETE FROM RefreshToken t WHERE t.expiresAt < :cutoff OR t.revokedAt < :cutoff")
     int deleteDeadBefore(@Param("cutoff") OffsetDateTime cutoff);

@@ -10,12 +10,10 @@ import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
-/** Enforces {@link RequirePermission} before the annotated method runs. */
 @Aspect
 @Component
 @RequiredArgsConstructor
 public class RequirePermissionAspect {
-
     private final PermissionAuthorizationService authorizationService;
 
     @Before("@annotation(required)")

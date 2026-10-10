@@ -11,7 +11,6 @@ import org.mapstruct.Mapping;
 
 @Mapper
 public interface PermissionMapper {
-
     PermissionResponse toResponse(Permission permission);
 
     @Mapping(target = "userId", source = "user.id")

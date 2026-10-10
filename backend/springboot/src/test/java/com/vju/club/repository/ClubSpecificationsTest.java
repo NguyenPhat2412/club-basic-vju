@@ -23,7 +23,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ClubSpecificationsTest {
-
     @SuppressWarnings("unchecked")
     private final Root<Club> root = mock(Root.class);
     private final CriteriaQuery<?> query = mock(CriteriaQuery.class);

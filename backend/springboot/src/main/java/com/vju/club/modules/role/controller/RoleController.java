@@ -28,7 +28,6 @@ import java.util.UUID;
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
 public class RoleController {
-
     private final RoleService roleService;
 
     @GetMapping("/roles")

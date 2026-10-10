@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.UUID;
 
 public interface DepartmentService {
-
     PageResponse<DepartmentResponse> list(Actor actor, UUID clubId, int offset, int limit);
 
     DepartmentResponse get(Actor actor, UUID departmentId);
@@ -33,5 +32,4 @@ public interface DepartmentService {
     DepartmentResponse update(Actor actor, UUID departmentId, DepartmentPatchRequest request);
 
     DepartmentResponse updateStatus(Actor actor, UUID departmentId, DepartmentStatusRequest request);
-
 }

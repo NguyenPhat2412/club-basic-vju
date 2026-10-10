@@ -2,7 +2,6 @@ package com.vju.club.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-/** Demo data for the local profile; seeding is skipped unless a password is provided. */
 @ConfigurationProperties(prefix = "app.demo-data")
 public class DemoDataProperties {
     private boolean enabled = true;

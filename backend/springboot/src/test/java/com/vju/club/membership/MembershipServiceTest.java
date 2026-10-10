@@ -56,7 +56,6 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class MembershipServiceTest {
-
     private static final Instant NOW = Instant.parse("2026-09-30T00:00:00Z");
 
     @Mock MembershipRepository membershipRepository;
