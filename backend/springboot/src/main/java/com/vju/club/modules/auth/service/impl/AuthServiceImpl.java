@@ -11,6 +11,7 @@ import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.modules.auth.dto.response.AuthResponse;
 import com.vju.club.modules.auth.dto.request.ChangePasswordRequest;
 import com.vju.club.modules.auth.dto.request.LoginRequest;
+import com.vju.club.modules.auth.dto.request.RegisterRequest;
 import com.vju.club.modules.user.dto.response.UserResponse;
 import com.vju.club.modules.user.entity.User;
 import com.vju.club.modules.user.enums.UserStatus;
@@ -39,6 +40,29 @@ public class AuthServiceImpl implements AuthService {
     private final UserSessionService userSessionService;
     private final AuditService auditService;
     private final UserMapper userMapper;
+
+    @Transactional
+    public UserResponse register(RegisterRequest request) {
+        String email = normalizeEmail(request.email());
+        String studentCode = blankToNull(request.studentCode());
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new ApiException(HttpStatus.CONFLICT, "EMAIL_ALREADY_EXISTS", "Email is already registered");
+        }
+        if (studentCode != null && userRepository.existsByStudentCodeIgnoreCase(studentCode)) {
+            throw new ApiException(HttpStatus.CONFLICT, "STUDENT_CODE_ALREADY_EXISTS", "Student code is already registered");
+        }
+        User user = new User();
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setFullName(request.fullName().trim());
+        user.setStudentCode(studentCode);
+        user.setPhone(blankToNull(request.phone()));
+        user.setStatus(UserStatus.ACTIVE);
+        User saved = userRepository.saveAndFlush(user);
+        auditService.record(saved.getId(), AuditAction.USER_REGISTERED, saved.getId(), null, null,
+                Map.of("email", saved.getEmail()));
+        return userMapper.toResponse(saved);
+    }
 
     @Transactional(readOnly = true)
     public SignedIn login(LoginRequest request) {
@@ -88,5 +112,9 @@ public class AuthServiceImpl implements AuthService {
 
     private String normalizeEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }
