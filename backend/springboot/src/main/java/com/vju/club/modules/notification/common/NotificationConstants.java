@@ -1,7 +1,6 @@
 package com.vju.club.modules.notification.common;
 
 public final class NotificationConstants {
-
     private NotificationConstants() {
     }
 

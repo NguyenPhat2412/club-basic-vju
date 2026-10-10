@@ -22,7 +22,6 @@ import java.util.HexFormat;
 @Service
 @RequiredArgsConstructor
 public class JwtTokenService {
-
     public static final String ISSUER = "club-backend";
 
     private final JwtEncoder jwtEncoder;

@@ -1,7 +1,6 @@
 package com.vju.club.modules.department.common;
 
 public final class DepartmentConstants {
-
     private DepartmentConstants() {
     }
 

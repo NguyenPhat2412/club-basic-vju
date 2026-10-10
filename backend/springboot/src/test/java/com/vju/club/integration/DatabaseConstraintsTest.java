@@ -18,12 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-/**
- * The database itself (migration V3) must reject invalid data, even when it bypasses the
- * application: raw SQL, another service, or two requests racing past the service checks.
- */
 class DatabaseConstraintsTest extends ApiIntegrationTest {
-
     @Autowired RefreshTokenCleanupJob cleanupJob;
 
     private void rejects(String constraint, String sql, Object... args) {
@@ -31,8 +26,6 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining(constraint);
     }
-
-    // ---- 1. case-insensitive uniqueness ---------------------------------------------------------
 
     @Test
     void emailIsUniqueIgnoringCase() {
@@ -85,8 +78,6 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
         assertThat(statuses).filteredOn(s -> s == 201).hasSize(1);
     }
 
-    // ---- 2. department members stay inside their club -------------------------------------------
-
     @Test
     void departmentMemberCannotCrossClubsWhateverClubIdIsClaimed() {
         UUID inA = membership(user("x@test.local"), clubA);
@@ -116,8 +107,6 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
         assertThat(count("SELECT count(*) FROM department_members WHERE membership_id IN (?, ?)", m1, m2)).isZero();
     }
 
-    // ---- 3. membership status and left_at agree -------------------------------------------------
-
     @Test
     void leftAtIsSetExactlyWhenMembershipIsLeft() {
         UUID mid = membership(user("x@test.local"), clubA);
@@ -139,8 +128,6 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
         db.update("INSERT INTO memberships(user_id, club_id, status) VALUES (?, ?, 'ACTIVE')", userId, clubB);
     }
 
-    // ---- 4. audit logs are immutable -----------------------------------------------------------
-
     @Test
     void clubWithAuditHistoryCannotBeDeleted() throws Exception {
         UUID lonely = club("LONELY");
@@ -149,8 +136,6 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
         rejects("permission_audit_logs_club_id_fkey", "DELETE FROM clubs WHERE id = ?", lonely);
         assertThat(count("SELECT count(*) FROM permission_audit_logs WHERE club_id = ?", lonely)).isEqualTo(2);
     }
-
-    // ---- 5 & 6. revoked_by and permission keys --------------------------------------------------
 
     @Test
     void revokeRecordsWhoRevoked() throws Exception {
@@ -184,8 +169,6 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
                 applicant, clubA, "x".repeat(2001)))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
-
-    // ---- 7. indexes are usable --------------------------------------------------------------------
 
     private String plan(String sql) {
         return db.execute((ConnectionCallback<String>) connection -> {
@@ -223,8 +206,6 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
         assertThat(unindexed).isEmpty();
     }
 
-    // ---- 8. updated_at trigger -------------------------------------------------------------------
-
     @Test
     void rawSqlUpdatesStillBumpUpdatedAt() {
         db.update("UPDATE clubs SET updated_at = now() - interval '1 day' WHERE id = ?", clubA);
@@ -240,8 +221,6 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
         assertThat(db.queryForObject("SELECT updated_at FROM users WHERE id = ?", OffsetDateTime.class, member).getYear())
                 .isEqualTo(2030);
     }
-
-    // ---- refresh token cleanup -------------------------------------------------------------------
 
     @Test
     void cleanupDeletesOnlyTokensDeadForLongerThanRetention() {

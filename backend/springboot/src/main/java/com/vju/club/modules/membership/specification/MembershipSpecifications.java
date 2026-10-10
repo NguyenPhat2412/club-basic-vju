@@ -14,7 +14,6 @@ import java.util.Locale;
 import java.util.UUID;
 
 public final class MembershipSpecifications {
-
     private MembershipSpecifications() {}
 
     public static Specification<Membership> hasClubId(UUID clubId) {

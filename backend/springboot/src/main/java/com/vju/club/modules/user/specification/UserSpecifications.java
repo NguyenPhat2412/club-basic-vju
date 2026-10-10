@@ -6,7 +6,6 @@ import org.springframework.data.jpa.domain.Specification;
 import java.util.Locale;
 
 public final class UserSpecifications {
-
     private UserSpecifications() {}
 
     public static Specification<User> hasKeyword(String query) {

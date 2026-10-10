@@ -9,7 +9,6 @@ import java.util.Locale;
 import java.util.UUID;
 
 public final class ClubSpecifications {
-
     private ClubSpecifications() {}
 
     public static Specification<Club> hasKeyword(String keyword) {

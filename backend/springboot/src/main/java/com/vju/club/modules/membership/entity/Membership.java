@@ -23,7 +23,6 @@ import java.time.OffsetDateTime;
 @Getter
 @Setter
 public class Membership extends TimestampedEntity {
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

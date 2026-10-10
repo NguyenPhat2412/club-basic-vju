@@ -1,0 +1,3750 @@
+{
+  "info": {
+    "_postman_id": "21d89aff-200f-58eb-8dc1-be65277ae2f8",
+    "name": "VJU Club – Documents",
+    "description": "Black-box checks for club documents: upload, abnormal names/content, list/count/names, versions, download, presigned links, rename, permissions, soft delete and restore. Requires baseUrl, adminEmail, adminPassword; run from docs/api/postman so fixtures/ resolves.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Chuẩn bị",
+      "item": [
+        {
+          "name": "Admin đăng nhập",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{adminEmail}}\",\"password\":\"{{adminPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const id = Date.now().toString(36) + Math.floor(Math.random()*1e4).toString(36);",
+                  "pm.collectionVariables.set(\"runId\", id);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"adminAccess\", pm.response.json().tokens.accessToken);",
+                  "pm.collectionVariables.set(\"adminId\", pm.response.json().user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tạo CLB riêng cho lần chạy này",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"code\":\"PM-{{runId}}\",\"name\":\"Postman Docs {{runId}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"clubId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Đăng ký user thường (không có quyền)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/register"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"docs.{{runId}}@vju.local\",\"password\":\"Password123!\",\"fullName\":\"Docs Tester\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"memberId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User thường đăng nhập",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"docs.{{runId}}@vju.local\",\"password\":\"Password123!\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"memberAccess\", pm.response.json().tokens.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lấy id quyền document.view",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "permissions"
+              ],
+              "raw": "{{baseUrl}}/api/v1/permissions"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json().find(x => x.permissionKey === \"document.view\");",
+                  "pm.test(\"có quyền document.view\", () => pm.expect(p).to.be.ok);",
+                  "pm.collectionVariables.set(\"documentViewPermissionId\", p.id);",
+                  "pm.test(\"đủ 5 quyền document.*\", () => pm.expect(pm.response.json().filter(x => x.permissionKey.startsWith(\"document.\")).length).to.eql(5));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Upload",
+      "item": [
+        {
+          "name": "Upload PDF (tên tiếng Việt, appDetailKey)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "Nội quy CLB {{runId}}.pdf"
+                },
+                {
+                  "key": "appDetailKey",
+                  "type": "text",
+                  "value": "club.rules"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json();",
+                  "pm.collectionVariables.set(\"docId\", pm.response.json().id);",
+                  "pm.collectionVariables.set(\"docName\", d.name);",
+                  "pm.collectionVariables.set(\"v1Checksum\", d.checksumSha256);",
+                  "pm.test(\"version 1\", () => pm.expect(d.version).to.eql(1));",
+                  "pm.test(\"contentType từ đuôi file\", () => pm.expect(d.contentType).to.eql(\"application/pdf\"));",
+                  "pm.test(\"owner là admin\", () => pm.expect(d.ownerId).to.eql(pm.collectionVariables.get(\"adminId\")));",
+                  "pm.test(\"path trong thư mục của CLB\", () => pm.expect(d.path).to.match(new RegExp(\"^clubs/\" + pm.collectionVariables.get(\"clubId\") + \"/documents/.+\\\\.pdf$\")));",
+                  "pm.test(\"checksum SHA-256\", () => pm.expect(d.checksumSha256).to.match(/^[0-9a-f]{64}$/));",
+                  "pm.test(\"appDetailKey\", () => pm.expect(d.appDetailKey).to.eql(\"club.rules\"));",
+                  "pm.test(\"chưa xoá\", () => { pm.expect(d.deleted).to.be.false; pm.expect(d.deletedAt).to.be.null; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload PDF thứ hai",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "Kế hoạch {{runId}}.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"doc2Id\", pm.response.json().id);",
+                  "pm.collectionVariables.set(\"doc2Name\", pm.response.json().name);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload ảnh PNG",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/logo.png"
+                },
+                {
+                  "key": "appDetailKey",
+                  "type": "text",
+                  "value": "club.logo"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"pngId\", pm.response.json().id);",
+                  "pm.test(\"tên lấy từ file gửi lên\", () => pm.expect(pm.response.json().name).to.eql(\"logo.png\"));",
+                  "pm.test(\"image/png\", () => pm.expect(pm.response.json().contentType).to.eql(\"image/png\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trùng tên (khác hoa thường) → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v2.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "NỘI QUY CLB {{runId}}.PDF"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"code DOCUMENT_NAME_ALREADY_EXISTS\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_NAME_ALREADY_EXISTS\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Thiếu phần file → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "a.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code VALIDATION_ERROR\", () => pm.expect(pm.response.json().code).to.eql(\"VALIDATION_ERROR\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CLB không tồn tại → 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "00000000-0000-0000-0000-000000000000",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/00000000-0000-0000-0000-000000000000/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"code CLUB_NOT_FOUND\", () => pm.expect(pm.response.json().code).to.eql(\"CLUB_NOT_FOUND\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. File bất thường",
+      "item": [
+        {
+          "name": "Path traversal ../../etc/passwd.pdf",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "../../etc/passwd.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code INVALID_DOCUMENT_NAME\", () => pm.expect(pm.response.json().code).to.eql(\"INVALID_DOCUMENT_NAME\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Đường dẫn Windows C:\\\\x.pdf",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "C:\\x.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code INVALID_DOCUMENT_NAME\", () => pm.expect(pm.response.json().code).to.eql(\"INVALID_DOCUMENT_NAME\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tên thiết bị Windows CON.pdf",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "CON.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code INVALID_DOCUMENT_NAME\", () => pm.expect(pm.response.json().code).to.eql(\"INVALID_DOCUMENT_NAME\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "File ẩn .env.pdf",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": ".env.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code INVALID_DOCUMENT_NAME\", () => pm.expect(pm.response.json().code).to.eql(\"INVALID_DOCUMENT_NAME\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Không có đuôi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "noextension"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code INVALID_DOCUMENT_NAME\", () => pm.expect(pm.response.json().code).to.eql(\"INVALID_DOCUMENT_NAME\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ký tự cấm a?b.pdf",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "a?b.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code INVALID_DOCUMENT_NAME\", () => pm.expect(pm.response.json().code).to.eql(\"INVALID_DOCUMENT_NAME\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tên dài 300 byte",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code INVALID_DOCUMENT_NAME\", () => pm.expect(pm.response.json().code).to.eql(\"INVALID_DOCUMENT_NAME\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Đuôi kép invoice.exe.pdf",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "invoice.exe.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code SUSPICIOUS_DOCUMENT_NAME\", () => pm.expect(pm.response.json().code).to.eql(\"SUSPICIOUS_DOCUMENT_NAME\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ký tự đảo chiều U+202E",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "invoice‮fdp.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code SUSPICIOUS_DOCUMENT_NAME\", () => pm.expect(pm.response.json().code).to.eql(\"SUSPICIOUS_DOCUMENT_NAME\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ký tự vô hình U+200B",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "report​.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code SUSPICIOUS_DOCUMENT_NAME\", () => pm.expect(pm.response.json().code).to.eql(\"SUSPICIOUS_DOCUMENT_NAME\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Đệm dấu cách che đuôi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "photo.jpg            .pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code SUSPICIOUS_DOCUMENT_NAME\", () => pm.expect(pm.response.json().code).to.eql(\"SUSPICIOUS_DOCUMENT_NAME\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Chương trình setup.exe",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "setup.exe"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 415\", () => pm.response.to.have.status(415));",
+                  "pm.test(\"code UNSUPPORTED_DOCUMENT_TYPE\", () => pm.expect(pm.response.json().code).to.eql(\"UNSUPPORTED_DOCUMENT_TYPE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Đuôi không cho phép .json",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "data.json"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 415\", () => pm.response.to.have.status(415));",
+                  "pm.test(\"code UNSUPPORTED_DOCUMENT_TYPE\", () => pm.expect(pm.response.json().code).to.eql(\"UNSUPPORTED_DOCUMENT_TYPE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "File .exe đổi tên thành .pdf",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/fake-report.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code DOCUMENT_CONTENT_MISMATCH\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_CONTENT_MISMATCH\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PNG đặt tên .pdf",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/logo.png"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "logo-as.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code DOCUMENT_CONTENT_MISMATCH\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_CONTENT_MISMATCH\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "File rỗng",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/empty.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code EMPTY_DOCUMENT\", () => pm.expect(pm.response.json().code).to.eql(\"EMPTY_DOCUMENT\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "appDetailKey sai định dạng",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "ok-{{runId}}.pdf"
+                },
+                {
+                  "key": "appDetailKey",
+                  "type": "text",
+                  "value": "Not A Key"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code INVALID_APP_DETAIL_KEY\", () => pm.expect(pm.response.json().code).to.eql(\"INVALID_APP_DETAIL_KEY\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Không file bất thường nào được lưu",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents",
+                "count"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents/count"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"vẫn chỉ 3 tài liệu\", () => pm.expect(pm.response.json().count).to.eql(3));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Danh sách, đếm, tên",
+      "item": [
+        {
+          "name": "Danh sách (mới nhất trước)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test(\"total 3\", () => pm.expect(p.total).to.eql(3));",
+                  "pm.test(\"mới nhất trước\", () => pm.expect(p.items[0].name).to.eql(\"logo.png\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Phân trang limit=1 offset=1",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "1"
+                },
+                {
+                  "key": "offset",
+                  "value": "1"
+                }
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents?limit=1&offset=1"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"1 item, total 3\", () => { pm.expect(pm.response.json().items.length).to.eql(1); pm.expect(pm.response.json().total).to.eql(3); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lọc theo tên (không phân biệt hoa thường)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "KẾ HOẠCH"
+                }
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents?name=KẾ HOẠCH"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"tìm thấy 1\", () => pm.expect(pm.response.json().total).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lọc theo appDetailKey",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "query": [
+                {
+                  "key": "appDetailKey",
+                  "value": "club.rules"
+                }
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents?appDetailKey=club.rules"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"1 tài liệu club.rules\", () => pm.expect(pm.response.json().total).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ký tự % được hiểu theo nghĩa đen",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "%25"
+                }
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents?name=%25"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"không khớp tất cả\", () => pm.expect(pm.response.json().total).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getDocCount",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents",
+                "count"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents/count"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"count 3\", () => pm.expect(pm.response.json().count).to.eql(3));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getDocCount theo appDetailKey",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents",
+                "count"
+              ],
+              "query": [
+                {
+                  "key": "appDetailKey",
+                  "value": "club.logo"
+                }
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents/count?appDetailKey=club.logo"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"count 1\", () => pm.expect(pm.response.json().count).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getDocumentNames (A–Z)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents",
+                "names"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents/names"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const n = pm.response.json().names;",
+                  "pm.test(\"3 tên\", () => pm.expect(n.length).to.eql(3));",
+                  "pm.test(\"sắp xếp\", () => pm.expect(n).to.eql([...n].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "CLB không tồn tại → 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "00000000-0000-0000-0000-000000000000",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/00000000-0000-0000-0000-000000000000/documents"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"code CLUB_NOT_FOUND\", () => pm.expect(pm.response.json().code).to.eql(\"CLUB_NOT_FOUND\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Phiên bản và tải file",
+      "item": [
+        {
+          "name": "Xem chi tiết",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{docId}}"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{docId}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"đúng tên\", () => pm.expect(pm.response.json().name).to.eql(pm.collectionVariables.get(\"docName\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload phiên bản 2 (expectedVersion=1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{docId}}",
+                "versions"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{docId}}/versions"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v2.pdf"
+                },
+                {
+                  "key": "expectedVersion",
+                  "type": "text",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json();",
+                  "pm.test(\"version 2\", () => pm.expect(d.version).to.eql(2));",
+                  "pm.test(\"giữ nguyên tên\", () => pm.expect(d.name).to.eql(pm.collectionVariables.get(\"docName\")));",
+                  "pm.test(\"checksum đổi\", () => pm.expect(d.checksumSha256).to.not.eql(pm.collectionVariables.get(\"v1Checksum\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "expectedVersion cũ → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{docId}}",
+                "versions"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{docId}}/versions"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                },
+                {
+                  "key": "expectedVersion",
+                  "type": "text",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"code DOCUMENT_VERSION_CONFLICT\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_VERSION_CONFLICT\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Nội dung trùng phiên bản hiện tại → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{docId}}",
+                "versions"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{docId}}/versions"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v2.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"code DOCUMENT_VERSION_UNCHANGED\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_VERSION_UNCHANGED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Đổi kiểu file .pdf → .png → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{docId}}",
+                "versions"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{docId}}/versions"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/logo.png"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code DOCUMENT_TYPE_CHANGED\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_TYPE_CHANGED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Phiên bản là file .exe giả → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{docId}}",
+                "versions"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{docId}}/versions"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/fake-report.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code DOCUMENT_CONTENT_MISMATCH\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_CONTENT_MISMATCH\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lịch sử phiên bản",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{docId}}",
+                "versions"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{docId}}/versions"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const v = pm.response.json();",
+                  "pm.test(\"2 phiên bản, mới nhất trước\", () => { pm.expect(v.length).to.eql(2); pm.expect(v[0].version).to.eql(2); pm.expect(v[1].version).to.eql(1); });",
+                  "pm.test(\"tên file gốc của v2\", () => pm.expect(v[0].originalName).to.eql(\"v2.pdf\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tải phiên bản hiện tại",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{docId}}",
+                "download"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{docId}}/download"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"nội dung v2\", () => pm.expect(pm.response.text()).to.include(\"fixture v2\"));",
+                  "pm.test(\"attachment + tên UTF-8\", () => { const h = pm.response.headers.get(\"Content-Disposition\"); pm.expect(h).to.include(\"attachment\"); pm.expect(h).to.include(\"filename*=UTF-8''\"); });",
+                  "pm.test(\"X-Document-Version 2\", () => pm.expect(pm.response.headers.get(\"X-Document-Version\")).to.eql(\"2\"));",
+                  "pm.test(\"ETag là checksum\", () => pm.expect(pm.response.headers.get(\"ETag\")).to.match(/^\"[0-9a-f]{64}\"$/));",
+                  "pm.test(\"nosniff\", () => pm.expect(pm.response.headers.get(\"X-Content-Type-Options\")).to.eql(\"nosniff\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tải phiên bản 1",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{docId}}",
+                "download"
+              ],
+              "query": [
+                {
+                  "key": "version",
+                  "value": "1"
+                }
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{docId}}/download?version=1"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"nội dung v1\", () => pm.expect(pm.response.text()).to.include(\"fixture v1\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Phiên bản không tồn tại → 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{docId}}",
+                "download"
+              ],
+              "query": [
+                {
+                  "key": "version",
+                  "value": "99"
+                }
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{docId}}/download?version=99"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"code DOCUMENT_VERSION_NOT_FOUND\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_VERSION_NOT_FOUND\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Phiên bản 0 → 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{docId}}",
+                "download"
+              ],
+              "query": [
+                {
+                  "key": "version",
+                  "value": "0"
+                }
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{docId}}/download?version=0"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code INVALID_DOCUMENT_VERSION\", () => pm.expect(pm.response.json().code).to.eql(\"INVALID_DOCUMENT_VERSION\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Link tải (presigned khi dùng R2)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{docId}}",
+                "download-url"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{docId}}/download-url"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const l = pm.response.json();",
+                  "pm.test(\"version 2\", () => pm.expect(l.version).to.eql(2));",
+                  "if (l.expiresAt) {",
+                  "  pm.test(\"R2: link presigned, chưa hết hạn\", () => { pm.expect(l.url).to.include(\"X-Amz-Signature=\"); pm.expect(new Date(l.expiresAt) > new Date()).to.be.true; });",
+                  "  pm.collectionVariables.set(\"presignedUrl\", l.url);",
+                  "} else {",
+                  "  pm.test(\"local: trả về đường dẫn API\", () => pm.expect(l.url).to.include(\"/download?version=2\"));",
+                  "}",
+                  "console.log(\"download-url: \" + (l.expiresAt ? \"R2 presigned\" : \"local storage\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mở link presigned (bỏ qua khi dùng local)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "api-catalog"
+              ],
+              "raw": "{{baseUrl}}/api/v1/api-catalog"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const u = pm.collectionVariables.get(\"presignedUrl\");",
+                  "if (u) { pm.request.url = u; } else { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"nội dung v2 từ R2\", () => pm.expect(pm.response.text()).to.include(\"fixture v2\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Đổi tên",
+      "item": [
+        {
+          "name": "Trùng tên tài liệu khác → 409",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{doc2Id}}"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{doc2Id}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"{{docName}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"code DOCUMENT_NAME_ALREADY_EXISTS\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_NAME_ALREADY_EXISTS\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Đổi đuôi .pdf → .docx → 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{doc2Id}}"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{doc2Id}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Kế hoạch.docx\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code DOCUMENT_TYPE_CHANGED\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_TYPE_CHANGED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tên chứa / → 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{doc2Id}}"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{doc2Id}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"a/b.pdf\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code INVALID_DOCUMENT_NAME\", () => pm.expect(pm.response.json().code).to.eql(\"INVALID_DOCUMENT_NAME\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Đổi tên + appDetailKey",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{doc2Id}}"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{doc2Id}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Kế hoạch sự kiện {{runId}}.pdf\",\"appDetailKey\":\"event.plan\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"doc2Name\", pm.response.json().name);",
+                  "pm.test(\"đã đổi\", () => pm.expect(pm.response.json().appDetailKey).to.eql(\"event.plan\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Xoá appDetailKey bằng chuỗi rỗng",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{doc2Id}}"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{doc2Id}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"appDetailKey\":\"\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"appDetailKey null\", () => pm.expect(pm.response.json().appDetailKey).to.be.null);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Phân quyền",
+      "item": [
+        {
+          "name": "Không có token → 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"code UNAUTHORIZED\", () => pm.expect(pm.response.json().code).to.eql(\"UNAUTHORIZED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User không quyền xem danh sách → 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"code PERMISSION_DENIED\", () => pm.expect(pm.response.json().code).to.eql(\"PERMISSION_DENIED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User không quyền xem tài liệu → 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{docId}}"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{docId}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"code PERMISSION_DENIED\", () => pm.expect(pm.response.json().code).to.eql(\"PERMISSION_DENIED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User không quyền dò id ngẫu nhiên → 403 (không lộ 404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "00000000-0000-0000-0000-000000000001"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/00000000-0000-0000-0000-000000000001"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"code PERMISSION_DENIED\", () => pm.expect(pm.response.json().code).to.eql(\"PERMISSION_DENIED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin với id ngẫu nhiên → 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "00000000-0000-0000-0000-000000000001"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/00000000-0000-0000-0000-000000000001"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"code DOCUMENT_NOT_FOUND\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_NOT_FOUND\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cấp document.view trong CLB cho user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{memberId}}",
+                "permissions"
+              ],
+              "raw": "{{baseUrl}}/api/v1/users/{{memberId}}/permissions"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"permissionId\":\"{{documentViewPermissionId}}\",\"scope\":\"CLUB\",\"clubId\":\"{{clubId}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User xem được danh sách",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User tải được file",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{docId}}",
+                "download"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{docId}}/download"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User vẫn không upload được → 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v1.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "member.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"code PERMISSION_DENIED\", () => pm.expect(pm.response.json().code).to.eql(\"PERMISSION_DENIED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User không xoá được file người khác → 403",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{docId}}"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{docId}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"code PERMISSION_DENIED\", () => pm.expect(pm.response.json().code).to.eql(\"PERMISSION_DENIED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User không đổi tên file người khác → 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{docId}}"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{docId}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"x.pdf\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"code PERMISSION_DENIED\", () => pm.expect(pm.response.json().code).to.eql(\"PERMISSION_DENIED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User không xem thùng rác → 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "query": [
+                {
+                  "key": "deleted",
+                  "value": "true"
+                }
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents?deleted=true"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"code PERMISSION_DENIED\", () => pm.expect(pm.response.json().code).to.eql(\"PERMISSION_DENIED\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Xoá mềm và khôi phục",
+      "item": [
+        {
+          "name": "Xoá mềm",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{doc2Id}}"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{doc2Id}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Không còn trong danh sách",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents",
+                "names"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents/names"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"tên đã biến mất\", () => pm.expect(pm.response.json().names).to.not.include(pm.collectionVariables.get(\"doc2Name\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Có trong thùng rác (deleted=true)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "query": [
+                {
+                  "key": "deleted",
+                  "value": "true"
+                }
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents?deleted=true"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const i = pm.response.json().items[0];",
+                  "pm.test(\"deletedBy là admin\", () => pm.expect(i.deletedBy).to.eql(pm.collectionVariables.get(\"adminId\")));",
+                  "pm.test(\"có deletedAt\", () => pm.expect(i.deletedAt).to.be.a(\"string\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "getDocCount deleted=true",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents",
+                "count"
+              ],
+              "query": [
+                {
+                  "key": "deleted",
+                  "value": "true"
+                }
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents/count?deleted=true"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"count 1\", () => pm.expect(pm.response.json().count).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Xoá lần nữa → 410",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{doc2Id}}"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{doc2Id}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 410\", () => pm.response.to.have.status(410));",
+                  "pm.test(\"code DOCUMENT_DELETED\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_DELETED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tải file đã xoá → 410",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{doc2Id}}",
+                "download"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{doc2Id}}/download"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 410\", () => pm.response.to.have.status(410));",
+                  "pm.test(\"code DOCUMENT_DELETED\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_DELETED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload phiên bản cho file đã xoá → 410",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{doc2Id}}",
+                "versions"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{doc2Id}}/versions"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v2.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 410\", () => pm.response.to.have.status(410));",
+                  "pm.test(\"code DOCUMENT_DELETED\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_DELETED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User chỉ có view: tài liệu đã xoá → 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{doc2Id}}"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{doc2Id}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"code DOCUMENT_NOT_FOUND\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_NOT_FOUND\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload tài liệu mới trùng tên tài liệu đã xoá",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clubs",
+                "{{clubId}}",
+                "documents"
+              ],
+              "raw": "{{baseUrl}}/api/v1/clubs/{{clubId}}/documents"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "fixtures/v2.pdf"
+                },
+                {
+                  "key": "name",
+                  "type": "text",
+                  "value": "{{doc2Name}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"doc2ReplacementId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Khôi phục khi tên đã bị dùng → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{doc2Id}}",
+                "restore"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{doc2Id}}/restore"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"code DOCUMENT_NAME_ALREADY_EXISTS\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_NAME_ALREADY_EXISTS\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Đổi tên tài liệu thay thế",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{doc2ReplacementId}}"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{doc2ReplacementId}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Bản thay thế {{runId}}.pdf\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Khôi phục",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{doc2Id}}",
+                "restore"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{doc2Id}}/restore"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"deleted=false, deletedAt=null\", () => { pm.expect(pm.response.json().deleted).to.be.false; pm.expect(pm.response.json().deletedAt).to.be.null; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tải lại được sau khôi phục",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{doc2Id}}",
+                "download"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{doc2Id}}/download"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"nội dung v1\", () => pm.expect(pm.response.text()).to.include(\"fixture v1\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Khôi phục tài liệu chưa xoá → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "{{doc2Id}}",
+                "restore"
+              ],
+              "raw": "{{baseUrl}}/api/v1/documents/{{doc2Id}}/restore"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"code DOCUMENT_NOT_DELETED\", () => pm.expect(pm.response.json().code).to.eql(\"DOCUMENT_NOT_DELETED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit log ghi lại xoá và khôi phục",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccess}}"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit-logs"
+              ],
+              "query": [
+                {
+                  "key": "resourceId",
+                  "value": "{{doc2Id}}"
+                }
+              ],
+              "raw": "{{baseUrl}}/api/v1/audit-logs?resourceId={{doc2Id}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json(); const items = body.items || body;",
+                  "const actions = items.map(x => x.action);",
+                  "pm.test(\"có DOCUMENT_DELETED và DOCUMENT_RESTORED\", () => { pm.expect(actions).to.include(\"DOCUMENT_DELETED\"); pm.expect(actions).to.include(\"DOCUMENT_RESTORED\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    }
+  ]
+}

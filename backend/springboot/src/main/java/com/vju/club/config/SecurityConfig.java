@@ -30,7 +30,6 @@ import java.util.Set;
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
-
     @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
@@ -45,7 +44,6 @@ public class SecurityConfig {
                         .authenticationEntryPoint(authenticationEntryPoint())
                         .accessDeniedHandler(accessDeniedHandler()))
                 .authorizeHttpRequests(authorize -> {
-                    // Handlers annotated with @PublicEndpoint are open; everything else needs a token.
                     publicRoutes(handlerMapping).forEach(route ->
                             authorize.requestMatchers(route.method(), route.pattern()).permitAll());
                     authorize.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll();
@@ -62,7 +60,6 @@ public class SecurityConfig {
 
     record PublicRoute(HttpMethod method, String pattern) { }
 
-    /** Every (method, path) served by a handler annotated with {@link PublicEndpoint}. */
     static List<PublicRoute> publicRoutes(RequestMappingHandlerMapping handlerMapping) {
         List<PublicRoute> routes = new ArrayList<>();
         handlerMapping.getHandlerMethods().forEach((info, handler) -> {
@@ -82,7 +79,6 @@ public class SecurityConfig {
     private AuthenticationEntryPoint authenticationEntryPoint() {
         return (request, response, exception) -> {
             if (isExpiredToken(exception)) {
-                // Distinct code so clients know to call /auth/refresh-token instead of logging in again.
                 ProblemResponses.write(response, HttpServletResponse.SC_UNAUTHORIZED,
                         "AUTH_TOKEN_EXPIRED", "Access token has expired");
             } else {
@@ -92,7 +88,6 @@ public class SecurityConfig {
         };
     }
 
-    /** True when JWT validation failed only because the token's exp is in the past. */
     static boolean isExpiredToken(Throwable exception) {
         for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
             if (cause instanceof JwtValidationException validation) {

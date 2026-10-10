@@ -13,11 +13,9 @@ import org.springframework.data.domain.Sort;
 import java.util.UUID;
 
 public interface NotificationService {
-
     void create(UUID userId, String title, String message, UUID referenceId);
 
     PageResponse<NotificationResponse> list(Actor actor, int offset, int limit);
 
     void markRead(Actor actor, UUID id);
-
 }

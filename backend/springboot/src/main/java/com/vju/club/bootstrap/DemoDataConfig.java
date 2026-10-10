@@ -18,12 +18,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Clock;
 
-/** Demo data exists only in the local profile, never in production. */
 @Configuration
 @Profile("local")
 @EnableConfigurationProperties(DemoDataProperties.class)
 public class DemoDataConfig {
-
     @Bean
     DemoDataSeeder demoDataSeeder(DemoDataProperties properties, UserRepository users, ClubRepository clubs,
                                   DepartmentRepository departments, MembershipRepository memberships,

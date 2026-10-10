@@ -37,7 +37,6 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class ClubServiceImpl implements ClubService {
-
     private final ClubRepository clubRepository;
     private final PermissionAuthorizationService authorizationService;
     private final AuditService auditService;

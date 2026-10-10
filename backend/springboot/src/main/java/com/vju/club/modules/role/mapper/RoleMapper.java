@@ -13,7 +13,6 @@ import java.util.List;
 
 @Mapper
 public interface RoleMapper {
-
     @Mapping(target = "permissionKeys", source = "permissions")
     RoleResponse toResponse(Role role);
 
@@ -25,7 +24,6 @@ public interface RoleMapper {
     @Mapping(target = "departmentId", source = "department.id")
     UserRoleResponse toUserRoleResponse(UserRole assignment);
 
-    /** Permission keys in a stable, sorted order. */
     default List<String> permissionKeys(Collection<Permission> permissions) {
         return permissions == null ? List.of()
                 : permissions.stream().map(Permission::getPermissionKey).sorted().toList();

@@ -23,9 +23,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-/** The local-profile demo seed produces a usable demo: logins work and each user has the intended rights. */
 class DemoDataApiTest extends ApiIntegrationTest {
-
     @Test
     void demoStudentCanApplyAndDemoManagerCanReviewAndAssign() throws Exception {
         seeder(DEMO_PASSWORD, true).seed();
@@ -94,18 +92,15 @@ class DemoDataApiTest extends ApiIntegrationTest {
         String b = login("demo.b@vju.local");
         String c = login("demo.c@vju.local");
 
-        // A: president of VJUA through the CLUB_PRESIDENT role.
         call(patch("/api/v1/clubs/" + vjua), a, Map.of("description", "Cập nhật bởi chủ nhiệm"), 200);
         call(post("/api/v1/clubs/" + vjua + "/departments"), a, Map.of("name", "Ban Sự kiện"), 201);
         problem(patch("/api/v1/clubs/" + clubA), a, Map.of("description", "no"), 403, "PERMISSION_DENIED");
 
-        // B: head of Ban Truyền thông only.
         call(patch("/api/v1/departments/" + department("Ban Truyền thông")), b, Map.of("description", "ok"), 200);
         call(get("/api/v1/departments/" + department("Ban Truyền thông") + "/members"), b, null, 200);
         problem(patch("/api/v1/departments/" + department("Ban Chuyên môn")), b, Map.of("description", "no"), 403,
                 "PERMISSION_DENIED");
 
-        // C: plain member with two direct permissions.
         call(get("/api/v1/clubs/" + vjua), c, null, 200);
         call(get("/api/v1/clubs/" + vjua + "/memberships"), c, null, 200);
         problem(patch("/api/v1/clubs/" + vjua), c, Map.of("description", "no"), 403, "PERMISSION_DENIED");

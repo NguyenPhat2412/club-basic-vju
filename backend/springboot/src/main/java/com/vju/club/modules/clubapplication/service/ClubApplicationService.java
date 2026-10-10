@@ -34,7 +34,6 @@ import java.util.Map;
 import java.util.UUID;
 
 public interface ClubApplicationService {
-
     ClubApplicationResponse create(Actor actor, UUID clubId, CreateClubApplicationRequest request);
 
     PageResponse<ClubApplicationSummaryResponse> listMine( Actor actor, ClubApplicationStatus status, UUID clubId, String sort, int offset, int limit);
@@ -50,5 +49,4 @@ public interface ClubApplicationService {
     ClubApplicationResponse approve(Actor actor, UUID clubId, UUID applicationId, com.vju.club.modules.clubapplication.dto.request.ReviewClubApplicationRequest request);
 
     ClubApplicationResponse reject(Actor actor, UUID clubId, UUID applicationId, com.vju.club.modules.clubapplication.dto.request.ReviewClubApplicationRequest request);
-
 }

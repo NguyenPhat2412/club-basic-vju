@@ -119,7 +119,6 @@ public class MembershipServiceImpl implements MembershipService {
         if (membershipRepository.findFirstByUser_IdAndClub_IdAndStatusNot(user.getId(), clubId, MembershipStatus.LEFT).isPresent()) {
             throw new ApiException(HttpStatus.CONFLICT, "MEMBERSHIP_ALREADY_EXISTS", "Membership already exists");
         }
-        // Every (re)join is a new row, so earlier stints stay in the history untouched.
         Membership membership = new Membership();
         membership.setUser(user);
         membership.setClub(club);
@@ -147,10 +146,6 @@ public class MembershipServiceImpl implements MembershipService {
         membershipRepository.saveAndFlush(membership);
     }
 
-    /**
-     * LEFT is final: a left membership is history and cannot be reopened (rejoining creates a new
-     * membership). Leaving drops the member from every department of the club.
-     */
     private void changeStatus(Actor actor, Membership membership, MembershipStatus status) {
         MembershipStatus previous = membership.getStatus();
         if (previous == MembershipStatus.LEFT) {

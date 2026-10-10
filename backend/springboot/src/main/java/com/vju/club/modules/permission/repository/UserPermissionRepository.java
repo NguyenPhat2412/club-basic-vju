@@ -8,12 +8,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Direct grants, plus the authorization checks. Checks read the {@code effective_user_permissions}
- * view, so a permission counts whether it was granted directly or through an active role.
- */
 public interface UserPermissionRepository extends JpaRepository<UserPermission, UUID> {
-
     @Query(value = "SELECT EXISTS (SELECT 1 FROM effective_user_permissions e WHERE e.user_id = :userId "
             + "AND e.permission_key = :permissionKey AND e.scope = 'GLOBAL')", nativeQuery = true)
     boolean hasGlobal(@Param("userId") UUID userId, @Param("permissionKey") String permissionKey);

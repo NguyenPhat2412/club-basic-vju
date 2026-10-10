@@ -12,8 +12,6 @@ import java.util.Map;
 
 @Mapper
 public interface AuditMapper {
-
-    /** ObjectMapper is only used for its real job here: parsing the stored JSON snapshots. */
     ObjectMapper JSON = new ObjectMapper();
 
     AuditLogResponse toResponse(AuditLog log);

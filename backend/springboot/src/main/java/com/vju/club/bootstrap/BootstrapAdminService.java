@@ -18,12 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
-/** Creates the local administrator and gives it the SYSTEM_ADMIN role; safe to run on every start. */
 @Service
 @Profile("local")
 @RequiredArgsConstructor
 public class BootstrapAdminService {
-
     static final String ADMIN_ROLE = "SYSTEM_ADMIN";
 
     private final BootstrapAdminProperties properties;

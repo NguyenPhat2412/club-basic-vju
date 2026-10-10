@@ -101,6 +101,7 @@ modules/<module>/
 ├── repository/          # Spring Data repository
 ├── specification/       # JPA Specification cho tìm kiếm động (nếu có)
 ├── annotation/          # Annotation validation riêng của module
+├── exception/           # Exception riêng của module (nếu có), kế thừa ApiException
 └── common/              # Hằng số của module
 ```
 
@@ -116,6 +117,8 @@ Quy ước:
 
 - **Service không phụ thuộc Spring Security:** controller nhận tham số `Actor` (người đang gọi, lấy từ JWT qua `ActorArgumentResolver`) và truyền xuống service. Nhờ vậy service unit test được bằng một `Actor` giả, không cần dựng security context.
 - **Kiểm tra quyền** nằm trong service và dùng chung `PermissionAuthorizationService`, vốn đọc view `effective_user_permissions` (gộp quyền trực tiếp và quyền từ vai trò).
+- **Exception theo nghiệp vụ:** module có nhiều lỗi riêng (như `document`) khai báo mỗi lỗi một lớp trong `exception/`, kế thừa `ApiException` với status và `code` cố định (ví dụ `DocumentVersionConflictException` → `409 DOCUMENT_VERSION_CONFLICT`). `GlobalExceptionHandler` xử lý chung, không cần thêm handler.
+- **File lưu ngoài database:** `DocumentStorage` có hai bản cài đặt: thư mục local (dev/test) và Cloudflare R2. File được ghi trước khi commit transaction; nếu transaction rollback thì file vừa ghi sẽ bị xoá. Xem [mục 9 README backend](backend/springboot/README.md#9-tài-liệu-clb-và-cloudflare-r2).
 - **Truy vấn** đều nằm trong repository: JPQL cho truy vấn thường, SQL gốc khi cần view của PostgreSQL. Phân trang dùng `OffsetLimitRequest`.
 
 ## Bắt đầu nhanh
@@ -349,7 +352,7 @@ Khi chạy, Hibernate chỉ `validate` schema chứ không tự sửa. Mọi tha
 ## Kiểm thử
 
 ```bash
-# 394 test backend: unit + integration (cần Docker đang chạy)
+# 494 test backend: unit + integration (cần Docker đang chạy)
 cd backend/springboot && ./mvnw test
 
 # Kiểm tra OpenAPI contract (từ thư mục gốc)

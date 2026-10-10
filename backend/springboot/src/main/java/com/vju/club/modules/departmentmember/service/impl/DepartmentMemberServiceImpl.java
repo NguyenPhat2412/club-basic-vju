@@ -97,7 +97,6 @@ public class DepartmentMemberServiceImpl implements DepartmentMemberService {
         if (departmentMemberRepository.findByDepartment_IdAndMembership_Id(target.getId(), membershipId).isPresent()) {
             throw new ApiException(HttpStatus.CONFLICT, "DEPARTMENT_MEMBER_ALREADY_EXISTS", "Department member already exists");
         }
-        // Re-point the existing row: a single UPDATE, so the member is never in zero or two departments.
         assignment.setDepartment(target);
         assignment.setJoinedAt(OffsetDateTime.now(clock));
         DepartmentMember saved = departmentMemberRepository.saveAndFlush(assignment);
@@ -106,7 +105,6 @@ public class DepartmentMemberServiceImpl implements DepartmentMemberService {
         return departmentMemberMapper.toResponse(saved);
     }
 
-    /** Loads the department and checks the permission at department scope or at its club's scope. */
     private Department authorize(Actor actor, String permissionKey, UUID departmentId) {
         Department department = departmentRepository.findById(departmentId).orElseThrow(() ->
                 authorizationService.missingResource(actor, permissionKey,

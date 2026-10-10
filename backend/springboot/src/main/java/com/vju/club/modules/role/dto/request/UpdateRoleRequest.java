@@ -6,7 +6,6 @@ import jakarta.validation.constraints.Size;
 import java.util.Set;
 import java.util.UUID;
 
-/** Partial update; a provided permission set replaces the current one. */
 public record UpdateRoleRequest(
         @Size(max = 200) String name,
         @Size(max = 2000) String description,

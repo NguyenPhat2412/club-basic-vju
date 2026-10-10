@@ -31,7 +31,6 @@ import java.util.UUID;
 @RequestMapping("/api/v1/clubs")
 @RequiredArgsConstructor
 public class ClubController {
-
     private final ClubService clubService;
 
     @GetMapping

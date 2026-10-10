@@ -1,6 +1,5 @@
 package com.vju.club.modules.audit.enums;
 
-/** Every audited business action, with the kind of resource it applies to. */
 public enum AuditAction {
     USER_REGISTERED(ResourceType.USER),
     USER_PROFILE_UPDATED(ResourceType.USER),
@@ -38,9 +37,15 @@ public enum AuditAction {
     ROLE_CREATED(ResourceType.ROLE),
     ROLE_UPDATED(ResourceType.ROLE),
     ROLE_ASSIGNED(ResourceType.ROLE_ASSIGNMENT),
-    ROLE_REVOKED(ResourceType.ROLE_ASSIGNMENT);
+    ROLE_REVOKED(ResourceType.ROLE_ASSIGNMENT),
 
-    public enum ResourceType { USER, CLUB, DEPARTMENT, MEMBERSHIP, DEPARTMENT_MEMBER, PERMISSION_GRANT, ROLE, ROLE_ASSIGNMENT, APPLICATION }
+    DOCUMENT_UPLOADED(ResourceType.DOCUMENT),
+    DOCUMENT_VERSION_UPLOADED(ResourceType.DOCUMENT),
+    DOCUMENT_UPDATED(ResourceType.DOCUMENT),
+    DOCUMENT_DELETED(ResourceType.DOCUMENT),
+    DOCUMENT_RESTORED(ResourceType.DOCUMENT);
+
+    public enum ResourceType { USER, CLUB, DEPARTMENT, MEMBERSHIP, DEPARTMENT_MEMBER, PERMISSION_GRANT, ROLE, ROLE_ASSIGNMENT, APPLICATION, DOCUMENT }
 
     private final ResourceType resourceType;
 

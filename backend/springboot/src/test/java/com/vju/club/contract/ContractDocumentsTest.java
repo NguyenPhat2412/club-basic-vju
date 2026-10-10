@@ -8,9 +8,7 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** The API contract lives in docs/api; the copy served at runtime must never drift from it. */
 class ContractDocumentsTest {
-
     private static final Path DOCS = Path.of("../../docs/api");
     private static final Path RUNTIME = Path.of("src/main/resources/api");
 

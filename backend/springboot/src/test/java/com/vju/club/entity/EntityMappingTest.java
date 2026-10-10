@@ -24,7 +24,6 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class EntityMappingTest {
-
     @Test
     void phaseOneEntitiesMapEveryMigrationTable() {
         Map<Class<?>, String> expectedTables = Map.of(

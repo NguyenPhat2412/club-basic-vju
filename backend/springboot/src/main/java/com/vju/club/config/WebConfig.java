@@ -13,9 +13,7 @@ import java.util.List;
 @Configuration
 @RequiredArgsConstructor
 public class WebConfig implements WebMvcConfigurer {
-
     static {
-        // Actor comes from the token, not from the request, so keep it out of the API docs.
         SpringDocUtils.getConfig().addRequestWrapperToIgnore(Actor.class);
     }
 

@@ -45,14 +45,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * Role definitions (named permission bundles) and their assignment to users. Assignments follow the
- * same scope rules as direct grants and are audited in permission_audit_logs.
- */
 @Service
 @RequiredArgsConstructor
 public class RoleServiceImpl implements RoleService {
-
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
     private final PermissionRepository permissionRepository;
@@ -64,8 +59,6 @@ public class RoleServiceImpl implements RoleService {
     private final Clock clock;
     private final AuditService auditService;
     private final RoleMapper roleMapper;
-
-    // ---- role definitions -----------------------------------------------------------------------
 
     @Transactional(readOnly = true)
     @RequirePermission("role.view")
@@ -119,7 +112,6 @@ public class RoleServiceImpl implements RoleService {
         return roleMapper.toResponse(saved);
     }
 
-    /** Every permission must exist, be active and be no broader than the role's scope. */
     private Set<Permission> resolvePermissions(Set<UUID> ids, Role role) {
         List<Permission> found = permissionRepository.findAllById(ids);
         if (found.size() != ids.size()) {
@@ -138,8 +130,6 @@ public class RoleServiceImpl implements RoleService {
         }
         return new LinkedHashSet<>(found);
     }
-
-    // ---- assignments ----------------------------------------------------------------------------
 
     @Transactional(readOnly = true)
     public List<UserRoleResponse> listAssignments(Actor actor, UUID userId) {

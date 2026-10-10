@@ -9,9 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-/** Spring Data JPA auditing records who created and who last changed each business record. */
 class JpaAuditingApiTest extends ApiIntegrationTest {
-
     private UUID who(String table, String column, UUID id) {
         return db.queryForObject("SELECT " + column + " FROM " + table + " WHERE id = ?", UUID.class, id);
     }

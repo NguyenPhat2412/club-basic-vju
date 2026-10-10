@@ -33,7 +33,6 @@ import java.time.OffsetDateTime;
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
 public class ClubApplicationController {
-
     private final ClubApplicationService applicationService;
 
     @PostMapping("/clubs/{clubId}/applications")

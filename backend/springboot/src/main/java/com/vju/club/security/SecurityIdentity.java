@@ -6,7 +6,6 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import java.util.UUID;
 
 public final class SecurityIdentity {
-
     private SecurityIdentity() { }
 
     public static UUID userId(Authentication authentication) {

@@ -21,7 +21,6 @@ import java.util.UUID;
 @RequestMapping("/api/v1/audit-logs")
 @RequiredArgsConstructor
 public class AuditController {
-
     private final AuditQueryService auditQueryService;
 
     @GetMapping

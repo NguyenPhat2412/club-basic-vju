@@ -1,7 +1,6 @@
 package com.vju.club.modules.audit.common;
 
 public final class AuditConstants {
-
     private AuditConstants() {
     }
 

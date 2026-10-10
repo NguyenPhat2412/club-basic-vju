@@ -24,7 +24,6 @@ import java.time.OffsetDateTime;
 @Getter
 @Setter
 public class ClubApplication extends TimestampedEntity {
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "applicant_id", nullable = false)
     private User applicant;

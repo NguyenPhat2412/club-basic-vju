@@ -14,7 +14,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class PhaseTwoMigrationTest extends ApiIntegrationTest {
-
     @Autowired DataSource dataSource;
 
     @Test
@@ -29,10 +28,8 @@ class PhaseTwoMigrationTest extends ApiIntegrationTest {
                 sql.execute("INSERT INTO " + schema + ".memberships(user_id, club_id) SELECT u.id, c.id FROM "
                         + schema + ".users u CROSS JOIN " + schema + ".clubs c");
             }
-            // Pinned to V8 so later migrations do not change what this upgrade test measures.
             Flyway phaseTwo = Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema)
                     .target("8").load();
-            // Phase 2 adds the application workflow and notifications migrations.
             assertThat(phaseTwo.migrate().migrationsExecuted).isEqualTo(2);
             phaseTwo.validate();
             assertThat(phaseTwo.migrate().migrationsExecuted).isZero();

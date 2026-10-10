@@ -16,7 +16,6 @@ import jakarta.persistence.Table;
 @Getter
 @Setter
 public class Permission extends CreatedEntity {
-
     @Column(name = "permission_key", nullable = false, unique = true, length = 120)
     private String permissionKey;
 

@@ -14,16 +14,11 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * Base for business records: when they were created/changed (Hibernate timestamps) and by whom
- * (Spring Data JPA auditing, see {@code JpaAuditingConfig}).
- */
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 @Getter
 @Setter
 public abstract class TimestampedEntity extends BaseEntity {
-
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;

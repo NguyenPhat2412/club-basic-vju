@@ -21,7 +21,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 class AuthApiTest extends ApiIntegrationTest {
-
     private Map<String, Object> registration(String email, String studentCode) {
         Map<String, Object> body = new HashMap<>();
         body.put("email", email);
@@ -40,8 +39,6 @@ class AuthApiTest extends ApiIntegrationTest {
                 .issuedAt(expiresAt.minusSeconds(900)).expiresAt(expiresAt).build();
         return encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
     }
-
-    // ---- registration ---------------------------------------------------------------------------
 
     @Test
     void registerNormalizesEmailAndNeverExposesPasswordHash() throws Exception {
@@ -110,8 +107,6 @@ class AuthApiTest extends ApiIntegrationTest {
         assertThat(statuses).filteredOn(s -> s == 201).hasSize(1);
     }
 
-    // ---- login ----------------------------------------------------------------------------------
-
     @Test
     void loginIsCaseInsensitiveAndReturnsUsableTokens() throws Exception {
         JsonNode login = login("MEMBER@test.local", PASSWORD);
@@ -146,8 +141,6 @@ class AuthApiTest extends ApiIntegrationTest {
         problem(post("/api/v1/auth/login"), null, Map.of("email", "member@test.local"), 400, "VALIDATION_ERROR");
         problem(post("/api/v1/auth/login"), null, Map.of(), 400, "VALIDATION_ERROR");
     }
-
-    // ---- refresh tokens -------------------------------------------------------------------------
 
     @Test
     void refreshRotatesTokensAndOldOneBecomesUseless() throws Exception {
@@ -198,8 +191,6 @@ class AuthApiTest extends ApiIntegrationTest {
         assertThat(count("SELECT count(*) FROM refresh_tokens WHERE token_hash = ?", tokens.hash(refresh))).isEqualTo(1);
     }
 
-    // ---- logout & password ----------------------------------------------------------------------
-
     @Test
     void logoutIsIdempotentAndOnlyRevokesTheGivenSession() throws Exception {
         JsonNode first = login("member@test.local", PASSWORD);
@@ -239,8 +230,6 @@ class AuthApiTest extends ApiIntegrationTest {
         problem(post("/api/v1/auth/change-password"), null,
                 Map.of("currentPassword", PASSWORD, "newPassword", "BrandNew123!"), 401, "UNAUTHORIZED");
     }
-
-    // ---- access tokens --------------------------------------------------------------------------
 
     @Test
     void accessTokensFromOtherIssuersOrExpiredAreRejected() throws Exception {

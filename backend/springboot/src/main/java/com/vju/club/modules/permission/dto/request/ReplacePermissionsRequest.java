@@ -8,10 +8,6 @@ import jakarta.validation.constraints.Size;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * The complete set of permissions the user should hold directly at one scope target. Missing ones
- * are granted, extra ones revoked; an empty set revokes everything at that target.
- */
 public record ReplacePermissionsRequest(
         @NotNull PermissionScope scope,
         UUID clubId,

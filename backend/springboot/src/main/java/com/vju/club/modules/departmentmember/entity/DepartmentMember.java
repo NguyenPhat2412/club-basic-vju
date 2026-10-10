@@ -22,7 +22,6 @@ import java.util.UUID;
 @Getter
 @Setter
 public class DepartmentMember extends BaseEntity {
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "department_id", nullable = false)
     private Department department;
@@ -31,7 +30,6 @@ public class DepartmentMember extends BaseEntity {
     @JoinColumn(name = "membership_id", nullable = false)
     private Membership membership;
 
-    /** Denormalized from the department; composite foreign keys make it match the membership's club too. */
     @Column(name = "club_id", nullable = false)
     private UUID clubId;
 

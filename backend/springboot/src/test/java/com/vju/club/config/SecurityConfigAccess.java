@@ -4,7 +4,6 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 
 import java.util.List;
 
-/** Test-only bridge to the package-private public-route discovery in SecurityConfig. */
 public final class SecurityConfigAccess {
     private SecurityConfigAccess() { }
 

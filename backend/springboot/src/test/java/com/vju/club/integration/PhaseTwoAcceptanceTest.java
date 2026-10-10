@@ -14,7 +14,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 
 class PhaseTwoAcceptanceTest extends ApiIntegrationTest {
-
     @Test
     void studentApplicationReviewMembershipDepartmentAndAuditFlow() throws Exception {
         UUID student = user("phase2-student@test.local");

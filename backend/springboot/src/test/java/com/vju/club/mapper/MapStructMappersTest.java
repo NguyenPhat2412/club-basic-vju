@@ -32,9 +32,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** The MapStruct-generated mappers: nested ids, enum names, null-safety and custom conversions. */
 class MapStructMappersTest {
-
     private static User user() {
         User user = new User();
         user.setId(UUID.randomUUID());

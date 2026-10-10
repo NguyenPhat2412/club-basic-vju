@@ -42,7 +42,6 @@ import java.util.Objects;
 import java.util.UUID;
 
 public interface PermissionService {
-
     List<PermissionResponse> list(Actor actor);
 
     List<PermissionGroupResponse> listGroups(Actor actor);
@@ -56,5 +55,4 @@ public interface PermissionService {
     List<UserPermissionResponse> replace(Actor actor, UUID targetUserId, ReplacePermissionsRequest request);
 
     void revoke(Actor actor, UUID targetUserId, UUID permissionId, PermissionScope scope, UUID clubId, UUID departmentId);
-
 }

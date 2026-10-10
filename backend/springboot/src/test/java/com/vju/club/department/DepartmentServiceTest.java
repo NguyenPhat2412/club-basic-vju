@@ -47,7 +47,6 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class DepartmentServiceTest {
-
     @Mock DepartmentRepository departmentRepository;
     @Mock ClubRepository clubRepository;
     @Mock AuditService audit;

@@ -15,7 +15,8 @@ Spring Boot 4 (Java 21) + PostgreSQL 16. Tài liệu này hướng dẫn chạy 
 6. [Chạy test](#6-chạy-test)
 7. [Build file JAR và Docker image](#7-build-file-jar-và-docker-image)
 8. [Xử lý sự cố thường gặp](#8-xử-lý-sự-cố-thường-gặp)
-9. [Tham khảo](#9-tham-khảo)
+9. [Tài liệu CLB và Cloudflare R2](#9-tài-liệu-clb-và-cloudflare-r2)
+10. [Tham khảo](#10-tham-khảo)
 
 ## 1. Cài đặt công cụ
 
@@ -292,9 +293,107 @@ docker build -t club-backend backend/springboot
 | `app.security.jwt.secret is not configured` | Đang chạy mà không bật profile `local`. Thêm `-Dspring-boot.run.profiles=local`, hoặc đặt biến `JWT_SECRET`. |
 | Không đăng nhập được bằng tài khoản admin | `.env.local` không nằm đúng chỗ (phải là `backend/springboot/.env.local`), hoặc backend không được chạy từ thư mục `backend/springboot`. Nếu admin đã được tạo trước đó với mật khẩu khác, việc sửa `.env.local` sẽ không đổi mật khẩu cũ. |
 | Test báo `Could not find a valid Docker environment` | Docker Desktop chưa mở. Trên Windows, kiểm tra Docker Desktop đang dùng WSL 2 backend. |
+| `app.storage.type=r2 needs R2_...` | Đã đặt `STORAGE_TYPE=r2` nhưng thiếu thông tin R2. Bổ sung các biến được nêu tên, hoặc bỏ `STORAGE_TYPE` để dùng thư mục local. |
+| Upload trả `502 DOCUMENT_STORAGE_ERROR` khi dùng R2 | Sai endpoint/key, token không có quyền ghi vào bucket, hoặc bucket không tồn tại. Chi tiết nằm trong log của backend. |
 | `Validate failed: Migrations have failed validation` | Một file migration đã chạy bị sửa sau đó. Không bao giờ sửa migration cũ; hãy thêm file `V<n>__...sql` mới. Với DB dev có thể xoá làm lại bằng `docker compose down -v` (**mất toàn bộ dữ liệu dev**). |
 
-## 9. Tham khảo
+## 9. Tài liệu CLB và Cloudflare R2
+
+Module `document` lưu file của CLB. **Metadata** nằm trong PostgreSQL, gồm hai bảng:
+- `documents`: tên, `path`, chủ sở hữu, `version`, cờ `deleted`, thời gian tạo/sửa, `app_detail_key`.
+- `document_versions`: lịch sử, không bao giờ bị sửa.
+
+**Nội dung file** nằm ở một trong hai nơi:
+
+| `STORAGE_TYPE` | File nằm ở | Dùng khi |
+|---|---|---|
+| `local` (mặc định) | `backend/springboot/data/documents/` (git-ignored) | Phát triển, chạy test |
+| `r2` | Bucket Cloudflare R2, qua API tương thích S3 | Môi trường chạy thật |
+
+### Bật R2
+
+1. Vào Cloudflare → **R2** → **Manage API Tokens** → tạo token có quyền **Object Read & Write**, giới hạn trong bucket `club-basic-vju`.
+2. Thêm vào `backend/springboot/.env.local`. Khi deploy thì đặt thành biến môi trường; **không bao giờ** commit:
+
+   ```properties
+   STORAGE_TYPE=r2
+   R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+   R2_BUCKET=club-basic-vju
+   R2_ACCESS_KEY_ID=<access key id>
+   R2_SECRET_ACCESS_KEY=<secret access key>
+   ```
+
+3. Chạy lại backend. Nếu thiếu biến nào, backend sẽ báo rõ tên biến đó (ví dụ `app.storage.type=r2 needs R2_BUCKET`) và dừng khởi động.
+
+### Vì sao tài liệu **không** đi qua `cdn.cbv.all1.vn`
+
+Gắn custom domain vào một bucket R2 sẽ **công khai toàn bộ bucket**. Ai biết `path` cũng tải được file, kể cả khi:
+- họ không thuộc CLB đó;
+- file đã bị xoá mềm.
+
+Vì vậy bucket chứa tài liệu phải ở chế độ **private**. Có hai cách tải file:
+- `GET /documents/{id}/download`: file được stream qua backend, có kiểm tra quyền.
+- `GET /documents/{id}/download-url`: backend kiểm tra quyền, rồi trả về link presigned. Link này trỏ thẳng vào endpoint S3 của R2, hết hạn sau `DOCUMENT_DOWNLOAD_URL_TTL` (mặc định 5 phút), phù hợp với file lớn.
+
+CDN nên dùng cho file công khai như logo, ảnh bìa CLB hay avatar. Hãy đặt các file này trong **một bucket riêng** gắn với `cdn.cbv.all1.vn`, đừng dùng chung với bucket tài liệu.
+
+### API
+
+| Method | Path | Quyền | Ghi chú |
+|---|---|---|---|
+| GET | `/api/v1/clubs/{clubId}/documents` | `document.view` | Phân trang. Lọc theo `name` (chứa chuỗi), `appDetailKey`, `deleted=true` (cần thêm `document.restore`) |
+| GET | `/api/v1/clubs/{clubId}/documents/count` | `document.view` | Đếm tài liệu (getDocCount) |
+| GET | `/api/v1/clubs/{clubId}/documents/names` | `document.view` | Danh sách tên, sắp xếp A–Z (getDocumentNames) |
+| POST | `/api/v1/clubs/{clubId}/documents` | `document.upload` | `multipart/form-data`: `file`, tuỳ chọn `name`, `appDetailKey` |
+| GET | `/api/v1/documents/{id}` | `document.view` | |
+| PATCH | `/api/v1/documents/{id}` | chủ sở hữu hoặc `document.update` | Đổi `name` (giữ nguyên đuôi file), `appDetailKey` (gửi `""` để xoá) |
+| DELETE | `/api/v1/documents/{id}` | chủ sở hữu hoặc `document.delete` | **Xoá mềm**: file vẫn còn trong storage |
+| POST | `/api/v1/documents/{id}/restore` | `document.restore` | Khôi phục |
+| GET / POST | `/api/v1/documents/{id}/versions` | `document.view` / `document.upload` | Xem lịch sử / tải lên phiên bản mới (tuỳ chọn `expectedVersion`) |
+| GET | `/api/v1/documents/{id}/download` | `document.view` | Tuỳ chọn `?version=N` |
+| GET | `/api/v1/documents/{id}/download-url` | `document.view` | Link presigned. Khi dùng `local`, trả về đường dẫn `/download` |
+
+Ví dụ upload (macOS / Linux):
+
+```bash
+curl -X POST http://localhost:8080/api/v1/clubs/<clubId>/documents -H "Authorization: Bearer <token>" -F "file=@noi-quy.pdf" -F appDetailKey=club.rules
+```
+
+Windows PowerShell 7 trở lên:
+
+```powershell
+Invoke-RestMethod -Method Post "http://localhost:8080/api/v1/clubs/<clubId>/documents" -Headers @{Authorization="Bearer <token>"} -Form @{file=Get-Item .\noi-quy.pdf; appDetailKey="club.rules"}
+```
+
+Quyền theo vai trò:
+- `SYSTEM_ADMIN` và `CLUB_PRESIDENT`: đủ 5 quyền.
+- `CLUB_VICE_PRESIDENT`: mọi quyền trừ `restore`.
+- `CLUB_MEMBER`: chỉ `view`.
+
+### File bất thường bị chặn
+
+| Mã lỗi | Status | Ví dụ |
+|---|---|---|
+| `INVALID_DOCUMENT_NAME` | 400 | `../a.pdf`, `a/b.pdf`, `CON.pdf`, `.hidden.pdf`, tên không có đuôi, ký tự `<>:"\|?*`, tên dài quá 255 byte |
+| `SUSPICIOUS_DOCUMENT_NAME` | 400 | `invoice.exe.pdf`, ký tự đảo chiều U+202E (`invoice‮fdp.exe`), ký tự vô hình, chuỗi dấu cách dài trước đuôi file |
+| `UNSUPPORTED_DOCUMENT_TYPE` | 415 | Đuôi không thuộc danh sách cho phép (pdf, doc(x), xls(x), ppt(x), txt, csv, md, png, jpg, gif, webp, zip) |
+| `DOCUMENT_CONTENT_MISMATCH` | 400 | File `.exe` đổi tên thành `.pdf`. Backend so khớp byte đầu file với đuôi, `Content-Type` không lấy từ client |
+| `EMPTY_DOCUMENT` / `DOCUMENT_TOO_LARGE` | 400 / 413 | File rỗng / lớn hơn `DOCUMENT_MAX_FILE_SIZE` |
+| `DOCUMENT_VERSION_CONFLICT` | 409 | `expectedVersion` không phải phiên bản hiện tại (người khác vừa sửa) |
+| `DOCUMENT_TYPE_CHANGED` | 400 | Phiên bản mới hoặc tên mới có đuôi khác (`.pdf` thành `.png`) |
+| `DOCUMENT_VERSION_UNCHANGED` | 409 | Nội dung giống hệt phiên bản hiện tại (cùng SHA-256) |
+| `DOCUMENT_VERSION_NOT_FOUND` / `INVALID_DOCUMENT_VERSION` | 404 / 400 | `?version=99` / `?version=0` |
+| `DOCUMENT_NAME_ALREADY_EXISTS` | 409 | Trùng tên với một tài liệu chưa xoá trong CLB (không phân biệt hoa thường) |
+| `DOCUMENT_DELETED` | 410 | Sửa hoặc tải một tài liệu đã xoá mềm |
+| `DOCUMENT_STORAGE_ERROR` | 502 | R2 hoặc thư mục local gặp lỗi. Chi tiết chỉ được ghi vào log |
+
+Database cũng tự chặn một số trường hợp:
+- tên file có `/`, `\` hoặc ký tự điều khiển;
+- số phiên bản nhảy cóc, hoặc sửa phiên bản cũ;
+- bản ghi chỉ có `deleted = true` mà thiếu `deleted_at` / `deleted_by`;
+- con trỏ phiên bản hiện tại trỏ vào một phiên bản không tồn tại.
+
+## 10. Tham khảo
 
 ### Biến cấu hình
 
@@ -309,6 +408,11 @@ Có thể đặt trong `.env.local` (chỉ khi chạy profile `local`) hoặc qu
 | `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | trống | Admin đầu tiên (chỉ profile `local`) |
 | `DEMO_USER_PASSWORD` / `DEMO_DATA_ENABLED` | trống / `true` | Dữ liệu demo VJUA (chỉ profile `local`) |
 | `RATE_LIMIT_MAX_REQUESTS` / `RATE_LIMIT_WINDOW` | `60` / `1m` | Giới hạn đăng nhập/đăng ký/refresh theo IP |
+| `STORAGE_TYPE` | `local` | `local` hoặc `r2` (xem mục 9) |
+| `STORAGE_LOCAL_ROOT` | `data/documents` | Thư mục chứa file khi dùng `local` |
+| `R2_ENDPOINT` / `R2_BUCKET` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | trống | **Bắt buộc** khi `STORAGE_TYPE=r2` |
+| `DOCUMENT_MAX_FILE_SIZE` / `DOCUMENT_MAX_UPLOAD_SIZE` | `20MB` / `21MB` | Kích thước file tối đa / giới hạn request multipart |
+| `DOCUMENT_DOWNLOAD_URL_TTL` | `5m` | Thời hạn link presigned |
 
 ### Mô hình lỗi
 

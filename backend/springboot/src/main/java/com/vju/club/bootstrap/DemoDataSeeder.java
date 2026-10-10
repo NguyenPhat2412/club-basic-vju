@@ -32,14 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Seeds a demo club for local development: club VJUA with four departments, three members and a student applicant.
- * A is president (CLUB_PRESIDENT role), B heads the communications department (DEPARTMENT_HEAD
- * role), C is a plain member holding two direct permissions, so both grant mechanisms can be shown.
- * Runs once: nothing happens if club VJUA already exists.
- */
 public class DemoDataSeeder {
-
     static final String CLUB_CODE = "VJUA";
     static final List<String> DEPARTMENTS = List.of("Ban Truyền thông", "Ban Chuyên môn", "Ban Hậu cần", "Ban Đối ngoại");
     static final String USER_A = "demo.a@vju.local";
@@ -82,7 +75,6 @@ public class DemoDataSeeder {
         this.clock = clock;
     }
 
-    /** @return true when data was created, false when skipped */
     @Transactional
     public boolean seed() {
         if (!properties.isEnabled()) return false;

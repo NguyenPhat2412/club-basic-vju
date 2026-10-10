@@ -15,9 +15,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Every @RequirePermission in the code base is wired correctly, so typos fail here, not in production. */
 class RequirePermissionUsageTest {
-
     private static List<Method> annotatedMethods() throws ClassNotFoundException {
         ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(false);
         scanner.addIncludeFilter(new AnnotationTypeFilter(Service.class));

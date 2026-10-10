@@ -12,12 +12,10 @@ import java.util.List;
 
 @Mapper
 public interface MembershipMapper {
-
     @Mapping(target = "userId", source = "user.id")
     @Mapping(target = "clubId", source = "club.id")
     MembershipResponse toResponse(Membership membership);
 
-    /** A user's own membership, with the club's identity and the departments they belong to. */
     @Mapping(target = "id", source = "membership.id")
     @Mapping(target = "clubId", source = "membership.club.id")
     @Mapping(target = "clubCode", source = "membership.club.code")

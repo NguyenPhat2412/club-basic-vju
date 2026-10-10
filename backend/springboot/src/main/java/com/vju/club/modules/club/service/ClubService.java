@@ -22,7 +22,6 @@ import java.util.Locale;
 import java.util.UUID;
 
 public interface ClubService {
-
     PageResponse<ClubResponse> list(Actor actor, String query, int offset, int limit);
 
     PageResponse<ClubResponse> list(Actor actor, String query, String category, ClubStatus status, int offset, int limit);
@@ -34,5 +33,4 @@ public interface ClubService {
     ClubResponse update(Actor actor, UUID clubId, ClubPatchRequest request);
 
     ClubResponse updateStatus(Actor actor, UUID clubId, ClubStatusRequest request);
-
 }

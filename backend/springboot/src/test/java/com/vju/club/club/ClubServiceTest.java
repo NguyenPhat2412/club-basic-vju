@@ -49,7 +49,6 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class ClubServiceTest {
-
     @Mock ClubRepository clubRepository;
     @Mock PermissionAuthorizationService authorization;
     @Mock AuditService audit;

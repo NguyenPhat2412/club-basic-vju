@@ -15,9 +15,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
-/** Framework-level errors must keep their real status and never degrade into 500s. */
 class ErrorHandlingApiTest extends ApiIntegrationTest {
-
     @Test
     void unknownRouteIs404ForAuthenticatedCaller() throws Exception {
         problem(get("/api/v1/does-not-exist"), adminToken, null, 404, "NOT_FOUND");

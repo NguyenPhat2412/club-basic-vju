@@ -1,7 +1,6 @@
 package com.vju.club.modules.role.common;
 
 public final class RoleConstants {
-
     private RoleConstants() {
     }
 

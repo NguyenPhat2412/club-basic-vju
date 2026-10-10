@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.UUID;
 
 public interface AuthService {
-
     UserResponse register(RegisterRequest request);
 
     AuthResponse login(LoginRequest request);
@@ -42,5 +41,4 @@ public interface AuthService {
     UserResponse getCurrentUser(UUID userId);
 
     void changePassword(UUID userId, ChangePasswordRequest request);
-
 }

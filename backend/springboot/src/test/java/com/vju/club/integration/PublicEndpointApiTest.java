@@ -12,9 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-/** Public routes come from @PublicEndpoint on handlers instead of a hard-coded URL list. */
 class PublicEndpointApiTest extends ApiIntegrationTest {
-
     @Autowired @Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping handlerMapping;
 
     @Test
@@ -31,7 +29,6 @@ class PublicEndpointApiTest extends ApiIntegrationTest {
                 401, "INVALID_CREDENTIALS");
         problem(get("/api/v1/auth/me"), null, null, 401, "UNAUTHORIZED");
         problem(post("/api/v1/auth/logout"), null, Map.of("refreshToken", "x"), 401, "UNAUTHORIZED");
-        // Only the annotated method is public, not every method on that path.
         problem(get("/api/v1/auth/login"), null, null, 401, "UNAUTHORIZED");
     }
 }
