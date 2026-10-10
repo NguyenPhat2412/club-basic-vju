@@ -205,6 +205,15 @@ public class PermissionServiceImpl implements PermissionService {
         revokeGrant(actorUser, target, grants.get(0));
     }
 
+    @Transactional
+    @RequirePermission("permission.revoke")
+    public void revokeByKey(Actor actor, UUID targetUserId, String permissionKey,
+                            PermissionScope scope, UUID clubId, UUID departmentId) {
+        Permission permission = permissionRepository.findByPermissionKey(permissionKey)
+                .orElseThrow(() -> notFound("PERMISSION_NOT_FOUND", "Permission not found"));
+        revoke(actor, targetUserId, permission.getId(), scope, clubId, departmentId);
+    }
+
     private UserPermission createGrant(User actorUser, User target, Permission permission, PermissionScope scope,
                                        Club club, Department department, String reason) {
         UserPermission grant = new UserPermission();

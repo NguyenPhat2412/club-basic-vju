@@ -120,6 +120,13 @@ public class DepartmentServiceImpl implements DepartmentService {
         Department department = departmentRepository.findById(departmentId).orElseThrow(() ->
                 authorizationService.missingResource(actor, permissionKey,
                         notFound("DEPARTMENT_NOT_FOUND", "Department not found")));
+        if ("department.activate".equals(permissionKey) || "department.active".equals(permissionKey)) {
+            if (authorizationService.hasPermission(actor, "department.active", department.getClub().getId(), department.getId())) {
+                return department;
+            }
+            authorizationService.require(actor, "department.activate", department.getClub().getId(), department.getId());
+            return department;
+        }
         authorizationService.require(actor, permissionKey, department.getClub().getId(), department.getId());
         return department;
     }

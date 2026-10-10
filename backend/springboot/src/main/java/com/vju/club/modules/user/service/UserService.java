@@ -13,6 +13,7 @@ import com.vju.club.modules.user.enums.UserStatus;
 import com.vju.club.error.ApiException;
 import com.vju.club.modules.user.repository.UserRepository;
 import com.vju.club.security.PermissionAuthorizationService;
+import com.vju.club.modules.user.dto.request.AdminUpdateUserRequest;
 import com.vju.club.modules.user.dto.request.UpdateProfileRequest;
 import com.vju.club.modules.user.dto.request.UpdateUserStatusRequest;
 import org.springframework.data.domain.Sort;
@@ -31,6 +32,8 @@ public interface UserService {
     UserResponse getCurrent(Actor actor);
 
     UserResponse updateProfile(Actor actor, UpdateProfileRequest request);
+
+    UserResponse updateUser(Actor actor, UUID userId, AdminUpdateUserRequest request);
 
     UserResponse getById(Actor actor, UUID userId);
 

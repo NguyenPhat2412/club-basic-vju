@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -57,6 +58,8 @@ public class AuthServiceImpl implements AuthService {
 
         ClubPrincipal principal = (ClubPrincipal) authentication.getPrincipal();
         User user = userRepository.findById(principal.id()).orElseThrow(this::invalidCredentials);
+        auditService.record(user.getId(), AuditAction.USER_LOGGED_IN, user.getId(), null, null,
+                Map.of("email", user.getEmail()));
         return new SignedIn(principal, new AuthResponse(userMapper.toResponse(user)));
     }
 

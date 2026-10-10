@@ -6,6 +6,7 @@ import com.vju.club.modules.user.service.UserService;
 import com.vju.club.security.Actor;
 import com.vju.club.modules.user.dto.response.UserResponse;
 import com.vju.club.common.dto.PageResponse;
+import com.vju.club.modules.user.dto.request.AdminUpdateUserRequest;
 import com.vju.club.modules.user.dto.request.UpdateProfileRequest;
 import com.vju.club.modules.user.dto.request.UpdateUserStatusRequest;
 import jakarta.validation.Valid;
@@ -63,6 +64,14 @@ public class UserController {
     @GetMapping("/{userId}")
     public UserResponse getById(Actor actor, @PathVariable UUID userId) {
         return userService.getById(actor, userId);
+    }
+
+    @PatchMapping("/{userId}")
+    public UserResponse updateUser(
+            Actor actor,
+            @PathVariable UUID userId,
+            @Valid @RequestBody AdminUpdateUserRequest request) {
+        return userService.updateUser(actor, userId, request);
     }
 
     @PatchMapping("/{userId}/password")
