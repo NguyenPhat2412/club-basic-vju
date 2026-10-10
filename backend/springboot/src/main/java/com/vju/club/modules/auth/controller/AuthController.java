@@ -10,10 +10,12 @@ import com.vju.club.modules.auth.dto.response.AuthResponse;
 import com.vju.club.modules.auth.dto.request.LoginRequest;
 import com.vju.club.modules.user.dto.response.UserResponse;
 import com.vju.club.modules.auth.dto.request.ChangePasswordRequest;
+import com.vju.club.modules.auth.dto.request.RegisterRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -56,4 +58,11 @@ public class AuthController {
     public UserResponse me(Actor actor) {
         return authService.getCurrentUser(actor.id());
     }
+
+    @PublicEndpoint(reason = "Self-service sign-up")
+    @PostMapping("/register")
+    public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
+    }
 }
+

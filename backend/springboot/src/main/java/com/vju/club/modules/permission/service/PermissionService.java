@@ -55,4 +55,6 @@ public interface PermissionService {
     List<UserPermissionResponse> replace(Actor actor, UUID targetUserId, ReplacePermissionsRequest request);
 
     void revoke(Actor actor, UUID targetUserId, UUID permissionId, PermissionScope scope, UUID clubId, UUID departmentId);
+
+    void revokeByKey(Actor actor, UUID targetUserId, String permissionKey, PermissionScope scope, UUID clubId, UUID departmentId);
 }

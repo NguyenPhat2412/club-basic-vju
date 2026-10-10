@@ -186,6 +186,21 @@ class PermissionServiceTest {
     }
 
     @Test
+    void revokeByKeyFindsPermissionAndRevokesIt() {
+        UserPermission grant = held(clubUpdate);
+        when(permissionRepository.findByPermissionKey("club.update")).thenReturn(Optional.of(clubUpdate));
+        when(userPermissionRepository.findByUser_IdAndPermission_IdAndRevokedAtIsNullOrderByGrantedAtDesc(
+                target.getId(), clubUpdate.getId())).thenReturn(List.of(grant));
+
+        service.revokeByKey(actor, target.getId(), "club.update", null, null, null);
+
+        assertThat(grant.getRevokedAt()).isNotNull();
+        assertThat(grant.getRevokedBy()).isSameAs(admin);
+        verify(audit).record(eq(admin.getId()), eq(AuditAction.PERMISSION_REVOKED), eq(grant.getId()), eq(club.getId()),
+                any(), any());
+    }
+
+    @Test
     void revokeOfTwoMatchingGrantsNeedsAScope() {
         UserPermission clubGrant = held(clubUpdate);
         UserPermission globalGrant = held(clubUpdate);
