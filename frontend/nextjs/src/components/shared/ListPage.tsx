@@ -1,4 +1,4 @@
-import { ApiError } from "@/lib/api";
+import { errorMessage } from "@/lib/errors";
 import { ReactNode } from "react";
 
 export function ListPage({ title, children }: { title: string; children: ReactNode }) {
@@ -11,6 +11,5 @@ export function ListPage({ title, children }: { title: string; children: ReactNo
 }
 
 export function describeError(error: unknown) {
-  if (error instanceof ApiError && error.code) return `${error.code}: ${error.message}`;
-  return error instanceof Error ? error.message : "Đã có lỗi xảy ra";
+  return errorMessage(error);
 }
