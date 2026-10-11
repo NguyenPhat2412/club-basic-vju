@@ -30,6 +30,7 @@ import com.vju.club.modules.audit.repository.PermissionAuditLogRepository;
 import com.vju.club.modules.permission.repository.UserPermissionRepository;
 import com.vju.club.modules.user.repository.UserRepository;
 import com.vju.club.security.PermissionAuthorizationService;
+import com.vju.club.security.GrantGuard;
 import com.vju.club.security.ScopeRules;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -62,6 +63,7 @@ public class PermissionServiceImpl implements PermissionService {
     private final Clock clock;
     private final AuditService auditService;
     private final PermissionMapper permissionMapper;
+    private final GrantGuard grantGuard;
 
     @Transactional(readOnly = true)
     @RequirePermission("permission.view")
@@ -124,6 +126,7 @@ public class PermissionServiceImpl implements PermissionService {
 
         Club club = request.clubId() == null ? null : findClub(request.clubId());
         Department department = request.departmentId() == null ? null : findDepartment(request.departmentId());
+        grantGuard.requireCanGrant(actor, List.of(permission), request.scope(), request.clubId(), department);
         return permissionMapper.toUserPermissionResponse(
                 createGrant(actorUser, target, permission, request.scope(), club, department, request.reason()));
     }
@@ -169,6 +172,10 @@ public class PermissionServiceImpl implements PermissionService {
         }
         Set<UUID> held = new HashSet<>();
         current.forEach(grant -> held.add(grant.getPermission().getId()));
+        List<Permission> changed = new ArrayList<>();
+        toRevoke.forEach(grant -> changed.add(grant.getPermission()));
+        wanted.stream().filter(permission -> !held.contains(permission.getId())).forEach(changed::add);
+        grantGuard.requireCanGrant(actor, changed, request.scope(), request.clubId(), department);
 
         toRevoke.forEach(grant -> revokeGrant(actorUser, target, grant));
         List<UserPermission> result = new ArrayList<>(current);
@@ -202,7 +209,10 @@ public class PermissionServiceImpl implements PermissionService {
         if (grants.size() > 1) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "AMBIGUOUS_PERMISSION_GRANT", "Specify scope and target to revoke this permission");
         }
-        revokeGrant(actorUser, target, grants.get(0));
+        UserPermission grant = grants.get(0);
+        grantGuard.requireCanGrant(actor, List.of(permission), grant.getScope(),
+                grant.getClub() == null ? null : grant.getClub().getId(), grant.getDepartment());
+        revokeGrant(actorUser, target, grant);
     }
 
     @Transactional

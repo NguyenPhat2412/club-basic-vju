@@ -14,6 +14,7 @@ public record UserResponse(
         String phone,
         String avatarUrl,
         String status,
+        boolean requiresPasswordChange,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) { }

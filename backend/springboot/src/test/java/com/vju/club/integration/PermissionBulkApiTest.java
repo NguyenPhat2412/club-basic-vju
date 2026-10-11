@@ -92,6 +92,9 @@ class PermissionBulkApiTest extends ApiIntegrationTest {
     void putNeedsAssignAndRevokeWhenRemoving() throws Exception {
         grant(member, "permission.assign", "GLOBAL", null, null);
         UUID target = user("target@vju.local");
+        problem(put("/api/v1/users/" + target + "/permissions"), memberToken, clubSet("club.view"), 403,
+                "GRANT_EXCEEDS_OWN_PERMISSIONS");
+        grant(member, "club.view", "CLUB", clubA, null);
         call(put("/api/v1/users/" + target + "/permissions"), memberToken, clubSet("club.view"), 200);
         problem(put("/api/v1/users/" + target + "/permissions"), memberToken, clubSet(), 403, "PERMISSION_DENIED");
         problem(put("/api/v1/users/" + member + "/permissions"), token(target), clubSet(), 403, "PERMISSION_DENIED");

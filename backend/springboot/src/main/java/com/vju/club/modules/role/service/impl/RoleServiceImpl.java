@@ -11,6 +11,7 @@ import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.modules.club.entity.Club;
 import com.vju.club.modules.department.entity.Department;
 import com.vju.club.modules.permission.entity.Permission;
+import com.vju.club.modules.permission.enums.PermissionScope;
 import com.vju.club.modules.audit.enums.PermissionAuditAction;
 import com.vju.club.modules.audit.entity.PermissionAuditLog;
 import com.vju.club.modules.role.entity.Role;
@@ -30,6 +31,7 @@ import com.vju.club.modules.role.dto.response.RoleResponse;
 import com.vju.club.modules.role.dto.request.UpdateRoleRequest;
 import com.vju.club.modules.role.dto.response.UserRoleResponse;
 import com.vju.club.security.PermissionAuthorizationService;
+import com.vju.club.security.GrantGuard;
 import com.vju.club.security.ScopeRules;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -59,6 +61,7 @@ public class RoleServiceImpl implements RoleService {
     private final Clock clock;
     private final AuditService auditService;
     private final RoleMapper roleMapper;
+    private final GrantGuard grantGuard;
 
     @Transactional(readOnly = true)
     @RequirePermission("role.view")
@@ -85,6 +88,7 @@ public class RoleServiceImpl implements RoleService {
         role.setDescription(request.description());
         role.setScope(request.scope());
         role.setPermissions(resolvePermissions(request.permissionIds(), role));
+        grantGuard.requireCanGrant(actor, role.getPermissions(), PermissionScope.GLOBAL, null, null);
         Role saved = roleRepository.saveAndFlush(role);
         auditService.record(actor.id(), AuditAction.ROLE_CREATED, saved.getId(), null, null, snapshot(saved));
         return roleMapper.toResponse(saved);
@@ -94,8 +98,10 @@ public class RoleServiceImpl implements RoleService {
     @RequirePermission("role.manage")
     public RoleResponse update(Actor actor, UUID roleId, UpdateRoleRequest request) {
         Role role = findRole(roleId);
-        if (role.isSystem()) {
-            throw new ApiException(HttpStatus.CONFLICT, "SYSTEM_ROLE_IMMUTABLE", "System roles cannot be changed");
+        if (GrantGuard.SYSTEM_ADMIN.equals(role.getCode())
+                || (role.isSystem() && (request.name() != null || request.active() != null))) {
+            throw new ApiException(HttpStatus.CONFLICT, "SYSTEM_ROLE_IMMUTABLE",
+                    "The system administrator role is locked; other system roles only allow permission and description changes");
         }
         Map<String, Object> before = snapshot(role);
         if (request.name() != null) {
@@ -106,7 +112,13 @@ public class RoleServiceImpl implements RoleService {
         }
         if (request.description() != null) role.setDescription(request.description());
         if (request.active() != null) role.setActive(request.active());
-        if (request.permissionIds() != null) role.setPermissions(resolvePermissions(request.permissionIds(), role));
+        if (request.permissionIds() != null) {
+            Set<Permission> permissions = resolvePermissions(request.permissionIds(), role);
+            Set<Permission> added = new LinkedHashSet<>(permissions);
+            added.removeAll(role.getPermissions());
+            grantGuard.requireCanGrant(actor, added, PermissionScope.GLOBAL, null, null);
+            role.setPermissions(permissions);
+        }
         Role saved = roleRepository.saveAndFlush(role);
         auditService.recordChange(actor.id(), AuditAction.ROLE_UPDATED, roleId, null, before, snapshot(saved));
         return roleMapper.toResponse(saved);
@@ -160,6 +172,7 @@ public class RoleServiceImpl implements RoleService {
                 .orElseThrow(() -> notFound("CLUB_NOT_FOUND", "Club not found"));
         Department department = request.departmentId() == null ? null : departmentRepository.findById(request.departmentId())
                 .orElseThrow(() -> notFound("DEPARTMENT_NOT_FOUND", "Department not found"));
+        grantGuard.requireCanGrantRole(actor, role, request.scope(), request.clubId(), department);
         if (userRoleRepository.existsActive(userId, role.getId(), request.scope(), request.clubId(), request.departmentId())) {
             throw new ApiException(HttpStatus.CONFLICT, "ROLE_ALREADY_ASSIGNED", "Role is already assigned");
         }
@@ -186,6 +199,15 @@ public class RoleServiceImpl implements RoleService {
         UserRole assignment = userRoleRepository.findByIdAndUser_Id(assignmentId, userId)
                 .filter(found -> found.getRevokedAt() == null)
                 .orElseThrow(() -> notFound("ROLE_ASSIGNMENT_NOT_FOUND", "Role assignment not found"));
+        if (GrantGuard.SYSTEM_ADMIN.equals(assignment.getRole().getCode())) {
+            if (userId.equals(actor.id())) {
+                throw new ApiException(HttpStatus.CONFLICT, "CANNOT_REVOKE_OWN_ADMIN",
+                        "You cannot remove your own system administrator role");
+            }
+            grantGuard.requireNotLastSystemAdmin(userId);
+        }
+        grantGuard.requireCanGrantRole(actor, assignment.getRole(), assignment.getScope(),
+                assignment.getClub() == null ? null : assignment.getClub().getId(), assignment.getDepartment());
         assignment.revoke(OffsetDateTime.now(clock), actorUser);
         userRoleRepository.saveAndFlush(assignment);
         audit(actorUser, assignment, PermissionAuditAction.REVOKE, null);

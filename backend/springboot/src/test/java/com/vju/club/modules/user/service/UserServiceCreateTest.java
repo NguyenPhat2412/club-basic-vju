@@ -45,12 +45,14 @@ class UserServiceCreateTest {
     @Mock PermissionAuthorizationService authorizationService;
     @Mock AuditService auditService;
     @Mock com.vju.club.modules.auth.service.UserSessionService userSessionService;
+    @Mock com.vju.club.modules.role.service.RoleService roleService;
+    @Mock com.vju.club.security.GrantGuard grantGuard;
 
     UserServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new UserServiceImpl(userRepository, authorizationService, auditService, new UserMapperImpl(), ENCODER, userSessionService);
+        service = new UserServiceImpl(userRepository, authorizationService, auditService, new UserMapperImpl(), ENCODER, userSessionService, roleService, grantGuard);
         when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
             User user = invocation.getArgument(0);
             user.setId(UUID.randomUUID());
@@ -67,7 +69,7 @@ class UserServiceCreateTest {
 
     @Test
     void hashesPasswordNormalizesInputAndAuditsTheAdmin() {
-        service.create(ADMIN, new CreateUserRequest("  USER@Example.com ", "password123", "  Test User ", " SV001 ", "  "));
+        service.create(ADMIN, new CreateUserRequest("  USER@Example.com ", "password123", "  Test User ", " SV001 ", "  ", null, null));
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).saveAndFlush(captor.capture());
@@ -84,7 +86,7 @@ class UserServiceCreateTest {
     @Test
     void rejectsDuplicateEmail() {
         when(userRepository.existsByEmailIgnoreCase("user@example.com")).thenReturn(true);
-        assertApiError(() -> service.create(ADMIN, new CreateUserRequest("user@example.com", "password123", "Test", null, null)),
+        assertApiError(() -> service.create(ADMIN, new CreateUserRequest("user@example.com", "password123", "Test", null, null, null, null)),
                 HttpStatus.CONFLICT, "EMAIL_ALREADY_EXISTS");
         verify(userRepository, never()).saveAndFlush(any());
     }
@@ -92,14 +94,14 @@ class UserServiceCreateTest {
     @Test
     void rejectsDuplicateStudentCode() {
         when(userRepository.existsByStudentCodeIgnoreCase("SV001")).thenReturn(true);
-        assertApiError(() -> service.create(ADMIN, new CreateUserRequest("new@example.com", "password123", "Test", "SV001", null)),
+        assertApiError(() -> service.create(ADMIN, new CreateUserRequest("new@example.com", "password123", "Test", "SV001", null, null, null)),
                 HttpStatus.CONFLICT, "STUDENT_CODE_ALREADY_EXISTS");
         verify(userRepository, never()).saveAndFlush(any());
     }
 
     @Test
     void blankStudentCodeIsStoredAsNullAndNotCheckedForDuplicates() {
-        service.create(ADMIN, new CreateUserRequest("a@example.com", "password123", "Test", "   ", null));
+        service.create(ADMIN, new CreateUserRequest("a@example.com", "password123", "Test", "   ", null, null, null));
         verify(userRepository, never()).existsByStudentCodeIgnoreCase(any());
     }
 }

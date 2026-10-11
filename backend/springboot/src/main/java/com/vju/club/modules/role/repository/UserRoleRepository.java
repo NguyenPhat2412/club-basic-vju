@@ -25,4 +25,13 @@ public interface UserRoleRepository extends JpaRepository<UserRole, UUID> {
     Optional<UserRole> findByIdAndUser_Id(UUID id, UUID userId);
 
     boolean existsByUser_IdAndRole_IdAndScopeAndRevokedAtIsNull(UUID userId, UUID roleId, PermissionScope scope);
+
+    @Query("SELECT count(ur) > 0 FROM UserRole ur WHERE ur.user.id = :userId AND ur.role.code = :roleCode "
+            + "AND ur.role.active = true AND ur.revokedAt IS NULL")
+    boolean holdsRole(@Param("userId") UUID userId, @Param("roleCode") String roleCode);
+
+    @Query("SELECT count(DISTINCT ur.user.id) FROM UserRole ur WHERE ur.role.code = :roleCode "
+            + "AND ur.role.active = true AND ur.revokedAt IS NULL "
+            + "AND ur.user.status = com.vju.club.modules.user.enums.UserStatus.ACTIVE")
+    long countActiveHolders(@Param("roleCode") String roleCode);
 }

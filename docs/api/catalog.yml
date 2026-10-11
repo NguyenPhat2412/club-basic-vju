@@ -230,6 +230,20 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: permission.revoke
+- method: PATCH
+  path: /api/v1/users/{userId}
+  module: user-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: user.update
+- method: DELETE
+  path: /api/v1/users/{userId}/permissions/by-key/{permissionKey}
+  module: permission-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: permission.revoke
 - method: POST
   path: /api/v1/auth/change-password
   module: authentication

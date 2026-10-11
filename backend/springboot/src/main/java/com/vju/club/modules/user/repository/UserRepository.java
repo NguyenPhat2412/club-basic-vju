@@ -21,4 +21,13 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     boolean existsByStudentCodeIgnoreCase(@Param("studentCode") String studentCode);
 
     boolean existsByIdAndStatus(UUID id, UserStatus status);
+
+    @Query("SELECT u.status AS status, u.requiresPasswordChange AS requiresPasswordChange FROM User u WHERE u.id = :id")
+    java.util.Optional<AccessState> findAccessState(@org.springframework.data.repository.query.Param("id") UUID id);
+
+    interface AccessState {
+        UserStatus getStatus();
+
+        boolean getRequiresPasswordChange();
+    }
 }

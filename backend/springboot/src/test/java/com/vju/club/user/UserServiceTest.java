@@ -48,6 +48,8 @@ class UserServiceTest {
     @Mock AuditService auditService;
     @Mock PasswordEncoder passwordEncoder;
     @Mock UserSessionService userSessionService;
+    @Mock com.vju.club.modules.role.service.RoleService roleService;
+    @Mock com.vju.club.security.GrantGuard grantGuard;
 
     private UserService service;
     private final Actor actor = new Actor(UUID.randomUUID());
@@ -68,7 +70,7 @@ class UserServiceTest {
         when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         UserService raw = new UserServiceImpl(userRepository, authorization, auditService,
-                new UserMapperImpl(), passwordEncoder, userSessionService);
+                new UserMapperImpl(), passwordEncoder, userSessionService, roleService, grantGuard);
         service = withPermissionChecks(raw, authorization);
     }
 

@@ -414,13 +414,43 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
-      parameters:
-      - name: userId
-        in: path
+    patch:
+      operationId: user.update
+      summary: Update a user profile (admin)
+      tags:
+      - User
+      x-permission: user.update
+      x-implementation-status: IMPLEMENTED
+      requestBody:
         required: true
-        schema:
-          type: string
-          format: uuid
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUpdateUserRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    parameters:
+    - name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
   /users/{userId}/password:
     patch:
       operationId: user.reset_password
@@ -444,7 +474,7 @@ paths:
               $ref: '#/components/schemas/ResetPasswordRequest'
       responses:
         '204':
-          description: Password changed; every refresh token of the user is revoked
+          description: Password changed; every session of the user is ended
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -453,7 +483,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-      description: 'Người dùng quên mật khẩu liên hệ admin; admin đặt mật khẩu mới. Không có API tự đăng ký hay tự khôi phục mật khẩu.'
+      description: 'Người dùng quên mật khẩu liên hệ admin; admin đặt mật khẩu mới. Mặc định người dùng phải đổi lại mật khẩu ở lần đăng nhập tiếp theo (requiresPasswordChange). Không có API tự đăng ký hay tự khôi phục mật khẩu.'
   /users/{userId}/status:
     patch:
       operationId: user.status
@@ -1727,6 +1757,56 @@ paths:
         clubId/departmentId tương ứng. Nếu bỏ scope và có nhiều grant phù hợp, trả
         400 AMBIGUOUS_PERMISSION_GRANT; không tự chọn một grant. Thu hồi có hiệu lực
         với request tiếp theo, không cần cấp JWT mới.
+  /users/{userId}/permissions/by-key/{permissionKey}:
+    delete:
+      operationId: permission.revoke_by_key
+      summary: Revoke permission by key
+      tags:
+      - Permission
+      x-permission: permission.revoke
+      x-implementation-status: IMPLEMENTED
+      description: Giống DELETE /users/{userId}/permissions/{permissionId} nhưng nhận permission key (ví dụ club.view).
+      responses:
+        '204':
+          description: Revoked
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: permissionKey
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: scope
+        in: query
+        schema:
+          type: string
+          enum:
+          - GLOBAL
+          - CLUB
+          - DEPARTMENT
+      - name: clubId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: departmentId
+        in: query
+        schema:
+          type: string
+          format: uuid
   /roles:
     get:
       operationId: role.list
@@ -2903,13 +2983,18 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
     Forbidden:
-      description: Permission denied
+      description: 'Không đủ quyền. code: PERMISSION_DENIED; GRANT_EXCEEDS_OWN_PERMISSIONS (chỉ cấp/thu hồi
+        được quyền mình đang có); SYSTEM_ADMIN_ONLY (chỉ SYSTEM_ADMIN cấp/thu hồi vai trò SYSTEM_ADMIN);
+        PASSWORD_CHANGE_REQUIRED (phải đổi mật khẩu lần đầu, chỉ còn gọi được GET /auth/me, GET /users/me,
+        POST /auth/change-password); CSRF_INVALID; ACCOUNT_INACTIVE.'
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
     Conflict:
-      description: Trùng dữ liệu hoặc trạng thái hiện tại không cho phép thao tác.
+      description: 'Trùng dữ liệu hoặc trạng thái hiện tại không cho phép thao tác. Gồm cả CANNOT_DEACTIVATE_SELF,
+        CANNOT_REVOKE_OWN_ADMIN, LAST_SYSTEM_ADMIN và SYSTEM_ROLE_IMMUTABLE (vai trò SYSTEM_ADMIN bị khoá; vai trò hệ
+        thống khác chỉ sửa được danh sách quyền và mô tả).'
       content:
         application/problem+json:
           schema:
@@ -3069,6 +3154,19 @@ components:
           - 'null'
           maxLength: 32
           pattern: '^[0-9+().\- ]*$'
+        requiresPasswordChange:
+          type:
+          - boolean
+          - 'null'
+          description: Mặc định true — người dùng phải tự đổi mật khẩu ở lần đăng nhập đầu
+        roles:
+          type:
+          - array
+          - 'null'
+          maxItems: 20
+          description: Vai trò gán ngay khi tạo (cùng transaction; một vai trò không hợp lệ thì không tạo tài khoản). Chỉ cấp được quyền mà người tạo đang có.
+          items:
+            $ref: '#/components/schemas/AssignRoleRequest'
       examples:
       - email: phat@example.test
         password: DemoPassword123!
@@ -3139,6 +3237,9 @@ components:
           type:
           - string
           - 'null'
+        requiresPasswordChange:
+          type: boolean
+          description: true khi tài khoản do admin tạo hoặc reset mật khẩu; phải đổi mật khẩu trước khi dùng các API khác
         status:
           type: string
           enum:
@@ -3160,6 +3261,7 @@ components:
       - phone
       - avatarUrl
       - status
+      - requiresPasswordChange
       - createdAt
       - updatedAt
       examples:
@@ -4384,6 +4486,33 @@ components:
       required: [newPassword]
       properties:
         newPassword: {type: string, minLength: 8}
+        requiresPasswordChange:
+          type: [boolean, 'null']
+          description: Mặc định true — người dùng phải đổi lại mật khẩu ở lần đăng nhập tiếp theo
+    AdminUpdateUserRequest:
+      type: object
+      properties:
+        fullName:
+          type: string
+          maxLength: 200
+        studentCode:
+          type:
+          - string
+          - 'null'
+          maxLength: 50
+        phone:
+          type:
+          - string
+          - 'null'
+          maxLength: 32
+          pattern: '^[0-9+().\- ]*$'
+        avatarUrl:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+          format: uri
+          pattern: '^(https?://.+)?$'
 tags:
 - name: System
   description: Danh mục và trạng thái API

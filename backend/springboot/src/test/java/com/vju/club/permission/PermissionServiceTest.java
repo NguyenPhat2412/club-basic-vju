@@ -88,10 +88,12 @@ class PermissionServiceTest {
         return permission;
     }
 
+    @org.mockito.Mock com.vju.club.security.GrantGuard grantGuard;
+
     @BeforeEach
     void setUp() {
         service = withPermissionChecks(new PermissionServiceImpl(permissionRepository, userPermissionRepository, permissionAuditLogRepository,
-                userRepository, clubRepository, departmentRepository, authorization, Clock.systemUTC(), audit, new PermissionMapperImpl()), authorization);
+                userRepository, clubRepository, departmentRepository, authorization, Clock.systemUTC(), audit, new PermissionMapperImpl(), grantGuard), authorization);
         club.setId(UUID.randomUUID());
         when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
         when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));

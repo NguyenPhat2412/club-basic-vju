@@ -77,6 +77,7 @@ public class AuthServiceImpl implements AuthService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "CURRENT_PASSWORD_INVALID", "Current password is invalid");
         }
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        user.setRequiresPasswordChange(false);
         userRepository.saveAndFlush(user);
         userSessionService.endSessionsExcept(userId, currentSessionId);
         auditService.record(userId, AuditAction.USER_PASSWORD_CHANGED, userId, null, null, null);

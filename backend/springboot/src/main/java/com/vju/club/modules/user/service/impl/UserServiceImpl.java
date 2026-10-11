@@ -16,7 +16,9 @@ import com.vju.club.modules.user.entity.User;
 import com.vju.club.modules.user.enums.UserStatus;
 import com.vju.club.error.ApiException;
 import com.vju.club.modules.user.repository.UserRepository;
+import com.vju.club.security.GrantGuard;
 import com.vju.club.security.PermissionAuthorizationService;
+import com.vju.club.modules.role.service.RoleService;
 import com.vju.club.modules.user.dto.request.CreateUserRequest;
 import com.vju.club.modules.user.dto.request.ResetPasswordRequest;
 import com.vju.club.modules.auth.service.UserSessionService;
@@ -49,6 +51,8 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final UserSessionService userSessionService;
+    private final RoleService roleService;
+    private final GrantGuard grantGuard;
 
     @Transactional
     @RequirePermission(UserConstants.PERMISSION_CREATE)
@@ -68,9 +72,13 @@ public class UserServiceImpl implements UserService {
         user.setStudentCode(studentCode);
         user.setPhone(blankToNull(request.phone()));
         user.setStatus(UserStatus.ACTIVE);
+        user.setRequiresPasswordChange(!Boolean.FALSE.equals(request.requiresPasswordChange()));
         User saved = userRepository.saveAndFlush(user);
         auditService.record(actor.id(), AuditAction.USER_CREATED, saved.getId(), null, null,
                 Map.of("email", saved.getEmail()));
+        if (request.roles() != null) {
+            request.roles().forEach(role -> roleService.assign(actor, saved.getId(), role));
+        }
         return userMapper.toResponse(saved);
     }
 
@@ -79,6 +87,7 @@ public class UserServiceImpl implements UserService {
     public void resetPassword(Actor actor, UUID userId, ResetPasswordRequest request) {
         User user = findUser(userId);
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        user.setRequiresPasswordChange(!Boolean.FALSE.equals(request.requiresPasswordChange()));
         userRepository.saveAndFlush(user);
         int revoked = userSessionService.endAllSessions(userId);
         auditService.record(actor.id(), AuditAction.USER_PASSWORD_RESET, userId, null, null,
@@ -163,6 +172,12 @@ public class UserServiceImpl implements UserService {
         authorizationService.require(actor,
                 request.status() == UserStatus.ACTIVE ? "user.active" : "user.inactive", null, null);
         User user = findUser(userId);
+        if (request.status() != UserStatus.ACTIVE) {
+            if (userId.equals(actor.id())) {
+                throw new ApiException(HttpStatus.CONFLICT, "CANNOT_DEACTIVATE_SELF", "You cannot deactivate your own account");
+            }
+            grantGuard.requireNotLastSystemAdmin(userId);
+        }
         Map<String, Object> before = Map.of("status", user.getStatus());
         user.setStatus(request.status());
         User saved = userRepository.saveAndFlush(user);

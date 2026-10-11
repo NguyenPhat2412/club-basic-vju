@@ -37,4 +37,7 @@ public class User extends TimestampedEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private UserStatus status = UserStatus.ACTIVE;
+
+    @Column(name = "requires_password_change", nullable = false)
+    private boolean requiresPasswordChange;
 }
