@@ -40,7 +40,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuditService auditService;
     private final UserMapper userMapper;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public SignedIn login(LoginRequest request) {
         String email = normalizeEmail(request.email());
         Authentication authentication;

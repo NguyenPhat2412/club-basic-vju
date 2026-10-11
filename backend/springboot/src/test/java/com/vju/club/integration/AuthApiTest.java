@@ -185,6 +185,13 @@ class AuthApiTest extends ApiIntegrationTest {
     }
 
     @Test
+    void successfulLoginIsWrittenToTheAuditLog() throws Exception {
+        login("member@test.local", PASSWORD);
+        assertThat(count("SELECT count(*) FROM audit_logs WHERE action = 'USER_LOGGED_IN' AND actor_user_id = ?", member))
+                .isEqualTo(1);
+    }
+
+    @Test
     void wrongPasswordAndUnknownEmailLookIdentical() throws Exception {
         int before = sessionsOf(member);
         JsonNode wrong = problem(post("/api/v1/auth/login"), null, Map.of("email", "member@test.local", "password", "nope-nope"),
