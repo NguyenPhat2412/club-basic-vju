@@ -12,7 +12,6 @@ import { useSession } from "@/hooks/useSession";
 import { useThemePreference } from "@/hooks/useThemePreference";
 import { cn } from "@/lib/utils";
 import { ChangePasswordModal } from "./ChangePasswordModal";
-import { FirstLoginPassword } from "./FirstLoginPassword";
 
 type NavItem = { href: string; label: string; icon: ReactNode; show?: boolean };
 type NavGroup = { title: string; items: NavItem[] };
