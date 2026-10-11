@@ -4,12 +4,14 @@ import { apiModel, EffectivePermission } from "@/lib/api";
 
 export function useSession() {
   const me = useQuery({ queryKey: ["me"], queryFn: apiModel.me, staleTime: 60_000 });
-  const permissions = useQuery({ queryKey: ["me", "permissions"], queryFn: apiModel.effectivePermissions, enabled: me.isSuccess, staleTime: 60_000 });
+  const mustChangePassword = !!me.data?.requiresPasswordChange;
+  const permissions = useQuery({ queryKey: ["me", "permissions"], queryFn: apiModel.effectivePermissions, enabled: me.isSuccess && !mustChangePassword, staleTime: 60_000 });
   const list = permissions.data ?? [];
   return {
     user: me.data,
+    mustChangePassword,
     permissions: list,
-    ready: me.isSuccess && permissions.isSuccess,
+    ready: me.isSuccess && (mustChangePassword || permissions.isSuccess),
     can: (key: string) => list.some((p) => p.permissionKey === key),
     canInClub: (key: string, clubId: string) => list.some((p) => p.permissionKey === key && (p.scope === "GLOBAL" || p.clubId === clubId)),
     clubsWith: (keys: string[]) => clubIdsWith(list, keys),
