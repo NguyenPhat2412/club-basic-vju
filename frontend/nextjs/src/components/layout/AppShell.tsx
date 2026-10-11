@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { apiModel } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
+import { useThemePreference } from "@/hooks/useThemePreference";
 import { cn } from "@/lib/utils";
 import { ChangePasswordModal } from "./ChangePasswordModal";
 import { FirstLoginPassword } from "./FirstLoginPassword";
@@ -25,6 +26,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [closedGroups, setClosedGroups] = useState<Set<string>>(new Set());
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const { dark, toggleTheme } = useThemePreference();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") { e.preventDefault(); setCollapsed((v) => !v); } };
@@ -53,7 +55,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const signOut = async () => {
     await apiModel.logout().catch(() => undefined);
     queryClient.clear();
-    router.replace("/login");
+    router.replace("/home");
   };
 
   const toggleGroup = (title: string) => setClosedGroups((prev) => {
@@ -113,17 +115,21 @@ export function AppShell({ children }: { children: ReactNode }) {
       {mobileOpen && <div className="fixed inset-0 z-50 flex bg-black/50 lg:hidden" onClick={() => setMobileOpen(false)}><div onClick={(e) => e.stopPropagation()}>{sidebar}</div></div>}
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onMenu={() => setMobileOpen(true)} name={session.user?.fullName || session.user?.email} subtitle={session.user?.studentCode || session.user?.email}
+<<<<<<< Updated upstream
           onPassword={() => setPasswordOpen(true)} onSignOut={signOut} />
         <main data-design-system="admin-v1" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{session.user ? (session.mustChangePassword ? <FirstLoginPassword email={session.user.email} /> : children) : null}</main>
+=======
+          onPassword={() => setPasswordOpen(true)} onProfile={() => router.push("/profile")} onSignOut={signOut} dark={dark} onToggleTheme={toggleTheme} />
+        <main data-design-system="admin-v1" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{session.user ? children : null}</main>
+>>>>>>> Stashed changes
       </div>
       <ChangePasswordModal open={passwordOpen} onClose={() => setPasswordOpen(false)} />
     </div>
   );
 }
 
-function Topbar({ onMenu, name, subtitle, onPassword, onSignOut }: { onMenu: () => void; name?: string; subtitle?: string; onPassword: () => void; onSignOut: () => void }) {
+function Topbar({ onMenu, name, subtitle, onPassword, onProfile, onSignOut, dark, onToggleTheme }: { onMenu: () => void; name?: string; subtitle?: string; onPassword: () => void; onProfile: () => void; onSignOut: () => void; dark: boolean; onToggleTheme: () => void }) {
   const [now, setNow] = useState<Date | null>(null);
-  const [dark, setDark] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -132,21 +138,6 @@ function Topbar({ onMenu, name, subtitle, onPassword, onSignOut }: { onMenu: () 
     const interval = setInterval(tick, 1000);
     return () => { clearTimeout(timer); clearInterval(interval); };
   }, []);
-
-  useEffect(() => {
-    const stored = (() => { try { return localStorage.getItem("vju-theme"); } catch { return null; } })();
-    const initial = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
-    document.documentElement.classList.toggle("dark", initial);
-    const timer = setTimeout(() => setDark(initial), 0);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    try { localStorage.setItem("vju-theme", next ? "dark" : "light"); } catch { /* storage unavailable */ }
-  };
 
   return (
     <header className="relative z-40 flex min-h-14 shrink-0 select-none items-center justify-between gap-1 border-b border-border/40 bg-background px-3 py-1 sm:gap-3 sm:px-4">
@@ -163,7 +154,7 @@ function Topbar({ onMenu, name, subtitle, onPassword, onSignOut }: { onMenu: () 
             <span className="text-muted-foreground">{now.toLocaleDateString("vi-VN", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" })}</span>
           </span>
         )}
-        <button aria-label="Chuyển giao diện sáng/tối" onClick={toggleTheme} className="relative h-8 w-[60px] rounded-full border border-border/70 bg-muted/70 p-0.5">
+        <button aria-label="Chuyển giao diện sáng/tối" onClick={onToggleTheme} className="relative h-8 w-[60px] rounded-full border border-border/70 bg-muted/70 p-0.5">
           <span className={cn("flex size-6 items-center justify-center rounded-full bg-background shadow-sm transition-transform", dark && "translate-x-7")}>
             {dark ? <Moon size={14} className="text-primary" /> : <Sun size={14} className="text-primary" />}
           </span>
@@ -175,6 +166,7 @@ function Topbar({ onMenu, name, subtitle, onPassword, onSignOut }: { onMenu: () 
           </button>
           {menuOpen && (
             <div role="menu" className="panel-modal absolute right-0 top-11 z-50 w-52 p-1.5 fade-in" onMouseLeave={() => setMenuOpen(false)}>
+              <button role="menuitem" onClick={() => { setMenuOpen(false); onProfile(); }} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-muted"><Users size={14} className="text-primary" /> Hồ sơ cá nhân</button>
               <button role="menuitem" onClick={() => { setMenuOpen(false); onPassword(); }} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-muted"><KeyRound size={14} className="text-primary" /> Đổi mật khẩu</button>
               <button role="menuitem" onClick={onSignOut} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm text-destructive hover:bg-destructive/10"><LogOut size={14} /> Đăng xuất</button>
             </div>
