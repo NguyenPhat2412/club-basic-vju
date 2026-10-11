@@ -115,13 +115,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       {mobileOpen && <div className="fixed inset-0 z-50 flex bg-black/50 lg:hidden" onClick={() => setMobileOpen(false)}><div onClick={(e) => e.stopPropagation()}>{sidebar}</div></div>}
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onMenu={() => setMobileOpen(true)} name={session.user?.fullName || session.user?.email} subtitle={session.user?.studentCode || session.user?.email}
-<<<<<<< Updated upstream
-          onPassword={() => setPasswordOpen(true)} onSignOut={signOut} />
-        <main data-design-system="admin-v1" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{session.user ? (session.mustChangePassword ? <FirstLoginPassword email={session.user.email} /> : children) : null}</main>
-=======
           onPassword={() => setPasswordOpen(true)} onProfile={() => router.push("/profile")} onSignOut={signOut} dark={dark} onToggleTheme={toggleTheme} />
         <main data-design-system="admin-v1" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{session.user ? children : null}</main>
->>>>>>> Stashed changes
       </div>
       <ChangePasswordModal open={passwordOpen} onClose={() => setPasswordOpen(false)} />
     </div>
