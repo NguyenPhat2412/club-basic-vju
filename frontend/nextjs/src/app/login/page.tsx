@@ -22,7 +22,7 @@ export default function LoginPage() {
     try {
       await apiModel.login(email, password);
       queryClient.clear();
-      router.push("/clubs");
+      router.push("/home");
     } catch (err) {
       setError(describeError(err));
     } finally {
