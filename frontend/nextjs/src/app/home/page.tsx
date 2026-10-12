@@ -124,22 +124,28 @@ export default function HomePage() {
   const [search, setSearch] = useState("");
   const [selectedClub, setSelectedClub] = useState<ClubCard | null>(null);
 
-  const clubsQuery = useQuery({ queryKey: ["home", "clubs"], queryFn: () => apiModel.clubs("", "", 0, 8), enabled: !!session.user, placeholderData: keepPreviousData });
+  const clubsQuery = useQuery({ queryKey: ["home", "clubs"], queryFn: () => apiModel.clubs("", "", 0, 8), placeholderData: keepPreviousData, retry: 1 });
   const membershipsQuery = useQuery({ queryKey: ["home", "memberships"], queryFn: apiModel.myMemberships, enabled: !!session.user });
   const notificationsQuery = useQuery({ queryKey: ["home", "notifications"], queryFn: apiModel.notifications, enabled: !!session.user });
 
+  const liveClubs = useMemo(() => (clubsQuery.data?.items ?? []).map(mapClub), [clubsQuery.data?.items]);
+  const fallbackClubs = liveClubs.length ? liveClubs : PUBLIC_CLUBS;
+
   const clubs = useMemo(() => {
-    const items = session.user ? (clubsQuery.data?.items ?? []).map(mapClub) : PUBLIC_CLUBS;
+    const items = fallbackClubs;
     const query = search.trim().toLowerCase();
     if (!query) return items;
     return items.filter((club) => [club.code, club.name, club.description, club.activityField, club.summary, ...club.highlights].join(" ").toLowerCase().includes(query));
-  }, [clubsQuery.data?.items, search, session.user]);
+  }, [fallbackClubs, search]);
 
   const scope = session.user ? session.clubsWith(MANAGE_KEYS) : { global: false, ids: new Set<string>() };
   const manageable = session.user && clubsQuery.data ? clubsQuery.data.items.filter((club) => scope.global || scope.ids.has(club.id)).map(mapClub) : [];
   const unreadNotifications = notificationsQuery.data?.items.filter((n) => !n.read).length ?? 0;
   const isAuthenticated = !!session.user;
   const dashboardClubs = membershipsQuery.data?.items ?? [];
+  const publicClubCount = clubsQuery.data && (clubsQuery.data.total > 0 || clubsQuery.data.items.length > 0)
+    ? Math.max(clubsQuery.data.total, clubsQuery.data.items.length)
+    : fallbackClubs.length;
 
   const signOut = async () => {
     await apiModel.logout().catch(() => undefined);
@@ -153,14 +159,16 @@ export default function HomePage() {
 
   const topMenu = isAuthenticated
     ? [
-        { label: "Dashboard", icon: <Star size={15} />, onClick: () => jump("dashboard") },
-        { label: "Câu lạc bộ", icon: <Compass size={15} />, onClick: () => jump("clubs") },
-        { label: "Hồ sơ", icon: <UserRound size={15} />, onClick: () => router.push("/profile") },
+        { label: "Home", href: "/home", icon: <Star size={15} /> },
+        { label: "Dashboard", href: "/dashboard", icon: <Star size={15} /> },
+        { label: "Câu lạc bộ", href: "/clubs", icon: <Compass size={15} /> },
+        { label: "Hồ sơ", href: "/profile", icon: <UserRound size={15} /> },
       ]
     : [
-        { label: "Câu lạc bộ", icon: <Compass size={15} />, onClick: () => jump("clubs") },
-        { label: "Đăng nhập", icon: <LogIn size={15} />, onClick: () => router.push("/login") },
-        { label: "Đăng kí", icon: <ArrowRight size={15} />, onClick: () => router.push("/register") },
+        { label: "Home", href: "/home", icon: <Star size={15} /> },
+        { label: "Dashboard", href: "/login", icon: <Star size={15} /> },
+        { label: "Câu lạc bộ", href: "/clubs", icon: <Compass size={15} /> },
+        { label: "Đăng nhập", href: "/login", icon: <LogIn size={15} /> },
       ];
 
   return (
@@ -175,7 +183,7 @@ export default function HomePage() {
             </div>
           </Link>
           <div className="hidden flex-1 items-center justify-center gap-2 lg:flex">
-            {topMenu.map((item) => <TopNavButton key={item.label} {...item} />)}
+            {topMenu.map((item) => <TopNavButton key={item.label} href={item.href} label={item.label} icon={item.icon} />)}
           </div>
           <div className="ml-auto flex items-center gap-2">
             {isAuthenticated ? (
@@ -250,7 +258,7 @@ export default function HomePage() {
               <p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">Tổng quan</p>
               <h2 className="mt-2 text-2xl font-black tracking-tight">{isAuthenticated ? "Chế độ cá nhân hoá" : "Chế độ công khai"}</h2>
               <div className="mt-4 grid gap-3">
-                <MiniStat label="CLB công khai" value={String(session.user ? clubsQuery.data?.total ?? 0 : PUBLIC_CLUBS.length)} />
+                <MiniStat label="CLB công khai" value={String(publicClubCount)} />
                 <MiniStat label="CLB tham gia" value={String(dashboardClubs.length)} />
                 <MiniStat label="Quản lý khả dụng" value={String(manageable.length)} />
               </div>
@@ -261,10 +269,10 @@ export default function HomePage() {
               </div>
               <div className="grid gap-2 p-4">
                 {topMenu.map((item) => (
-                  <button key={item.label} onClick={item.onClick} className="flex items-center justify-between rounded-2xl border border-border/70 bg-card px-4 py-3 text-left text-sm font-semibold transition-colors hover:border-primary/30 hover:bg-primary/5 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10">
+                  <Link key={item.label} href={item.href} className="flex items-center justify-between rounded-2xl border border-border/70 bg-card px-4 py-3 text-left text-sm font-semibold transition-colors hover:border-primary/30 hover:bg-primary/5 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10">
                     <span className="flex items-center gap-2">{item.icon}{item.label}</span>
                     <ChevronRight size={15} className="text-primary" />
-                  </button>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -392,7 +400,7 @@ export default function HomePage() {
           <div className="rounded-[2rem] border border-border/70 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5">
             <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Số liệu</p>
             <div className="mt-4 grid gap-3">
-              <MiniStat label="CLB công khai" value={String(session.user ? clubsQuery.data?.total ?? 0 : PUBLIC_CLUBS.length)} />
+              <MiniStat label="CLB công khai" value={String(publicClubCount)} />
               <MiniStat label="Thông báo mới" value={String(unreadNotifications)} />
               <MiniStat label="Quản lý khả dụng" value={String(manageable.length)} />
             </div>
@@ -419,8 +427,9 @@ export default function HomePage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Link href="/home" className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold hover:bg-white/10">Home</Link>
+            <Link href="/dashboard" className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold hover:bg-white/10">Dashboard</Link>
+            <Link href="/clubs" className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold hover:bg-white/10">CLB</Link>
             <Link href="/login" className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold hover:bg-white/10">Đăng nhập</Link>
-            <Link href="/register" className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold hover:bg-white/10">Đăng kí</Link>
           </div>
         </div>
       </footer>
@@ -465,8 +474,8 @@ export default function HomePage() {
   );
 }
 
-function TopNavButton({ label, icon, onClick }: { label: string; icon: ReactNode; onClick: () => void }) {
-  return <button onClick={onClick} className="inline-flex h-10 items-center gap-2 rounded-full border border-border/70 bg-white px-4 text-sm font-semibold transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10">{icon}{label}</button>;
+function TopNavButton({ href, label, icon }: { href: string; label: string; icon: ReactNode }) {
+  return <Link href={href} className="inline-flex h-10 items-center gap-2 rounded-full border border-border/70 bg-white px-4 text-sm font-semibold transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10">{icon}{label}</Link>;
 }
 
 function SectionHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {

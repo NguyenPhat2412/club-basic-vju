@@ -31,22 +31,36 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="grid min-h-svh place-items-center bg-muted/40 px-4 py-10">
-      <div className="w-full max-w-[420px]">
+    <main className="grid min-h-svh place-items-center bg-[radial-gradient(circle_at_top_left,rgba(204,51,102,0.08),transparent_28%),linear-gradient(180deg,#fff,#fffafc)] px-4 py-10 dark:bg-[radial-gradient(circle_at_top_left,rgba(217,75,124,0.10),transparent_28%),linear-gradient(180deg,#101114,#17181d)]">
+      <div className="w-full max-w-[440px]">
         <div className="mb-6 flex items-center gap-3">
-          <span className="flex size-11 items-center justify-center rounded-xl bg-primary text-sm font-black text-primary-foreground">VJU</span>
-          <div><p className="text-lg font-black tracking-tight">ClubHub</p><p className="text-xs text-muted-foreground">Trường Đại học Việt Nhật</p></div>
-        </div>
-        <form onSubmit={submit} className="panel-modal grid gap-4 border-t-4 border-t-destructive p-7">
+          <span className="flex size-12 items-center justify-center rounded-2xl bg-primary text-sm font-black text-primary-foreground shadow-lg shadow-primary/20">VJU</span>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Đăng nhập</h1>
-            <p className="mt-1 text-xs text-muted-foreground">Quản lý câu lạc bộ, hồ sơ thành viên và tài liệu.</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">ClubHub</p>
+            <p className="text-sm font-semibold text-muted-foreground">Trường Đại học Việt Nhật</p>
           </div>
-          <FormField label="Email"><Input required type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="sinhvien@vju.ac.vn" /></FormField>
-          <FormField label="Mật khẩu"><Input required type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></FormField>
-          {error && <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">{error}</p>}
-          <Button type="submit" disabled={loading} className="mt-1 font-bold"><LogIn size={16} /> {loading ? "Đang đăng nhập…" : "Đăng nhập"}</Button>
-          <p className="text-center text-xs text-muted-foreground">Tài khoản do quản trị viên cấp. Quên mật khẩu? Liên hệ quản trị viên CLB để được đặt lại.</p>
+        </div>
+
+        <form onSubmit={submit} className="rounded-[2rem] border border-border bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#121418]">
+          <div className="mb-5">
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Đăng nhập</p>
+            <h1 className="mt-2 text-2xl font-black tracking-tight">Chào mừng trở lại</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Vào dashboard, xem CLB, tài liệu và thông báo của bạn.</p>
+          </div>
+
+          <div className="grid gap-4">
+            <FormField label="Email"><Input required type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="sinhvien@vju.ac.vn" /></FormField>
+            <FormField label="Mật khẩu"><Input required type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></FormField>
+
+            {error && <p role="alert" className="rounded-2xl border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">{error}</p>}
+
+            <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span>Quyền truy cập do quản trị viên cấp</span>
+              <button type="button" onClick={() => router.push("/register")} className="font-semibold text-primary hover:underline">Đăng ký</button>
+            </div>
+
+            <Button type="submit" disabled={loading} className="mt-1 h-11 font-bold"><LogIn size={16} /> {loading ? "Đang đăng nhập…" : "Đăng nhập"}</Button>
+          </div>
         </form>
       </div>
     </main>

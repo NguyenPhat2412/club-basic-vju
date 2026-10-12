@@ -44,40 +44,38 @@ export default function ProfilePage() {
   const user = session.user;
 
   return (
-    <main className="min-h-svh bg-[radial-gradient(circle_at_top_left,rgba(11,46,111,0.10),transparent_28%),radial-gradient(circle_at_top_right,rgba(200,16,46,0.08),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.96),rgba(250,250,250,1))] px-4 py-10 sm:px-6 lg:px-8 dark:bg-[radial-gradient(circle_at_top_left,rgba(126,166,255,0.12),transparent_28%),radial-gradient(circle_at_top_right,rgba(255,100,103,0.08),transparent_30%),linear-gradient(180deg,rgba(11,16,28,1),rgba(18,24,38,1))]">
+    <main className="min-h-svh bg-[radial-gradient(circle_at_top_left,rgba(204,51,102,0.08),transparent_24%),linear-gradient(180deg,#fff,#fffafc)] px-4 py-10 sm:px-6 lg:px-8 dark:bg-[radial-gradient(circle_at_top_left,rgba(217,75,124,0.10),transparent_24%),linear-gradient(180deg,#101114,#17181d)]">
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="flex size-11 items-center justify-center rounded-2xl bg-primary text-sm font-black text-primary-foreground shadow-lg shadow-primary/25">VJU</span>
+            <span className="flex size-12 items-center justify-center rounded-2xl bg-primary text-sm font-black text-primary-foreground shadow-lg shadow-primary/20">VJU</span>
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.18em] text-primary">ClubHub</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">ClubHub</p>
               <h1 className="text-2xl font-black tracking-tight">Hồ sơ cá nhân</h1>
             </div>
           </div>
           <div className="flex gap-2">
-            <Link href="/home" className="inline-flex h-10 items-center rounded-full border border-border/70 bg-background px-4 text-sm font-semibold transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary">
-              Trang chủ
-            </Link>
+            <Link href="/home" className="inline-flex h-10 items-center rounded-full border border-border bg-background px-4 text-sm font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary">Trang chủ</Link>
             <Button variant="outline" onClick={() => router.push("/clubs")} className="rounded-full"><UserRound size={15} /> Câu lạc bộ</Button>
           </div>
         </div>
 
         {!user ? (
-          <div className="panel-modal grid gap-4 p-6 text-center">
+          <div className="rounded-[2rem] border border-border bg-white p-6 text-center shadow-sm dark:border-white/10 dark:bg-[#121418]">
             <h2 className="text-xl font-bold">Bạn cần đăng nhập để xem hồ sơ</h2>
-            <p className="text-sm text-muted-foreground">Trang hồ sơ cá nhân hiển thị thông tin tài khoản hiện tại và cho phép đổi mật khẩu bằng API có sẵn.</p>
-            <div className="flex justify-center gap-3">
+            <p className="mt-2 text-sm text-muted-foreground">Trang hồ sơ cá nhân hiển thị thông tin tài khoản hiện tại và các tùy chọn bảo mật.</p>
+            <div className="mt-5 flex justify-center gap-3">
               <Button onClick={() => router.push("/login")}>Đăng nhập</Button>
               <Button variant="outline" onClick={() => router.push("/home")}>Về home</Button>
             </div>
           </div>
         ) : (
-          <div className="grid gap-6 lg:grid-cols-[1fr_1.1fr]">
-            <section className="panel-modal p-6">
+          <div className="grid gap-6 lg:grid-cols-[1fr_1.05fr]">
+            <section className="rounded-[2rem] border border-border bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#121418]">
               <div className="flex items-center gap-3">
-                <span className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-lg font-black text-primary">{(user.fullName || user.email).slice(0, 1).toUpperCase()}</span>
+                <span className="flex size-14 items-center justify-center rounded-[1.5rem] bg-primary/10 text-lg font-black text-primary">{(user.fullName || user.email).slice(0, 1).toUpperCase()}</span>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Tài khoản hiện tại</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Tài khoản hiện tại</p>
                   <h2 className="truncate text-2xl font-black tracking-tight">{user.fullName || user.email}</h2>
                   <p className="truncate text-sm text-muted-foreground">{user.email}</p>
                 </div>
@@ -100,19 +98,19 @@ export default function ProfilePage() {
               </div>
             </section>
 
-            <section className="panel-modal p-6">
+            <section className="rounded-[2rem] border border-border bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#121418]">
               <div className="flex items-center gap-3">
                 <span className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary"><LockKeyhole size={18} /></span>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Đổi mật khẩu</p>
-                  <h2 className="text-xl font-black tracking-tight">Bảo vệ tài khoản của bạn</h2>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Đổi mật khẩu</p>
+                  <h2 className="text-xl font-black tracking-tight">Bảo vệ tài khoản</h2>
                 </div>
               </div>
               <form onSubmit={submit} className="mt-6 grid gap-4">
                 <FormField label="Mật khẩu hiện tại" required>
                   <Input type="password" autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
                 </FormField>
-                <FormField label="Mật khẩu mới" required hint="Tối thiểu 8 ký tự.">
+                <FormField label="Mật khẩu mới" required hint="Nên dùng ít nhất 8 ký tự.">
                   <Input type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
                 </FormField>
                 <FormField label="Nhập lại mật khẩu mới" required>
