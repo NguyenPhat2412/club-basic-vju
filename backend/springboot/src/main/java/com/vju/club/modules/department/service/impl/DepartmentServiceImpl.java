@@ -97,7 +97,8 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     @Transactional
     public DepartmentResponse updateStatus(Actor actor, UUID departmentId, DepartmentStatusRequest request) {
-        String permission = request.status() == DepartmentStatus.ACTIVE ? "department.activate" : "department.inactive";
+        String permission = request.status() == DepartmentStatus.ACTIVE
+                ? DepartmentConstants.PERMISSION_ACTIVATE : DepartmentConstants.PERMISSION_INACTIVE;
         Department department = authorize(actor, permission, departmentId);
         Map<String, Object> before = Map.of("status", department.getStatus());
         department.setStatus(request.status());
