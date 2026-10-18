@@ -19,7 +19,7 @@ type Props = {
 
 export function BreadcrumbToolbar({ crumbs, titleBadge, search, extraActions, onRefresh, addLabel, onAdd, addDisabled }: Props) {
   return (
-    <div className="relative z-30 flex min-h-11 shrink-0 select-none flex-col justify-between gap-2.5 border-b border-border bg-card/60 px-4 py-2 text-xs backdrop-blur-xs sm:px-6 xl:flex-row xl:items-center">
+    <div className="relative z-30 flex min-h-14 shrink-0 select-none flex-col justify-between gap-2.5 border-b border-border bg-card px-4 py-3 text-xs sm:px-7 xl:flex-row xl:items-center">
       <nav aria-label="Breadcrumb" className="flex min-w-0 shrink-0 items-center gap-2 whitespace-nowrap">
         {crumbs.map((crumb, index) => {
           const last = index === crumbs.length - 1;

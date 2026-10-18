@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Compass, Mail, Search, Send, Sparkles, Star } from "lucide-react";
+import { Building2, Compass, Mail, Search, Send, Sparkles } from "lucide-react";
 import { apiModel, Club } from "@/lib/api";
 import { DetailList, EntityDrawer, Section } from "@/components/shared/Overlays";
 import { describeError } from "@/components/shared/ListPage";
@@ -49,22 +49,10 @@ export default function ClubsPage() {
   };
 
   return (
-    <main className="min-h-svh bg-[radial-gradient(circle_at_top_left,rgba(204,51,102,0.08),transparent_24%),linear-gradient(180deg,#fff,#fffafc)] px-4 py-8 sm:px-6 lg:px-8 dark:bg-[radial-gradient(circle_at_top_left,rgba(217,75,124,0.10),transparent_24%),linear-gradient(180deg,#101114,#17181d)]">
+    <main className="min-h-svh bg-[radial-gradient(circle_at_top_left,rgba(142,31,50,0.06),transparent_24%),linear-gradient(180deg,#fff,#fffafc)] px-4 py-8 sm:px-6 lg:px-8 dark:bg-[radial-gradient(circle_at_top_left,rgba(196,90,104,0.10),transparent_24%),linear-gradient(180deg,#101114,#17181d)]">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">CLB</p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight">Khám phá câu lạc bộ</h1>
-          </div>
-          <div className="flex gap-2">
-            <a href="/home" className="inline-flex h-10 items-center rounded-full border border-border bg-background px-4 text-sm font-semibold text-foreground">Home</a>
-            <a href="/dashboard" className="inline-flex h-10 items-center rounded-full border border-border bg-background px-4 text-sm font-semibold text-foreground">Dashboard</a>
-            <a href="/profile" className="inline-flex h-10 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Hồ sơ</a>
-          </div>
-        </div>
-
-        <section className="overflow-hidden rounded-[2rem] border border-border bg-white shadow-sm dark:border-white/10 dark:bg-[#121418]">
-          <div className="bg-[linear-gradient(135deg,rgba(204,51,102,0.96),rgba(166,32,79,0.95))] p-6 text-white sm:p-8">
+        <section className="overflow-hidden rounded-sm border border-border bg-white shadow-sm dark:border-white/10 dark:bg-[#121418]">
+          <div className="bg-[linear-gradient(135deg,rgba(142,31,50,0.96),rgba(111,25,43,0.95))] p-6 text-white sm:p-8">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-2xl">
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-white/90">
@@ -72,7 +60,7 @@ export default function ClubsPage() {
                 </div>
                 <h2 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">Một nơi để tìm và hiểu từng câu lạc bộ rõ ràng hơn.</h2>
               </div>
-              <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm">
+              <div className="rounded-sm border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm">
                 <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/70">Tổng số</p>
                 <p className="mt-1 text-2xl font-black">{clubs.data?.total ?? 0}</p>
               </div>
@@ -94,7 +82,7 @@ export default function ClubsPage() {
             </div>
 
             {notice && (
-              <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
+              <div className="mt-4 rounded-sm border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
                 {notice}
               </div>
             )}
@@ -102,24 +90,24 @@ export default function ClubsPage() {
             {clubs.isPending ? (
               <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-52 animate-pulse rounded-[1.75rem] border border-border bg-background dark:border-white/10 dark:bg-white/5" />
+                  <div key={i} className="h-52 animate-pulse rounded-sm border border-border bg-background dark:border-white/10 dark:bg-white/5" />
                 ))}
               </div>
             ) : clubs.isError ? (
-              <div className="mt-6 rounded-[1.75rem] border border-destructive/20 bg-destructive/5 p-6 text-sm text-destructive">
+              <div className="mt-6 rounded-sm border border-destructive/20 bg-destructive/5 p-6 text-sm text-destructive">
                 {describeError(clubs.error)}
               </div>
             ) : filteredItems.length === 0 ? (
-              <div className="mt-6 rounded-[1.75rem] border border-dashed border-border bg-background p-10 text-center text-sm text-muted-foreground dark:border-white/10 dark:bg-white/5">
+              <div className="mt-6 rounded-sm border border-dashed border-border bg-background p-10 text-center text-sm text-muted-foreground dark:border-white/10 dark:bg-white/5">
                 Không tìm thấy CLB phù hợp với từ khoá hiện tại.
               </div>
             ) : (
               <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {filteredItems.map((club) => (
-                  <article key={club.id} className="group rounded-[1.75rem] border border-border bg-background p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/10 dark:border-white/10 dark:bg-white/5">
+                  <article key={club.id} className="group rounded-sm border border-border bg-background p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/10 dark:border-white/10 dark:bg-white/5">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <span className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-lg font-black text-primary">{club.name.slice(0, 1)}</span>
+                        <span className="flex size-11 items-center justify-center rounded-sm bg-primary/10 text-lg font-black text-primary">{club.name.slice(0, 1)}</span>
                         <div>
                           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">{club.code}</p>
                           <h3 className="mt-1 text-lg font-black tracking-tight">{club.name}</h3>
