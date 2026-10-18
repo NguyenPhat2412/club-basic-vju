@@ -6,6 +6,7 @@ import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 HTTP_METHODS = {'get', 'post', 'put', 'patch', 'delete', 'head', 'options'}
+SECURITY_FILTER_ENDPOINTS = {('post', '/auth/logout')}
 
 
 class ContractTest(unittest.TestCase):
@@ -89,6 +90,24 @@ class ContractTest(unittest.TestCase):
         catalog_paths = {(e['method'].lower(), e['path'].replace('/api/v1', '', 1)) for e in catalog}
         contract_paths = {(method, path) for path, method, _ in self.operations()}
         self.assertEqual(catalog_paths, contract_paths)
+
+    def test_contract_paths_match_spring_controllers(self):
+        def normalize(path):
+            return re.sub(r'\{[^}]+\}', '{}', path.rstrip('/') or '/')
+
+        mapping = re.compile(r'@(Get|Post|Put|Patch|Delete|Request)Mapping\b(?:\((?:value\s*=\s*)?"([^"]*)")?')
+        code_paths = set()
+        for src in (ROOT / 'backend/springboot/src/main/java').rglob('*Controller.java'):
+            prefix = ''
+            for kind, path in mapping.findall(src.read_text()):
+                if kind == 'Request':
+                    prefix = path
+                elif (prefix + path).startswith('/api/v1/'):
+                    code_paths.add((kind.lower(), normalize((prefix + path).removeprefix('/api/v1'))))
+        code_paths |= SECURITY_FILTER_ENDPOINTS
+        contract_paths = {(method, normalize(path)) for path, method, _ in self.operations()}
+        self.assertEqual(set(), code_paths - contract_paths, 'endpoints in code but missing from openapi.yaml')
+        self.assertEqual(set(), contract_paths - code_paths, 'endpoints in openapi.yaml but missing from code')
 
     def test_runtime_documents_match_sources(self):
         runtime = ROOT / 'backend/springboot/src/main/resources/api'

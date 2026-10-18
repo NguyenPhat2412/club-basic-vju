@@ -97,7 +97,8 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     @Transactional
     public DepartmentResponse updateStatus(Actor actor, UUID departmentId, DepartmentStatusRequest request) {
-        String permission = request.status() == DepartmentStatus.ACTIVE ? "department.activate" : "department.inactive";
+        String permission = request.status() == DepartmentStatus.ACTIVE
+                ? DepartmentConstants.PERMISSION_ACTIVATE : DepartmentConstants.PERMISSION_INACTIVE;
         Department department = authorize(actor, permission, departmentId);
         Map<String, Object> before = Map.of("status", department.getStatus());
         department.setStatus(request.status());
@@ -120,13 +121,6 @@ public class DepartmentServiceImpl implements DepartmentService {
         Department department = departmentRepository.findById(departmentId).orElseThrow(() ->
                 authorizationService.missingResource(actor, permissionKey,
                         notFound("DEPARTMENT_NOT_FOUND", "Department not found")));
-        if ("department.activate".equals(permissionKey) || "department.active".equals(permissionKey)) {
-            if (authorizationService.hasPermission(actor, "department.active", department.getClub().getId(), department.getId())) {
-                return department;
-            }
-            authorizationService.require(actor, "department.activate", department.getClub().getId(), department.getId());
-            return department;
-        }
         authorizationService.require(actor, permissionKey, department.getClub().getId(), department.getId());
         return department;
     }

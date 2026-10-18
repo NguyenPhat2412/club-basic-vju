@@ -1,0 +1,4 @@
+# Installed as /etc/cron.d/vju-club-backup. Server time zone is Asia/Ho_Chi_Minh.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+30 2 * * * root /srv/vju-club/bin/backup-db.sh >> /var/log/vju-club-backup.log 2>&1

@@ -421,6 +421,44 @@ paths:
         schema:
           type: string
           format: uuid
+    patch:
+      operationId: user.update
+      summary: Update a user profile (admin)
+      tags:
+      - User
+      x-permission: user.update
+      x-implementation-status: IMPLEMENTED
+      description: 'Admin sửa họ tên, mã sinh viên, số điện thoại, ảnh đại diện của tài khoản khác. Chỉ gửi trường cần đổi; gửi chuỗi rỗng để xoá mã sinh viên, điện thoại hoặc ảnh. Không đổi được email, mật khẩu hay trạng thái (dùng /password và /status). Trùng mã sinh viên trả 409 STUDENT_CODE_ALREADY_EXISTS.'
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUpdateUserRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /users/{userId}/password:
     patch:
       operationId: user.reset_password
@@ -1727,6 +1765,58 @@ paths:
         clubId/departmentId tương ứng. Nếu bỏ scope và có nhiều grant phù hợp, trả
         400 AMBIGUOUS_PERMISSION_GRANT; không tự chọn một grant. Thu hồi có hiệu lực
         với request tiếp theo, không cần cấp JWT mới.
+  /users/{userId}/permissions/by-key/{permissionKey}:
+    delete:
+      operationId: permission.revoke_by_key
+      summary: Revoke permission by key
+      tags:
+      - Permission
+      x-permission: permission.revoke
+      x-implementation-status: IMPLEMENTED
+      description: Giống DELETE /users/{userId}/permissions/{permissionId} nhưng nhận
+        mã permission (ví dụ club.update) thay cho ID. Mã không tồn tại trả 404 PERMISSION_NOT_FOUND.
+      responses:
+        '204':
+          description: Revoked
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: permissionKey
+        in: path
+        required: true
+        schema:
+          type: string
+          example: club.update
+      - name: scope
+        in: query
+        schema:
+          type: string
+          enum:
+          - GLOBAL
+          - CLUB
+          - DEPARTMENT
+      - name: clubId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: departmentId
+        in: query
+        schema:
+          type: string
+          format: uuid
   /roles:
     get:
       operationId: role.list
@@ -3194,6 +3284,35 @@ components:
       examples:
       - fullName: Nguyễn Xuân Phát
         phone: 0900000000
+    AdminUpdateUserRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        fullName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        studentCode:
+          type:
+          - string
+          - 'null'
+          maxLength: 50
+        phone:
+          type:
+          - string
+          - 'null'
+          maxLength: 32
+          pattern: '^[0-9+().\- ]*$'
+        avatarUrl:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+          format: uri
+          pattern: '^(https?://.+)?$'
+      examples:
+      - fullName: Nguyễn Xuân Phát
+        studentCode: '23110209'
     UpdateUserStatusRequest:
       type: object
       required:

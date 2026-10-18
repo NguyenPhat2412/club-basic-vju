@@ -70,6 +70,13 @@ entries:
   authRequired: true
   permission: user.view
 - method: PATCH
+  path: /api/v1/users/{userId}
+  module: user-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: user.update
+- method: PATCH
   path: /api/v1/users/{userId}/password
   module: user-management
   backend: backend/springboot
@@ -225,6 +232,13 @@ entries:
   permission: permission.assign
 - method: DELETE
   path: /api/v1/users/{userId}/permissions/{permissionId}
+  module: permission-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: permission.revoke
+- method: DELETE
+  path: /api/v1/users/{userId}/permissions/by-key/{permissionKey}
   module: permission-management
   backend: backend/springboot
   status: IMPLEMENTED
