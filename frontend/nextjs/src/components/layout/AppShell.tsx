@@ -11,6 +11,7 @@ import { apiModel } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
 import { cn } from "@/lib/utils";
 import { ChangePasswordModal } from "./ChangePasswordModal";
+import { FirstLoginPassword } from "./FirstLoginPassword";
 
 type NavItem = { href: string; label: string; icon: ReactNode; show?: boolean };
 type NavGroup = { title: string; items: NavItem[] };
@@ -45,8 +46,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     ] },
     { title: "3. Hệ thống", items: [
       { href: "/users", label: "Tài khoản", icon: <Users />, show: session.can("user.view") },
+      { href: "/roles", label: "Vai trò & phân quyền", icon: <KeyRound />, show: session.can("role.view") },
     ] },
-  ] as NavGroup[]).map((g) => ({ ...g, items: g.items.filter((i) => i.show !== false) })).filter((g) => g.items.length > 0);
+  ] as NavGroup[]).map((g) => ({ ...g, items: g.items.filter((i) => i.show !== false && !session.mustChangePassword) })).filter((g) => g.items.length > 0);
 
   const signOut = async () => {
     await apiModel.logout().catch(() => undefined);
@@ -112,7 +114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onMenu={() => setMobileOpen(true)} name={session.user?.fullName || session.user?.email} subtitle={session.user?.studentCode || session.user?.email}
           onPassword={() => setPasswordOpen(true)} onSignOut={signOut} />
-        <main data-design-system="admin-v1" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{session.user ? children : null}</main>
+        <main data-design-system="admin-v1" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{session.user ? (session.mustChangePassword ? <FirstLoginPassword email={session.user.email} /> : children) : null}</main>
       </div>
       <ChangePasswordModal open={passwordOpen} onClose={() => setPasswordOpen(false)} />
     </div>
