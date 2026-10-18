@@ -15,7 +15,7 @@ public interface DepartmentMemberRepository extends JpaRepository<DepartmentMemb
     @Query("SELECT dm FROM DepartmentMember dm JOIN FETCH dm.department "
             + "WHERE dm.membership.id IN :membershipIds ORDER BY dm.department.name, dm.department.id")
     List<DepartmentMember> findForMemberships(@Param("membershipIds") List<UUID> membershipIds);
-    @Query("SELECT dm FROM DepartmentMember dm JOIN FETCH dm.membership "
+    @Query("SELECT dm FROM DepartmentMember dm JOIN FETCH dm.membership m JOIN FETCH m.user "
             + "WHERE dm.department.id = :departmentId ORDER BY dm.joinedAt ASC, dm.id ASC")
     List<DepartmentMember> findPageByDepartment(@Param("departmentId") UUID departmentId, Pageable pageable);
 

@@ -62,7 +62,13 @@ class AuthServiceTest {
     void setUp() {
         service = new AuthServiceImpl(userRepository, ENCODER, authenticationManager, userSessionService,
                 auditService, new UserMapperImpl());
-        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
+            User u = invocation.getArgument(0);
+            if (u.getId() == null) {
+                u.setId(UUID.randomUUID());
+            }
+            return u;
+        });
     }
 
     private static User user(String email, String password, UserStatus status) {
