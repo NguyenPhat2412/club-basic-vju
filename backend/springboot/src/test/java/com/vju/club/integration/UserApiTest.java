@@ -1,6 +1,7 @@
 package com.vju.club.integration;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -97,5 +98,69 @@ class UserApiTest extends ApiIntegrationTest {
         problem(get("/api/v1/users/me"), memberToken, null, 401, "UNAUTHORIZED");
         call(get("/api/v1/users/me"), login("member@test.local", PASSWORD), null, 200);
         problem(patch("/api/v1/users/" + UUID.randomUUID() + "/status"), adminToken, Map.of("status", "ACTIVE"), 404, "USER_NOT_FOUND");
+    }
+
+    @Test
+    void adminUpdatesAnotherUserAndTheChangeIsAudited() throws Exception {
+        String path = "/api/v1/users/" + member;
+        JsonNode updated = call(patch(path), adminToken,
+                Map.of("fullName", "  Tran Thi B ", "studentCode", " 23110001 ", "phone", "0902", "avatarUrl", "https://x/b.png"), 200);
+        assertThat(updated.path("fullName").asText()).isEqualTo("Tran Thi B");
+        assertThat(updated.path("studentCode").asText()).isEqualTo("23110001");
+        assertThat(updated.path("email").asText()).isEqualTo("member@test.local");
+
+        JsonNode cleared = call(patch(path), adminToken, Map.of("phone", "", "studentCode", " "), 200);
+        assertThat(cleared.path("phone").isNull()).isTrue();
+        assertThat(cleared.path("studentCode").isNull()).isTrue();
+        assertThat(cleared.path("fullName").asText()).isEqualTo("Tran Thi B");
+        assertThat(cleared.path("avatarUrl").asText()).isEqualTo("https://x/b.png");
+
+        assertThat(count("SELECT count(*) FROM audit_logs WHERE action = 'USER_PROFILE_UPDATED' AND resource_id = ? "
+                + "AND actor_user_id = ?", member, admin)).isEqualTo(2);
+        assertThat(db.queryForObject("SELECT new_value FROM audit_logs WHERE action = 'USER_PROFILE_UPDATED' AND resource_id = ? "
+                + "ORDER BY created_at, id LIMIT 1", String.class, member)).contains("23110001");
+    }
+
+    @Test
+    void adminUpdateRequiresUserUpdatePermission() throws Exception {
+        UUID other = user("other@test.local");
+        problem(patch("/api/v1/users/" + other), memberToken, Map.of("fullName", "Hacked"), 403, "PERMISSION_DENIED");
+        problem(patch("/api/v1/users/" + member), memberToken, Map.of("fullName", "Self via admin API"), 403, "PERMISSION_DENIED");
+        assertThat(db.queryForObject("SELECT full_name FROM users WHERE id = ?", String.class, other)).isEqualTo("other@test.local");
+
+        grant(member, "user.update", "GLOBAL", null, null);
+        call(patch("/api/v1/users/" + other), memberToken, Map.of("fullName", "Granted"), 200);
+        problem(patch("/api/v1/users/" + other), null, Map.of("fullName", "Anon"), 401, "UNAUTHORIZED");
+    }
+
+    @Test
+    void adminUpdateRejectsTakenStudentCodeButKeepsOwnCode() throws Exception {
+        db.update("UPDATE users SET student_code = 'SV-001' WHERE id = ?", admin);
+        db.update("UPDATE users SET student_code = 'SV-002' WHERE id = ?", member);
+        problem(patch("/api/v1/users/" + member), adminToken, Map.of("studentCode", "sv-001"), 409, "STUDENT_CODE_ALREADY_EXISTS");
+        call(patch("/api/v1/users/" + member), adminToken, Map.of("studentCode", "sv-002"), 200);
+    }
+
+    @Test
+    void adminUpdateCannotTouchProtectedFieldsOrMissingUsers() throws Exception {
+        String path = "/api/v1/users/" + member;
+        problem(patch(path), adminToken, Map.of("email", "new@test.local"), 400, "VALIDATION_ERROR");
+        problem(patch(path), adminToken, Map.of("status", "INACTIVE"), 400, "VALIDATION_ERROR");
+        problem(patch(path), adminToken, Map.of("password", "NewPassword1!"), 400, "VALIDATION_ERROR");
+        problem(patch(path), adminToken, Map.of("phone", "call me"), 400, "VALIDATION_ERROR");
+        problem(patch(path), adminToken, Map.of("avatarUrl", "javascript:alert(1)"), 400, "VALIDATION_ERROR");
+        problem(patch(path), adminToken, Map.of("fullName", "  "), 400, "INVALID_FULL_NAME");
+        problem(patch("/api/v1/users/" + UUID.randomUUID()), adminToken, Map.of("fullName", "Ghost"), 404, "USER_NOT_FOUND");
+        assertThat(db.queryForObject("SELECT status FROM users WHERE id = ?", String.class, member)).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    void adminUpdateWithoutCsrfTokenIsRejected() throws Exception {
+        var request = patch("/api/v1/users/" + member).cookie(new Cookie(TestSessions.COOKIE, adminToken))
+                .contentType("application/json").content(json.writeValueAsString(Map.of("fullName", "Forged")));
+        var response = mvc.perform(request).andReturn().getResponse();
+        assertThat(response.getStatus()).isEqualTo(403);
+        assertThat(json.readTree(response.getContentAsString()).path("code").asText()).isEqualTo("CSRF_INVALID");
+        assertThat(db.queryForObject("SELECT full_name FROM users WHERE id = ?", String.class, member)).isEqualTo("member@test.local");
     }
 }

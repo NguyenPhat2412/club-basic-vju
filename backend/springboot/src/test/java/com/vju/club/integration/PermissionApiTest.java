@@ -141,4 +141,36 @@ class PermissionApiTest extends ApiIntegrationTest {
         assertThat(mine.get(0).path("permissionKey").asText()).isEqualTo("club.view");
         assertThat(mine.get(0).path("clubId").asText()).isEqualTo(clubA.toString());
     }
+
+    @Test
+    void revokeByKeyRemovesTheScopedGrant() throws Exception {
+        grant(member, "club.update", "CLUB", clubA, null);
+        grant(member, "department.member.view", "DEPARTMENT", null, depA1);
+        String path = grants(member) + "/by-key/club.update";
+        call(delete(path).param("scope", "CLUB").param("clubId", clubA.toString()), adminToken, null, 204);
+        assertThat(count("SELECT count(*) FROM user_permissions WHERE user_id = ? AND permission_id = ? AND revoked_at IS NULL",
+                member, permission("club.update"))).isZero();
+        problem(delete(path).param("scope", "CLUB").param("clubId", clubA.toString()), adminToken, null, 404,
+                "PERMISSION_GRANT_NOT_FOUND");
+
+        call(delete(grants(member) + "/by-key/department.member.view"), adminToken, null, 204);
+        assertThat(count("SELECT count(*) FROM user_permissions WHERE user_id = ? AND revoked_at IS NULL", member)).isZero();
+    }
+
+    @Test
+    void revokeByKeyRejectsUnknownKeysAmbiguityAndOutsiders() throws Exception {
+        problem(delete(grants(member) + "/by-key/club.fly"), adminToken, null, 404, "PERMISSION_NOT_FOUND");
+
+        grant(member, "club.view", "CLUB", clubA, null);
+        grant(member, "club.view", "CLUB", clubB, null);
+        String path = grants(member) + "/by-key/club.view";
+        problem(delete(path), adminToken, null, 400, "AMBIGUOUS_PERMISSION_GRANT");
+        problem(delete(grants(admin) + "/by-key/club.view"), memberToken, null, 403, "PERMISSION_DENIED");
+        problem(delete(path), null, null, 401, "UNAUTHORIZED");
+        assertThat(count("SELECT count(*) FROM user_permissions WHERE user_id = ? AND revoked_at IS NULL", member)).isEqualTo(2);
+
+        call(delete(path).param("scope", "CLUB").param("clubId", clubB.toString()), adminToken, null, 204);
+        assertThat(count("SELECT count(*) FROM user_permissions WHERE user_id = ? AND club_id = ? AND revoked_at IS NULL",
+                member, clubA)).isEqualTo(1);
+    }
 }
