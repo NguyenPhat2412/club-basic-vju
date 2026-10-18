@@ -1,151 +1,39 @@
 "use client";
+
 import Link from "next/link";
-import { type ReactNode, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowRight,
-  BookOpen,
-  Building2,
-  ChevronRight,
-  Compass,
-  LogIn,
-  Menu,
-  Search,
-  Sparkles,
-  Star,
-  UserRound,
-  Users,
-} from "lucide-react";
-import { apiModel, Club } from "@/lib/api";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowDown, ArrowRight, Bell, BookOpen, CalendarDays, ChevronDown, Menu, UsersRound, X } from "lucide-react";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
-import { useThemePreference } from "@/hooks/useThemePreference";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { DetailList, EntityDrawer } from "@/components/shared/Overlays";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { apiModel } from "@/lib/api";
 
-const MANAGE_KEYS = ["application.view", "application.review", "application.approve", "application.reject", "member.view", "department.member.add"];
-
-type ClubCard = {
-  id: string;
-  code: string;
-  name: string;
-  description: string;
-  activityField: string;
-  status: string;
-  contactEmail?: string;
-  summary: string;
-  highlights: string[];
-  mode: "public" | "live";
-};
-
-const PUBLIC_CLUBS: ClubCard[] = [
-  {
-    id: "public-academics",
-    code: "VJU-ACA",
-    name: "CLB Học thuật & Công nghệ",
-    description: "Không gian dành cho sinh viên thích nghiên cứu, lập trình, sản phẩm số và chia sẻ kiến thức.",
-    activityField: "Academic",
-    status: "ACTIVE",
-    summary: "Tập trung workshop, nghiên cứu nhỏ, mentoring và các dự án học thuật có thể tham gia ngay.",
-    highlights: ["Workshop định kỳ", "Dự án sinh viên", "Chia sẻ tài nguyên học tập"],
-    mode: "public",
-  },
-  {
-    id: "public-community",
-    code: "VJU-COM",
-    name: "CLB Cộng đồng & Tình nguyện",
-    description: "Kết nối sinh viên với các hoạt động vì cộng đồng, hỗ trợ sự kiện và chiến dịch xã hội.",
-    activityField: "Community",
-    status: "ACTIVE",
-    summary: "Phù hợp cho người thích tổ chức sự kiện, kết nối người mới và tham gia hoạt động thiện nguyện.",
-    highlights: ["Sự kiện cộng đồng", "Tình nguyện", "Kết nối tân sinh viên"],
-    mode: "public",
-  },
-  {
-    id: "public-culture",
-    code: "VJU-CUL",
-    name: "CLB Văn hoá & Truyền thông",
-    description: "Tập trung truyền thông hình ảnh, nội dung đa phương tiện và các hoạt động giao lưu văn hoá.",
-    activityField: "Media",
-    status: "ACTIVE",
-    summary: "Phù hợp để giới thiệu CLB, vận hành truyền thông, thiết kế và kể chuyện bằng hình ảnh.",
-    highlights: ["Truyền thông sự kiện", "Thiết kế nội dung", "Giao lưu văn hoá"],
-    mode: "public",
-  },
-  {
-    id: "public-sports",
-    code: "VJU-SPORT",
-    name: "CLB Thể thao & Sức khoẻ",
-    description: "Hoạt động thể chất, giải đấu nội bộ và chương trình rèn luyện thói quen lành mạnh.",
-    activityField: "Sports",
-    status: "ACTIVE",
-    summary: "Nơi phù hợp để rèn luyện, tổ chức giải giao hữu và tạo nhịp sinh hoạt cân bằng.",
-    highlights: ["Giải nội bộ", "Rèn luyện định kỳ", "Môi trường năng động"],
-    mode: "public",
-  },
+const clubs = [
+  { category: "HỌC THUẬT", name: "Học thuật & Công nghệ", description: "Cùng học hỏi, nghiên cứu và biến ý tưởng công nghệ thành những dự án thật.", mark: "01", color: "#b22d43" },
+  { category: "VĂN HÓA", name: "Văn hóa & Giao lưu", description: "Kết nối sinh viên Việt Nam và Nhật Bản qua ngôn ngữ, văn hóa và trải nghiệm.", mark: "02", color: "#315b76" },
+  { category: "CỘNG ĐỒNG", name: "Tình nguyện & Sự kiện", description: "Tạo nên những hoạt động ý nghĩa và một cộng đồng sinh viên gắn kết.", mark: "03", color: "#68734b" },
 ];
 
-const NEWS = [
-  { title: "Bảng tin CLB học thuật mở đăng ký mùa mới", date: "2026-10-08", category: "Tin tức chung" },
-  { title: "Tuần lễ chào đón tân sinh viên tại các CLB", date: "2026-10-02", category: "Hoạt động" },
-  { title: "Workshop truyền thông và thiết kế nhận diện cho CLB", date: "2026-10-01", category: "Thông báo" },
+const news = [
+  { date: "18.10.2026", category: "THÔNG BÁO", title: "Chào đón thành viên mới — mùa hoạt động câu lạc bộ bắt đầu", color: "#315b76" },
+  { date: "12.10.2026", category: "SỰ KIỆN", title: "Tuần lễ trải nghiệm và kết nối các câu lạc bộ VJU", color: "#a23d4d" },
+  { date: "06.10.2026", category: "HOẠT ĐỘNG", title: "Cùng sinh viên VJU tạo nên những điều đáng nhớ", color: "#737b54" },
 ];
-
-const HIGHLIGHTS = [
-  { title: "Công khai", text: "Người chưa đăng nhập vẫn xem được phần giới thiệu của CLB." },
-  { title: "Cá nhân hoá", text: "Người đã đăng nhập thấy dashboard, membership và hồ sơ." },
-  { title: "Theo vai trò", text: "Menu quản lý hiển thị theo quyền thực tế của tài khoản." },
-];
-
-function mapClub(club: Club): ClubCard {
-  const description = club.description || "CLB đang cập nhật thông tin công khai.";
-  return {
-    id: club.id,
-    code: club.code,
-    name: club.name,
-    description,
-    activityField: club.activityField || "General",
-    status: club.status,
-    contactEmail: club.contactEmail,
-    summary: description,
-    highlights: [club.activityField || "Hoạt động học thuật", club.status === "ACTIVE" ? "Đang hoạt động" : "Đang cập nhật", club.contactEmail ? `Liên hệ ${club.contactEmail}` : "Thông tin công khai giới hạn"],
-    mode: "live",
-  };
-}
 
 export default function HomePage() {
+  const session = useOptionalSession();
+  const clubsQuery = useQuery({ queryKey: ["home", "clubs"], queryFn: () => apiModel.clubs("", "", 0, 3), retry: 1 });
   const router = useRouter();
   const queryClient = useQueryClient();
-  const session = useOptionalSession();
-  const { dark, toggleTheme } = useThemePreference();
-  const [search, setSearch] = useState("");
-  const [selectedClub, setSelectedClub] = useState<ClubCard | null>(null);
-
-  const clubsQuery = useQuery({ queryKey: ["home", "clubs"], queryFn: () => apiModel.clubs("", "", 0, 8), placeholderData: keepPreviousData, retry: 1 });
-  const membershipsQuery = useQuery({ queryKey: ["home", "memberships"], queryFn: apiModel.myMemberships, enabled: !!session.user });
-  const notificationsQuery = useQuery({ queryKey: ["home", "notifications"], queryFn: apiModel.notifications, enabled: !!session.user });
-
-  const liveClubs = useMemo(() => (clubsQuery.data?.items ?? []).map(mapClub), [clubsQuery.data?.items]);
-  const fallbackClubs = liveClubs.length ? liveClubs : PUBLIC_CLUBS;
-
-  const clubs = useMemo(() => {
-    const items = fallbackClubs;
-    const query = search.trim().toLowerCase();
-    if (!query) return items;
-    return items.filter((club) => [club.code, club.name, club.description, club.activityField, club.summary, ...club.highlights].join(" ").toLowerCase().includes(query));
-  }, [fallbackClubs, search]);
-
-  const scope = session.user ? session.clubsWith(MANAGE_KEYS) : { global: false, ids: new Set<string>() };
-  const manageable = session.user && clubsQuery.data ? clubsQuery.data.items.filter((club) => scope.global || scope.ids.has(club.id)).map(mapClub) : [];
-  const unreadNotifications = notificationsQuery.data?.items.filter((n) => !n.read).length ?? 0;
-  const isAuthenticated = !!session.user;
-  const dashboardClubs = membershipsQuery.data?.items ?? [];
-  const publicClubCount = clubsQuery.data && (clubsQuery.data.total > 0 || clubsQuery.data.items.length > 0)
-    ? Math.max(clubsQuery.data.total, clubsQuery.data.items.length)
-    : fallbackClubs.length;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const featuredClubs = clubsQuery.data?.items.length ? clubsQuery.data.items.map((club, index) => ({
+    category: club.activityField || "CÂU LẠC BỘ VJU",
+    name: club.name,
+    description: club.description || "Khám phá hoạt động và cơ hội kết nối tại câu lạc bộ.",
+    mark: String(index + 1).padStart(2, "0"),
+    color: clubs[index]?.color || "#8e1f32",
+  })) : clubs;
 
   const signOut = async () => {
     await apiModel.logout().catch(() => undefined);
@@ -153,391 +41,135 @@ export default function HomePage() {
     router.push("/home");
   };
 
-  const jump = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  const topMenu = isAuthenticated
-    ? [
-        { label: "Home", href: "/home", icon: <Star size={15} /> },
-        { label: "Dashboard", href: "/dashboard", icon: <Star size={15} /> },
-        { label: "Câu lạc bộ", href: "/clubs", icon: <Compass size={15} /> },
-        { label: "Hồ sơ", href: "/profile", icon: <UserRound size={15} /> },
-      ]
-    : [
-        { label: "Home", href: "/home", icon: <Star size={15} /> },
-        { label: "Dashboard", href: "/login", icon: <Star size={15} /> },
-        { label: "Câu lạc bộ", href: "/clubs", icon: <Compass size={15} /> },
-        { label: "Đăng nhập", href: "/login", icon: <LogIn size={15} /> },
-      ];
-
   return (
-    <main className="min-h-svh bg-white text-foreground dark:bg-[#0f1726]">
-      <div className="border-b border-border/60 bg-white/90 backdrop-blur-xl dark:border-white/10 dark:bg-[#0f1726]/90">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
-          <Link href="/home" className="flex items-center gap-3">
-            <span className="flex size-11 items-center justify-center rounded-full bg-primary text-sm font-black text-primary-foreground shadow-lg shadow-primary/20">VJU</span>
-            <div className="leading-tight">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">Trường Đại học Việt Nhật</p>
-              <p className="text-sm font-black tracking-tight text-foreground dark:text-white">ClubHub</p>
-            </div>
+    <main className="min-h-screen bg-[#faf9f6] text-[#252525]">
+      <div className="bg-[#8e1f32] px-5 py-2 text-center text-[10px] font-semibold tracking-[.18em] text-white sm:text-[11px]">
+        TRƯỜNG ĐẠI HỌC VIỆT NHẬT · ĐẠI HỌC QUỐC GIA HÀ NỘI
+      </div>
+
+      <header className="relative z-30 border-b border-[#e8e4df] bg-[#faf9f6]">
+        <div className="mx-auto flex min-h-[88px] max-w-[1380px] items-center justify-between gap-5 px-5 sm:px-8 lg:px-12">
+          <Link href="/home" className="flex min-w-0 items-center gap-3.5" aria-label="VJU ClubHub - Trang chủ">
+            <span className="flex size-[52px] shrink-0 items-center justify-center rounded-full border border-[#b58b54] text-[13px] font-black tracking-widest text-[#8e1f32]">VJU</span>
+            <span className="min-w-0 border-l border-[#d8d1c8] pl-3.5">
+              <span className="block text-[9px] font-semibold uppercase tracking-[.16em] text-[#77716a] sm:text-[10px]">Vietnam Japan University</span>
+              <span className="mt-1 block text-[17px] font-semibold tracking-[.02em] text-[#292725]">CLUB<span className="font-normal text-[#8e1f32]">HUB</span></span>
+            </span>
           </Link>
-          <div className="hidden flex-1 items-center justify-center gap-2 lg:flex">
-            {topMenu.map((item) => <TopNavButton key={item.label} href={item.href} label={item.label} icon={item.icon} />)}
+
+          <nav className="hidden items-center gap-7 xl:flex" aria-label="Điều hướng chính">
+            <Link className="text-[12px] font-semibold text-[#8e1f32]" href="/home">Trang chủ</Link>
+            <Link className="group inline-flex items-center gap-1 text-[12px] font-medium text-[#3f3b37] hover:text-[#8e1f32]" href="/clubs">Câu lạc bộ <ChevronDown size={13} /></Link>
+            <a className="text-[12px] font-medium text-[#3f3b37] hover:text-[#8e1f32]" href="#hoat-dong">Hoạt động</a>
+            <a className="text-[12px] font-medium text-[#3f3b37] hover:text-[#8e1f32]" href="#tin-tuc">Tin tức & sự kiện</a>
+            {session.user && <Link className="text-[12px] font-medium text-[#3f3b37] hover:text-[#8e1f32]" href="/dashboard">Dashboard</Link>}
+          </nav>
+
+          <div className="hidden items-center gap-3 xl:flex">
+            {session.user ? <>
+              <Link href="/notifications" className="relative grid size-9 place-items-center text-[#625c55] hover:text-[#8e1f32]" aria-label="Thông báo"><Bell size={17} /></Link>
+              <Link href="/profile" className="border border-[#d8d1c8] px-4 py-2 text-[11px] font-semibold hover:border-[#8e1f32] hover:text-[#8e1f32]">{session.user.fullName || "Tài khoản"}</Link>
+              <button onClick={signOut} className="bg-[#8e1f32] px-4 py-2.5 text-[11px] font-semibold text-white transition-colors hover:bg-[#711829]">Đăng xuất</button>
+            </> : <>
+              <Link href="/login" className="px-3 py-2 text-[11px] font-semibold text-[#3f3b37] hover:text-[#8e1f32]">Đăng nhập</Link>
+              <Link href="/register" className="bg-[#8e1f32] px-5 py-3 text-[11px] font-semibold text-white transition-colors hover:bg-[#711829]">Tham gia CLB</Link>
+            </>}
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            {isAuthenticated ? (
-              <>
-                <Button variant="outline" size="sm" onClick={() => router.push("/profile")} className="rounded-full">Hồ sơ</Button>
-                <Button variant="outline" size="sm" onClick={signOut} className="rounded-full text-destructive hover:bg-destructive/10">Đăng xuất</Button>
-              </>
-            ) : (
-              <>
-                <Button variant="outline" size="sm" onClick={() => router.push("/login")} className="rounded-full">Đăng nhập</Button>
-                <Button size="sm" onClick={() => router.push("/register")} className="rounded-full">Đăng kí</Button>
-              </>
-            )}
-            <button aria-label="Chuyển giao diện sáng/tối" onClick={toggleTheme} className="relative hidden h-10 w-[60px] rounded-full border border-border/70 bg-muted/60 p-0.5 sm:block">
-              <span className={cn("flex size-9 items-center justify-center rounded-full bg-background shadow-sm transition-transform", dark && "translate-x-5")}>
-                {dark ? <Sparkles size={14} className="text-primary" /> : <Menu size={14} className="text-primary" />}
-              </span>
-            </button>
-          </div>
+
+          <button className="grid size-10 place-items-center border border-[#e8e4df] xl:hidden" onClick={() => setMenuOpen((open) => !open)} aria-label={menuOpen ? "Đóng menu" : "Mở menu"}>
+            {menuOpen ? <X size={19} /> : <Menu size={19} />}
+          </button>
         </div>
-      </div>
+        {menuOpen && <nav className="absolute left-0 right-0 top-full grid gap-0.5 border-b border-[#e8e4df] bg-[#faf9f6] px-5 py-3 shadow-lg xl:hidden">
+          <MobileLink href="/home" onClick={() => setMenuOpen(false)}>Trang chủ</MobileLink><MobileLink href="/clubs" onClick={() => setMenuOpen(false)}>Khám phá câu lạc bộ</MobileLink>
+          <MobileLink href="/applications" onClick={() => setMenuOpen(false)}>Đơn đăng ký</MobileLink><MobileLink href="/memberships" onClick={() => setMenuOpen(false)}>CLB đang tham gia</MobileLink>
+          <MobileLink href={session.user ? "/dashboard" : "/login"} onClick={() => setMenuOpen(false)}>Dashboard</MobileLink><MobileLink href={session.user ? "/notifications" : "/login"} onClick={() => setMenuOpen(false)}>Thông báo / Đăng nhập</MobileLink>
+        </nav>}
+      </header>
 
-      <div className="border-b border-border/60 bg-[linear-gradient(180deg,rgba(204,51,102,0.05),transparent)] dark:bg-[linear-gradient(180deg,rgba(126,166,255,0.05),transparent)]">
-        <div className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-muted-foreground sm:px-6 lg:px-8">
-          <span className="font-semibold text-primary">Menu</span>
-          <span>•</span>
-          <button onClick={() => jump("intro")} className="hover:text-foreground">Giới thiệu</button>
-          <span>•</span>
-          <button onClick={() => jump("programs")} className="hover:text-foreground">CLB</button>
-          <span>•</span>
-          <button onClick={() => jump("news")} className="hover:text-foreground">Tin tức</button>
-          <span>•</span>
-          <button onClick={() => jump("activities")} className="hover:text-foreground">Hoạt động</button>
-          <span>•</span>
-          <button onClick={() => jump("contact")} className="hover:text-foreground">Liên hệ</button>
-        </div>
-      </div>
-
-      <section className="relative overflow-hidden border-b border-border/60 bg-[radial-gradient(circle_at_top_left,rgba(204,51,102,0.12),transparent_30%),radial-gradient(circle_at_top_right,rgba(204,51,102,0.08),transparent_26%),linear-gradient(180deg,#f8fbff,white)] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(126,166,255,0.14),transparent_30%),radial-gradient(circle_at_top_right,rgba(255,100,103,0.08),transparent_26%),linear-gradient(180deg,#0f1726,#0b1020)]">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:px-8 lg:py-10">
-          <div className="relative overflow-hidden rounded-[2rem] border border-primary/10 bg-[linear-gradient(135deg,rgba(204,51,102,0.96),rgba(166,32,79,0.94))] p-6 text-white shadow-2xl shadow-primary/20 sm:p-8">
-            <div className="absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.35),transparent_0.9rem),radial-gradient(circle_at_85%_15%,rgba(255,255,255,0.24),transparent_1rem),radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.15),transparent_1.25rem)]" />
-            <div className="relative">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/90">
-                <Sparkles size={13} /> Cổng thông tin câu lạc bộ
-              </div>
-              <h1 className="mt-5 max-w-2xl text-4xl font-black leading-tight tracking-tight sm:text-5xl">
-                Một nơi để xem CLB, theo dõi hoạt động và quản lý theo đúng vai trò của bạn.
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-white/85 sm:text-base">
-                Giao diện này được làm theo tinh thần cổng thông tin của VJU: nền sáng, banner lớn, khối nội dung rõ ràng và menu ngang tối giản. Người chưa đăng nhập chỉ thấy phần công khai; người đã đăng nhập sẽ thấy dashboard và lối đi cá nhân hoá.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Button onClick={() => jump("clubs")} className="rounded-full bg-white px-5 font-bold text-primary hover:bg-white/95">Khám phá CLB</Button>
-                <Button variant="outline" onClick={() => router.push(isAuthenticated ? "/profile" : "/login")} className="rounded-full border-white/25 bg-white/10 px-5 font-bold text-white hover:bg-white/15">
-                  {isAuthenticated ? "Hồ sơ cá nhân" : "Đăng nhập"}
-                </Button>
-              </div>
-              <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                {HIGHLIGHTS.map((item) => (
-                  <div key={item.title} className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">{item.title}</p>
-                    <p className="mt-2 text-sm leading-6 text-white/90">{item.text}</p>
-                  </div>
-                ))}
-              </div>
+      <section className="relative isolate min-h-[560px] overflow-hidden bg-[#252629] sm:min-h-[630px] lg:min-h-[670px]">
+        <div className="absolute inset-0 -z-20 bg-cover bg-[center_43%]" style={{ backgroundImage: "url('https://vju.ac.vn/wp-content/uploads/2026/08/anh-cover-website-1-scaled.png')" }} />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(21,23,26,.87)_0%,rgba(25,25,26,.64)_48%,rgba(25,25,26,.16)_100%)]" />
+        <div className="mx-auto flex min-h-[560px] max-w-[1380px] flex-col justify-center px-6 py-20 sm:min-h-[630px] sm:px-10 lg:min-h-[670px] lg:px-16">
+          <div className="max-w-[720px]">
+            <p className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[.25em] text-[#e2c18b] sm:text-[11px]"><span className="h-px w-9 bg-[#e2c18b]" /> Cộng đồng sinh viên VJU</p>
+            <h1 className="mt-7 font-serif text-[42px] font-medium leading-[1.13] tracking-[-.025em] text-white sm:text-[58px] lg:text-[72px]">Mỗi hành trình<br />bắt đầu từ <span className="italic text-[#e5c99d]">một cộng đồng.</span></h1>
+            <p className="mt-6 max-w-[520px] text-[14px] leading-7 text-white/80 sm:text-[15px]">Tìm câu lạc bộ phù hợp, gặp những người cùng sở thích và cùng tạo nên những trải nghiệm đáng nhớ tại VJU.</p>
+            <div className="mt-9 flex flex-wrap gap-3">
+              <Link href="/clubs" className="inline-flex min-h-12 items-center gap-5 bg-[#9b273a] px-6 text-[11px] font-semibold text-white transition-colors hover:bg-[#7c1c2d]">KHÁM PHÁ CÂU LẠC BỘ <ArrowRight size={15} /></Link>
+              <Link href={session.user ? "/dashboard" : "/register"} className="inline-flex min-h-12 items-center border border-white/55 px-6 text-[11px] font-semibold text-white transition-colors hover:bg-white/10">{session.user ? "VÀO DASHBOARD" : "TRỞ THÀNH THÀNH VIÊN"}</Link>
             </div>
           </div>
+          <div className="mt-14 flex items-center gap-3 text-[9px] font-medium uppercase tracking-[.2em] text-white/70"><span className="grid size-8 place-items-center rounded-full border border-white/40"><ArrowDown size={13} /></span> Khám phá đời sống câu lạc bộ</div>
+        </div>
+        <div className="absolute bottom-0 right-0 hidden bg-[#8e1f32] px-8 py-5 text-white md:block"><span className="block text-[9px] font-semibold uppercase tracking-[.2em] text-white/70">Vietnam Japan University</span><span className="mt-1 block font-serif text-[18px]">Learn · Connect · Create</span></div>
+      </section>
 
-          <aside className="grid gap-4">
-            <div className="rounded-[2rem] border border-border/70 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5">
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">Tổng quan</p>
-              <h2 className="mt-2 text-2xl font-black tracking-tight">{isAuthenticated ? "Chế độ cá nhân hoá" : "Chế độ công khai"}</h2>
-              <div className="mt-4 grid gap-3">
-                <MiniStat label="CLB công khai" value={String(publicClubCount)} />
-                <MiniStat label="CLB tham gia" value={String(dashboardClubs.length)} />
-                <MiniStat label="Quản lý khả dụng" value={String(manageable.length)} />
-              </div>
-            </div>
-            <div className="overflow-hidden rounded-[2rem] border border-border/70 bg-white shadow-sm dark:border-white/10 dark:bg-white/5">
-              <div className="border-b border-border/60 px-5 py-4 dark:border-white/10">
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">Menu nhanh</p>
-              </div>
-              <div className="grid gap-2 p-4">
-                {topMenu.map((item) => (
-                  <Link key={item.label} href={item.href} className="flex items-center justify-between rounded-2xl border border-border/70 bg-card px-4 py-3 text-left text-sm font-semibold transition-colors hover:border-primary/30 hover:bg-primary/5 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10">
-                    <span className="flex items-center gap-2">{item.icon}{item.label}</span>
-                    <ChevronRight size={15} className="text-primary" />
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </aside>
+      <section className="border-b border-[#e8e4df] bg-white">
+        <div className="mx-auto grid max-w-[1380px] divide-y divide-[#e8e4df] px-5 sm:px-8 md:grid-cols-3 md:divide-x md:divide-y-0 lg:px-12">
+          <IntroItem icon={<UsersRound size={19} />} title="Cộng đồng đa sắc màu" text="Kết nối với những người bạn cùng đam mê." href="/clubs" />
+          <IntroItem icon={<CalendarDays size={19} />} title="Hoạt động quanh năm" text="Trải nghiệm, khám phá và trưởng thành cùng nhau." href="#hoat-dong" />
+          <IntroItem icon={<BookOpen size={19} />} title="Phát triển cùng VJU" text="Tích lũy kỹ năng ngoài giảng đường." href="/register" />
         </div>
       </section>
 
-      {isAuthenticated && (
-        <section id="dashboard" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <SectionHeading eyebrow="Dashboard" title="Thông tin cá nhân hoá" description="Từ đây đi thẳng tới CLB bạn tham gia, thông báo gần nhất và các khu vực quản lý theo quyền." />
-          <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-[2rem] border border-border/70 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <QuickTile title="CLB đang tham gia" value={String(dashboardClubs.length)} onClick={() => router.push("/memberships")} />
-                <QuickTile title="Thông báo chưa đọc" value={String(unreadNotifications)} onClick={() => router.push("/notifications")} />
-                <QuickTile title="CLB quản lý" value={String(manageable.length)} onClick={() => router.push(manageable.length ? "/management" : "/login")} disabled={!manageable.length} />
-              </div>
-            </div>
-            <div className="rounded-[2rem] border border-border/70 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">Hoạt động gần đây</p>
-                  <h3 className="mt-1 text-lg font-black">Thông báo của bạn</h3>
-                </div>
-                <CountBadge>{notificationsQuery.data?.items.length ?? 0}</CountBadge>
-              </div>
-              <div className="mt-4 grid gap-2">
-                {(notificationsQuery.data?.items ?? []).slice(0, 3).map((item) => (
-                  <button key={item.id} onClick={() => router.push("/notifications")} className={cn("rounded-2xl border p-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5", item.read ? "border-border/70 bg-background" : "border-primary/20 bg-primary/5")}> 
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-bold">{item.title}</p>
-                      {!item.read && <Badge tone="primary">Mới</Badge>}
-                    </div>
-                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.message}</p>
-                  </button>
-                ))}
-                {!notificationsQuery.data?.items.length && <div className="rounded-2xl border border-dashed border-border/70 px-4 py-6 text-center text-sm text-muted-foreground">Chưa có thông báo mới.</div>}
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
+      <section className="mx-auto max-w-[1380px] px-5 py-20 sm:px-8 sm:py-24 lg:px-12 lg:py-28" id="cau-lac-bo">
+        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+          <div><Eyebrow>KHÁM PHÁ VJU</Eyebrow><h2 className="mt-3 font-serif text-[36px] font-medium leading-tight sm:text-[48px]">Tìm nơi bạn thuộc về.</h2></div>
+          <Link href="/clubs" className="inline-flex items-center gap-3 pb-1 text-[11px] font-semibold text-[#8e1f32]">XEM TẤT CẢ CÂU LẠC BỘ <ArrowRight size={15} /></Link>
+        </div>
+        <p className="mt-4 max-w-[600px] text-[13px] leading-7 text-[#77716a]">Từ học thuật, văn hóa đến hoạt động cộng đồng — hãy chọn một hành trình khiến bạn hào hứng.</p>
+        <div className="mt-10 grid gap-5 md:grid-cols-3">
+          {featuredClubs.map((club) => <Link href="/clubs" key={club.mark + club.name} className="group relative flex min-h-[275px] flex-col justify-between overflow-hidden bg-white p-7 ring-1 ring-[#e8e4df] transition-all hover:-translate-y-1 hover:shadow-xl">
+            <div className="absolute right-0 top-0 h-1 w-full origin-left scale-x-0 transition-transform group-hover:scale-x-100" style={{ backgroundColor: club.color }} />
+            <div><div className="flex items-center justify-between"><span className="text-[9px] font-bold tracking-[.2em]" style={{ color: club.color }}>{club.category}</span><span className="font-serif text-[32px] text-[#e6e0d8]">{club.mark}</span></div>
+              <h3 className="mt-8 font-serif text-[25px] leading-tight">{club.name}</h3><p className="mt-3 text-[12px] leading-6 text-[#77716a]">{club.description}</p></div>
+            <span className="mt-7 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.12em]" style={{ color: club.color }}>Tìm hiểu thêm <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" /></span>
+          </Link>)}
+        </div>
+        {!clubsQuery.data?.items.length && <p className="mt-4 text-[10px] text-[#99928a]">Đang hiển thị nội dung mẫu. Danh sách câu lạc bộ thật sẽ xuất hiện khi có dữ liệu công khai.</p>}
+      </section>
 
-      <section id="clubs" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <SectionHeading eyebrow="Câu lạc bộ" title="Khám phá CLB" description="Khi chưa đăng nhập, bạn xem được phần giới thiệu công khai. Khi đăng nhập, dữ liệu thực sẽ hiện theo quyền và vai trò." />
-        <div className="rounded-[2rem] border border-border/70 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5">
-          <div className="flex flex-col gap-4 border-b border-border/60 pb-4 lg:flex-row lg:items-end lg:justify-between dark:border-white/10">
-            <div className="max-w-2xl">
-              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Tìm nhanh</p>
-              <p className="mt-2 text-sm leading-7 text-muted-foreground">Danh sách bên dưới được trình bày theo tinh thần thẻ nội dung của VJU: rõ, gọn, nhiều khoảng trống và nhấn vào tiêu đề.</p>
-            </div>
-            <div className="w-full max-w-md">
-              <div className="relative">
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm theo mã, tên, lĩnh vực…" className="h-11 rounded-full pl-9" />
-              </div>
-            </div>
-          </div>
-          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {clubs.map((club) => <ClubPreviewCard key={club.id} club={club} onOpen={() => setSelectedClub(club)} />)}
+      <section id="hoat-dong" className="bg-[#eeeae3]">
+        <div className="mx-auto grid max-w-[1380px] gap-10 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[.85fr_1.15fr] lg:items-center lg:px-12 lg:py-24">
+          <div><Eyebrow>ĐỜI SỐNG VJU</Eyebrow><h2 className="mt-3 max-w-lg font-serif text-[38px] font-medium leading-[1.15] sm:text-[50px]">Ngoài lớp học,<br />còn cả một thế giới.</h2><p className="mt-5 max-w-lg text-[13px] leading-7 text-[#6d675f]">Những buổi gặp gỡ, dự án chung và sự kiện do sinh viên khởi xướng tạo nên bản sắc của cộng đồng VJU.</p><Link href="/clubs" className="mt-7 inline-flex items-center gap-3 bg-[#8e1f32] px-5 py-3.5 text-[10px] font-semibold text-white hover:bg-[#711829]">TÌM HOẠT ĐỘNG PHÙ HỢP <ArrowRight size={14} /></Link></div>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="relative col-span-2 min-h-[210px] overflow-hidden bg-[#565d5e] sm:min-h-[290px]"><div className="absolute inset-0 bg-cover bg-center opacity-75 mix-blend-luminosity" style={{ backgroundImage: "url('https://vju.ac.vn/wp-content/uploads/2025/12/anh-cover-website-8-scaled.png')" }} /><div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent" /><div className="absolute bottom-5 left-5 text-white"><p className="text-[9px] font-semibold uppercase tracking-[.2em] text-white/70">CÙNG NHAU TRẢI NGHIỆM</p><p className="mt-1 font-serif text-[22px]">Một cộng đồng, nhiều sắc màu</p></div></div>
+            <div className="flex min-h-[120px] flex-col justify-between bg-white p-5 sm:min-h-[145px] sm:p-6"><CalendarDays className="text-[#8e1f32]" size={18} /><span className="font-serif text-[17px]">Sự kiện sinh viên</span></div>
+            <div className="flex min-h-[120px] flex-col justify-between bg-[#8e1f32] p-5 text-white sm:min-h-[145px] sm:p-6"><UsersRound className="text-white/70" size={18} /><span className="font-serif text-[17px]">Kết nối câu lạc bộ</span></div>
           </div>
         </div>
       </section>
 
-      <section id="programs" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <SectionHeading eyebrow="Chương trình" title="Trải nghiệm nhanh" description="Một vài lối đi chính để người dùng không phải tìm quá lâu trong hệ thống." />
-        <div className="grid gap-4 md:grid-cols-3">
-          <FeatureCard icon={<Compass size={18} />} title="Khám phá CLB" text="Xem CLB công khai, thông tin liên hệ, tổng quan và các điểm nổi bật." />
-          <FeatureCard icon={<Users size={18} />} title="Quản lý theo vai trò" text="Khu vực quản lý và tài liệu chỉ hiện với người có quyền thực tế." />
-          <FeatureCard icon={<BookOpen size={18} />} title="Hồ sơ cá nhân" text="Xem hồ sơ, đổi mật khẩu và đi thẳng đến các mục cá nhân hoá." />
+      <section id="tin-tuc" className="mx-auto max-w-[1380px] px-5 py-20 sm:px-8 sm:py-24 lg:px-12">
+        <div className="flex items-end justify-between gap-4"><div><Eyebrow>BẢNG TIN CÂU LẠC BỘ</Eyebrow><h2 className="mt-3 font-serif text-[36px] font-medium sm:text-[46px]">Tin tức & sự kiện</h2></div><Link href="/notifications" className="hidden items-center gap-2 text-[10px] font-semibold text-[#8e1f32] sm:inline-flex">XEM THÔNG BÁO <ArrowRight size={14} /></Link></div>
+        <div className="mt-9 divide-y divide-[#e8e4df] border-y border-[#e8e4df]">
+          {news.map((item, index) => <Link href={session.user ? "/notifications" : "/clubs"} key={item.title} className="group grid gap-3 py-5 transition-colors hover:bg-white sm:grid-cols-[120px_125px_1fr_24px] sm:items-center sm:gap-5 sm:px-4">
+            <span className="text-[10px] tracking-wide text-[#8a837b]">{item.date}</span><span className="text-[9px] font-bold tracking-[.13em]" style={{ color: item.color }}>{item.category}</span><span className="font-serif text-[19px] leading-snug group-hover:text-[#8e1f32]">{item.title}</span><ArrowRight size={16} className="hidden text-[#8e1f32] transition-transform group-hover:translate-x-1 sm:block" />
+          </Link>)}
+        </div>
+        <p className="mt-3 text-[10px] text-[#99928a]">Nội dung minh họa. Thông báo thực tế hiển thị trong khu vực tài khoản.</p>
+      </section>
+
+      <section className="bg-[#8e1f32] text-white">
+        <div className="mx-auto flex max-w-[1380px] flex-col gap-7 px-5 py-12 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12">
+          <div><p className="text-[9px] font-semibold uppercase tracking-[.22em] text-white/65">SẴN SÀNG CHO HÀNH TRÌNH MỚI?</p><h2 className="mt-2 font-serif text-[29px] sm:text-[36px]">Câu lạc bộ tiếp theo đang chờ bạn.</h2></div>
+          <Link href={session.user ? "/clubs" : "/register"} className="inline-flex min-h-12 shrink-0 items-center justify-center gap-4 border border-white/60 px-6 text-[10px] font-semibold hover:bg-white hover:text-[#8e1f32]">{session.user ? "KHÁM PHÁ CÂU LẠC BỘ" : "THAM GIA CỘNG ĐỒNG VJU"}<ArrowRight size={15} /></Link>
         </div>
       </section>
 
-      <section id="news" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <SectionHeading eyebrow="Tin tức & Sự kiện" title="Bảng tin gần đây" description="Bố cục này mô phỏng nhịp nội dung của site VJU: có danh mục, ngày tháng và tiêu đề nổi bật." />
-        <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="grid gap-3 rounded-[2rem] border border-border/70 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5">
-            {NEWS.map((item) => (
-              <article key={item.title} className="flex items-start justify-between gap-4 rounded-2xl border border-border/70 bg-background p-4 dark:border-white/10 dark:bg-white/5">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">{item.category}</p>
-                  <h3 className="mt-1 line-clamp-2 text-base font-black tracking-tight">{item.title}</h3>
-                </div>
-                <span className="whitespace-nowrap text-xs font-semibold text-primary">{item.date}</span>
-              </article>
-            ))}
-          </div>
-          <div className="rounded-[2rem] border border-border/70 bg-[linear-gradient(135deg,rgba(204,51,102,0.95),rgba(166,32,79,0.92))] p-5 text-white shadow-lg shadow-primary/20 dark:border-white/10">
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/70">Thông điệp</p>
-            <h3 className="mt-2 text-2xl font-black tracking-tight">Một cổng chung, nhiều lớp truy cập</h3>
-            <p className="mt-3 text-sm leading-7 text-white/85">Người xem ngoài không bị chặn khỏi bối cảnh chung, còn người có tài khoản sẽ được dẫn vào khu vực cá nhân hoá, đúng với cách một cổng thông tin đại học nên vận hành.</p>
-            <div className="mt-5 grid gap-3">
-              <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/70">Khách</p>
-                <p className="mt-1 text-sm text-white/90">Chỉ xem công khai, giới thiệu CLB và tin tức.</p>
-              </div>
-              <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/70">Thành viên</p>
-                <p className="mt-1 text-sm text-white/90">Xem dashboard, membership, hồ sơ và thông báo.</p>
-              </div>
-            </div>
-          </div>
+      <footer className="bg-[#262522] text-white">
+        <div className="mx-auto grid max-w-[1380px] gap-10 px-5 py-12 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr] lg:px-12 lg:py-16">
+          <div><div className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-full border border-[#b58b54] text-[11px] font-black tracking-widest text-[#e5c99d]">VJU</span><span className="font-semibold tracking-wide">CLUB<span className="font-normal text-[#e5c99d]">HUB</span></span></div><p className="mt-5 max-w-sm text-[12px] leading-6 text-white/60">Cổng thông tin câu lạc bộ và hoạt động sinh viên Trường Đại học Việt Nhật.</p></div>
+          <div><p className="text-[9px] font-bold uppercase tracking-[.2em] text-[#e5c99d]">LIÊN KẾT NHANH</p><div className="mt-4 grid gap-3 text-[12px] text-white/75"><Link className="hover:text-white" href="/clubs">Khám phá câu lạc bộ</Link><Link className="hover:text-white" href="/applications">Đơn đăng ký</Link><Link className="hover:text-white" href="/memberships">CLB đang tham gia</Link><Link className="hover:text-white" href="/notifications">Thông báo</Link></div></div>
+          <div><p className="text-[9px] font-bold uppercase tracking-[.2em] text-[#e5c99d]">TRƯỜNG ĐẠI HỌC VIỆT NHẬT</p><p className="mt-4 text-[12px] leading-6 text-white/75">Đại học Quốc gia Hà Nội<br />Hòa Lạc, Hà Nội, Việt Nam</p><a className="mt-3 inline-flex items-center gap-2 text-[11px] text-white/60 hover:text-white" href="https://vju.ac.vn" target="_blank" rel="noreferrer">vju.ac.vn <ArrowRight size={12} /></a></div>
         </div>
-      </section>
-
-      <section id="activities" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <SectionHeading eyebrow="Hoạt động" title="Không gian tương tác" description="Tạo cảm giác giống trang tin tức/hoạt động của VJU bằng các khối nội dung có ảnh hưởng thị giác mạnh hơn." />
-        <div className="grid gap-4 lg:grid-cols-4">
-          <div className="lg:col-span-2 rounded-[2rem] border border-border/70 bg-[linear-gradient(135deg,rgba(204,51,102,0.08),rgba(204,51,102,0.02))] p-5 shadow-sm dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(126,166,255,0.12),rgba(126,166,255,0.04))]">
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Ảnh minh hoạ</p>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="aspect-[4/3] rounded-3xl bg-[linear-gradient(135deg,rgba(204,51,102,0.95),rgba(166,32,79,0.85))]" />
-              <div className="aspect-[4/3] rounded-3xl border border-primary/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(204,51,102,0.22))]" />
-            </div>
-          </div>
-          <div className="rounded-[2rem] border border-border/70 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5">
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Tác vụ nhanh</p>
-            <div className="mt-4 grid gap-2">
-              <QuickLink label="Xem CLB" onClick={() => jump("clubs")} />
-              <QuickLink label="Đăng nhập" onClick={() => router.push("/login")} />
-              <QuickLink label="Đăng kí" onClick={() => router.push("/register")} />
-              <QuickLink label="Hồ sơ cá nhân" onClick={() => router.push(isAuthenticated ? "/profile" : "/login")} />
-            </div>
-          </div>
-          <div className="rounded-[2rem] border border-border/70 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5">
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Số liệu</p>
-            <div className="mt-4 grid gap-3">
-              <MiniStat label="CLB công khai" value={String(publicClubCount)} />
-              <MiniStat label="Thông báo mới" value={String(unreadNotifications)} />
-              <MiniStat label="Quản lý khả dụng" value={String(manageable.length)} />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="contact" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="rounded-[2rem] border border-border/70 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5">
-          <SectionHeading eyebrow="Liên hệ" title="Thông tin tiếp cận" description="Khối cuối này giữ tinh thần cổng đại học: địa chỉ, liên hệ, và lối vào cho các nhóm người dùng khác nhau." />
-          <div className="mt-5 grid gap-4 lg:grid-cols-3">
-            <ContactCard title="Trường Đại học Việt Nhật" text="Trường Đại học Việt Nhật, Đại học Quốc gia Hà Nội." />
-            <ContactCard title="Cổng ClubHub" text="Quản lý câu lạc bộ, thông báo, tài liệu và hồ sơ thành viên." />
-            <ContactCard title="Tiếp cận nhanh" text="Đăng nhập để vào dashboard. Khách có thể xem CLB công khai và tin tức." />
-          </div>
-        </div>
-      </section>
-
-      <footer className="border-t border-border/70 bg-[#cc3366] text-white dark:border-white/10 dark:bg-[#091222]">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-white/65">TRƯỜNG ĐẠI HỌC VIỆT NHẬT</p>
-            <p className="mt-1 text-sm text-white/85">ClubHub - cổng thông tin câu lạc bộ và hồ sơ thành viên.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/home" className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold hover:bg-white/10">Home</Link>
-            <Link href="/dashboard" className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold hover:bg-white/10">Dashboard</Link>
-            <Link href="/clubs" className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold hover:bg-white/10">CLB</Link>
-            <Link href="/login" className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold hover:bg-white/10">Đăng nhập</Link>
-          </div>
-        </div>
+        <div className="border-t border-white/10"><div className="mx-auto flex max-w-[1380px] flex-col gap-2 px-5 py-4 text-[9px] tracking-wide text-white/45 sm:px-8 md:flex-row md:justify-between lg:px-12"><span>© 2026 VJU ClubHub · Bản xem trước giao diện</span><span>Trường Đại học Việt Nhật · ĐHQGHN</span></div></div>
       </footer>
-
-      <EntityDrawer
-        open={!!selectedClub}
-        onClose={() => setSelectedClub(null)}
-        title={selectedClub?.name ?? "Chi tiết câu lạc bộ"}
-        subtitle={selectedClub?.code}
-        icon={<Building2 />}
-        footer={selectedClub && (
-          <>
-            {isAuthenticated ? (
-              <>
-                <Button variant="outline" size="sm" onClick={() => router.push("/clubs")}><Compass size={14} /> Mở trang CLB</Button>
-                <Button size="sm" onClick={() => router.push("/memberships")}><Users size={14} /> CLB đã tham gia</Button>
-              </>
-            ) : (
-              <>
-                <Button variant="outline" size="sm" onClick={() => router.push("/login")}><LogIn size={14} /> Đăng nhập</Button>
-                <Button size="sm" onClick={() => router.push("/register")}><ArrowRight size={14} /> Đăng kí</Button>
-              </>
-            )}
-          </>
-        )}
-      >
-        {selectedClub && (
-          <DetailList
-            rows={[
-              ["Mã CLB", <span key="code" className="font-mono font-semibold text-primary">{selectedClub.code}</span>],
-              ["Trạng thái", <StatusBadge key="status" status={selectedClub.status} />],
-              ["Lĩnh vực", selectedClub.activityField],
-              ["Mô tả", <p key="desc" className="whitespace-pre-line text-muted-foreground">{selectedClub.description}</p>],
-              ["Điểm nổi bật", <ul key="highlights" className="list-disc space-y-1 pl-5 text-muted-foreground">{selectedClub.highlights.map((item) => <li key={item}>{item}</li>)}</ul>],
-              ["Mức truy cập", selectedClub.mode === "public" ? "Công khai" : "Theo phiên đăng nhập"],
-              ["Liên hệ", selectedClub.contactEmail || "Chưa công bố"],
-            ]}
-          />
-        )}
-      </EntityDrawer>
     </main>
   );
 }
 
-function TopNavButton({ href, label, icon }: { href: string; label: string; icon: ReactNode }) {
-  return <Link href={href} className="inline-flex h-10 items-center gap-2 rounded-full border border-border/70 bg-white px-4 text-sm font-semibold transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10">{icon}{label}</Link>;
-}
-
-function SectionHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
-  return (
-    <div className="mb-5">
-      <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted-foreground">{eyebrow}</p>
-      <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{title}</h2>
-      <p className="mt-2 max-w-3xl text-sm leading-7 text-muted-foreground">{description}</p>
-    </div>
-  );
-}
-
-function FeatureCard({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
-  return (
-    <div className="rounded-[1.75rem] border border-border/70 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5">
-      <div className="flex items-center gap-2 text-sm font-black text-primary">{icon}{title}</div>
-      <p className="mt-2 text-sm leading-7 text-muted-foreground">{text}</p>
-    </div>
-  );
-}
-
-function QuickLink({ label, onClick }: { label: string; onClick: () => void }) {
-  return <button onClick={onClick} className="flex items-center justify-between rounded-2xl border border-border/70 bg-background px-4 py-3 text-left text-sm font-semibold transition-colors hover:border-primary/30 hover:bg-primary/5 dark:border-white/10 dark:bg-white/5"><span>{label}</span><ChevronRight size={15} className="text-primary" /></button>;
-}
-
-function MiniStat({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-2xl border border-border/70 bg-background px-4 py-3 dark:border-white/10 dark:bg-white/5"><p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{label}</p><p className="mt-1 text-xl font-black text-primary">{value}</p></div>;
-}
-
-function QuickTile({ title, value, onClick, disabled }: { title: string; value: string; onClick: () => void; disabled?: boolean }) {
-  return (
-    <button disabled={disabled} onClick={onClick} className="rounded-[1.5rem] border border-border/70 bg-background p-4 text-left shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/5">
-      <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{title}</p>
-      <p className="mt-2 text-2xl font-black text-primary">{value}</p>
-    </button>
-  );
-}
-
-function ContactCard({ title, text }: { title: string; text: string }) {
-  return <div className="rounded-[1.75rem] border border-border/70 bg-background p-5 dark:border-white/10 dark:bg-white/5"><p className="text-sm font-black text-primary">{title}</p><p className="mt-2 text-sm leading-7 text-muted-foreground">{text}</p></div>;
-}
-
-function ClubPreviewCard({ club, onOpen }: { club: ClubCard; onOpen: () => void }) {
-  return (
-    <button onClick={onOpen} className="group flex h-full flex-col justify-between rounded-[1.75rem] border border-border/70 bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/10 dark:border-white/10 dark:bg-white/5">
-      <div className="space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">{club.code}</p>
-            <h3 className="mt-1 text-lg font-black tracking-tight">{club.name}</h3>
-          </div>
-          <StatusBadge status={club.status} />
-        </div>
-        <p className="text-sm leading-6 text-muted-foreground">{club.summary}</p>
-      </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {club.highlights.slice(0, 3).map((item) => <Badge key={item}>{item}</Badge>)}
-      </div>
-      <div className="mt-5 flex items-center justify-between text-xs font-semibold text-primary">
-        <span>{club.mode === "public" ? "Xem công khai" : "Xem trong hệ thống"}</span>
-        <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />
-      </div>
-    </button>
-  );
-}
+function Eyebrow({ children }: { children: React.ReactNode }) { return <p className="text-[9px] font-bold uppercase tracking-[.22em] text-[#9b273a]">{children}</p>; }
+function MobileLink({ href, onClick, children }: { href: string; onClick: () => void; children: React.ReactNode }) { return <Link href={href} onClick={onClick} className="border-b border-[#ece8e2] py-3 text-[13px] font-medium text-[#393632]">{children}</Link>; }
+function IntroItem({ icon, title, text, href }: { icon: React.ReactNode; title: string; text: string; href: string }) { return <Link href={href} className="group flex items-center gap-4 px-2 py-5 md:px-7 md:py-7"><span className="grid size-11 shrink-0 place-items-center border border-[#e8e4df] text-[#8e1f32] transition-colors group-hover:border-[#8e1f32]">{icon}</span><span><span className="block font-serif text-[16px]">{title}</span><span className="mt-1 block text-[11px] text-[#817a72]">{text}</span></span><ArrowRight size={14} className="ml-auto shrink-0 text-[#8e1f32] opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100" /></Link>; }

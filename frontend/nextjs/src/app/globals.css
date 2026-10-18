@@ -26,6 +26,7 @@
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-border: var(--sidebar-border);
   --font-sans: var(--font-inter), 'Inter', 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: var(--font-lora), 'Lora', Georgia, 'Times New Roman', serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -34,54 +35,54 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: #f7f9fc;
-  --foreground: #333333;
+  --radius: 0.3rem;
+  --background: #faf9f6;
+  --foreground: #292725;
   --card: #ffffff;
-  --card-foreground: #333333;
+  --card-foreground: #292725;
   --popover: #ffffff;
   --popover-foreground: #333333;
   /* VJU red accent and muted academic neutrals. */
-  --primary: #cc3366;
+  --primary: #8e1f32;
   --primary-foreground: #ffffff;
-  --secondary: #f1f1f1;
-  --secondary-foreground: #333333;
-  --muted: #f1f1f1;
-  --muted-foreground: #666666;
-  --accent: #f1f1f1;
-  --accent-foreground: #333333;
+  --secondary: #eeeae3;
+  --secondary-foreground: #393632;
+  --muted: #eeeae3;
+  --muted-foreground: #716b64;
+  --accent: #eeeae3;
+  --accent-foreground: #393632;
   --destructive: #c8102e;
-  --border: #dddddd;
-  --input: #dddddd;
+  --border: #e3ded6;
+  --input: #d8d1c8;
   --ring: var(--primary);
-  --sidebar: #ffffff;
-  --sidebar-foreground: #333333;
-  --sidebar-accent: #f1f1f1;
-  --sidebar-border: #dddddd;
+  --sidebar: #faf9f6;
+  --sidebar-foreground: #292725;
+  --sidebar-accent: #eeeae3;
+  --sidebar-border: #e3ded6;
   --shadow-modal: 0 32px 64px oklch(0 0 0 / 12%), 0 16px 28px oklch(0 0 0 / 8%);
 }
 
 .dark {
-  --background: #111111;
-  --foreground: #f4f4f4;
-  --card: #1a1a1b;
-  --card-foreground: #f4f4f4;
-  --popover: #1a1a1b;
-  --popover-foreground: #f4f4f4;
-  --primary: #d94b7c;
+  --background: #1b1a18;
+  --foreground: #f4f1eb;
+  --card: #24221f;
+  --card-foreground: #f4f1eb;
+  --popover: #24221f;
+  --popover-foreground: #f4f1eb;
+  --primary: #c45a68;
   --primary-foreground: #fff5f8;
-  --secondary: #1d1d1f;
-  --secondary-foreground: #f4f4f4;
-  --muted: #1d1d1f;
-  --muted-foreground: #d2d2d2;
-  --accent: #1d1d1f;
-  --accent-foreground: #f4f4f4;
+  --secondary: #302d28;
+  --secondary-foreground: #f4f1eb;
+  --muted: #302d28;
+  --muted-foreground: #c2bbb1;
+  --accent: #302d28;
+  --accent-foreground: #f4f1eb;
   --destructive: #ff6b7d;
-  --border: rgb(255 255 255 / 10%);
-  --input: rgb(255 255 255 / 12%);
-  --sidebar: #171719;
-  --sidebar-foreground: #f4f4f4;
-  --sidebar-accent: #1d1d1f;
+  --border: rgb(255 255 255 / 12%);
+  --input: rgb(255 255 255 / 18%);
+  --sidebar: #201f1c;
+  --sidebar-foreground: #f4f1eb;
+  --sidebar-accent: #302d28;
   --sidebar-border: rgb(255 255 255 / 10%);
   --shadow-modal: 0 32px 64px rgb(0 0 0 / 42%), 0 16px 28px rgb(0 0 0 / 28%);
 }
@@ -100,8 +101,8 @@
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-sans);
     background-image:
-      radial-gradient(circle at top left, rgb(204 51 102 / 0.05), transparent 24rem),
-      radial-gradient(circle at top right, rgb(51 51 102 / 0.03), transparent 22rem);
+      radial-gradient(circle at top left, rgb(142 31 50 / 0.035), transparent 24rem),
+      radial-gradient(circle at top right, rgb(181 139 84 / 0.035), transparent 22rem);
     background-attachment: fixed;
   }
   button:not(:disabled) {
