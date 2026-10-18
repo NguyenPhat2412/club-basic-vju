@@ -26,6 +26,8 @@ export function useOptionalSession() {
     user,
     permissions: list,
     ready: me.isSuccess && (!user || permissions.isSuccess),
+    settled: me.isSuccess || me.isError,
+    mustChangePassword: !!me.data?.requiresPasswordChange,
     can: (key: string) => list.some((permission) => permission.permissionKey === key),
     canInClub: (key: string, clubId: string) => list.some((permission) => permission.permissionKey === key && (permission.scope === "GLOBAL" || permission.clubId === clubId)),
     clubsWith: (keys: string[]) => clubIdsWith(list, keys),

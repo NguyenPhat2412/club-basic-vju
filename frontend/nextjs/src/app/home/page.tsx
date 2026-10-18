@@ -23,7 +23,7 @@ const news = [
 
 export default function HomePage() {
   const session = useOptionalSession();
-  const clubsQuery = useQuery({ queryKey: ["home", "clubs"], queryFn: () => apiModel.clubs("", "", 0, 3), retry: 1 });
+  const clubsQuery = useQuery({ queryKey: ["home", "clubs"], queryFn: () => apiModel.clubs("", "", 0, 3), retry: 1, enabled: !!session.user });
   const router = useRouter();
   const queryClient = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);

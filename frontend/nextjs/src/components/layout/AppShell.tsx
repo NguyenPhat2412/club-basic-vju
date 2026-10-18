@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Bell, BookOpen, ChevronDown, ClipboardList, Compass, KeyRound, LogOut, Menu, ShieldCheck, Users, UsersRound, X } from "lucide-react";
 import { apiModel } from "@/lib/api";
-import { useSession } from "@/hooks/useSession";
+import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { cn } from "@/lib/utils";
 import { ChangePasswordModal } from "./ChangePasswordModal";
 
@@ -16,12 +16,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const session = useSession();
+  const session = useOptionalSession();
+  const publicClubRoute = pathname === "/clubs";
   const [menuOpen, setMenuOpen] = useState(false);
   const [clubMenuOpen, setClubMenuOpen] = useState(false);
   const [managementMenuOpen, setManagementMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
+
+  useEffect(() => {
+    if (session.settled && !session.user && !publicClubRoute) router.replace("/login");
+  }, [publicClubRoute, router, session.settled, session.user]);
 
   const canManage = ["application.view", "application.review", "member.view", "department.member.add"].some(session.can);
   const clubLinks: NavLink[] = [
@@ -29,7 +34,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     { href: "/memberships", label: "CLB đang tham gia", icon: <UsersRound size={16} /> },
     { href: "/applications", label: "Đơn đăng ký của tôi", icon: <ClipboardList size={16} /> },
     { href: "/notifications", label: "Thông báo", icon: <Bell size={16} /> },
-  ];
+  ].filter((item) => !!session.user || item.href === "/clubs");
   const managementLinks: NavLink[] = [
     { href: "/management", label: "Quản lý câu lạc bộ", icon: <ShieldCheck size={16} />, visible: canManage },
     { href: "/documents", label: "Kho tài liệu", icon: <BookOpen size={16} />, visible: session.can("document.view") },
@@ -57,7 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
 
           <nav className="hidden h-[76px] items-center gap-4 lg:flex" aria-label="Điều hướng chính">
-            <Link href="/dashboard" className={linkClass("/dashboard")}>Dashboard</Link>
+            <Link href={session.user ? "/dashboard" : "/login"} className={linkClass("/dashboard")}>{session.user ? "Dashboard" : "Đăng nhập"}</Link>
             <div className="relative" onMouseEnter={() => setClubMenuOpen(true)} onMouseLeave={() => setClubMenuOpen(false)}>
               <button onClick={() => setClubMenuOpen((open) => !open)} aria-expanded={clubMenuOpen} className={cn("inline-flex min-h-10 items-center gap-1 border-b-2 px-2 text-[12px] font-medium transition-colors", clubLinks.some((item) => isActive(item.href)) ? "border-[#8e1f32] text-[#8e1f32]" : "border-transparent text-[#4d4944] hover:text-[#8e1f32]")}>Câu lạc bộ <ChevronDown size={13} /></button>
               {clubMenuOpen && <Dropdown className="left-0"><DropdownLinks links={clubLinks} active={isActive} onNavigate={() => setClubMenuOpen(false)} /></Dropdown>}
@@ -68,7 +73,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>}
           </nav>
 
-          <div className="hidden items-center gap-2 lg:flex">
+          {!session.user && <div className="hidden items-center gap-2 lg:flex"><Link href="/register" className="bg-[#8e1f32] px-4 py-2.5 text-[10px] font-semibold text-white hover:bg-[#711829]">THAM GIA CLB</Link></div>}
+          <div className={cn("hidden items-center gap-2 lg:flex", !session.user && "lg:hidden")}>
             <Link href="/notifications" aria-label="Thông báo" className={cn("grid size-9 place-items-center transition-colors hover:text-[#8e1f32]", isActive("/notifications") && "text-[#8e1f32]")}><Bell size={17} /></Link>
             <div className="relative">
               <button onClick={() => setProfileMenuOpen((open) => !open)} aria-haspopup="menu" aria-expanded={profileMenuOpen} className="flex items-center gap-2 border-l border-border pl-3 text-left">
@@ -86,17 +92,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button onClick={() => setMenuOpen((open) => !open)} aria-label={menuOpen ? "Đóng menu" : "Mở menu"} className="grid size-10 place-items-center border border-border lg:hidden">{menuOpen ? <X size={19} /> : <Menu size={19} />}</button>
         </div>
         {menuOpen && <nav className="absolute left-0 right-0 top-full max-h-[calc(100vh-6rem)] overflow-y-auto border-b border-border bg-card px-4 py-3 shadow-xl lg:hidden">
-          <Link href="/dashboard" onClick={() => setMenuOpen(false)} className="block border-b border-border py-3 text-[13px] font-medium">Dashboard</Link>
+          <Link href={session.user ? "/dashboard" : "/login"} onClick={() => setMenuOpen(false)} className="block border-b border-border py-3 text-[13px] font-medium">{session.user ? "Dashboard" : "Đăng nhập"}</Link>
           <p className="pb-1 pt-4 text-[9px] font-bold uppercase tracking-[.17em] text-muted-foreground">Câu lạc bộ</p>
           {clubLinks.map((item) => <MobileNavLink key={item.href} item={item} active={isActive(item.href)} close={() => setMenuOpen(false)} />)}
           {managementLinks.length > 0 && <><p className="pb-1 pt-4 text-[9px] font-bold uppercase tracking-[.17em] text-muted-foreground">Quản lý</p>{managementLinks.map((item) => <MobileNavLink key={item.href} item={item} active={isActive(item.href)} close={() => setMenuOpen(false)} />)}</>}
-          <p className="mt-3 border-t border-border pt-3 text-[11px] text-muted-foreground">{session.user?.fullName || session.user?.email}</p>
-          <Link href="/profile" onClick={() => setMenuOpen(false)} className="block py-3 text-[12px]">Hồ sơ cá nhân</Link>
-          <button onClick={signOut} className="py-2 text-[12px] font-semibold text-[#8e1f32]">Đăng xuất</button>
+          {session.user && <p className="mt-3 border-t border-border pt-3 text-[11px] text-muted-foreground">{session.user.fullName || session.user.email}</p>}
+          <Link href="/profile" onClick={() => setMenuOpen(false)} className={cn("block py-3 text-[12px]", !session.user && "hidden")}>Hồ sơ cá nhân</Link>
+          <button onClick={signOut} className={cn("py-2 text-[12px] font-semibold text-[#8e1f32]", !session.user && "hidden")}>Đăng xuất</button>
         </nav>}
       </header>
 
-      <main data-design-system="vju-app" className="flex min-h-0 flex-1 flex-col overflow-y-auto">{session.user ? children : null}</main>
+      <main data-design-system="vju-app" className="flex min-h-0 flex-1 flex-col overflow-y-auto">{session.user || publicClubRoute ? children : null}</main>
       <footer className="border-t border-border bg-card px-4 py-3 text-center text-[9px] tracking-wide text-muted-foreground sm:text-left"><div className="mx-auto flex max-w-[1440px] flex-col gap-1 sm:flex-row sm:justify-between"><span>VJU ClubHub · Cổng thông tin câu lạc bộ sinh viên</span><span>Trường Đại học Việt Nhật · ĐHQGHN</span></div></footer>
       <ChangePasswordModal open={passwordOpen} onClose={() => setPasswordOpen(false)} />
     </div>
