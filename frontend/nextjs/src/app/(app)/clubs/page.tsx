@@ -1,8 +1,10 @@
 "use client";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Building2, Compass, Mail, Search, Send, Sparkles } from "lucide-react";
 import { apiModel, Club } from "@/lib/api";
+import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { DetailList, EntityDrawer, Section } from "@/components/shared/Overlays";
 import { describeError } from "@/components/shared/ListPage";
 import { StatusBadge } from "@/components/ui/badge";
@@ -10,8 +12,15 @@ import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 
 const LIMIT = 20;
+const PUBLIC_OVERVIEW: Club[] = [
+  { id: "preview-academic", code: "VJU-ACA", name: "Học thuật & Công nghệ", description: "Không gian dành cho sinh viên yêu thích nghiên cứu, công nghệ và cùng phát triển các dự án học thuật.", activityField: "Học thuật", status: "ACTIVE" },
+  { id: "preview-culture", code: "VJU-CUL", name: "Văn hóa & Giao lưu", description: "Kết nối sinh viên qua ngôn ngữ, giao lưu văn hóa và những trải nghiệm Việt Nam – Nhật Bản.", activityField: "Văn hóa", status: "ACTIVE" },
+  { id: "preview-community", code: "VJU-COM", name: "Cộng đồng & Tình nguyện", description: "Cùng tổ chức hoạt động vì cộng đồng, hỗ trợ sự kiện và kết nối sinh viên VJU.", activityField: "Cộng đồng", status: "ACTIVE" },
+];
 
 export default function ClubsPage() {
+  const router = useRouter();
+  const session = useOptionalSession();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
@@ -23,6 +32,7 @@ export default function ClubsPage() {
     queryKey: ["clubs", search, offset],
     queryFn: () => apiModel.clubs(search, "", offset, LIMIT),
     placeholderData: keepPreviousData,
+    enabled: !!session.user,
   });
 
   const apply = useMutation({
@@ -36,11 +46,11 @@ export default function ClubsPage() {
   });
 
   const filteredItems = useMemo(() => {
-    const items = clubs.data?.items ?? [];
+    const items = session.user ? clubs.data?.items ?? [] : PUBLIC_OVERVIEW;
     if (!search.trim()) return items;
     const q = search.toLowerCase();
     return items.filter((club) => [club.name, club.code, club.activityField, club.description, club.contactEmail].join(" ").toLowerCase().includes(q));
-  }, [clubs.data?.items, search]);
+  }, [clubs.data?.items, search, session.user]);
 
   const open = (club: Club) => {
     setSelected(club);
@@ -62,7 +72,7 @@ export default function ClubsPage() {
               </div>
               <div className="rounded-sm border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm">
                 <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/70">Tổng số</p>
-                <p className="mt-1 text-2xl font-black">{clubs.data?.total ?? 0}</p>
+                <p className="mt-1 text-2xl font-black">{session.user ? clubs.data?.total ?? 0 : "03"}</p>
               </div>
             </div>
           </div>
@@ -87,13 +97,15 @@ export default function ClubsPage() {
               </div>
             )}
 
-            {clubs.isPending ? (
+            {!session.user && <div className="mt-5 border border-[#e7d8b8] bg-[#fbf6ec] px-4 py-3 text-xs leading-5 text-[#695a46]">Bạn có thể xem phần giới thiệu công khai mà không cần đăng nhập.</div>}
+
+            {session.user && clubs.isPending ? (
               <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="h-52 animate-pulse rounded-sm border border-border bg-background dark:border-white/10 dark:bg-white/5" />
                 ))}
               </div>
-            ) : clubs.isError ? (
+            ) : session.user && clubs.isError ? (
               <div className="mt-6 rounded-sm border border-destructive/20 bg-destructive/5 p-6 text-sm text-destructive">
                 {describeError(clubs.error)}
               </div>
@@ -140,7 +152,7 @@ export default function ClubsPage() {
 
                     <div className="mt-5 flex gap-2">
                       <Button variant="outline" className="flex-1 rounded-full" onClick={() => open(club)}>Chi tiết</Button>
-                      <Button className="flex-1 rounded-full" onClick={() => open(club)} disabled={club.status !== "ACTIVE"}>Gửi đơn</Button>
+                      <Button className="flex-1 rounded-full" onClick={() => session.user ? open(club) : router.push("/login")} disabled={club.status !== "ACTIVE"}>{session.user ? "Gửi đơn" : "Đăng nhập"}</Button>
                     </div>
                   </article>
                 ))}
@@ -172,7 +184,9 @@ export default function ClubsPage() {
             ]} />
 
             <Section title="Gửi đơn đăng ký" icon={<Send />}>
-              {selected.status !== "ACTIVE" ? (
+              {!session.user ? (
+                <div className="grid gap-3"><p className="text-sm text-muted-foreground">Đăng nhập để gửi đơn tham gia câu lạc bộ này.</p><Button onClick={() => router.push("/login")}>Đăng nhập để tiếp tục</Button></div>
+              ) : selected.status !== "ACTIVE" ? (
                 <p className="text-sm text-muted-foreground">CLB hiện đang tạm ngừng nhận thành viên.</p>
               ) : (
                 <>
