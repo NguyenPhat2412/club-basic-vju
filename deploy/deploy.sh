@@ -15,5 +15,8 @@ ssh "$HOST" "set -e
   cd $APP/releases/next/deploy
   docker compose -f compose.prod.yml --env-file .env build
   docker compose -f compose.prod.yml --env-file .env up -d --remove-orphans
+  install -d -m 700 $APP/bin
+  install -m 700 $APP/releases/next/deploy/backup/backup-db.sh $APP/releases/next/deploy/backup/restore-db.sh $APP/bin/
+  install -m 644 $APP/releases/next/deploy/backup/vju-club-backup.cron /etc/cron.d/vju-club-backup
   cd $APP/releases && rm -rf previous && { [ -d current ] && mv current previous || true; } && mv next current
   docker compose -f $APP/releases/current/deploy/compose.prod.yml --env-file $APP/deploy/.env ps"
