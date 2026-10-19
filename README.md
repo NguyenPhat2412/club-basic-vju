@@ -1,421 +1,132 @@
-# club-basic-vju
+# Nhánh `testcase/qa` – Kiểm thử và đảm bảo chất lượng
 
-Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt Nhật (VJU): quản lý tài khoản, câu lạc bộ, ban, thành viên và phân quyền chi tiết theo phạm vi.
+Nhánh `testcase/qa` tập trung xác nhận các luồng nghiệp vụ của hệ thống quản lý câu lạc bộ sinh viên VJU hoạt động đúng theo đặc tả và hợp đồng API. Nhánh này tiếp nhận thay đổi từ `backend`, `frontend` và các nhánh tính năng, ghi nhận kết quả kiểm thử, lỗi phát hiện được và điều kiện cần trước khi tích hợp vào `main`.
 
-> **Trạng thái:** Phase 2 đã hoàn thiện luồng khám phá CLB → đăng ký → xét duyệt → membership → phân ban → thông báo và audit. Backend có automated unit/integration/acceptance tests; frontend Next.js có các màn hình student và management tương ứng.
+> **Phạm vi tài liệu:** README tổng quan mô tả ứng dụng hiện có và cách chạy; README backend mô tả lệnh build/test; tài liệu đặc tả là căn cứ nghiệp vụ cho testcase. Các luồng sự kiện và nhiệm vụ trong đặc tả không được README tổng quan xác nhận là đã triển khai, vì vậy cần đánh dấu là chưa sẵn sàng kiểm thử tích hợp cho đến khi nhánh tính năng cung cấp phần triển khai tương ứng.
 
-## Mục lục
+## 1. QA đã và sẽ làm như thế nào
 
-- [Tính năng](#tính-năng)
-- [Công nghệ](#công-nghệ)
-- [Cấu trúc thư mục](#cấu-trúc-thư-mục)
-- [Bắt đầu nhanh](#bắt-đầu-nhanh)
-- [Cấu hình](#cấu-hình)
-- [Tổng quan API](#tổng-quan-api)
-- [Phân quyền](#phân-quyền)
-- [Quy ước API](#quy-ước-api)
-- [Cơ sở dữ liệu](#cơ-sở-dữ-liệu)
-- [Kiểm thử](#kiểm-thử)
-- [Docker và CI](#docker-và-ci)
-- [Quy trình phát triển](#quy-trình-phát-triển)
-- [Tài liệu liên quan](#tài-liệu-liên-quan)
+### Căn cứ kiểm thử
 
-## Tính năng
+QA đối chiếu kết quả với ba nguồn, theo thứ tự phù hợp với loại kiểm thử:
 
-- **Xác thực:** đăng ký, đăng nhập, đăng xuất, đổi mật khẩu. Hệ thống dùng JWT access token (15 phút) kèm refresh token (30 ngày) được xoay vòng sau mỗi lần dùng và chỉ lưu dạng hash.
-- **Người dùng:** xem và sửa hồ sơ cá nhân, tìm kiếm và sắp xếp danh sách người dùng, khoá hoặc mở tài khoản. Tài khoản bị khoá mất quyền truy cập ngay lập tức.
-- **Câu lạc bộ:** tạo, sửa, tìm kiếm, bật/tắt hoạt động. Mã CLB là duy nhất, không phân biệt hoa thường.
-- **Ban:** mỗi CLB có nhiều ban. Tên ban là duy nhất trong phạm vi một CLB.
-- **Thành viên:** thêm thành viên vào CLB, tạm ngưng, cho rời CLB. Hệ thống lưu **lịch sử** tham gia: mỗi lần tham gia là một membership riêng, người đã rời có thể được thêm lại. Khi rời CLB, thành viên tự động bị gỡ khỏi mọi ban.
-- **Thành viên ban:** xếp thành viên vào ban, chuyển ban, gỡ khỏi ban. Chỉ xếp được thành viên đang hoạt động vào ban cùng CLB.
-- **Phân quyền:** 35 quyền, mỗi quyền được cấp theo một trong ba phạm vi `GLOBAL`, `CLUB` hoặc `DEPARTMENT`. Mọi lần cấp và thu hồi đều được ghi audit log.
-- **Vai trò:** vai trò là nhóm quyền ứng với một chức vụ. Có 5 vai trò hệ thống (Quản trị hệ thống, Chủ nhiệm, Phó chủ nhiệm, Trưởng ban, Thành viên); admin có thể tạo thêm vai trò tuỳ chỉnh. Vai trò được gán theo cùng cơ chế scope như quyền.
-- **Audit log:** mọi thao tác nghiệp vụ quan trọng (khoá/mở tài khoản, tạo/sửa CLB và ban, thêm/xoá thành viên, cấp/thu hồi quyền và vai trò…) đều được ghi lại, kèm người thực hiện, thời điểm và giá trị trước/sau. Tra cứu qua `GET /audit-logs`.
-- **Bảo vệ:** giới hạn tần suất (rate limit) cho các endpoint đăng nhập/đăng ký/làm mới token. Mọi lỗi trả về theo định dạng RFC 7807. Người không có quyền không thể dò xem một ID có tồn tại hay không.
+1. **Đặc tả nghiệp vụ**: vai trò, tiền điều kiện, luồng chính, luồng thay thế, lỗi ngoại lệ và hậu điều kiện trong `tai-lieu-dac-ta-he-thong-clb-vju.md`.
+2. **Hợp đồng API**: `docs/api/openapi.yaml` và catalog API; dùng để xác nhận route, dữ liệu vào/ra và lỗi API.
+3. **Hành vi đã triển khai**: README tổng quan, README backend và mã nguồn đang được tích hợp. Nếu code và đặc tả không khớp, tạo issue/bug để nhóm xác nhận yêu cầu thay vì tự xem khác biệt là hành vi đúng.
 
-## Công nghệ
+### Phương pháp
 
-| Thành phần | Công nghệ |
-|---|---|
-| Backend | Java 21, Spring Boot 4.1.1 (Web MVC, Security, OAuth2 Resource Server, Data JPA, Validation) |
-| Cơ sở dữ liệu | PostgreSQL 16, Flyway |
-| Xác thực | JWT HS256 (Nimbus), BCrypt |
-| Tài liệu API | OpenAPI 3.1, springdoc / Swagger UI |
-| Frontend | Next.js 16, React 19, TypeScript, pnpm |
-| Kiểm thử | JUnit 5, Mockito, Spring MockMvc trên PostgreSQL thật (Testcontainers); Python `unittest` cho contract |
-| Hạ tầng | Docker, Docker Compose, GitHub Actions |
+- Chuyển mỗi use case thành các ca kiểm thử có mã, tiền điều kiện, dữ liệu, bước thực hiện, kết quả mong đợi và kết quả thực tế.
+- Bao phủ luồng thành công, dữ liệu không hợp lệ, trạng thái biên, quyền truy cập sai phạm vi và lỗi không tìm thấy tài nguyên.
+- Kiểm tra phân quyền theo vai trò và scope (`GLOBAL`, `CLUB`, `DEPARTMENT`); bao gồm trường hợp truy cập CLB/ban khác phạm vi.
+- Kiểm tra tính toàn vẹn và tác dụng phụ nghiệp vụ: duyệt đơn tạo membership, rời CLB gỡ thành viên khỏi ban, cập nhật liên quan được thực hiện nhất quán, thông báo/audit được ghi theo yêu cầu.
+- Khi API thay đổi, đối chiếu contract với triển khai và kiểm tra mã HTTP, payload thành công/lỗi (RFC 7807), phân trang và xác thực/CSRF nếu áp dụng.
+- Tách lỗi sản phẩm khỏi lỗi môi trường; lưu bước tái hiện, dữ liệu đầu vào, kết quả mong đợi/thực tế và log cần thiết. Không đưa secret, token hay dữ liệu cá nhân thật vào báo cáo.
 
-## Cấu trúc thư mục
+### Các luồng nghiệp vụ trong đặc tả
 
-```text
-.
-├── backend/springboot/          # Backend Spring Boot (dịch vụ duy nhất)
-│   ├── src/main/java/com/vju/club/
-│   │   ├── modules/             # Mỗi tính năng một module (xem cấu trúc module bên dưới)
-│   │   │   ├── auth/            # Đăng ký, đăng nhập, JWT, refresh token
-│   │   │   ├── user/            # Hồ sơ và quản trị người dùng
-│   │   │   ├── club/            # Câu lạc bộ
-│   │   │   ├── clubapplication/ # Đơn xin vào CLB, duyệt/từ chối
-│   │   │   ├── department/      # Ban
-│   │   │   ├── membership/      # Thành viên CLB
-│   │   │   ├── departmentmember/# Thành viên ban
-│   │   │   ├── permission/      # Cấp/thu hồi quyền, quyền hiệu lực
-│   │   │   ├── role/            # Vai trò và gán vai trò
-│   │   │   ├── notification/    # Thông báo
-│   │   │   └── audit/           # Ghi và tra cứu audit log
-│   │   ├── security/            # Kiểm tra quyền, rate limit, filter trạng thái tài khoản
-│   │   ├── config/              # Cấu hình ứng dụng: security, JWT, CORS, OpenAPI (không chứa DTO)
-│   │   ├── error/               # Xử lý lỗi chung (ProblemDetail)
-│   │   ├── common/              # Phân trang (PageResponse, OffsetLimitRequest)
-│   │   ├── bootstrap/           # Admin ban đầu và dữ liệu demo (chỉ profile local)
-│   │   └── rest/                # API catalog, phục vụ file OpenAPI
-│   ├── src/main/resources/
-│   │   ├── db/migration/        # Flyway: V1–V6 nền tảng, V7 club applications, V8 notifications, V9 created_by/updated_by
-│   │   └── api/                 # Bản copy runtime của OpenAPI và catalog
-│   ├── src/test/                # Unit test + integration test
-│   └── Dockerfile
-├── frontend/nextjs/             # Frontend Next.js: discovery, applications, memberships, management, notifications
-├── docs/
-│   ├── api/                     # OpenAPI contract (nguồn gốc), catalog, test contract
-│   ├── database/                # Hướng dẫn database
-│   └── superpowers/             # Spec và kế hoạch thiết kế
-├── inf/                         # Chỗ dành cho cấu hình docker/nginx/postgres (chưa dùng)
-├── docker-compose.yml           # PostgreSQL cho phát triển (cổng 5432)
-├── docker-compose.test.yml      # PostgreSQL cho kiểm thử (cổng 55432, dữ liệu trên tmpfs)
-└── .github/workflows/backend.yml
-```
+| Nhóm | Mã testcase | Nội dung cần xác nhận |
+|---|---|---|
+| Khám phá và đăng ký CLB | `TC01`–`TC04` | Tìm/xem CLB; gửi đơn; quản lý duyệt hoặc từ chối; người gửi huỷ đơn; trạng thái và membership phát sinh đúng |
+| Sự kiện | `TC05`–`TC07` | Tạo sự kiện và mở đăng ký; đăng ký tham gia; đóng đăng ký và điểm danh |
+| Nhiệm vụ | `TC08`–`TC10` | Tạo/giao task; assignee cập nhật tiến độ; xác nhận hoàn tất hoặc xử lý quá hạn |
 
-Mỗi module trong `modules/` theo cùng một khuôn:
+Trước khi chạy một nhóm testcase tích hợp, QA xác nhận chức năng, API và dữ liệu nền tương ứng đã có trên nhánh cần kiểm thử. README tổng quan hiện mô tả luồng khám phá CLB → đăng ký → xét duyệt → membership → phân ban → thông báo/audit; chưa xác nhận các module sự kiện và nhiệm vụ. Không báo các testcase này là pass nếu chưa có triển khai để kiểm tra.
 
-```text
-modules/<module>/
-├── controller/          # REST controller: chỉ nhận và trả DTO, không bao giờ để lộ entity
-├── service/             # Interface service (API của module)
-│   └── impl/            # XxxServiceImpl: nghiệp vụ, kiểm tra quyền, audit
-├── dto/
-│   ├── request/         # Java record cho request body, kèm Bean Validation
-│   └── response/        # Java record cho response, bất biến và không phụ thuộc entity
-├── mapper/              # MapStruct: entity → DTO, code sinh lúc compile
-├── entity/              # JPA entity, chỉ dùng bên trong service/repository
-├── enums/               # Enum dùng chung cho entity, DTO và controller
-├── repository/          # Spring Data repository
-├── specification/       # JPA Specification cho tìm kiếm động (nếu có)
-├── annotation/          # Annotation validation riêng của module
-├── exception/           # Exception riêng của module (nếu có), kế thừa ApiException
-└── common/              # Hằng số của module
-```
+## 2. Cách triển khai kiểm thử
 
-Quy ước:
-- **Chỉ làm việc với DTO ở ranh giới API.** Controller và interface service chỉ nhận/trả `record` trong `dto/`. Entity chỉ tồn tại bên trong service và repository.
-- **DTO là Java `record`**: ngắn gọn, bất biến, không có logic. Response DTO không biết đến entity.
-- **Chuyển entity → DTO bằng MapStruct** (`mapper/`), không dùng ModelMapper hay ObjectMapper. Mapper được sinh lúc compile và là Spring bean. Build được cấu hình `unmappedTargetPolicy=ERROR`, nên nếu thêm một trường vào DTO mà quên map thì compile sẽ báo lỗi ngay, thay vì lặng lẽ trả `null`.
-- **Lombok cho code lặp:** entity dùng `@Getter`/`@Setter` (lớp nào cố ý không có setter cho một trường thì gắn `@Setter` theo từng trường); bean dùng `@RequiredArgsConstructor` để inject qua constructor. **Không dùng `@Data` cho entity**, vì `equals`/`hashCode`/`toString` sinh tự động sẽ chạm vào quan hệ lazy, gây load ngoài ý muốn và lặp vô hạn.
-- **Phân quyền khai báo bằng annotation:** `@RequirePermission("role.manage")` hoặc `@RequirePermission(value = "club.update", clubId = "clubId")` đặt trên method service; `RequirePermissionAspect` kiểm tra trước khi method chạy. Giữ lời gọi `PermissionAuthorizationService.require(...)` viết tay khi phải tải entity rồi mới biết CLB/ban, khi permission key phụ thuộc request, hoặc khi method được gọi từ bên trong chính lớp đó (AOP không chạy với self-invocation). `RequirePermissionUsageTest` báo lỗi nếu annotation trỏ tới tham số không tồn tại.
-- **Route công khai khai báo bằng `@PublicEndpoint`** trên handler; `SecurityConfig` tự đọc các route này, không còn danh sách URL viết cứng.
-- **JPA Auditing:** mọi entity kế thừa `TimestampedEntity` tự lưu `created_by`/`updated_by` (`@CreatedBy`/`@LastModifiedBy`, lấy từ JWT của request; NULL khi không có người đăng nhập). Thời điểm (`created_at`/`updated_at`) do Hibernate ghi.
-- **Validation** đặt trên request DTO: `@NotBlank` cho chuỗi bắt buộc, `@NotNull` cho UUID/enum/số và collection được phép rỗng, `@NotEmpty` cho collection phải có phần tử, `@Size`/`@Pattern`/`@URL` để giới hạn độ dài và định dạng. Mật khẩu dùng `@ValidPassword` (8 ký tự trở lên, tối đa 72 byte UTF-8 theo giới hạn của BCrypt).
+### Điều kiện môi trường
 
-- **Service không phụ thuộc Spring Security:** controller nhận tham số `Actor` (người đang gọi, lấy từ JWT qua `ActorArgumentResolver`) và truyền xuống service. Nhờ vậy service unit test được bằng một `Actor` giả, không cần dựng security context.
-- **Kiểm tra quyền** nằm trong service và dùng chung `PermissionAuthorizationService`, vốn đọc view `effective_user_permissions` (gộp quyền trực tiếp và quyền từ vai trò).
-- **Exception theo nghiệp vụ:** module có nhiều lỗi riêng (như `document`) khai báo mỗi lỗi một lớp trong `exception/`, kế thừa `ApiException` với status và `code` cố định (ví dụ `DocumentVersionConflictException` → `409 DOCUMENT_VERSION_CONFLICT`). `GlobalExceptionHandler` xử lý chung, không cần thêm handler.
-- **File lưu ngoài database:** `DocumentStorage` có hai bản cài đặt: thư mục local (dev/test) và Cloudflare R2. File được ghi trước khi commit transaction; nếu transaction rollback thì file vừa ghi sẽ bị xoá. Xem [mục 9 README backend](backend/springboot/README.md#9-tài-liệu-clb-và-cloudflare-r2).
-- **Truy vấn** đều nằm trong repository: JPQL cho truy vấn thường, SQL gốc khi cần view của PostgreSQL. Phân trang dùng `OffsetLimitRequest`.
+- JDK 21 và Docker Desktop đang chạy.
+- Backend: Spring Boot, PostgreSQL 16; integration test sử dụng Testcontainers.
+- Python 3 và PyYAML cho API contract tests.
+- Node.js 20+ và pnpm nếu cần kiểm thử giao diện frontend.
+- Có thể kiểm thử API thủ công qua Swagger UI hoặc Postman CLI theo tài liệu backend.
 
-## Bắt đầu nhanh
+### Chạy kiểm tra tự động
 
-### Yêu cầu
-
-- JDK 21
-- Docker + Docker Compose
-- Node.js 20+ và pnpm (nếu chạy frontend)
-- Python 3 + PyYAML (nếu chạy test contract)
-
-> Hướng dẫn chi tiết từng bước cho **macOS và Windows** (cài JDK/Docker, lệnh PowerShell/CMD, xử lý sự cố): xem [backend/springboot/README.md](backend/springboot/README.md).
-
-### 1. Khởi động PostgreSQL
+Chạy từ thư mục gốc repository:
 
 ```bash
-docker compose up -d postgres
-```
-
-### 2. Tạo `backend/springboot/.env.local`
-
-Profile `local` tự đọc file này (trên mọi hệ điều hành), nên không cần đặt biến môi trường bằng tay:
-
-```bash
-cp backend/springboot/.env.local.example backend/springboot/.env.local
-```
-
-Đăng nhập bằng admin dùng chung `admin123@gmail.com` / `Admin123@` (tự tạo ở profile `local`, vai trò `SYSTEM_ADMIN`). Đặt `DEMO_USER_PASSWORD` nếu muốn có dữ liệu demo. File này đã được gitignore.
-
-### 3. Chạy backend
-
-```bash
+# Backend unit và integration tests (Docker cần hoạt động)
 cd backend/springboot
-./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+./mvnw test
 ```
 
-Trên Windows: `.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=local"` (PowerShell) hoặc `mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local` (CMD).
+Trên Windows PowerShell:
 
-Flyway tự chạy migration khi khởi động. Backend lắng nghe ở `http://localhost:8080`. Profile `local` có sẵn JWT secret dùng cho phát triển; mọi môi trường khác bắt buộc đặt `JWT_SECRET`.
+```powershell
+cd backend/springboot
+.\mvnw.cmd test
+```
 
-### 4. Dữ liệu demo (tuỳ chọn)
-
-Khi `.env.local` có `DEMO_USER_PASSWORD`, backend sẽ tạo sẵn một bộ dữ liệu demo. Việc này chỉ diễn ra một lần: nếu CLB VJUA đã tồn tại thì bỏ qua.
-
-| Dữ liệu | Chi tiết |
-|---|---|
-| CLB | `VJUA` (CLB Học thuật VJU) |
-| 4 ban | Ban Truyền thông, Ban Chuyên môn, Ban Hậu cần, Ban Đối ngoại |
-| `demo.a@vju.local` | Chủ nhiệm VJUA (vai trò `CLUB_PRESIDENT`), thuộc Ban Chuyên môn |
-| `demo.b@vju.local` | Trưởng Ban Truyền thông (vai trò `DEPARTMENT_HEAD`) |
-| `demo.c@vju.local` | Thành viên Ban Truyền thông, được cấp trực tiếp `club.view` và `member.view` |
-| `demo.student@vju.local` | Sinh viên ACTIVE chưa là thành viên, dùng để thử gửi và theo dõi đơn tuyển thành viên |
-
-Cả 4 user dùng chung mật khẩu `DEMO_USER_PASSWORD`. Dữ liệu demo không bao giờ được tạo ngoài profile `local`.
-
-### 5. Thử API
-
-- Swagger UI: http://localhost:8080/swagger-ui.html. Đăng nhập qua `POST /api/v1/auth/login`, copy `tokens.accessToken`, rồi bấm **Authorize** để gọi các route cần xác thực.
-- OpenAPI sinh tự động: http://localhost:8080/v3/api-docs
-- Contract giai đoạn 1: http://localhost:8080/api-docs/phase1.yaml
-- Danh mục API: http://localhost:8080/api/v1/api-catalog
+Chạy kiểm tra contract từ thư mục gốc:
 
 ```bash
-curl -s -X POST localhost:8080/api/v1/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"admin123@gmail.com","password":"Admin123@"}'
-```
-
-Dùng `tokens.accessToken` trong kết quả làm header `Authorization: Bearer <token>` cho các request tiếp theo.
-
-### 6. Chạy frontend (tuỳ chọn)
-
-```bash
-cd frontend/nextjs
-pnpm install
-pnpm dev
-```
-
-Frontend chạy ở `http://localhost:3000`. Đây cũng là origin duy nhất mà CORS của backend cho phép.
-
-## Cấu hình
-
-Backend đọc cấu hình từ biến môi trường:
-
-| Biến | Mặc định | Ý nghĩa |
-|---|---|---|
-| `JWT_SECRET` | *(không có, bắt buộc)* | Khoá ký JWT, tối thiểu 32 byte. Thiếu biến này thì app **không khởi động**. Profile `local` có sẵn giá trị dùng cho phát triển. |
-| `JWT_ACCESS_TOKEN_TTL` | `15m` | Thời hạn access token |
-| `JWT_REFRESH_TOKEN_TTL` | `30d` | Thời hạn refresh token |
-| `DB_URL` | `jdbc:postgresql://localhost:5432/club` | Chuỗi kết nối PostgreSQL |
-| `DB_USERNAME` / `DB_PASSWORD` | `club` / `club_local` | Tài khoản database |
-| `SERVER_PORT` | `8080` | Cổng HTTP |
-| `RATE_LIMIT_ENABLED` | `true` | Bật/tắt rate limit |
-| `RATE_LIMIT_MAX_REQUESTS` | `60` | Số request tối đa trong một cửa sổ, tính theo từng IP và từng endpoint |
-| `RATE_LIMIT_WINDOW` | `1m` | Độ dài cửa sổ rate limit |
-| `FORWARD_HEADERS_STRATEGY` | `native` | Chỉ tin `X-Forwarded-For` đến từ proxy có IP nội bộ/loopback, để rate limit thấy đúng IP người dùng khi chạy sau nginx |
-| `REFRESH_TOKEN_CLEANUP_CRON` | `0 30 3 * * *` | Lịch chạy job dọn refresh token |
-| `REFRESH_TOKEN_CLEANUP_RETENTION` | `7d` | Thời gian giữ lại refresh token đã chết trước khi xoá |
-| `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | `admin123@gmail.com` / `Admin123@` | Tạo admin ban đầu (chỉ có tác dụng ở profile `local`) |
-| `DEMO_USER_PASSWORD` | trống | Mật khẩu của 3 user demo; có giá trị thì tạo dữ liệu demo (chỉ profile `local`) |
-| `DEMO_DATA_ENABLED` | `true` | Tắt hẳn việc tạo dữ liệu demo |
-
-Các biến `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT` dùng để tuỳ chỉnh container trong `docker-compose.yml`.
-
-## Tổng quan API
-
-Mọi route nghiệp vụ nằm dưới `/api/v1`. Chỉ các route đăng ký, đăng nhập, làm mới token, API catalog và tài liệu API là công khai; mọi route còn lại cần Bearer token.
-
-| Nhóm | Route |
-|---|---|
-| **Auth** | `POST /auth/register` · `POST /auth/login` · `POST /auth/refresh-token` · `POST /auth/logout` · `POST /auth/change-password` · `GET /auth/me` |
-| **Users** | `GET /users/me` · `PATCH /users/me` · `GET /users` · `GET /users/{userId}` · `PATCH /users/{userId}/status` |
-| **Clubs** | `GET /clubs` · `POST /clubs` · `GET /clubs/{clubId}` · `PATCH /clubs/{clubId}` · `PATCH /clubs/{clubId}/status` |
-| **Departments** | `GET /clubs/{clubId}/departments` · `POST /clubs/{clubId}/departments` · `GET /departments/{id}` · `PATCH /departments/{id}` · `PATCH /departments/{id}/status` |
-| **Memberships** | `GET /clubs/{clubId}/memberships` (lọc `?status=`) · `POST /clubs/{clubId}/memberships` · `GET /memberships/{id}` · `PATCH /memberships/{id}` · `DELETE /memberships/{id}` |
-| **Department members** | `GET /departments/{id}/members` · `POST /departments/{id}/members` · `PATCH /departments/{id}/members/{membershipId}` (chuyển ban) · `DELETE /departments/{id}/members/{membershipId}` |
-| **Permissions** | `GET /permissions` · `GET /users/me/permissions` · `GET /users/{userId}/permissions` · `POST /users/{userId}/permissions` · `DELETE /users/{userId}/permissions/{permissionId}` · `GET /users/me/effective-permissions` · `GET /users/{userId}/effective-permissions` · `GET /permissions/groups` · `PUT /users/{userId}/permissions` |
-| **Roles** | `GET /roles` · `POST /roles` · `GET /roles/{roleId}` · `PATCH /roles/{roleId}` · `GET /users/me/roles` · `GET /users/{userId}/roles` · `POST /users/{userId}/roles` · `DELETE /users/{userId}/roles/{assignmentId}` |
-| **Audit** | `GET /audit-logs` (lọc theo `resourceType`, `resourceId`, `actorUserId`, `clubId`, `action`) |
-| **Khác** | `GET /api-catalog` · `GET /api-docs/phase1.yaml` |
-
-Chi tiết request/response nằm trong [docs/api/openapi.yaml](docs/api/openapi.yaml).
-
-## Phân quyền
-
-### Phạm vi và cơ chế kế thừa
-
-Mỗi quyền được khai báo với một phạm vi mặc định. Khi cấp cho người dùng, quyền có thể được cấp ở **đúng phạm vi đó hoặc một phạm vi rộng hơn**, theo thứ tự `DEPARTMENT` < `CLUB` < `GLOBAL`:
-
-- Cấp một quyền cấp ban (ví dụ `department.update`) ở phạm vi `CLUB` thì quyền đó áp dụng cho **mọi ban của CLB ấy**.
-- Cấp ở phạm vi `GLOBAL` thì quyền áp dụng trên toàn hệ thống.
-- Cấp hẹp hơn phạm vi mặc định bị từ chối với lỗi `PERMISSION_SCOPE_MISMATCH`.
-
-Khi kiểm tra quyền, hệ thống xét lần lượt grant cấp ban, rồi grant cấp CLB, rồi grant global. Mỗi grant có thể là **quyền cấp trực tiếp** hoặc **quyền đến từ một vai trò** đang được gán. Quyền hoặc vai trò bị thu hồi hay vô hiệu hoá mất hiệu lực ngay lập tức.
-
-`GET /users/me/effective-permissions` trả toàn bộ quyền người dùng đang thực sự có (kèm nguồn `DIRECT`/`ROLE`), để frontend ẩn/hiện chức năng.
-
-### Vai trò
-
-Vai trò là một nhóm quyền. Mỗi vai trò có phạm vi hẹp nhất có thể gán; vai trò chỉ được chứa các quyền có phạm vi bằng hoặc hẹp hơn phạm vi của nó. Ví dụ, vai trò cấp CLB không chứa được `user.view`.
-
-| Vai trò hệ thống | Phạm vi | Quyền |
-|---|---|---|
-| `SYSTEM_ADMIN` | GLOBAL | Tất cả |
-| `CLUB_PRESIDENT` | CLUB | `club.view`, `club.update`, mọi quyền `department.*`, `member.*`, `department.member.*` |
-| `CLUB_VICE_PRESIDENT` | CLUB | `club.view`, `department.view`, `member.view`, `member.view_detail`, `member.add`, `member.update`, `department.member.*` |
-| `DEPARTMENT_HEAD` | DEPARTMENT | `department.update`, `department.member.*` |
-| `CLUB_MEMBER` | CLUB | `club.view`, `department.view`, `member.view` |
-
-Vai trò hệ thống không sửa được qua API. Vai trò tuỳ chỉnh (tạo bằng quyền `role.manage`) có thể sửa tập quyền hoặc tắt đi, và thay đổi có hiệu lực ngay với mọi người đang giữ vai trò đó. Gán và thu hồi vai trò cần `permission.assign`/`permission.revoke`, và cũng được ghi audit log.
-
-### Danh mục quyền
-
-| Module | Quyền (phạm vi mặc định) |
-|---|---|
-| user | `user.view`, `user.update`, `user.active`, `user.inactive` (GLOBAL) |
-| club | `club.create` (GLOBAL); `club.view`, `club.update`, `club.active`, `club.inactive` (CLUB) |
-| department | `department.view`, `department.create` (CLUB); `department.update`, `department.activate`, `department.inactive` (DEPARTMENT) |
-| member | `member.view`, `member.view_detail`, `member.add`, `member.update`, `member.remove` (CLUB) |
-| department.member | `department.member.view`, `department.member.add`, `department.member.remove` (DEPARTMENT) |
-| permission | `permission.view`, `permission.assign`, `permission.revoke` (GLOBAL) |
-| role | `role.view`, `role.manage` (GLOBAL) |
-| audit | `audit.view` (GLOBAL) |
-
-Chuyển thành viên sang ban khác cần `department.member.remove` ở ban nguồn **và** `department.member.add` ở ban đích.
-
-## Quy ước API
-
-### Định dạng lỗi
-
-Mọi lỗi trả về `application/problem+json` kèm trường `code` ổn định để frontend xử lý:
-
-```json
-{ "title": "CLUB_CODE_ALREADY_EXISTS", "status": 409, "detail": "Club code is already used", "code": "CLUB_CODE_ALREADY_EXISTS" }
-```
-
-| HTTP | Mã lỗi thường gặp |
-|---|---|
-| 400 | `VALIDATION_ERROR`, `INVALID_SORT`, `CURRENT_PASSWORD_INVALID`, `PERMISSION_SCOPE_MISMATCH`, `INVALID_PERMISSION_SCOPE`, `ROLE_SCOPE_MISMATCH`, `ROLE_PERMISSION_SCOPE_MISMATCH`, `INVALID_SCOPE_TARGET`, `ROLE_INACTIVE`, `CROSS_CLUB_ASSIGNMENT`, `CROSS_CLUB_MOVE`, `SAME_DEPARTMENT`, `AMBIGUOUS_PERMISSION_GRANT` |
-| 401 | `UNAUTHORIZED`, `AUTH_TOKEN_EXPIRED` (access token hết hạn, nên gọi refresh), `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN` |
-| 403 | `PERMISSION_DENIED`, `ACCOUNT_INACTIVE` |
-| 404 | `NOT_FOUND` (route không tồn tại), `USER_NOT_FOUND`, `CLUB_NOT_FOUND`, `DEPARTMENT_NOT_FOUND`, `MEMBERSHIP_NOT_FOUND`, `CLUB_APPLICATION_NOT_FOUND`, … |
-| 405 / 415 | `METHOD_NOT_ALLOWED`, `UNSUPPORTED_MEDIA_TYPE` |
-| 409 | `EMAIL_ALREADY_EXISTS`, `STUDENT_CODE_ALREADY_EXISTS`, `CLUB_CODE_ALREADY_EXISTS`, `DEPARTMENT_NAME_ALREADY_EXISTS`, `MEMBERSHIP_ALREADY_EXISTS`, `ALREADY_CLUB_MEMBER`, `APPLICATION_ALREADY_PENDING`, `APPLICATION_ALREADY_REVIEWED`, `APPLICATION_CANNOT_BE_CANCELLED`, `DUPLICATE_MEMBERSHIP`, `CLUB_INACTIVE`, `USER_INACTIVE`, `DEPARTMENT_INACTIVE`, `MEMBERSHIP_NOT_ACTIVE`, `MEMBERSHIP_ALREADY_LEFT`, `PERMISSION_ALREADY_GRANTED`, `ROLE_ALREADY_ASSIGNED`, `ROLE_CODE_ALREADY_EXISTS`, `SYSTEM_ROLE_IMMUTABLE` |
-| 429 | `RATE_LIMIT_EXCEEDED`, kèm các header `Retry-After`, `X-RateLimit-Limit` và `X-RateLimit-Remaining` |
-| 500 | `INTERNAL_ERROR` (lỗi được ghi log ở server) |
-
-Một số hành vi cần lưu ý:
-- Khi hai request đồng thời cùng vi phạm ràng buộc duy nhất, request thua nhận 409 với cùng mã lỗi như lúc kiểm tra thông thường, không bao giờ ra 500.
-- Với ID không tồn tại, chỉ người giữ quyền ở phạm vi `GLOBAL` nhận 404; người khác nhận 403. Nhờ vậy không ai dò được ID nào có thật.
-- Đăng nhập sai mật khẩu và dùng email không tồn tại cho ra cùng một phản hồi. Lỗi `ACCOUNT_INACTIVE` chỉ hiện khi người đăng nhập nhập đúng mật khẩu.
-
-### Phân trang
-
-Các endpoint danh sách nhận `offset` (≥ 0, mặc định 0) và `limit` (1–100, mặc định 20). Giá trị ngoài khoảng bị trả 400. Kết quả có dạng:
-
-```json
-{ "items": [ ... ], "total": 42, "offset": 0, "limit": 20 }
-```
-
-`GET /users` nhận thêm `query`, `orderBy` (`email` | `fullName` | `createdAt` | `status`) và `orderType` (`asc` | `desc`).
-
-## Cơ sở dữ liệu
-
-Flyway quản lý schema tại `backend/springboot/src/main/resources/db/migration/`:
-
-| Migration | Nội dung |
-|---|---|
-| `V1__create_phase1_schema.sql` | 8 bảng `users`, `clubs`, `departments`, `memberships`, `department_members`, `permissions`, `user_permissions`, `permission_audit_logs`; seed 25 quyền |
-| `V2__create_refresh_tokens.sql` | Bảng `refresh_tokens` (chỉ lưu SHA-256 của token) |
-| `V3__harden_constraints_and_indexes.sql` | Chuyển các ràng buộc nghiệp vụ xuống tầng DB và bổ sung index (chi tiết bên dưới) |
-| `V4__membership_history.sql` | Lưu lịch sử tham gia: mỗi user chỉ có tối đa một membership chưa kết thúc cho mỗi CLB |
-| `V5__roles.sql` | Bảng `roles`, `role_permissions`, `user_roles`; view `effective_user_permissions`; seed 5 vai trò hệ thống và 2 quyền `role.*` |
-| `V6__audit_log_and_membership_timestamps.sql` | Bảng `audit_logs` (chỉ được thêm, không sửa/xoá), `created_at`/`updated_at` cho membership, quyền `audit.view` |
-| `V7__club_applications.sql` | Bảng đơn đăng ký CLB, giới hạn trạng thái/nội dung, partial unique index cho đơn PENDING, 7 quyền application và audit resource `APPLICATION` |
-
-Ràng buộc được đặt ngay ở tầng database, nên dữ liệu sai bị chặn kể cả khi ghi bằng SQL trực tiếp hoặc khi nhiều request chạy đồng thời:
-- **Duy nhất, không phân biệt hoa thường:** email, mã sinh viên, mã CLB, và tên ban trong một CLB (unique index trên `lower(...)`). Mỗi user chỉ có tối đa một membership **chưa kết thúc** trong một CLB; các membership đã `LEFT` được giữ làm lịch sử.
-- **Thành viên ban luôn cùng CLB:** `department_members.club_id` được ràng buộc bằng khoá ngoại ghép tới cả `departments(id, club_id)` lẫn `memberships(id, club_id)`, nên không thể xếp người vào ban của CLB khác.
-- **CHECK** cho các cột trạng thái; cho quan hệ scope ↔ `club_id`/`department_id`; cho quy tắc `left_at` có giá trị **khi và chỉ khi** membership ở trạng thái `LEFT`; cho `permission_key = module.action`; và cho quy tắc `revoked_by` chỉ có khi đã có `revoked_at`.
-- **Partial unique index** để một quyền hoặc vai trò không thể được cấp trùng khi grant cũ vẫn còn hiệu lực.
-- **Trigger phạm vi:** grant quyền hoặc gán vai trò hẹp hơn phạm vi cho phép bị từ chối; vai trò không chứa được quyền rộng hơn phạm vi của nó.
-- **Audit log bất biến:** không xoá được CLB hoặc ban đã có lịch sử phân quyền. Hệ thống chỉ khoá mềm bằng cột `status`.
-- **Index:** mọi cột khoá ngoại đều có index; có index `(club_id, joined_at)` và `(department_id, joined_at)` cho các danh sách; và tìm theo email/mã CLB dùng được index nhờ truy vấn qua `lower(...)`.
-- **Trigger `updated_at`:** cột này luôn được cập nhật, kể cả khi sửa dữ liệu ngoài ứng dụng.
-
-Refresh token đã hết hạn hoặc bị thu hồi được một job dọn mỗi ngày lúc 03:30, sau khi giữ lại 7 ngày. Có thể chỉnh bằng `REFRESH_TOKEN_CLEANUP_CRON` và `REFRESH_TOKEN_CLEANUP_RETENTION`.
-
-Khi chạy, Hibernate chỉ `validate` schema chứ không tự sửa. Mọi thay đổi schema phải đi qua một migration mới, và không được sửa migration đã chạy. Xem thêm [docs/database/README.md](docs/database/README.md).
-
-## Kiểm thử
-
-```bash
-# 494 test backend: unit + integration (cần Docker đang chạy)
-cd backend/springboot && ./mvnw test
-
-# Kiểm tra OpenAPI contract (từ thư mục gốc)
 python3 -m unittest discover -s docs/api/tests
 ```
 
-- **Unit test:** kiểm tra logic auth, JWT, cấu hình secret/issuer, kiểm tra quyền, rate limit, bootstrap admin, và báo lỗi khi bản copy OpenAPI trong code lệch với bản trong `docs/`.
-- **Integration test** (`src/test/java/com/vju/club/integration`): gọi API thật qua MockMvc trên PostgreSQL thật. Mỗi lần chạy dùng một schema riêng; base class `ApiIntegrationTest` dựng sẵn user `admin` (có mọi quyền) và `member` (không có quyền nào), cùng các CLB A/B và ban A1/A2/B1. Bộ test phủ:
-  - Mọi endpoint, bao gồm các trường hợp biên và phân trang.
-  - Phân quyền theo phạm vi.
-  - Nhiều request đồng thời (race condition).
-  - Token giả mạo hoặc hết hạn.
-  - SQL injection.
-  - Rate limit.
-
-Integration test tự bật một container PostgreSQL 16 bằng **Testcontainers** (dùng chung cho cả lượt chạy, tự xoá khi xong), nên chỉ cần Docker đang chạy. Muốn dùng một database có sẵn, ví dụ `docker compose -f docker-compose.test.yml up -d` (cổng 55432), thì đặt `TEST_DB_URL=jdbc:postgresql://localhost:55432/club_test`, cùng `TEST_DB_USERNAME`/`TEST_DB_PASSWORD` nếu khác mặc định.
-
-## Docker và CI
-
-Build và chạy image backend:
+Có thể chạy riêng một test backend để điều tra nhanh:
 
 ```bash
-docker build -t club-backend backend/springboot
-docker run -p 8080:8080 \
-  -e JWT_SECRET='<ít nhất 32 ký tự ngẫu nhiên>' \
-  -e DB_URL=jdbc:postgresql://host.docker.internal:5432/club \
-  club-backend
+cd backend/springboot
+./mvnw test -Dtest=AuthApiTest
 ```
 
-Container chạy bằng user thường (uid 10001), không dùng root.
+Integration tests tự khởi tạo PostgreSQL 16 bằng Testcontainers. Nếu dùng DB test sẵn có, khởi động `docker-compose.test.yml` (cổng 55432) và cấu hình `TEST_DB_URL`, `TEST_DB_USERNAME`, `TEST_DB_PASSWORD` theo README backend.
 
-GitHub Actions ([.github/workflows/backend.yml](.github/workflows/backend.yml)) chạy mỗi khi push lên `main` và cho mọi pull request. Workflow gồm: toàn bộ test backend (PostgreSQL 16 qua Testcontainers), kiểm tra contract bằng Python, và build Docker image.
+### Kiểm thử API và giao diện
 
-## Quy trình phát triển
+1. Khởi động PostgreSQL dev và backend theo hướng dẫn trong README tổng quan/backend; Flyway áp dụng migration khi backend khởi động.
+2. Dùng Swagger UI (`http://localhost:8080/swagger-ui.html`) hoặc Postman CLI để gọi API.
+3. Với endpoint cần đăng nhập, tạo phiên theo hướng dẫn auth/CSRF của backend; không chia sẻ cookie, token hoặc mật khẩu trong log/báo cáo.
+4. Nếu kiểm thử frontend, chạy frontend theo README tổng quan, thực hiện luồng trên giao diện và đối chiếu request/response với API contract.
+5. Ghi kết quả cho từng testcase; bug cần có môi trường, nhánh/commit, dữ liệu tối thiểu, bước tái hiện, kết quả mong đợi và thực tế, mức độ ảnh hưởng.
 
-- **Đổi API:** sửa [docs/api/openapi.yaml](docs/api/openapi.yaml) và [docs/api/catalog.yml](docs/api/catalog.yml) trước, rồi copy sang `backend/springboot/src/main/resources/api/` (`phase1-openapi.yaml`, `catalog.yml`). Cả test Java lẫn test Python đều báo lỗi nếu hai bản lệch nhau.
-- **Đổi schema:** thêm migration Flyway mới, không sửa migration đã chạy.
-- **Thêm endpoint có kiểm tra quyền:** khai báo tham số `Actor actor` trong controller, rồi trong service gọi `PermissionAuthorizationService.require(actor, ...)`. Truyền cả `clubId` lẫn `departmentId` khi có để cơ chế kế thừa phạm vi hoạt động. Với ID không tồn tại, dùng `missingResource(...)`.
-- **Trước khi push:** chạy `./mvnw test` và bộ test contract.
+### Điều kiện đạt
 
-## Phase 2: Tuyển thành viên
+- Các kiểm tra bắt buộc của nhánh chạy thành công; lỗi môi trường được ghi riêng và không tính là pass.
+- Không còn lỗi chặn luồng chính hoặc lỗi phân quyền/tính toàn vẹn dữ liệu chưa được xử lý.
+- API contract, frontend và backend thống nhất về route, payload và trạng thái nghiệp vụ.
+- Kết quả testcase gắn với commit được kiểm tra để có thể tái hiện.
 
-Phase 2 bổ sung luồng:
+GitHub Actions được README tổng quan mô tả là chạy backend tests, API contract tests và build Docker image khi push lên `main` hoặc khi có pull request. QA nên kiểm tra kết quả CI của PR trước khi chấp nhận tích hợp.
 
-`Student -> xem CLB ACTIVE -> gửi đơn -> theo dõi/hủy đơn -> reviewer theo scope CLB duyệt/từ chối -> APPROVED tạo Membership ACTIVE -> phân vào Department`.
+## 3. Cách các nhánh khác làm việc với `testcase/qa`
 
-Endpoint chính:
+README tổng quan và tài liệu backend không ghi lại quy ước merge nhánh hiện tại. Phần dưới đây là luồng phối hợp đề xuất dựa trên các nhánh xuất hiện trong repository/ảnh và các kiểm tra CI đã mô tả; nhóm có thể điều chỉnh cho khớp quy trình thực tế.
 
-- `POST /api/v1/clubs/{clubId}/applications` tạo đơn `PENDING`.
-- `GET /api/v1/users/me/applications` và `GET /api/v1/users/me/applications/{applicationId}` xem đơn của mình.
-- `PATCH /api/v1/users/me/applications/{applicationId}/cancel` hủy đơn đang `PENDING`.
-- `GET /api/v1/clubs/{clubId}/applications` xem đơn theo scope CLB.
-- `POST /api/v1/clubs/{clubId}/applications/{applicationId}/approve` hoặc `/reject` xử lý đơn. Approve tạo Membership trong cùng transaction với cập nhật application.
-- `GET /api/v1/users/me/memberships` xem lịch sử membership cá nhân.
+```text
+backend / feature-backend ─┐
+frontend / feature-* ──────┼─> PR hoặc merge vào testcase/qa ─> chạy QA ─> main
+fix/* ────────────────────┘             │
+                                        └─> phát hiện lỗi: báo nhánh sở hữu code,
+                                            sửa trên nhánh đó rồi cập nhật lại QA
+```
 
-Quyền mới gồm `application.view`, `application.view_detail`, `application.create`, `application.cancel`, `application.review`, `application.approve`, và `application.reject`; quyền quản lý đơn dùng scope `CLUB`. Applicant dùng ownership cho các thao tác cá nhân. Approval/rejection tạo thông báo in-app trong cùng transaction; người dùng đọc qua `/api/v1/users/me/notifications` và đánh dấu đã đọc qua `PATCH /api/v1/users/me/notifications/{notificationId}/read`.
+| Nhánh | Phần việc đưa sang QA | Trách nhiệm khi phối hợp |
+|---|---|---|
+| `backend` | API, nghiệp vụ, phân quyền, migration và backend tests | Cung cấp hướng dẫn chạy, thay đổi contract/migration và dữ liệu cần thiết; sửa lỗi backend trên nhánh sở hữu rồi đưa commit mới để QA kiểm tra lại |
+| `feature/backend` | Tính năng backend đang phát triển | Nêu rõ phạm vi/tiêu chí nghiệm thu và phụ thuộc; chỉ yêu cầu kiểm thử tích hợp khi API và dữ liệu nền sẵn sàng |
+| `frontend` | Màn hình và luồng người dùng | Nêu cấu hình/API phụ thuộc; xác nhận luồng giao diện với API đã tích hợp; sửa lỗi frontend trên nhánh tương ứng |
+| `fix/backend-docs-and-db-backup` | Sửa lỗi/tài liệu/hạ tầng database theo phạm vi nhánh | QA xác nhận sửa đổi ảnh hưởng tới hướng dẫn chạy, backup/restore hoặc môi trường kiểm thử; không dùng dữ liệu production trong môi trường QA |
+| `draft` | Bản nháp/đề xuất chưa xác nhận | Chưa coi là nguồn triển khai ổn định cho kết quả QA cho đến khi được nhóm chọn và tích hợp |
+| `main` | Bản tích hợp chính | Nhận thay đổi sau khi review, CI và tiêu chí QA đạt; QA kiểm tra lại smoke test trên commit/release được chọn |
 
-Migration `V7__club_applications.sql` tạo bảng application, partial unique index ngăn hai đơn `PENDING` trùng user/CLB, seed permission, và mở rộng audit resource type `APPLICATION`. Migration `V8__notifications.sql` tạo bảng thông báo, index theo user/thời gian và trigger `updated_at`.
+### Quy trình vòng đời một thay đổi
 
-## Tài liệu liên quan
+1. **Nhánh phát triển** mở PR hoặc đưa thay đổi vào `testcase/qa`, ghi phạm vi, tiêu chí nghiệm thu, hướng dẫn cấu hình và liên kết issue.
+2. **QA chuẩn bị** đồng bộ nhánh kiểm thử với thay đổi mới nhất, dựng môi trường, áp dụng migration và tạo dữ liệu thử không chứa thông tin nhạy cảm.
+3. **QA thực thi** test tự động phù hợp, sau đó chạy testcase nghiệp vụ/API/giao diện có liên quan; lưu kết quả theo commit.
+4. **Khi có lỗi**, QA báo lỗi cho nhóm sở hữu phần code. Nhóm đó sửa trên nhánh phát triển/bugfix, cập nhật PR hoặc đưa commit mới vào QA; QA chạy lại testcase lỗi và regression liên quan.
+5. **Khi đạt**, ghi tóm tắt phạm vi đã kiểm tra, commit, lệnh/test đã chạy, kết quả và lỗi còn tồn tại; reviewer dùng thông tin đó khi tích hợp vào `main`.
+6. **Sau tích hợp**, chạy smoke test trên bản `main`/release nếu môi trường và dữ liệu triển khai sẵn sàng; phản hồi lỗi hồi quy về nhánh sở hữu.
 
-- [Backend README](backend/springboot/README.md): chi tiết chạy và kiểm thử backend
-- [API inventory và Swagger contract](docs/api/README.md)
-- [OpenAPI 3.1 contract](docs/api/openapi.yaml)
-- [Hướng dẫn database](docs/database/README.md)
-- [Thiết kế và kế hoạch giai đoạn 1](docs/superpowers/specs/)
+Để tránh nhầm kết quả, luôn ghi rõ tên nhánh và commit SHA được kiểm thử. Không sửa trực tiếp code của nhánh `backend`/`frontend` trong nhánh QA; thay đổi sản phẩm cần được trả về nhánh chịu trách nhiệm và kiểm thử lại sau khi cập nhật.
+
+## 4. Tài liệu tham chiếu
+
+- README tổng quan: kiến trúc, cách chạy ứng dụng, API, test, Docker và CI.
+- README backend: cài công cụ, cấu hình `.env.local`, chạy backend, test, build JAR/Docker và kiểm thử API.
+- Tài liệu đặc tả hệ thống: vai trò, quy trình nghiệp vụ và testcase `TC01`–`TC10`.
+- API contract: `docs/api/openapi.yaml`, catalog và contract tests trong `docs/api/`.
