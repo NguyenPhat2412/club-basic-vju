@@ -1,4 +1,4 @@
-# Nhánh `testcase/qa` – Kiểm thử và đảm bảo chất lượng
+# Kiểm thử và đảm bảo chất lượng
 
 Nhánh `testcase/qa` tập trung xác nhận các luồng nghiệp vụ của hệ thống quản lý câu lạc bộ sinh viên VJU hoạt động đúng theo đặc tả và hợp đồng API. Nhánh này tiếp nhận thay đổi từ `backend`, `frontend` và các nhánh tính năng, ghi nhận kết quả kiểm thử, lỗi phát hiện được và điều kiện cần trước khi tích hợp vào `main`.
 
@@ -99,9 +99,9 @@ README tổng quan và tài liệu backend không ghi lại quy ước merge nh�
 ```text
 backend / feature-backend ─┐
 frontend / feature-* ──────┼─> PR hoặc merge vào testcase/qa ─> chạy QA ─> main
-fix/* ────────────────────┘             │
-                                        └─> phát hiện lỗi: báo nhánh sở hữu code,
-                                            sửa trên nhánh đó rồi cập nhật lại QA
+fix/* ─────────────────────┘             │
+                                         └─> phát hiện lỗi: báo nhánh sở hữu code,
+                                             sửa trên nhánh đó rồi cập nhật lại QA
 ```
 
 | Nhánh | Phần việc đưa sang QA | Trách nhiệm khi phối hợp |
