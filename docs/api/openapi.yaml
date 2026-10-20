@@ -3104,6 +3104,28 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+  /public/events:
+    get:
+      operationId: event.listPublic
+      summary: List public club events on landing page
+      tags: [Event]
+      security: []
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: offset
+        in: query
+        schema: {type: integer, minimum: 0, default: 0}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: Public club events
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EventListResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
   /clubs/{clubId}/events:
     post:
       operationId: event.create

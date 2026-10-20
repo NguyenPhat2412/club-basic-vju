@@ -1,4 +1,4 @@
-# VJU Club Management System — Swagger / OpenAPI Inventory (100 Endpoints)
+# VJU Club Management System — Swagger / OpenAPI Inventory (101 Endpoints)
 
 The backend assigned to this system is `backend/springboot` (Spring Boot 3 / Java 21 / PostgreSQL 16).
 
@@ -11,11 +11,11 @@ The backend assigned to this system is `backend/springboot` (Spring Boot 3 / Jav
 
 - **Source catalog:** [`docs/api/catalog.yml`](catalog.yml) (synced with `backend/springboot/src/main/resources/api/catalog.yml`)
 - **Source OpenAPI contract:** [`docs/api/openapi.yaml`](openapi.yaml) (synced with `backend/springboot/src/main/resources/api/phase1-openapi.yaml`)
-- **All 100 endpoints** across **17 modules** are marked `IMPLEMENTED` and verified by automated PostgreSQL integration tests.
+- **All 101 endpoints** across **17 modules** are marked `IMPLEMENTED` and verified by automated PostgreSQL integration tests.
 
 ## Authentication & Conventions
 
-- **Authentication:** Send `Authorization: Bearer <accessToken>` for all protected routes (`PUBLIC` routes do not require a token; `AUTHENTICATED` routes require any valid logged-in user token).
+- **Authentication:** Send `Authorization: Bearer <accessToken>` or session cookie for all protected routes (`PUBLIC` routes do not require a token; `AUTHENTICATED` routes require any valid logged-in user token).
 - **Pagination:** List endpoints use `offset` (default `0`) and `limit` (default `20`, max `100`) and return `{ items, total, offset, limit }`.
 - **Error Format:** RFC 7807 Problem Details (`application/problem+json`) with a stable `code` property.
 - **Contract verification:**
@@ -25,7 +25,7 @@ The backend assigned to this system is `backend/springboot` (Spring Boot 3 / Jav
 
 ---
 
-## Complete Swagger API Endpoint List (100 Endpoints)
+## Complete Swagger API Endpoint List (101 Endpoints)
 
 | # | Module | Operation ID | Method | Path | Permission / Auth | Summary | Status |
 |---:|---|---|---|---|---|---|---|
@@ -108,27 +108,28 @@ The backend assigned to this system is `backend/springboot` (Spring Boot 3 / Jav
 | 77 | `document` | `document.download_url` | **GET** | `/api/v1/documents/{documentId}/download-url` | `document.view` | Get a presigned download link | `IMPLEMENTED` |
 | 78 | `notification` | `notification.markAllRead` | **PATCH** | `/api/v1/users/me/notifications/read-all` | `AUTHENTICATED` | Mark all my notifications as read | `IMPLEMENTED` |
 | 79 | `notification` | `notification.broadcast` | **POST** | `/api/v1/clubs/{clubId}/notifications` | `notification.send` | Broadcast notification to club or department members | `IMPLEMENTED` |
-| 80 | `event` | `event.create` | **POST** | `/api/v1/clubs/{clubId}/events` | `event.create` | Create a club event or schedule | `IMPLEMENTED` |
-| 81 | `event` | `event.list` | **GET** | `/api/v1/clubs/{clubId}/events` | `event.view` | List club events | `IMPLEMENTED` |
-| 82 | `event` | `event.get` | **GET** | `/api/v1/events/{eventId}` | `event.view` | Get an event | `IMPLEMENTED` |
-| 83 | `event` | `event.update` | **PATCH** | `/api/v1/clubs/{clubId}/events/{eventId}` | `event.update` | Update an event | `IMPLEMENTED` |
-| 84 | `event` | `event.register` | **POST** | `/api/v1/events/{eventId}/registrations` | `AUTHENTICATED` | Register current user for an event | `IMPLEMENTED` |
-| 85 | `event` | `event.listRegistrations` | **GET** | `/api/v1/events/{eventId}/registrations` | `event.view | event.attendance` | List event registrations | `IMPLEMENTED` |
-| 86 | `event` | `event.cancelRegistration` | **PATCH** | `/api/v1/events/{eventId}/registrations/me/cancel` | `AUTHENTICATED` | Cancel my event registration | `IMPLEMENTED` |
-| 87 | `event` | `event.recordAttendance` | **PUT** | `/api/v1/events/{eventId}/attendances` | `event.attendance` | Record event attendance | `IMPLEMENTED` |
-| 88 | `event` | `event.listAttendances` | **GET** | `/api/v1/events/{eventId}/attendances` | `event.attendance | event.view` | List event attendance records | `IMPLEMENTED` |
-| 89 | `event` | `event.myCalendar` | **GET** | `/api/v1/users/me/calendar` | `AUTHENTICATED` | List my upcoming and scheduled club events | `IMPLEMENTED` |
-| 90 | `task` | `task.create` | **POST** | `/api/v1/clubs/{clubId}/tasks` | `task.create` | Create and assign a task | `IMPLEMENTED` |
-| 91 | `task` | `task.list` | **GET** | `/api/v1/clubs/{clubId}/tasks` | `task.view` | List club tasks | `IMPLEMENTED` |
-| 92 | `task` | `task.listMine` | **GET** | `/api/v1/users/me/tasks` | `AUTHENTICATED` | List my assigned tasks | `IMPLEMENTED` |
-| 93 | `task` | `task.updateProgress` | **PATCH** | `/api/v1/tasks/{taskId}/progress` | `AUTHENTICATED` | Update task progress by assignee | `IMPLEMENTED` |
-| 94 | `task` | `task.verify` | **PATCH** | `/api/v1/tasks/{taskId}/verify` | `task.verify` | Verify a completed task (DONE -> COMPLETED) | `IMPLEMENTED` |
-| 95 | `chat` | `chat.createChannel` | **POST** | `/api/v1/clubs/{clubId}/channels` | `chat.send` | Create a club or department chat channel | `IMPLEMENTED` |
-| 96 | `chat` | `chat.listChannels` | **GET** | `/api/v1/clubs/{clubId}/channels` | `chat.view` | List club chat channels | `IMPLEMENTED` |
-| 97 | `chat` | `chat.sendMessage` | **POST** | `/api/v1/channels/{channelId}/messages` | `chat.send` | Send a message to a chat channel | `IMPLEMENTED` |
-| 98 | `chat` | `chat.listMessages` | **GET** | `/api/v1/channels/{channelId}/messages` | `chat.view` | List messages in a chat channel | `IMPLEMENTED` |
-| 99 | `chat` | `chat.summarize` | **POST** | `/api/v1/channels/{channelId}/summaries` | `chat.summarize` | Summarize channel messages with AI Bot | `IMPLEMENTED` |
-| 100 | `chat` | `chat.listSummaries` | **GET** | `/api/v1/channels/{channelId}/summaries` | `chat.view` | List AI summaries for a channel | `IMPLEMENTED` |
+| 80 | `event` | `event.listPublic` | **GET** | `/api/v1/public/events` | `PUBLIC` | List public club events on landing page | `IMPLEMENTED` |
+| 81 | `event` | `event.create` | **POST** | `/api/v1/clubs/{clubId}/events` | `event.create` | Create a club event or schedule | `IMPLEMENTED` |
+| 82 | `event` | `event.list` | **GET** | `/api/v1/clubs/{clubId}/events` | `event.view` | List club events | `IMPLEMENTED` |
+| 83 | `event` | `event.get` | **GET** | `/api/v1/events/{eventId}` | `event.view` | Get an event | `IMPLEMENTED` |
+| 84 | `event` | `event.update` | **PATCH** | `/api/v1/clubs/{clubId}/events/{eventId}` | `event.update` | Update an event | `IMPLEMENTED` |
+| 85 | `event` | `event.register` | **POST** | `/api/v1/events/{eventId}/registrations` | `AUTHENTICATED` | Register current user for an event | `IMPLEMENTED` |
+| 86 | `event` | `event.listRegistrations` | **GET** | `/api/v1/events/{eventId}/registrations` | `event.view | event.attendance` | List event registrations | `IMPLEMENTED` |
+| 87 | `event` | `event.cancelRegistration` | **PATCH** | `/api/v1/events/{eventId}/registrations/me/cancel` | `AUTHENTICATED` | Cancel my event registration | `IMPLEMENTED` |
+| 88 | `event` | `event.recordAttendance` | **PUT** | `/api/v1/events/{eventId}/attendances` | `event.attendance` | Record event attendance | `IMPLEMENTED` |
+| 89 | `event` | `event.listAttendances` | **GET** | `/api/v1/events/{eventId}/attendances` | `event.attendance | event.view` | List event attendance records | `IMPLEMENTED` |
+| 90 | `event` | `event.myCalendar` | **GET** | `/api/v1/users/me/calendar` | `AUTHENTICATED` | List my upcoming and scheduled club events | `IMPLEMENTED` |
+| 91 | `task` | `task.create` | **POST** | `/api/v1/clubs/{clubId}/tasks` | `task.create` | Create and assign a task | `IMPLEMENTED` |
+| 92 | `task` | `task.list` | **GET** | `/api/v1/clubs/{clubId}/tasks` | `task.view` | List club tasks | `IMPLEMENTED` |
+| 93 | `task` | `task.listMine` | **GET** | `/api/v1/users/me/tasks` | `AUTHENTICATED` | List my assigned tasks | `IMPLEMENTED` |
+| 94 | `task` | `task.updateProgress` | **PATCH** | `/api/v1/tasks/{taskId}/progress` | `AUTHENTICATED` | Update task progress by assignee | `IMPLEMENTED` |
+| 95 | `task` | `task.verify` | **PATCH** | `/api/v1/tasks/{taskId}/verify` | `task.verify` | Verify a completed task (DONE -> COMPLETED) | `IMPLEMENTED` |
+| 96 | `chat` | `chat.createChannel` | **POST** | `/api/v1/clubs/{clubId}/channels` | `chat.send` | Create a club or department chat channel | `IMPLEMENTED` |
+| 97 | `chat` | `chat.listChannels` | **GET** | `/api/v1/clubs/{clubId}/channels` | `chat.view` | List club chat channels | `IMPLEMENTED` |
+| 98 | `chat` | `chat.sendMessage` | **POST** | `/api/v1/channels/{channelId}/messages` | `chat.send` | Send a message to a chat channel | `IMPLEMENTED` |
+| 99 | `chat` | `chat.listMessages` | **GET** | `/api/v1/channels/{channelId}/messages` | `chat.view` | List messages in a chat channel | `IMPLEMENTED` |
+| 100 | `chat` | `chat.summarize` | **POST** | `/api/v1/channels/{channelId}/summaries` | `chat.summarize` | Summarize channel messages with AI Bot | `IMPLEMENTED` |
+| 101 | `chat` | `chat.listSummaries` | **GET** | `/api/v1/channels/{channelId}/summaries` | `chat.view` | List AI summaries for a channel | `IMPLEMENTED` |
 
 ---
 
@@ -140,4 +141,4 @@ The backend assigned to this system is `backend/springboot` (Spring Boot 3 / Jav
 - Revoke calls should send `scope` and its target ID. If more than one active grant matches an underspecified revoke, the backend returns `400 AMBIGUOUS_PERMISSION_GRANT`.
 - Status operations choose their permission from the target status: `user.active`/`user.inactive`, `club.active`/`club.inactive`, and `department.activate`/`department.inactive`.
 - Department move uses the source department in the URL and `targetDepartmentId` in the body. It requires remove permission at the source and add permission at the target.
-- AI Chat Summarizer (`POST /api/v1/channels/{channelId}/ai/summarize`) connects to the configured **9router** OpenAI-compatible gateway (`AI_BASE_URL=https://router.anhchau.all1.vn/v1`, `AI_MODEL=apmarket`).
+- AI Chat Summarizer (`POST /api/v1/channels/{channelId}/summaries`) connects to the configured **9router** OpenAI-compatible gateway (`AI_BASE_URL=https://router.anhchau.all1.vn/v1`, `AI_MODEL=apmarket`).

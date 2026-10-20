@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.UUID;
 
 public interface EventService {
+    PageResponse<EventResponse> listPublic(int offset, int limit);
+
     EventResponse create(Actor actor, UUID clubId, CreateEventRequest request);
 
     EventResponse update(Actor actor, UUID clubId, UUID eventId, UpdateEventRequest request);

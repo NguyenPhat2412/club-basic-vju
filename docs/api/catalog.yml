@@ -552,6 +552,13 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: notification.send
+- method: GET
+  path: /api/v1/public/events
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
 - method: POST
   path: /api/v1/clubs/{clubId}/events
   module: event

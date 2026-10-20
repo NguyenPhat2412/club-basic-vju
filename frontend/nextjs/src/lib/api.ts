@@ -35,7 +35,7 @@ async function send(path: string, init: RequestInit = {}, retried = false): Prom
       return send(path, init, true);
     }
   }
-  if (response.status === 401 && !SIGN_IN_PATHS.includes(path)) toLogin();
+  if (response.status === 401 && !SIGN_IN_PATHS.includes(path) && !path.startsWith('/public/')) toLogin();
   if (!response.ok) throw await apiError(response);
   return response;
 }
@@ -64,7 +64,11 @@ export const apiModel = {
   assignRole: (userId: string, body: RoleAssignmentInput) => api<UserRole>(`/users/${userId}/roles`, { method: 'POST', body: JSON.stringify(body) }),
   revokeRole: (userId: string, assignmentId: string) => api<void>(`/users/${userId}/roles/${assignmentId}`, { method: 'DELETE' }),
   updateUserStatus: (id: string, status: 'ACTIVE' | 'INACTIVE') => api<User>(`/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
-  me: () => api<User>('/auth/me'), effectivePermissions: () => api<EffectivePermission[]>('/users/me/effective-permissions'), clubs: (query = '', category = '', offset = 0, limit = 50) => api<Page<Club>>(`/clubs?${new URLSearchParams({ query, category, offset: String(offset), limit: String(limit) })}`), club: (id: string) => api<Club>(`/clubs/${id}`),
+  me: () => api<User>('/auth/me'), effectivePermissions: () => api<EffectivePermission[]>('/users/me/effective-permissions'),
+  publicClubs: (query = '', category = '', offset = 0, limit = 50) => api<Page<Club>>(`/public/clubs?${new URLSearchParams({ query, category, offset: String(offset), limit: String(limit) })}`),
+  publicClub: (id: string) => api<Club>(`/public/clubs/${id}`),
+  publicEvents: (offset = 0, limit = 10) => api<Page<PublicEvent>>(`/public/events?${new URLSearchParams({ offset: String(offset), limit: String(limit) })}`),
+  clubs: (query = '', category = '', offset = 0, limit = 50) => api<Page<Club>>(`/clubs?${new URLSearchParams({ query, category, offset: String(offset), limit: String(limit) })}`), club: (id: string) => api<Club>(`/clubs/${id}`),
   apply: (clubId: string, message: string) => api<Application>(`/clubs/${clubId}/applications`, { method: 'POST', body: JSON.stringify({ message }) }), myApplications: () => api<Page<ApplicationSummary>>('/users/me/applications?limit=50'), application: (id: string) => api<Application>(`/users/me/applications/${id}`), cancelApplication: (id: string) => api<Application>(`/users/me/applications/${id}/cancel`, { method: 'PATCH' }), myMemberships: () => api<Page<Membership>>('/users/me/memberships?limit=50'),
   clubApplications: (clubId: string) => api<Page<Application>>(`/clubs/${clubId}/applications?limit=50`), approve: (clubId: string, applicationId: string, note: string) => api<Application>(`/clubs/${clubId}/applications/${applicationId}/approve`, { method: 'POST', body: JSON.stringify({ reviewNote: note }) }), reject: (clubId: string, applicationId: string, note: string) => api<Application>(`/clubs/${clubId}/applications/${applicationId}/reject`, { method: 'POST', body: JSON.stringify({ reviewNote: note }) }),
   departments: (clubId: string) => api<Page<Department>>(`/clubs/${clubId}/departments?limit=50`),
@@ -100,6 +104,7 @@ export type PermissionItem = { id: string; permissionKey: string; module: string
 export type PermissionGroup = { module: string; permissions: PermissionItem[] };
 export type EffectivePermission = { permissionKey: string; scope: string; clubId?: string; departmentId?: string; source: string; roleCode?: string };
 export type Club = { id: string; code: string; name: string; description?: string; activityField?: string; contactEmail?: string; status: string; logoUrl?: string; coverUrl?: string };
+export type PublicEvent = { id: string; clubId: string; clubName: string; departmentId?: string; departmentName?: string; title: string; description?: string; eventType: string; location?: string; startTime: string; endTime: string; registrationDeadline?: string; allowCtv: boolean; maxParticipants?: number; status: string };
 export type ApplicationSummary = { id: string; clubId: string; clubCode: string; clubName: string; status: string; createdAt: string; reviewedAt?: string };
 export type Application = ApplicationSummary & { applicantId: string; message: string; reviewNote?: string; membershipId?: string; membershipStatus?: string };
 export type Membership = { id: string; userId: string; clubId: string; clubCode: string; clubName: string; status: string; joinedAt?: string; leftAt?: string; departments: { id: string; name: string }[] };

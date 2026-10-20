@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowDown, ArrowRight, Bell, BookOpen, CalendarDays, ChevronDown, Menu, UsersRound, X } from "lucide-react";
+import { FormEvent, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowDown, ArrowRight, Bell, BookOpen, CalendarDays, ChevronDown, LockKeyhole, Menu, UsersRound, X } from "lucide-react";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
-import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { apiModel } from "@/lib/api";
+import { describeError } from "@/components/shared/ListPage";
+import { FormField, Input } from "@/components/ui/input";
+
+const CLUB_COLORS = ["#b22d43", "#315b76", "#68734b", "#8e1f32", "#7a5330", "#3d5a5b"];
 
 const clubs = [
   { category: "HỌC THUẬT", name: "Học thuật & Công nghệ", description: "Cùng học hỏi, nghiên cứu và biến ý tưởng công nghệ thành những dự án thật.", mark: "01", color: "#b22d43" },
@@ -21,19 +24,54 @@ const news = [
   { date: "06.10.2026", category: "HOẠT ĐỘNG", title: "Cùng sinh viên VJU tạo nên những điều đáng nhớ", color: "#737b54" },
 ];
 
+function formatShortDate(iso?: string) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
+}
+
 export default function HomePage() {
   const session = useOptionalSession();
-  const clubsQuery = useQuery({ queryKey: ["home", "clubs"], queryFn: () => apiModel.clubs("", "", 0, 3), retry: 1, enabled: !!session.user });
+  const clubsQuery = useQuery({ queryKey: ["home", "public-clubs"], queryFn: () => apiModel.publicClubs("", "", 0, 6), retry: 1 });
+  const eventsQuery = useQuery({ queryKey: ["home", "public-events"], queryFn: () => apiModel.publicEvents(0, 5), retry: 1 });
   const router = useRouter();
   const queryClient = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+
   const featuredClubs = clubsQuery.data?.items.length ? clubsQuery.data.items.map((club, index) => ({
-    category: club.activityField || "CÂU LẠC BỘ VJU",
+    category: club.activityField || club.code || "CÂU LẠC BỘ VJU",
     name: club.name,
     description: club.description || "Khám phá hoạt động và cơ hội kết nối tại câu lạc bộ.",
     mark: String(index + 1).padStart(2, "0"),
-    color: clubs[index]?.color || "#8e1f32",
+    color: CLUB_COLORS[index % CLUB_COLORS.length],
   })) : clubs;
+
+  const featuredEvents = eventsQuery.data?.items.length ? eventsQuery.data.items.map((ev, index) => ({
+    date: formatShortDate(ev.startTime),
+    category: ev.clubName || ev.eventType || "SỰ KIỆN CLB",
+    title: ev.title + (ev.location ? ` · ${ev.location}` : ""),
+    color: CLUB_COLORS[index % CLUB_COLORS.length],
+  })) : news;
+
+  const submitLogin = async (event: FormEvent) => {
+    event.preventDefault();
+    setLoginError("");
+    setLoginLoading(true);
+    try {
+      await apiModel.login(email, password);
+      queryClient.clear();
+      router.push("/dashboard");
+    } catch (err) {
+      setLoginError(describeError(err));
+    } finally {
+      setLoginLoading(false);
+    }
+  };
 
   const signOut = async () => {
     await apiModel.logout().catch(() => undefined);
@@ -144,12 +182,74 @@ export default function HomePage() {
       <section id="tin-tuc" className="mx-auto max-w-[1380px] px-5 py-20 sm:px-8 sm:py-24 lg:px-12">
         <div className="flex items-end justify-between gap-4"><div><Eyebrow>BẢNG TIN CÂU LẠC BỘ</Eyebrow><h2 className="mt-3 font-serif text-[36px] font-medium sm:text-[46px]">Tin tức & sự kiện</h2></div><Link href="/notifications" className="hidden items-center gap-2 text-[10px] font-semibold text-[#8e1f32] sm:inline-flex">XEM THÔNG BÁO <ArrowRight size={14} /></Link></div>
         <div className="mt-9 divide-y divide-[#e8e4df] border-y border-[#e8e4df]">
-          {news.map((item, index) => <Link href={session.user ? "/notifications" : "/clubs"} key={item.title} className="group grid gap-3 py-5 transition-colors hover:bg-white sm:grid-cols-[120px_125px_1fr_24px] sm:items-center sm:gap-5 sm:px-4">
-            <span className="text-[10px] tracking-wide text-[#8a837b]">{item.date}</span><span className="text-[9px] font-bold tracking-[.13em]" style={{ color: item.color }}>{item.category}</span><span className="font-serif text-[19px] leading-snug group-hover:text-[#8e1f32]">{item.title}</span><ArrowRight size={16} className="hidden text-[#8e1f32] transition-transform group-hover:translate-x-1 sm:block" />
+          {featuredEvents.map((item) => <Link href={session.user ? "/notifications" : "/clubs"} key={item.title + item.date} className="group grid gap-3 py-5 transition-colors hover:bg-white sm:grid-cols-[120px_160px_1fr_24px] sm:items-center sm:gap-5 sm:px-4">
+            <span className="text-[10px] tracking-wide text-[#8a837b]">{item.date}</span><span className="truncate text-[9px] font-bold tracking-[.13em]" style={{ color: item.color }}>{item.category}</span><span className="font-serif text-[19px] leading-snug group-hover:text-[#8e1f32]">{item.title}</span><ArrowRight size={16} className="hidden text-[#8e1f32] transition-transform group-hover:translate-x-1 sm:block" />
           </Link>)}
         </div>
-        <p className="mt-3 text-[10px] text-[#99928a]">Nội dung minh họa. Thông báo thực tế hiển thị trong khu vực tài khoản.</p>
+        {!eventsQuery.data?.items.length && <p className="mt-3 text-[10px] text-[#99928a]">Nội dung minh họa. Sự kiện câu lạc bộ công khai sẽ tự động hiển thị khi được mở đăng ký.</p>}
       </section>
+
+      {!session.user && (
+        <section id="dang-nhap" className="border-t border-[#e8e4df] bg-white">
+          <div className="mx-auto grid max-w-[1380px] gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[1fr_460px] lg:items-center lg:px-12 lg:py-20">
+            <div>
+              <Eyebrow>KHU VỰC THÀNH VIÊN & QUẢN TRỊ</Eyebrow>
+              <h2 className="mt-3 font-serif text-[34px] font-medium leading-tight sm:text-[44px]">Đăng nhập vào không gian CLB của bạn.</h2>
+              <p className="mt-4 max-w-xl text-[13px] leading-7 text-[#6d675f]">
+                Sau khi đăng nhập, hệ thống sẽ tự động phân quyền vào trang cá nhân (nộp đơn, lịch sự kiện, công việc, thông báo) hoặc không gian Quản trị CLB & Quản trị hệ thống theo đúng vai trò của bạn.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3 text-[11px] text-[#77716a]">
+                <Link href="/login" className="font-semibold text-[#8e1f32] hover:underline">Mở trang đăng nhập riêng →</Link>
+                <span>·</span>
+                <Link href="/register" className="hover:text-[#8e1f32] hover:underline">Hướng dẫn cấp tài khoản</Link>
+              </div>
+            </div>
+
+            <form onSubmit={submitLogin} className="border border-[#e8e4df] bg-[#faf9f6] p-6 shadow-sm sm:p-8">
+              <p className="text-[9px] font-bold uppercase tracking-[.22em] text-[#8e1f32]">ĐĂNG NHẬP NHANH</p>
+              <h3 className="mt-2 font-serif text-[26px]">Tài khoản VJU ClubHub</h3>
+              <div className="mt-5 grid gap-4">
+                <FormField label="Địa chỉ email">
+                  <Input
+                    required
+                    type="email"
+                    autoComplete="username"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="sinhvien@vju.ac.vn"
+                    className="h-11 rounded-none border-[#d8d1c8] bg-white px-3.5 text-[13px]"
+                  />
+                </FormField>
+                <FormField label="Mật khẩu">
+                  <Input
+                    required
+                    type="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="h-11 rounded-none border-[#d8d1c8] bg-white px-3.5 text-[13px]"
+                  />
+                </FormField>
+                {loginError && (
+                  <p role="alert" className="border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-800">
+                    {loginError}
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  disabled={loginLoading}
+                  className="mt-1 flex h-11 items-center justify-center gap-2.5 bg-[#8e1f32] text-[11px] font-semibold text-white transition-colors hover:bg-[#711829] disabled:opacity-60"
+                >
+                  <LockKeyhole size={15} />
+                  {loginLoading ? "ĐANG ĐĂNG NHẬP…" : "ĐĂNG NHẬP HỆ THỐNG"}
+                  <ArrowRight size={14} />
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+      )}
 
       <section className="bg-[#8e1f32] text-white">
         <div className="mx-auto flex max-w-[1380px] flex-col gap-7 px-5 py-12 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12">

@@ -1,6 +1,7 @@
 package com.vju.club.modules.event.controller;
 
 import com.vju.club.common.dto.PageResponse;
+import com.vju.club.modules.auth.annotation.PublicEndpoint;
 import com.vju.club.modules.event.dto.request.CreateEventRequest;
 import com.vju.club.modules.event.dto.request.EventRegistrationRequest;
 import com.vju.club.modules.event.dto.request.RecordAttendanceRequest;
@@ -41,6 +42,15 @@ import java.util.UUID;
 @Tag(name = "Events & Calendar", description = "Quản lý sự kiện, lịch sinh hoạt, đăng ký tham gia, điểm danh và lịch tổng hợp cá nhân (TC05–TC07)")
 public class EventController {
     private final EventService eventService;
+
+    @PublicEndpoint(reason = "Public events discovery on landing page")
+    @GetMapping("/public/events")
+    @Operation(summary = "Danh sách sự kiện công khai trên Landing Page")
+    public PageResponse<EventResponse> listPublic(
+            @RequestParam(defaultValue = "0") @Min(0) int offset,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
+        return eventService.listPublic(offset, limit);
+    }
 
     @PostMapping("/clubs/{clubId}/events")
     @Operation(summary = "Tạo sự kiện hoặc lịch sinh hoạt CLB (TC05)",

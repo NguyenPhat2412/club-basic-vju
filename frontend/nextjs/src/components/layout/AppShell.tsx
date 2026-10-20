@@ -9,6 +9,7 @@ import { apiModel } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { cn } from "@/lib/utils";
 import { ChangePasswordModal } from "./ChangePasswordModal";
+import { FirstLoginPassword } from "./FirstLoginPassword";
 
 type NavLink = { href: string; label: string; icon: ReactNode; visible?: boolean };
 
@@ -102,7 +103,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>}
       </header>
 
-      <main data-design-system="vju-app" className="flex min-h-0 flex-1 flex-col overflow-y-auto">{session.user || publicClubRoute ? children : null}</main>
+      <main data-design-system="vju-app" className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {session.user && session.mustChangePassword ? (
+          <FirstLoginPassword email={session.user.email} />
+        ) : session.user || publicClubRoute ? (
+          children
+        ) : null}
+      </main>
       <footer className="border-t border-border bg-card px-4 py-3 text-center text-[9px] tracking-wide text-muted-foreground sm:text-left"><div className="mx-auto flex max-w-[1440px] flex-col gap-1 sm:flex-row sm:justify-between"><span>VJU ClubHub · Cổng thông tin câu lạc bộ sinh viên</span><span>Trường Đại học Việt Nhật · ĐHQGHN</span></div></footer>
       <ChangePasswordModal open={passwordOpen} onClose={() => setPasswordOpen(false)} />
     </div>

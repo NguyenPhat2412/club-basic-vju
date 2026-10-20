@@ -29,6 +29,13 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
                            Pageable pageable);
 
     @EntityGraph(attributePaths = {"club", "department"})
+    @Query("SELECT e FROM Event e WHERE e.club.status = com.vju.club.modules.club.enums.ClubStatus.ACTIVE "
+            + "AND e.status IN (com.vju.club.modules.event.enums.EventStatus.OPEN_REGISTRATION, "
+            + "com.vju.club.modules.event.enums.EventStatus.CLOSED_REGISTRATION, "
+            + "com.vju.club.modules.event.enums.EventStatus.COMPLETED)")
+    Page<Event> findPublicEvents(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"club", "department"})
     @Query("SELECT DISTINCT e FROM Event e WHERE "
             + "(e.club.id IN :clubIds OR e.id IN :registeredEventIds) "
             + "AND e.status <> com.vju.club.modules.event.enums.EventStatus.CANCELLED "

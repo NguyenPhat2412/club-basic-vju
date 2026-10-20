@@ -5,20 +5,22 @@ import { ArrowRight, Bell, ClipboardList, Compass, ShieldCheck, UsersRound } fro
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { apiModel } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
+import { FirstLoginPassword } from "@/components/layout/FirstLoginPassword";
 
 const MANAGEMENT_PERMISSIONS = ["application.view", "application.review", "application.approve", "application.reject", "member.view", "department.member.add", "club.update"];
 
 export default function DashboardPage() {
   const session = useOptionalSession();
-  const memberships = useQuery({ queryKey: ["dashboard", "memberships"], queryFn: apiModel.myMemberships, enabled: !!session.user });
-  const applications = useQuery({ queryKey: ["dashboard", "applications"], queryFn: apiModel.myApplications, enabled: !!session.user });
-  const notifications = useQuery({ queryKey: ["dashboard", "notifications"], queryFn: apiModel.notifications, enabled: !!session.user });
+  const canQuery = !!session.user && !session.mustChangePassword;
+  const memberships = useQuery({ queryKey: ["dashboard", "memberships"], queryFn: apiModel.myMemberships, enabled: canQuery });
+  const applications = useQuery({ queryKey: ["dashboard", "applications"], queryFn: apiModel.myApplications, enabled: canQuery });
+  const notifications = useQuery({ queryKey: ["dashboard", "notifications"], queryFn: apiModel.notifications, enabled: canQuery });
   const canManage = MANAGEMENT_PERMISSIONS.some(session.can);
   const canAdmin = session.can("user.view") || session.can("role.view");
   const managedClubScope = session.clubsWith(MANAGEMENT_PERMISSIONS);
-  const managedClubs = useQuery({ queryKey: ["dashboard", "manageable-clubs"], queryFn: () => apiModel.clubs("", "", 0, 100), enabled: !!session.user && canManage });
+  const managedClubs = useQuery({ queryKey: ["dashboard", "manageable-clubs"], queryFn: () => apiModel.clubs("", "", 0, 100), enabled: canQuery && canManage });
   const visibleManagedClubs = (managedClubs.data?.items ?? []).filter((club) => managedClubScope.global || managedClubScope.ids.has(club.id));
-  const reviewQueues = useQueries({ queries: visibleManagedClubs.map((club) => ({ queryKey: ["dashboard", "club-applications", club.id], queryFn: () => apiModel.clubApplications(club.id), enabled: canManage })) });
+  const reviewQueues = useQueries({ queries: visibleManagedClubs.map((club) => ({ queryKey: ["dashboard", "club-applications", club.id], queryFn: () => apiModel.clubApplications(club.id), enabled: canQuery && canManage })) });
   const unread = notifications.data?.items.filter((item) => !item.read).length ?? 0;
   const pending = applications.data?.items.filter((item) => item.status === "PENDING").length ?? 0;
   const pendingReview = reviewQueues.reduce((count, queue) => count + (queue.data?.items.filter((item) => item.status === "PENDING").length ?? 0), 0);
@@ -33,6 +35,14 @@ export default function DashboardPage() {
       </section>
     </main>
   );
+
+  if (session.mustChangePassword) {
+    return (
+      <main className="flex min-h-svh flex-col bg-[#faf9f6]">
+        <FirstLoginPassword email={session.user.email} />
+      </main>
+    );
+  }
 
   const cards = [
     { title: "CLB đang tham gia", value: memberships.data?.total, icon: UsersRound, href: "/memberships", note: "Thành viên của bạn" },

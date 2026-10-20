@@ -28,11 +28,15 @@ export default function ClubsPage() {
   const [message, setMessage] = useState("");
   const [notice, setNotice] = useState("");
 
+  const canViewPrivateClubs = !!session.user && session.can("club.view");
   const clubs = useQuery({
-    queryKey: ["clubs", search, offset],
-    queryFn: () => apiModel.clubs(search, "", offset, LIMIT),
+    queryKey: ["clubs", canViewPrivateClubs ? "private" : "public", search, offset],
+    queryFn: () =>
+      canViewPrivateClubs
+        ? apiModel.clubs(search, "", offset, LIMIT)
+        : apiModel.publicClubs(search, "", offset, LIMIT),
     placeholderData: keepPreviousData,
-    enabled: !!session.user,
+    enabled: session.settled,
   });
 
   const apply = useMutation({
@@ -46,11 +50,11 @@ export default function ClubsPage() {
   });
 
   const filteredItems = useMemo(() => {
-    const items = session.user ? clubs.data?.items ?? [] : PUBLIC_OVERVIEW;
+    const items = clubs.data?.items?.length ? clubs.data.items : (!clubs.isPending && !search.trim() ? PUBLIC_OVERVIEW : []);
     if (!search.trim()) return items;
     const q = search.toLowerCase();
     return items.filter((club) => [club.name, club.code, club.activityField, club.description, club.contactEmail].join(" ").toLowerCase().includes(q));
-  }, [clubs.data?.items, search, session.user]);
+  }, [clubs.data?.items, clubs.isPending, search]);
 
   const open = (club: Club) => {
     setSelected(club);
@@ -72,7 +76,7 @@ export default function ClubsPage() {
               </div>
               <div className="rounded-sm border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm">
                 <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/70">Tổng số</p>
-                <p className="mt-1 text-2xl font-black">{session.user ? clubs.data?.total ?? 0 : "03"}</p>
+                <p className="mt-1 text-2xl font-black">{clubs.data?.total ?? filteredItems.length}</p>
               </div>
             </div>
           </div>
@@ -97,15 +101,15 @@ export default function ClubsPage() {
               </div>
             )}
 
-            {!session.user && <div className="mt-5 border border-[#e7d8b8] bg-[#fbf6ec] px-4 py-3 text-xs leading-5 text-[#695a46]">Bạn có thể xem phần giới thiệu công khai mà không cần đăng nhập.</div>}
+            {!session.user && <div className="mt-5 border border-[#e7d8b8] bg-[#fbf6ec] px-4 py-3 text-xs leading-5 text-[#695a46]">Bạn đang xem danh sách câu lạc bộ công khai. Đăng nhập để gửi đơn gia nhập CLB.</div>}
 
-            {session.user && clubs.isPending ? (
+            {clubs.isPending ? (
               <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="h-52 animate-pulse rounded-sm border border-border bg-background dark:border-white/10 dark:bg-white/5" />
                 ))}
               </div>
-            ) : session.user && clubs.isError ? (
+            ) : clubs.isError ? (
               <div className="mt-6 rounded-sm border border-destructive/20 bg-destructive/5 p-6 text-sm text-destructive">
                 {describeError(clubs.error)}
               </div>

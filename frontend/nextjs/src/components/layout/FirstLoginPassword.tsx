@@ -14,7 +14,10 @@ export function FirstLoginPassword({ email }: { email?: string }) {
   const [confirmation, setConfirmation] = useState("");
   const mutation = useMutation({
     mutationFn: () => apiModel.changePassword(current, next),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["me"] }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
+      await queryClient.invalidateQueries({ queryKey: ["optional-me"] });
+    },
   });
   const mismatch = confirmation.length > 0 && confirmation !== next;
   const sameAsCurrent = next.length > 0 && next === current;

@@ -82,6 +82,16 @@ public class EventServiceImpl implements EventService {
     private final EventMapper eventMapper;
 
     @Override
+    @Transactional(readOnly = true)
+    public PageResponse<EventResponse> listPublic(int offset, int limit) {
+        var page = eventRepository.findPublicEvents(new OffsetLimitRequest(offset, limit, EVENT_SORT));
+        List<EventResponse> items = page.getContent().stream()
+                .map(eventMapper::toResponse)
+                .toList();
+        return new PageResponse<>(items, page.getTotalElements(), offset, limit);
+    }
+
+    @Override
     @Transactional
     @RequirePermission(value = EventConstants.PERMISSION_CREATE, clubId = "clubId")
     public EventResponse create(Actor actor, UUID clubId, CreateEventRequest request) {

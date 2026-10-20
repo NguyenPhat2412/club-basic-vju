@@ -17,6 +17,7 @@ const BREADTH: Record<Scope, number> = { DEPARTMENT: 0, CLUB: 1, GLOBAL: 2 };
 const MODULE_LABELS: Record<string, string> = {
   user: "Tài khoản", club: "Câu lạc bộ", department: "Ban", member: "Thành viên", "department.member": "Thành viên ban",
   permission: "Phân quyền", role: "Vai trò", audit: "Nhật ký", application: "Đơn đăng ký", document: "Tài liệu",
+  event: "Sự kiện & lịch", task: "Công việc", chat: "Kênh chat & AI", notification: "Thông báo",
 };
 
 const fitsRole = (permission: PermissionItem, role: Role) => BREADTH[role.scope] >= BREADTH[permission.scope];
