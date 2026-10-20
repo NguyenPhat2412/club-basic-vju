@@ -1,11 +1,13 @@
 package com.vju.club.config;
 
+import com.vju.club.security.Actor;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeIn;
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
+import org.springdoc.core.utils.SpringDocUtils;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
@@ -21,4 +23,8 @@ import org.springframework.context.annotation.Configuration;
                 + "XSRF-TOKEN cookie value in the X-XSRF-TOKEN header (GET /api/v1/auth/csrf sets the cookie).")
 public class OpenApiConfig {
     static final String SESSION_AUTH = "sessionAuth";
+
+    static {
+        SpringDocUtils.getConfig().addRequestWrapperToIgnore(Actor.class);
+    }
 }

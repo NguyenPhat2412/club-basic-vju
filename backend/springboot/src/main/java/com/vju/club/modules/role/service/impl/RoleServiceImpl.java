@@ -1,47 +1,46 @@
 package com.vju.club.modules.role.service.impl;
 
-import com.vju.club.modules.permission.annotation.RequirePermission;
-import lombok.RequiredArgsConstructor;
-import com.vju.club.modules.role.mapper.RoleMapper;
-import com.vju.club.modules.role.service.RoleService;
-
-import com.vju.club.security.Actor;
+import com.vju.club.error.ApiException;
+import com.vju.club.modules.audit.entity.PermissionAuditLog;
 import com.vju.club.modules.audit.enums.AuditAction;
+import com.vju.club.modules.audit.enums.PermissionAuditAction;
+import com.vju.club.modules.audit.repository.PermissionAuditLogRepository;
 import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.modules.club.entity.Club;
+import com.vju.club.modules.club.repository.ClubRepository;
 import com.vju.club.modules.department.entity.Department;
+import com.vju.club.modules.department.repository.DepartmentRepository;
+import com.vju.club.modules.permission.annotation.RequirePermission;
 import com.vju.club.modules.permission.entity.Permission;
 import com.vju.club.modules.permission.enums.PermissionScope;
-import com.vju.club.modules.audit.enums.PermissionAuditAction;
-import com.vju.club.modules.audit.entity.PermissionAuditLog;
-import com.vju.club.modules.role.entity.Role;
-import com.vju.club.modules.user.entity.User;
-import com.vju.club.modules.role.entity.UserRole;
-import com.vju.club.error.ApiException;
-import com.vju.club.modules.club.repository.ClubRepository;
-import com.vju.club.modules.department.repository.DepartmentRepository;
-import com.vju.club.modules.audit.repository.PermissionAuditLogRepository;
 import com.vju.club.modules.permission.repository.PermissionRepository;
-import com.vju.club.modules.role.repository.RoleRepository;
-import com.vju.club.modules.user.repository.UserRepository;
-import com.vju.club.modules.role.repository.UserRoleRepository;
 import com.vju.club.modules.role.dto.request.AssignRoleRequest;
 import com.vju.club.modules.role.dto.request.CreateRoleRequest;
-import com.vju.club.modules.role.dto.response.RoleResponse;
 import com.vju.club.modules.role.dto.request.UpdateRoleRequest;
+import com.vju.club.modules.role.dto.response.RoleResponse;
 import com.vju.club.modules.role.dto.response.UserRoleResponse;
-import com.vju.club.security.PermissionAuthorizationService;
+import com.vju.club.modules.role.entity.Role;
+import com.vju.club.modules.role.entity.UserRole;
+import com.vju.club.modules.role.mapper.RoleMapper;
+import com.vju.club.modules.role.repository.RoleRepository;
+import com.vju.club.modules.role.repository.UserRoleRepository;
+import com.vju.club.modules.role.service.RoleService;
+import com.vju.club.modules.user.entity.User;
+import com.vju.club.modules.user.repository.UserRepository;
+import com.vju.club.security.Actor;
 import com.vju.club.security.GrantGuard;
+import com.vju.club.security.PermissionAuthorizationService;
 import com.vju.club.security.ScopeRules;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -63,18 +62,21 @@ public class RoleServiceImpl implements RoleService {
     private final RoleMapper roleMapper;
     private final GrantGuard grantGuard;
 
+    @Override
     @Transactional(readOnly = true)
     @RequirePermission("role.view")
     public List<RoleResponse> list(Actor actor) {
         return roleRepository.findAllWithPermissions().stream().map(roleMapper::toResponse).toList();
     }
 
+    @Override
     @Transactional(readOnly = true)
     @RequirePermission("role.view")
     public RoleResponse get(Actor actor, UUID roleId) {
         return roleMapper.toResponse(findRole(roleId));
     }
 
+    @Override
     @Transactional
     @RequirePermission("role.manage")
     public RoleResponse create(Actor actor, CreateRoleRequest request) {
@@ -94,6 +96,7 @@ public class RoleServiceImpl implements RoleService {
         return roleMapper.toResponse(saved);
     }
 
+    @Override
     @Transactional
     @RequirePermission("role.manage")
     public RoleResponse update(Actor actor, UUID roleId, UpdateRoleRequest request) {
@@ -143,6 +146,7 @@ public class RoleServiceImpl implements RoleService {
         return new LinkedHashSet<>(found);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public List<UserRoleResponse> listAssignments(Actor actor, UUID userId) {
         if (!userId.equals(actor.id())) {
@@ -152,6 +156,7 @@ public class RoleServiceImpl implements RoleService {
         return userRoleRepository.findActiveByUser(userId).stream().map(roleMapper::toUserRoleResponse).toList();
     }
 
+    @Override
     @Transactional
     @RequirePermission("permission.assign")
     public UserRoleResponse assign(Actor actor, UUID userId, AssignRoleRequest request) {
@@ -192,6 +197,7 @@ public class RoleServiceImpl implements RoleService {
         return roleMapper.toUserRoleResponse(saved);
     }
 
+    @Override
     @Transactional
     @RequirePermission("permission.revoke")
     public void revoke(Actor actor, UUID userId, UUID assignmentId) {

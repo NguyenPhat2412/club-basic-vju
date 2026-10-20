@@ -1,22 +1,21 @@
 package com.vju.club.modules.auth.service.impl;
 
-import lombok.RequiredArgsConstructor;
-import com.vju.club.modules.user.mapper.UserMapper;
-
-import com.vju.club.modules.auth.service.AuthService;
-import com.vju.club.modules.auth.service.UserSessionService;
-
+import com.vju.club.error.ApiException;
 import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.audit.service.AuditService;
-import com.vju.club.modules.auth.dto.response.AuthResponse;
+import com.vju.club.modules.auth.dto.record.SignedIn;
 import com.vju.club.modules.auth.dto.request.ChangePasswordRequest;
 import com.vju.club.modules.auth.dto.request.LoginRequest;
+import com.vju.club.modules.auth.dto.response.AuthResponse;
+import com.vju.club.modules.auth.service.AuthService;
+import com.vju.club.modules.auth.service.UserSessionService;
 import com.vju.club.modules.user.dto.response.UserResponse;
 import com.vju.club.modules.user.entity.User;
 import com.vju.club.modules.user.enums.UserStatus;
-import com.vju.club.error.ApiException;
+import com.vju.club.modules.user.mapper.UserMapper;
 import com.vju.club.modules.user.repository.UserRepository;
 import com.vju.club.security.ClubPrincipal;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -40,6 +39,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuditService auditService;
     private final UserMapper userMapper;
 
+    @Override
     @Transactional
     public SignedIn login(LoginRequest request) {
         String email = normalizeEmail(request.email());
@@ -57,18 +57,21 @@ public class AuthServiceImpl implements AuthService {
         }
 
         ClubPrincipal principal = (ClubPrincipal) authentication.getPrincipal();
+        assert principal != null;
         User user = userRepository.findById(principal.id()).orElseThrow(this::invalidCredentials);
         auditService.record(user.getId(), AuditAction.USER_LOGGED_IN, user.getId(), null, null,
                 Map.of("email", user.getEmail()));
         return new SignedIn(principal, new AuthResponse(userMapper.toResponse(user)));
     }
 
+    @Override
     @Transactional(readOnly = true)
     public UserResponse getCurrentUser(UUID userId) {
         return userMapper.toResponse(userRepository.findById(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User not found")));
     }
 
+    @Override
     @Transactional
     public void changePassword(UUID userId, ChangePasswordRequest request, String currentSessionId) {
         User user = userRepository.findById(userId)

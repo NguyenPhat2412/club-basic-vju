@@ -109,4 +109,24 @@ class ClubApiTest extends ApiIntegrationTest {
         problem(patch("/api/v1/clubs/" + clubB + "/status"), memberToken, Map.of("status", "INACTIVE"), 403, "PERMISSION_DENIED");
         assertThat(db.queryForObject("SELECT status FROM clubs WHERE id = ?", String.class, clubA)).isEqualTo("INACTIVE");
     }
+
+    @Test
+    void publicLandingPageEndpointsShowActiveClubsToUnauthenticatedAndClubAdmins() throws Exception {
+        call(patch("/api/v1/clubs/" + clubA + "/status"), adminToken, Map.of("status", "INACTIVE"), 200);
+        grant(member, "club.view", "CLUB", clubA, null);
+
+        // Unauthenticated landing page only sees ACTIVE clubB, not INACTIVE clubA
+        JsonNode publicPage = call(get("/api/v1/public/clubs"), null, null, 200);
+        assertThat(publicPage.path("total").asInt()).isEqualTo(1);
+        assertThat(publicPage.at("/items/0/id").asText()).isEqualTo(clubB.toString());
+        call(get("/api/v1/public/clubs/" + clubB), null, null, 200);
+        problem(get("/api/v1/public/clubs/" + clubA), null, null, 404, "CLUB_NOT_FOUND");
+
+        // Club A's admin still sees their managed (INACTIVE) Club A via management endpoint,
+        // and can also browse active Club B via the public landing page endpoint
+        JsonNode managedPage = call(get("/api/v1/clubs"), memberToken, null, 200);
+        assertThat(managedPage.path("total").asInt()).isEqualTo(1);
+        assertThat(managedPage.at("/items/0/id").asText()).isEqualTo(clubA.toString());
+        call(get("/api/v1/public/clubs/" + clubB), memberToken, null, 200);
+    }
 }

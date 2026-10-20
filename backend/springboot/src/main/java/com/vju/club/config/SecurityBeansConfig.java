@@ -23,7 +23,7 @@ import org.springframework.security.web.csrf.CsrfTokenRepository;
 import java.time.Clock;
 
 @Configuration
-@EnableConfigurationProperties({BootstrapAdminProperties.class, RateLimitProperties.class})
+@EnableConfigurationProperties({BootstrapAdminProperties.class, RateLimitProperties.class, AiProperties.class})
 public class SecurityBeansConfig {
     @Bean
     Clock applicationClock() {

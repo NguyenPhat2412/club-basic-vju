@@ -1,28 +1,27 @@
 package com.vju.club.modules.department.service.impl;
 
-import com.vju.club.modules.permission.annotation.RequirePermission;
-import lombok.RequiredArgsConstructor;
-import com.vju.club.modules.department.mapper.DepartmentMapper;
-import com.vju.club.modules.department.service.DepartmentService;
-import com.vju.club.modules.department.common.DepartmentConstants;
-
-import com.vju.club.security.Actor;
-import com.vju.club.modules.audit.enums.AuditAction;
-import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.common.dto.PageResponse;
-import com.vju.club.modules.department.dto.request.DepartmentPatchRequest;
-import com.vju.club.modules.department.dto.request.DepartmentRequest;
-import com.vju.club.modules.department.dto.response.DepartmentResponse;
-import com.vju.club.modules.department.dto.request.DepartmentStatusRequest;
+import com.vju.club.error.ApiException;
+import com.vju.club.modules.audit.enums.AuditAction;
+import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.modules.club.entity.Club;
 import com.vju.club.modules.club.enums.ClubStatus;
+import com.vju.club.modules.club.repository.ClubRepository;
+import com.vju.club.modules.department.common.DepartmentConstants;
+import com.vju.club.modules.department.dto.request.DepartmentPatchRequest;
+import com.vju.club.modules.department.dto.request.DepartmentRequest;
+import com.vju.club.modules.department.dto.request.DepartmentStatusRequest;
+import com.vju.club.modules.department.dto.response.DepartmentResponse;
 import com.vju.club.modules.department.entity.Department;
 import com.vju.club.modules.department.enums.DepartmentStatus;
-import com.vju.club.error.ApiException;
-import com.vju.club.modules.club.repository.ClubRepository;
+import com.vju.club.modules.department.mapper.DepartmentMapper;
 import com.vju.club.modules.department.repository.DepartmentRepository;
+import com.vju.club.modules.department.service.DepartmentService;
+import com.vju.club.modules.permission.annotation.RequirePermission;
+import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +39,7 @@ public class DepartmentServiceImpl implements DepartmentService {
     private final PermissionAuthorizationService authorizationService;
     private final DepartmentMapper departmentMapper;
 
+    @Override
     @Transactional(readOnly = true)
     @RequirePermission(value = DepartmentConstants.PERMISSION_VIEW, clubId = "clubId")
     public PageResponse<DepartmentResponse> list(Actor actor, UUID clubId, int offset, int limit) {
@@ -48,11 +48,13 @@ public class DepartmentServiceImpl implements DepartmentService {
         return new PageResponse<>(items, departmentRepository.countByClub_Id(clubId), offset, limit);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public DepartmentResponse get(Actor actor, UUID departmentId) {
         return departmentMapper.toResponse(authorize(actor, DepartmentConstants.PERMISSION_VIEW, departmentId));
     }
 
+    @Override
     @Transactional
     @RequirePermission(value = DepartmentConstants.PERMISSION_CREATE, clubId = "clubId")
     public DepartmentResponse create(Actor actor, UUID clubId, DepartmentRequest request) {
@@ -73,6 +75,7 @@ public class DepartmentServiceImpl implements DepartmentService {
         return departmentMapper.toResponse(saved);
     }
 
+    @Override
     @Transactional
     public DepartmentResponse update(Actor actor, UUID departmentId, DepartmentPatchRequest request) {
         Department department = authorize(actor, "department.update", departmentId);
@@ -95,6 +98,7 @@ public class DepartmentServiceImpl implements DepartmentService {
         return departmentMapper.toResponse(saved);
     }
 
+    @Override
     @Transactional
     public DepartmentResponse updateStatus(Actor actor, UUID departmentId, DepartmentStatusRequest request) {
         String permission = request.status() == DepartmentStatus.ACTIVE

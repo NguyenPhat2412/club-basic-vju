@@ -1,4 +1,4 @@
-package com.vju.club.modules.document.service;
+package com.vju.club.modules.document.dto.record;
 
 import java.io.InputStream;
 

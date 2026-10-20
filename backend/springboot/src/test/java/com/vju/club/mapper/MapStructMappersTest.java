@@ -166,5 +166,23 @@ class MapStructMappersTest {
         assertThat(response.oldValue()).containsEntry("name", "Old");
         assertThat(response.newValue()).containsEntry("name", "New").containsEntry("members", 3);
         assertThat(new AuditMapperImpl().jsonToMap(null)).isNull();
+
+        var record = new AuditMapperImpl().toRecord(log);
+        assertThat(record.action().name()).isEqualTo("CLUB_UPDATED");
+        assertThat(record.oldValue()).containsEntry("name", "Old");
+    }
+
+    @Test
+    void recordDtosPreserveEnumTypesAndRelations() {
+        User user = user();
+        Club club = club();
+
+        var userRecord = new UserMapperImpl().toRecord(user);
+        assertThat(userRecord.id()).isEqualTo(user.getId());
+        assertThat(userRecord.status()).isEqualTo(UserStatus.ACTIVE);
+
+        var clubRecord = new ClubMapperImpl().toRecord(club);
+        assertThat(clubRecord.id()).isEqualTo(club.getId());
+        assertThat(clubRecord.status()).isEqualTo(ClubStatus.ACTIVE);
     }
 }

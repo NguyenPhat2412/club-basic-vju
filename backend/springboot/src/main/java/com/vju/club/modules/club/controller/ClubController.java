@@ -1,5 +1,6 @@
 package com.vju.club.modules.club.controller;
 
+import com.vju.club.modules.auth.annotation.PublicEndpoint;
 import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.club.service.ClubService;
 
@@ -24,16 +25,31 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/clubs")
+@RequestMapping("/api/v1")
 @RequiredArgsConstructor
 public class ClubController {
     private final ClubService clubService;
 
-    @GetMapping
+    @PublicEndpoint(reason = "Public club discovery on landing page")
+    @GetMapping("/public/clubs")
+    public PageResponse<ClubResponse> listPublic(
+            @RequestParam(defaultValue = "") String query,
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "0") @Min(0) int offset,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
+        return clubService.listPublic(query, category, offset, limit);
+    }
+
+    @PublicEndpoint(reason = "Public club detail on landing page")
+    @GetMapping("/public/clubs/{clubId}")
+    public ClubResponse getPublic(@PathVariable UUID clubId) {
+        return clubService.getPublic(clubId);
+    }
+
+    @GetMapping("/clubs")
     public PageResponse<ClubResponse> list(Actor actor,
                                    @RequestParam(defaultValue = "") String query,
                                    @RequestParam(required = false) String category,
@@ -43,23 +59,23 @@ public class ClubController {
         return clubService.list(actor, query, category, status, offset, limit);
     }
 
-    @GetMapping("/{clubId}")
+    @GetMapping("/clubs/{clubId}")
     public ClubResponse get(Actor actor, @PathVariable UUID clubId) {
         return clubService.get(actor, clubId);
     }
 
-    @PostMapping
+    @PostMapping("/clubs")
     public ResponseEntity<ClubResponse> create(Actor actor, @Valid @RequestBody ClubRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(clubService.create(actor, request));
     }
 
-    @PatchMapping("/{clubId}")
+    @PatchMapping("/clubs/{clubId}")
     public ClubResponse update(Actor actor, @PathVariable UUID clubId,
                                @Valid @RequestBody ClubPatchRequest request) {
         return clubService.update(actor, clubId, request);
     }
 
-    @PatchMapping("/{clubId}/status")
+    @PatchMapping("/clubs/{clubId}/status")
     public ClubResponse updateStatus(Actor actor, @PathVariable UUID clubId,
                                      @Valid @RequestBody ClubStatusRequest request) {
         return clubService.updateStatus(actor, clubId, request);

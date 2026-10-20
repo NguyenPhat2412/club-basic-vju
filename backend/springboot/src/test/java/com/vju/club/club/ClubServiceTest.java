@@ -202,4 +202,24 @@ class ClubServiceTest {
         assertApiError(() -> service.get(actor, id), HttpStatus.FORBIDDEN, "PERMISSION_DENIED");
         verify(clubRepository, never()).findById(any());
     }
+
+    @Test
+    void publicListAndGetExposeOnlyActiveClubsWithoutPermissionChecks() {
+        Club active = club("PUBLIC_ACTIVE");
+        active.setStatus(ClubStatus.ACTIVE);
+        when(clubRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(java.util.List.of(active), PageRequest.of(0, 20), 1));
+        when(clubRepository.findByIdAndStatus(active.getId(), ClubStatus.ACTIVE)).thenReturn(Optional.of(active));
+
+        var page = service.listPublic("pub", "Academic", 0, 20);
+        assertThat(page.items()).extracting(response -> response.code()).containsExactly("PUBLIC_ACTIVE");
+
+        var detail = service.getPublic(active.getId());
+        assertThat(detail.id()).isEqualTo(active.getId());
+
+        UUID inactiveId = UUID.randomUUID();
+        when(clubRepository.findByIdAndStatus(inactiveId, ClubStatus.ACTIVE)).thenReturn(Optional.empty());
+        assertApiError(() -> service.getPublic(inactiveId), HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND");
+        verify(authorization, never()).hasAnyPermission(any(), anyString());
+    }
 }

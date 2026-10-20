@@ -1,34 +1,33 @@
 package com.vju.club.modules.membership.service.impl;
 
-import com.vju.club.modules.permission.annotation.RequirePermission;
-import lombok.RequiredArgsConstructor;
-import com.vju.club.modules.membership.mapper.MembershipMapper;
-import com.vju.club.modules.membership.service.MembershipService;
-import com.vju.club.modules.membership.common.MembershipConstants;
-
-import com.vju.club.security.Actor;
-import com.vju.club.modules.audit.enums.AuditAction;
-import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.common.dto.PageResponse;
+import com.vju.club.error.ApiException;
+import com.vju.club.modules.audit.enums.AuditAction;
+import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.modules.club.entity.Club;
 import com.vju.club.modules.club.enums.ClubStatus;
-import com.vju.club.modules.membership.entity.Membership;
-import com.vju.club.modules.membership.enums.MembershipStatus;
-import com.vju.club.modules.user.entity.User;
-import com.vju.club.modules.user.enums.UserStatus;
-import com.vju.club.error.ApiException;
-import com.vju.club.modules.membership.dto.request.CreateMembershipRequest;
-import com.vju.club.modules.membership.dto.response.MembershipResponse;
-import com.vju.club.modules.membership.dto.response.MyMembershipResponse;
-import com.vju.club.modules.membership.dto.response.MembershipDepartmentResponse;
-import com.vju.club.modules.membership.dto.request.UpdateMembershipRequest;
 import com.vju.club.modules.club.repository.ClubRepository;
 import com.vju.club.modules.departmentmember.repository.DepartmentMemberRepository;
+import com.vju.club.modules.membership.common.MembershipConstants;
+import com.vju.club.modules.membership.dto.request.CreateMembershipRequest;
+import com.vju.club.modules.membership.dto.request.UpdateMembershipRequest;
+import com.vju.club.modules.membership.dto.response.MembershipDepartmentResponse;
+import com.vju.club.modules.membership.dto.response.MembershipResponse;
+import com.vju.club.modules.membership.dto.response.MyMembershipResponse;
+import com.vju.club.modules.membership.entity.Membership;
+import com.vju.club.modules.membership.enums.MembershipStatus;
+import com.vju.club.modules.membership.mapper.MembershipMapper;
 import com.vju.club.modules.membership.repository.MembershipRepository;
-import com.vju.club.modules.user.repository.UserRepository;
-import com.vju.club.security.PermissionAuthorizationService;
+import com.vju.club.modules.membership.service.MembershipService;
 import com.vju.club.modules.membership.specification.MembershipSpecifications;
+import com.vju.club.modules.permission.annotation.RequirePermission;
+import com.vju.club.modules.user.entity.User;
+import com.vju.club.modules.user.enums.UserStatus;
+import com.vju.club.modules.user.repository.UserRepository;
+import com.vju.club.security.Actor;
+import com.vju.club.security.PermissionAuthorizationService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -41,7 +40,6 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
@@ -56,12 +54,14 @@ public class MembershipServiceImpl implements MembershipService {
     private final AuditService auditService;
     private final MembershipMapper membershipMapper;
 
+    @Override
     @Transactional(readOnly = true)
     public PageResponse<MembershipResponse> list(Actor actor, UUID clubId, MembershipStatus status,
                                                  int offset, int limit) {
         return list(actor, clubId, status, null, null, offset, limit);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public PageResponse<MembershipResponse> list(Actor actor, UUID clubId, MembershipStatus status,
                                                  UUID departmentId, String search, int offset, int limit) {
@@ -80,6 +80,7 @@ public class MembershipServiceImpl implements MembershipService {
         return new PageResponse<>(items, membershipPage.getTotalElements(), offset, limit);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public PageResponse<MyMembershipResponse> listMine(Actor actor, MembershipStatus status, int offset, int limit) {
         Specification<Membership> spec = Specification.where(MembershipSpecifications.hasUserId(actor.id()))
@@ -98,6 +99,7 @@ public class MembershipServiceImpl implements MembershipService {
         return new PageResponse<>(items, membershipPage.getTotalElements(), offset, limit);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public MembershipResponse get(Actor actor, UUID membershipId) {
         Membership membership = find(actor, MembershipConstants.PERMISSION_VIEW_DETAIL, membershipId);
@@ -105,6 +107,7 @@ public class MembershipServiceImpl implements MembershipService {
         return membershipMapper.toResponse(membership);
     }
 
+    @Override
     @Transactional
     @RequirePermission(value = MembershipConstants.PERMISSION_ADD, clubId = "clubId")
     public MembershipResponse create(Actor actor, UUID clubId, CreateMembershipRequest request) {
@@ -130,6 +133,7 @@ public class MembershipServiceImpl implements MembershipService {
         return membershipMapper.toResponse(saved);
     }
 
+    @Override
     @Transactional
     public MembershipResponse update(Actor actor, UUID membershipId, UpdateMembershipRequest request) {
         Membership membership = find(actor, MembershipConstants.PERMISSION_UPDATE, membershipId);
@@ -138,6 +142,7 @@ public class MembershipServiceImpl implements MembershipService {
         return membershipMapper.toResponse(membershipRepository.saveAndFlush(membership));
     }
 
+    @Override
     @Transactional
     public void remove(Actor actor, UUID membershipId) {
         Membership membership = find(actor, MembershipConstants.PERMISSION_REMOVE, membershipId);

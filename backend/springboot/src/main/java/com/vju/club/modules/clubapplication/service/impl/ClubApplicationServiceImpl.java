@@ -1,34 +1,32 @@
 package com.vju.club.modules.clubapplication.service.impl;
 
-import com.vju.club.modules.clubapplication.mapper.ClubApplicationMapper;
-import com.vju.club.modules.membership.entity.Membership;
-import com.vju.club.modules.permission.entity.Permission;
-
-import com.vju.club.modules.clubapplication.service.ClubApplicationService;
-
-import com.vju.club.modules.clubapplication.dto.response.ClubApplicationResponse;
-import com.vju.club.modules.clubapplication.dto.response.ClubApplicationSummaryResponse;
-import com.vju.club.modules.clubapplication.dto.request.CreateClubApplicationRequest;
-import com.vju.club.modules.audit.enums.AuditAction;
-import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.common.dto.PageResponse;
+import com.vju.club.error.ApiException;
+import com.vju.club.modules.audit.enums.AuditAction;
+import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.modules.club.entity.Club;
+import com.vju.club.modules.club.enums.ClubStatus;
+import com.vju.club.modules.club.repository.ClubRepository;
+import com.vju.club.modules.clubapplication.dto.request.CreateClubApplicationRequest;
+import com.vju.club.modules.clubapplication.dto.request.ReviewClubApplicationRequest;
+import com.vju.club.modules.clubapplication.dto.response.ClubApplicationResponse;
+import com.vju.club.modules.clubapplication.dto.response.ClubApplicationSummaryResponse;
 import com.vju.club.modules.clubapplication.entity.ClubApplication;
 import com.vju.club.modules.clubapplication.enums.ClubApplicationStatus;
-import com.vju.club.modules.club.enums.ClubStatus;
+import com.vju.club.modules.clubapplication.mapper.ClubApplicationMapper;
+import com.vju.club.modules.clubapplication.repository.ClubApplicationRepository;
+import com.vju.club.modules.clubapplication.service.ClubApplicationService;
+import com.vju.club.modules.clubapplication.specification.ClubApplicationSpecifications;
+import com.vju.club.modules.membership.entity.Membership;
 import com.vju.club.modules.membership.enums.MembershipStatus;
+import com.vju.club.modules.membership.repository.MembershipRepository;
+import com.vju.club.modules.notification.service.NotificationService;
 import com.vju.club.modules.user.entity.User;
 import com.vju.club.modules.user.enums.UserStatus;
-import com.vju.club.error.ApiException;
-import com.vju.club.modules.clubapplication.repository.ClubApplicationRepository;
-import com.vju.club.modules.club.repository.ClubRepository;
-import com.vju.club.modules.membership.repository.MembershipRepository;
 import com.vju.club.modules.user.repository.UserRepository;
 import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
-import com.vju.club.modules.notification.service.NotificationService;
-import com.vju.club.modules.clubapplication.specification.ClubApplicationSpecifications;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
@@ -47,9 +45,6 @@ import java.util.UUID;
 
 @Service
 public class ClubApplicationServiceImpl implements ClubApplicationService {
-    private static final OffsetDateTime MIN_CREATED_AT = OffsetDateTime.parse("0001-01-01T00:00:00Z");
-    private static final OffsetDateTime MAX_CREATED_AT = OffsetDateTime.parse("9999-12-31T23:59:59.999999Z");
-
     private final ClubApplicationRepository applicationRepository;
     private final ClubRepository clubRepository;
     private final UserRepository userRepository;
@@ -61,26 +56,26 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
     private final ClubApplicationMapper clubApplicationMapper;
 
     public ClubApplicationServiceImpl(ClubApplicationRepository applicationRepository,
-                                  ClubRepository clubRepository,
-                                  UserRepository userRepository,
-                                  MembershipRepository membershipRepository,
-                                  PermissionAuthorizationService authorizationService,
-                                  AuditService auditService,
-                                  Clock clock,
-            ClubApplicationMapper clubApplicationMapper) {
+                                      ClubRepository clubRepository,
+                                      UserRepository userRepository,
+                                      MembershipRepository membershipRepository,
+                                      PermissionAuthorizationService authorizationService,
+                                      AuditService auditService,
+                                      Clock clock,
+                                      ClubApplicationMapper clubApplicationMapper) {
         this(applicationRepository, clubRepository, userRepository, membershipRepository, authorizationService, auditService, clock, null, clubApplicationMapper);
     }
 
     @Autowired
     public ClubApplicationServiceImpl(ClubApplicationRepository applicationRepository,
-                                  ClubRepository clubRepository,
-                                  UserRepository userRepository,
-                                  MembershipRepository membershipRepository,
-                                  PermissionAuthorizationService authorizationService,
-                                  AuditService auditService,
-                                  Clock clock,
-                                  NotificationService notificationService,
-            ClubApplicationMapper clubApplicationMapper) {
+                                      ClubRepository clubRepository,
+                                      UserRepository userRepository,
+                                      MembershipRepository membershipRepository,
+                                      PermissionAuthorizationService authorizationService,
+                                      AuditService auditService,
+                                      Clock clock,
+                                      NotificationService notificationService,
+                                      ClubApplicationMapper clubApplicationMapper) {
         this.clubApplicationMapper = clubApplicationMapper;
         this.applicationRepository = applicationRepository;
         this.clubRepository = clubRepository;
@@ -92,6 +87,7 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         this.notificationService = notificationService;
     }
 
+    @Override
     @Transactional
     public ClubApplicationResponse create(Actor actor, UUID clubId, CreateClubApplicationRequest request) {
         User applicant = findUser(actor.id());
@@ -123,6 +119,7 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         return clubApplicationMapper.toResponse(saved);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public PageResponse<ClubApplicationSummaryResponse> listMine(
             Actor actor, ClubApplicationStatus status, UUID clubId, String sort, int offset, int limit) {
@@ -136,12 +133,14 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         return new PageResponse<>(items, applicationPage.getTotalElements(), offset, limit);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public ClubApplicationResponse getMine(Actor actor, UUID applicationId) {
         return clubApplicationMapper.toResponse(applicationRepository.findByIdAndApplicant_Id(applicationId, actor.id())
                 .orElseThrow(() -> notFound("CLUB_APPLICATION_NOT_FOUND", "Club application not found")));
     }
 
+    @Override
     @Transactional
     public ClubApplicationResponse cancel(Actor actor, UUID applicationId) {
         ClubApplication application = applicationRepository.findForUpdateByIdAndApplicant_Id(applicationId, actor.id())
@@ -158,11 +157,12 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         return clubApplicationMapper.toResponse(saved);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public PageResponse<ClubApplicationResponse> listForClub(Actor actor, UUID clubId,
-                                                              ClubApplicationStatus status, String search,
-                                                              OffsetDateTime createdFrom, OffsetDateTime createdTo,
-                                                              String sort, int offset, int limit) {
+                                                             ClubApplicationStatus status, String search,
+                                                             OffsetDateTime createdFrom, OffsetDateTime createdTo,
+                                                             String sort, int offset, int limit) {
         if (!authorizationService.hasPermission(actor, "application.view", clubId, null)) {
             throw forbidden();
         }
@@ -180,6 +180,7 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         return new PageResponse<>(items, applicationPage.getTotalElements(), offset, limit);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public ClubApplicationResponse getForClub(Actor actor, UUID clubId, UUID applicationId) {
         requireAnyPermission(actor, clubId, "application.view", "application.view_detail");
@@ -187,9 +188,10 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
                 .orElseThrow(() -> notFound("CLUB_APPLICATION_NOT_FOUND", "Club application not found")));
     }
 
+    @Override
     @Transactional
     public ClubApplicationResponse approve(Actor actor, UUID clubId, UUID applicationId,
-                                           com.vju.club.modules.clubapplication.dto.request.ReviewClubApplicationRequest request) {
+                                           ReviewClubApplicationRequest request) {
         requireAnyPermission(actor, clubId, "application.approve", "application.review");
         ClubApplication application = applicationRepository.findForReview(applicationId, clubId)
                 .orElseThrow(() -> notFound("CLUB_APPLICATION_NOT_FOUND", "Club application not found"));
@@ -200,12 +202,12 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         }
 
         User reviewer = findUser(actor.id());
-        com.vju.club.modules.membership.entity.Membership membership = new com.vju.club.modules.membership.entity.Membership();
+        Membership membership = new Membership();
         membership.setUser(application.getApplicant());
         membership.setClub(application.getClub());
         membership.setStatus(MembershipStatus.ACTIVE);
         membership.setJoinedAt(now());
-        com.vju.club.modules.membership.entity.Membership savedMembership = membershipRepository.saveAndFlush(membership);
+        Membership savedMembership = membershipRepository.saveAndFlush(membership);
 
         Map<String, Object> approvalBefore = pendingAuditValues(application);
         application.setStatus(ClubApplicationStatus.APPROVED);
@@ -223,13 +225,17 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         Map<String, Object> approvalAfter = applicationAuditValues(application, saved.getStatus(), savedMembership.getId());
         auditService.record(actor.id(), AuditAction.CLUB_APPLICATION_APPROVED, saved.getId(), clubId,
                 approvalBefore, approvalAfter);
-        if (notificationService != null) notificationService.create(application.getApplicant().getId(), "Đơn đăng ký được duyệt", "Bạn đã được chấp nhận vào " + application.getClub().getName() + ".", saved.getId());
+        if (notificationService != null) {
+            notificationService.create(application.getApplicant().getId(), "Đơn đăng ký được duyệt",
+                    "Bạn đã được chấp nhận vào " + application.getClub().getName() + ".", saved.getId());
+        }
         return clubApplicationMapper.toResponse(saved, savedMembership);
     }
 
+    @Override
     @Transactional
     public ClubApplicationResponse reject(Actor actor, UUID clubId, UUID applicationId,
-                                          com.vju.club.modules.clubapplication.dto.request.ReviewClubApplicationRequest request) {
+                                          ReviewClubApplicationRequest request) {
         requireAnyPermission(actor, clubId, "application.reject", "application.review");
         ClubApplication application = applicationRepository.findForReview(applicationId, clubId)
                 .orElseThrow(() -> notFound("CLUB_APPLICATION_NOT_FOUND", "Club application not found"));
@@ -244,7 +250,10 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         auditService.record(actor.id(), AuditAction.CLUB_APPLICATION_REJECTED, saved.getId(), clubId,
                 rejectionBefore,
                 applicationAuditValues(saved, saved.getStatus(), null));
-        if (notificationService != null) notificationService.create(application.getApplicant().getId(), "Đơn đăng ký bị từ chối", "Đơn đăng ký vào " + application.getClub().getName() + " đã bị từ chối.", saved.getId());
+        if (notificationService != null) {
+            notificationService.create(application.getApplicant().getId(), "Đơn đăng ký bị từ chối",
+                    "Đơn đăng ký vào " + application.getClub().getName() + " đã bị từ chối.", saved.getId());
+        }
         return clubApplicationMapper.toResponse(saved);
     }
 
@@ -269,7 +278,7 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         }
     }
 
-    private static String normalizeNote(com.vju.club.modules.clubapplication.dto.request.ReviewClubApplicationRequest request) {
+    private static String normalizeNote(ReviewClubApplicationRequest request) {
         return request == null || request.reviewNote() == null || request.reviewNote().isBlank()
                 ? null : request.reviewNote().trim();
     }

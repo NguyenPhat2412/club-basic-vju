@@ -19,15 +19,19 @@ class PublicEndpointApiTest extends ApiIntegrationTest {
     void exactlyTheAnnotatedHandlersArePublic() {
         assertThat(SecurityConfigAccess.publicRoutes(handlerMapping)).containsExactlyInAnyOrder(
                 "POST /api/v1/auth/login", "GET /api/v1/auth/csrf",
-                "GET /api/v1/api-catalog", "GET /api-docs/phase1.yaml");
+                "GET /api/v1/api-catalog", "GET /api-docs/phase1.yaml",
+                "GET /api/v1/public/clubs", "GET /api/v1/public/clubs/{clubId}");
     }
 
     @Test
     void publicRoutesWorkWithoutASessionAndOthersDoNot() throws Exception {
         call(get("/api/v1/api-catalog"), null, null, 200);
+        call(get("/api/v1/public/clubs"), null, null, 200);
+        call(get("/api/v1/public/clubs/" + clubA), null, null, 200);
         problem(post("/api/v1/auth/login"), null, Map.of("email", "member@test.local", "password", "wrong-password"),
                 401, "INVALID_CREDENTIALS");
         problem(get("/api/v1/auth/me"), null, null, 401, "UNAUTHORIZED");
+        problem(get("/api/v1/clubs"), null, null, 401, "UNAUTHORIZED");
         call(post("/api/v1/auth/logout"), null, null, 204);
         problem(get("/api/v1/auth/login"), null, null, 401, "UNAUTHORIZED");
     }

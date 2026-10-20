@@ -1,37 +1,36 @@
 package com.vju.club.modules.club.service.impl;
 
-import com.vju.club.modules.permission.annotation.RequirePermission;
-import lombok.RequiredArgsConstructor;
-import com.vju.club.modules.club.mapper.ClubMapper;
-import com.vju.club.modules.club.service.ClubService;
-import com.vju.club.modules.club.common.ClubConstants;
-
-import com.vju.club.security.Actor;
-import com.vju.club.modules.audit.enums.AuditAction;
-import com.vju.club.modules.audit.service.AuditService;
-import com.vju.club.modules.club.dto.request.ClubRequest;
-import com.vju.club.modules.club.dto.request.ClubPatchRequest;
-import com.vju.club.modules.club.dto.response.ClubResponse;
-import com.vju.club.modules.club.dto.request.ClubStatusRequest;
 import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.common.dto.PageResponse;
+import com.vju.club.error.ApiException;
+import com.vju.club.modules.audit.enums.AuditAction;
+import com.vju.club.modules.audit.service.AuditService;
+import com.vju.club.modules.club.common.ClubConstants;
+import com.vju.club.modules.club.dto.request.ClubPatchRequest;
+import com.vju.club.modules.club.dto.request.ClubRequest;
+import com.vju.club.modules.club.dto.request.ClubStatusRequest;
+import com.vju.club.modules.club.dto.response.ClubResponse;
 import com.vju.club.modules.club.entity.Club;
 import com.vju.club.modules.club.enums.ClubStatus;
-import com.vju.club.error.ApiException;
+import com.vju.club.modules.club.mapper.ClubMapper;
 import com.vju.club.modules.club.repository.ClubRepository;
-import com.vju.club.security.PermissionAuthorizationService;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import com.vju.club.modules.club.service.ClubService;
 import com.vju.club.modules.club.specification.ClubSpecifications;
+import com.vju.club.modules.permission.annotation.RequirePermission;
+import com.vju.club.security.Actor;
+import com.vju.club.security.PermissionAuthorizationService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -42,11 +41,34 @@ public class ClubServiceImpl implements ClubService {
     private final AuditService auditService;
     private final ClubMapper clubMapper;
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<ClubResponse> listPublic(String query, String category, int offset, int limit) {
+        Specification<Club> spec = Specification.where(ClubSpecifications.hasKeyword(query))
+                .and(ClubSpecifications.hasCategory(category))
+                .and(ClubSpecifications.isDiscoverable());
+
+        Sort sort = Sort.by(Sort.Order.asc("name"), Sort.Order.asc("id"));
+        OffsetLimitRequest page = new OffsetLimitRequest(offset, limit, sort);
+        Page<Club> clubPage = clubRepository.findAll(spec, page);
+        List<ClubResponse> clubs = clubPage.getContent().stream().map(clubMapper::toResponse).toList();
+        return new PageResponse<>(clubs, clubPage.getTotalElements(), offset, limit);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ClubResponse getPublic(UUID clubId) {
+        return clubMapper.toResponse(clubRepository.findByIdAndStatus(clubId, ClubStatus.ACTIVE)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND", "Club not found")));
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public PageResponse<ClubResponse> list(Actor actor, String query, int offset, int limit) {
         return list(actor, query, null, null, offset, limit);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public PageResponse<ClubResponse> list(Actor actor, String query, String category, ClubStatus status,
                                            int offset, int limit) {
@@ -56,7 +78,7 @@ public class ClubServiceImpl implements ClubService {
         if (authorizationService.hasGlobalPermission(actor, ClubConstants.PERMISSION_VIEW)) {
             spec = spec.and(ClubSpecifications.hasStatus(status));
         } else if (authorizationService.hasAnyPermission(actor, ClubConstants.PERMISSION_VIEW)) {
-            java.util.Set<UUID> permittedClubIds = authorizationService.getPermittedClubIds(actor, ClubConstants.PERMISSION_VIEW);
+            Set<UUID> permittedClubIds = authorizationService.getPermittedClubIds(actor, ClubConstants.PERMISSION_VIEW);
             spec = spec.and(ClubSpecifications.hasStatus(status))
                     .and(ClubSpecifications.idIn(permittedClubIds));
         } else {
@@ -70,16 +92,17 @@ public class ClubServiceImpl implements ClubService {
         return new PageResponse<>(clubs, clubPage.getTotalElements(), offset, limit);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public ClubResponse get(Actor actor, UUID clubId) {
         if (authorizationService.hasAnyPermission(actor, ClubConstants.PERMISSION_VIEW)) {
             authorizationService.require(actor, ClubConstants.PERMISSION_VIEW, clubId, null);
             return clubMapper.toResponse(findClub(clubId));
         }
-        return clubMapper.toResponse(clubRepository.findByIdAndStatus(clubId, ClubStatus.ACTIVE)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND", "Club not found")));
+        return getPublic(clubId);
     }
 
+    @Override
     @Transactional
     @RequirePermission(ClubConstants.PERMISSION_CREATE)
     public ClubResponse create(Actor actor, ClubRequest request) {
@@ -95,6 +118,7 @@ public class ClubServiceImpl implements ClubService {
         return clubMapper.toResponse(saved);
     }
 
+    @Override
     @Transactional
     @RequirePermission(value = ClubConstants.PERMISSION_UPDATE, clubId = "clubId")
     public ClubResponse update(Actor actor, UUID clubId, ClubPatchRequest request) {
@@ -110,6 +134,7 @@ public class ClubServiceImpl implements ClubService {
         return clubMapper.toResponse(saved);
     }
 
+    @Override
     @Transactional
     public ClubResponse updateStatus(Actor actor, UUID clubId, ClubStatusRequest request) {
         authorizationService.require(actor,

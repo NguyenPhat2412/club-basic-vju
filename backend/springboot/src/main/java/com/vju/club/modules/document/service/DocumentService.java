@@ -1,6 +1,8 @@
 package com.vju.club.modules.document.service;
 
 import com.vju.club.common.dto.PageResponse;
+import com.vju.club.modules.document.dto.record.DocumentContent;
+import com.vju.club.modules.document.dto.record.UploadedFile;
 import com.vju.club.modules.document.dto.request.DocumentPatchRequest;
 import com.vju.club.modules.document.dto.response.DocumentCountResponse;
 import com.vju.club.modules.document.dto.response.DocumentDownloadUrlResponse;
@@ -13,8 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface DocumentService {
-    PageResponse<DocumentResponse> list(Actor actor, UUID clubId, String name, String appDetailKey, boolean deleted,
-                                        int offset, int limit);
+    PageResponse<DocumentResponse> list(Actor actor, UUID clubId, String name, String appDetailKey, boolean deleted, int offset, int limit);
 
     DocumentCountResponse getDocCount(Actor actor, UUID clubId, String appDetailKey, boolean deleted);
 

@@ -574,6 +574,109 @@ paths:
           $ref: '#/components/responses/BadRequest'
       description: Danh sách grant đang có hiệu lực của chính mình, dùng hiển thị
         chức năng theo permissionKey và scope. Không cần permission.view.
+  /public/clubs:
+    get:
+      operationId: club.listPublic
+      summary: List active clubs publicly
+      tags:
+      - Club
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      security: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubListResponse'
+              example:
+                items:
+                - id: 22222222-2222-4222-8222-222222222222
+                  code: VJUA
+                  name: CLB VJUA
+                  logoUrl: null
+                  coverUrl: null
+                  description: Câu lạc bộ sinh viên
+                  activityField: Sinh viên
+                  contactEmail: vjua@example.test
+                  status: ACTIVE
+                  createdAt: '2026-09-29T12:00:00Z'
+                  updatedAt: '2026-09-29T12:00:00Z'
+                total: 1
+                offset: 0
+                limit: 20
+        '400':
+          $ref: '#/components/responses/BadRequest'
+      parameters:
+      - name: query
+        in: query
+        schema:
+          type: string
+          default: ''
+        description: Tìm theo tên hoặc mã CLB.
+      - name: category
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Lọc theo lĩnh vực hoạt động của CLB.
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+        description: Số bản ghi bỏ qua; bắt đầu từ 0.
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 20
+          maximum: 100
+        description: Số bản ghi tối đa trong một lần lấy, mặc định 20, tối đa 100.
+      description: Danh sách các CLB đang ACTIVE dành cho trang Landing Page công khai (không cần đăng nhập).
+  /public/clubs/{clubId}:
+    get:
+      operationId: club.getPublic
+      summary: Get active club publicly
+      tags:
+      - Club
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      security: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Club'
+              example:
+                id: 22222222-2222-4222-8222-222222222222
+                code: VJUA
+                name: CLB VJUA
+                logoUrl: null
+                coverUrl: null
+                description: Câu lạc bộ sinh viên
+                activityField: Sinh viên
+                contactEmail: vjua@example.test
+                status: ACTIVE
+                createdAt: '2026-09-29T12:00:00Z'
+                updatedAt: '2026-09-29T12:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      description: Xem chi tiết một CLB đang ACTIVE trên trang Landing Page công khai (không cần đăng nhập). CLB INACTIVE hoặc không tồn tại trả về 404.
   /clubs:
     get:
       operationId: club.list
@@ -2962,6 +3065,610 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
       description: 'Link R2 ký sẵn, hết hạn sau 5 phút; storage local trả đường dẫn /download.'
+  /users/me/notifications/read-all:
+    patch:
+      operationId: notification.markAllRead
+      summary: Mark all my notifications as read
+      tags: [Notification]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      responses:
+        '204': {description: All notifications marked as read}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /clubs/{clubId}/notifications:
+    post:
+      operationId: notification.broadcast
+      summary: Broadcast notification to club or department members
+      tags: [Notification]
+      x-permission: notification.send
+      x-scope: CLUB
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BroadcastNotificationRequest'}
+      responses:
+        '201':
+          description: Broadcast sent
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/NotificationBroadcastResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /clubs/{clubId}/events:
+    post:
+      operationId: event.create
+      summary: Create a club event or schedule
+      tags: [Event]
+      x-permission: event.create
+      x-scope: CLUB
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateEventRequest'}
+      responses:
+        '201':
+          description: Event created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Event'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    get:
+      operationId: event.list
+      summary: List club events
+      tags: [Event]
+      x-permission: event.view
+      x-scope: CLUB
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: departmentId
+        in: query
+        schema: {type: string, format: uuid}
+      - name: status
+        in: query
+        schema: {type: string, enum: [DRAFT, OPEN_REGISTRATION, CLOSED_REGISTRATION, COMPLETED, CANCELLED]}
+      - name: offset
+        in: query
+        schema: {type: integer, minimum: 0, default: 0}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: Club events
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EventListResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /events/{eventId}:
+    get:
+      operationId: event.get
+      summary: Get an event
+      tags: [Event]
+      x-permission: event.view
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Event detail
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Event'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /clubs/{clubId}/events/{eventId}:
+    patch:
+      operationId: event.update
+      summary: Update an event
+      tags: [Event]
+      x-permission: event.update
+      x-scope: CLUB
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateEventRequest'}
+      responses:
+        '200':
+          description: Updated event
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Event'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /events/{eventId}/registrations:
+    post:
+      operationId: event.register
+      summary: Register current user for an event
+      tags: [Event]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RegisterEventRequest'}
+      responses:
+        '201':
+          description: Event registration created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EventRegistration'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    get:
+      operationId: event.listRegistrations
+      summary: List event registrations
+      tags: [Event]
+      x-permission: event.view | event.attendance
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Event registrations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/EventRegistration'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /events/{eventId}/registrations/me/cancel:
+    patch:
+      operationId: event.cancelRegistration
+      summary: Cancel my event registration
+      tags: [Event]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Registration cancelled
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EventRegistration'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /events/{eventId}/attendances:
+    put:
+      operationId: event.recordAttendance
+      summary: Record event attendance
+      tags: [Event]
+      x-permission: event.attendance
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RecordAttendanceRequest'}
+      responses:
+        '200':
+          description: Updated attendance records
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/EventAttendance'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    get:
+      operationId: event.listAttendances
+      summary: List event attendance records
+      tags: [Event]
+      x-permission: event.attendance | event.view
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Event attendances
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/EventAttendance'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /users/me/calendar:
+    get:
+      operationId: event.myCalendar
+      summary: List my upcoming and scheduled club events
+      tags: [Event]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: from
+        in: query
+        schema: {type: string, format: date-time}
+      - name: to
+        in: query
+        schema: {type: string, format: date-time}
+      responses:
+        '200':
+          description: My calendar events
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Event'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /clubs/{clubId}/tasks:
+    post:
+      operationId: task.create
+      summary: Create and assign a task
+      tags: [Task]
+      x-permission: task.create
+      x-scope: CLUB
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateTaskRequest'}
+      responses:
+        '201':
+          description: Task created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Task'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    get:
+      operationId: task.list
+      summary: List club tasks
+      tags: [Task]
+      x-permission: task.view
+      x-scope: CLUB
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: departmentId
+        in: query
+        schema: {type: string, format: uuid}
+      - name: assigneeId
+        in: query
+        schema: {type: string, format: uuid}
+      - name: status
+        in: query
+        schema: {type: string, enum: [TODO, IN_PROGRESS, DONE, COMPLETED, OVERDUE]}
+      - name: offset
+        in: query
+        schema: {type: integer, minimum: 0, default: 0}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: Club tasks
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TaskListResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /users/me/tasks:
+    get:
+      operationId: task.listMine
+      summary: List my assigned tasks
+      tags: [Task]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: status
+        in: query
+        schema: {type: string, enum: [TODO, IN_PROGRESS, DONE, COMPLETED, OVERDUE]}
+      - name: offset
+        in: query
+        schema: {type: integer, minimum: 0, default: 0}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: My tasks
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TaskListResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /tasks/{taskId}/progress:
+    patch:
+      operationId: task.updateProgress
+      summary: Update task progress by assignee
+      tags: [Task]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateTaskProgressRequest'}
+      responses:
+        '200':
+          description: Updated task
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Task'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /tasks/{taskId}/verify:
+    patch:
+      operationId: task.verify
+      summary: Verify a completed task (DONE -> COMPLETED)
+      tags: [Task]
+      x-permission: task.verify
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Verified task
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Task'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /clubs/{clubId}/channels:
+    post:
+      operationId: chat.createChannel
+      summary: Create a club or department chat channel
+      tags: [Chat]
+      x-permission: chat.send
+      x-scope: CLUB
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateChatChannelRequest'}
+      responses:
+        '201':
+          description: Channel created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ChatChannel'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    get:
+      operationId: chat.listChannels
+      summary: List club chat channels
+      tags: [Chat]
+      x-permission: chat.view
+      x-scope: CLUB
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: departmentId
+        in: query
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Club chat channels
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/ChatChannel'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /channels/{channelId}/messages:
+    post:
+      operationId: chat.sendMessage
+      summary: Send a message to a chat channel
+      tags: [Chat]
+      x-permission: chat.send
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: channelId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SendChatMessageRequest'}
+      responses:
+        '201':
+          description: Message sent
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ChatMessage'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    get:
+      operationId: chat.listMessages
+      summary: List messages in a chat channel
+      tags: [Chat]
+      x-permission: chat.view
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: channelId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: offset
+        in: query
+        schema: {type: integer, minimum: 0, default: 0}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+      responses:
+        '200':
+          description: Channel messages
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ChatMessageListResponse'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /channels/{channelId}/summaries:
+    post:
+      operationId: chat.summarize
+      summary: Summarize channel messages with AI Bot
+      tags: [Chat]
+      x-permission: chat.summarize
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: channelId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SummarizeChannelRequest'}
+      responses:
+        '201':
+          description: AI Summary created and posted as bot message
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AiSummary'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    get:
+      operationId: chat.listSummaries
+      summary: List AI summaries for a channel
+      tags: [Chat]
+      x-permission: chat.view
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: channelId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: AI summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/AiSummary'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
 components:
   securitySchemes:
     sessionAuth:
@@ -4513,6 +5220,249 @@ components:
           maxLength: 500
           format: uri
           pattern: '^(https?://.+)?$'
+    BroadcastNotificationRequest:
+      type: object
+      required: [title, message]
+      properties:
+        departmentId: {type: [string, 'null'], format: uuid}
+        title: {type: string, maxLength: 300}
+        message: {type: string, maxLength: 4000}
+    NotificationBroadcastResponse:
+      type: object
+      required: [clubId, recipientCount]
+      properties:
+        clubId: {type: string, format: uuid}
+        departmentId: {type: [string, 'null'], format: uuid}
+        recipientCount: {type: integer}
+    CreateEventRequest:
+      type: object
+      required: [title, startTime, endTime, registrationDeadline]
+      properties:
+        departmentId: {type: [string, 'null'], format: uuid}
+        title: {type: string, maxLength: 200}
+        description: {type: [string, 'null'], maxLength: 4000}
+        eventType: {type: [string, 'null'], enum: [CLUB_EVENT, MEETING, WORKSHOP, RECRUITMENT, null]}
+        location: {type: [string, 'null'], maxLength: 300}
+        startTime: {type: string, format: date-time}
+        endTime: {type: string, format: date-time}
+        registrationDeadline: {type: string, format: date-time}
+        allowCtv: {type: [boolean, 'null']}
+        maxParticipants: {type: [integer, 'null'], minimum: 1}
+        status: {type: [string, 'null'], enum: [DRAFT, OPEN_REGISTRATION, CLOSED_REGISTRATION, COMPLETED, CANCELLED, null]}
+    UpdateEventRequest:
+      type: object
+      properties:
+        departmentId: {type: [string, 'null'], format: uuid}
+        title: {type: [string, 'null'], maxLength: 200}
+        description: {type: [string, 'null'], maxLength: 4000}
+        eventType: {type: [string, 'null'], enum: [CLUB_EVENT, MEETING, WORKSHOP, RECRUITMENT, null]}
+        location: {type: [string, 'null'], maxLength: 300}
+        startTime: {type: [string, 'null'], format: date-time}
+        endTime: {type: [string, 'null'], format: date-time}
+        registrationDeadline: {type: [string, 'null'], format: date-time}
+        allowCtv: {type: [boolean, 'null']}
+        maxParticipants: {type: [integer, 'null'], minimum: 1}
+        status: {type: [string, 'null'], enum: [DRAFT, OPEN_REGISTRATION, CLOSED_REGISTRATION, COMPLETED, CANCELLED, null]}
+    RegisterEventRequest:
+      type: object
+      properties:
+        note: {type: [string, 'null'], maxLength: 1000}
+    Event:
+      type: object
+      required: [id, clubId, title, eventType, startTime, endTime, registrationDeadline, allowCtv, status, registeredCount, createdBy, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        clubId: {type: string, format: uuid}
+        departmentId: {type: [string, 'null'], format: uuid}
+        title: {type: string}
+        description: {type: [string, 'null']}
+        eventType: {type: string, enum: [CLUB_EVENT, MEETING, WORKSHOP, RECRUITMENT]}
+        location: {type: [string, 'null']}
+        startTime: {type: string, format: date-time}
+        endTime: {type: string, format: date-time}
+        registrationDeadline: {type: string, format: date-time}
+        allowCtv: {type: boolean}
+        maxParticipants: {type: [integer, 'null']}
+        status: {type: string, enum: [DRAFT, OPEN_REGISTRATION, CLOSED_REGISTRATION, COMPLETED, CANCELLED]}
+        registeredCount: {type: integer, format: int64}
+        createdBy: {type: string, format: uuid}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    EventListResponse:
+      type: object
+      required: [items, total, offset, limit]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/Event'}
+        total: {type: integer, format: int64}
+        offset: {type: integer}
+        limit: {type: integer}
+    EventRegistration:
+      type: object
+      required: [id, eventId, userId, status, registeredAt]
+      properties:
+        id: {type: string, format: uuid}
+        eventId: {type: string, format: uuid}
+        userId: {type: string, format: uuid}
+        userFullName: {type: [string, 'null']}
+        userEmail: {type: [string, 'null']}
+        status: {type: string, enum: [REGISTERED, WAITLISTED, CANCELLED]}
+        note: {type: [string, 'null']}
+        registeredAt: {type: string, format: date-time}
+        cancelledAt: {type: [string, 'null'], format: date-time}
+    RecordAttendanceRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [userId, status]
+            properties:
+              userId: {type: string, format: uuid}
+              status: {type: string, enum: [PRESENT, LATE, EXCUSED, ABSENT]}
+              note: {type: [string, 'null'], maxLength: 500}
+    EventAttendance:
+      type: object
+      required: [id, eventId, userId, status, recordedBy, recordedAt]
+      properties:
+        id: {type: string, format: uuid}
+        eventId: {type: string, format: uuid}
+        userId: {type: string, format: uuid}
+        userFullName: {type: [string, 'null']}
+        userEmail: {type: [string, 'null']}
+        status: {type: string, enum: [PRESENT, LATE, EXCUSED, ABSENT]}
+        note: {type: [string, 'null']}
+        recordedBy: {type: string, format: uuid}
+        recordedAt: {type: string, format: date-time}
+    CreateTaskRequest:
+      type: object
+      required: [assigneeId, title, deadline]
+      properties:
+        departmentId: {type: [string, 'null'], format: uuid}
+        eventId: {type: [string, 'null'], format: uuid}
+        assigneeId: {type: string, format: uuid}
+        title: {type: string, maxLength: 200}
+        description: {type: [string, 'null'], maxLength: 4000}
+        priority: {type: [string, 'null'], enum: [LOW, MEDIUM, HIGH, null]}
+        deadline: {type: string, format: date-time}
+    UpdateTaskProgressRequest:
+      type: object
+      properties:
+        status: {type: [string, 'null'], enum: [TODO, IN_PROGRESS, DONE, null]}
+        progressPercent: {type: [integer, 'null'], minimum: 0, maximum: 100}
+        progressNote: {type: [string, 'null'], maxLength: 2000}
+        reportLink: {type: [string, 'null'], maxLength: 1000}
+    VerifyTaskRequest:
+      type: object
+      properties: {}
+    Task:
+      type: object
+      required: [id, clubId, assigneeId, assignerId, title, priority, status, progressPercent, deadline, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        clubId: {type: string, format: uuid}
+        departmentId: {type: [string, 'null'], format: uuid}
+        eventId: {type: [string, 'null'], format: uuid}
+        assigneeId: {type: string, format: uuid}
+        assigneeFullName: {type: [string, 'null']}
+        assignerId: {type: string, format: uuid}
+        title: {type: string}
+        description: {type: [string, 'null']}
+        priority: {type: string, enum: [LOW, MEDIUM, HIGH]}
+        status: {type: string, enum: [TODO, IN_PROGRESS, DONE, COMPLETED, OVERDUE]}
+        progressPercent: {type: integer}
+        progressNote: {type: [string, 'null']}
+        reportLink: {type: [string, 'null']}
+        deadline: {type: string, format: date-time}
+        verifiedBy: {type: [string, 'null'], format: uuid}
+        verifiedAt: {type: [string, 'null'], format: date-time}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    TaskListResponse:
+      type: object
+      required: [items, total, offset, limit]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/Task'}
+        total: {type: integer, format: int64}
+        offset: {type: integer}
+        limit: {type: integer}
+    CreateChatChannelRequest:
+      type: object
+      required: [name]
+      properties:
+        departmentId: {type: [string, 'null'], format: uuid}
+        eventId: {type: [string, 'null'], format: uuid}
+        name: {type: string, maxLength: 160}
+        channelType: {type: [string, 'null'], enum: [CLUB_GENERAL, DEPARTMENT, EVENT_THREAD, null]}
+    ChatChannel:
+      type: object
+      required: [id, clubId, name, channelType, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        clubId: {type: string, format: uuid}
+        departmentId: {type: [string, 'null'], format: uuid}
+        eventId: {type: [string, 'null'], format: uuid}
+        name: {type: string}
+        channelType: {type: string, enum: [CLUB_GENERAL, DEPARTMENT, EVENT_THREAD]}
+        createdAt: {type: string, format: date-time}
+    SendChatMessageRequest:
+      type: object
+      required: [content]
+      properties:
+        content: {type: string, maxLength: 4000}
+    ChatMessage:
+      type: object
+      required: [id, channelId, senderType, content, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        channelId: {type: string, format: uuid}
+        senderId: {type: [string, 'null'], format: uuid}
+        senderFullName: {type: [string, 'null']}
+        senderEmail: {type: [string, 'null']}
+        senderType: {type: string, enum: [USER, AI_BOT]}
+        content: {type: string}
+        createdAt: {type: string, format: date-time}
+    ChatMessageListResponse:
+      type: object
+      required: [items, total, offset, limit]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/ChatMessage'}
+        total: {type: integer, format: int64}
+        offset: {type: integer}
+        limit: {type: integer}
+    SummarizeChannelRequest:
+      type: object
+      properties:
+        messageLimit: {type: [integer, 'null'], minimum: 1, maximum: 200}
+        postToChannel: {type: [boolean, 'null']}
+    AiSummary:
+      type: object
+      required: [id, channelId, requestedBy, messageCount, model, summary, decisions, suggestedTasks, suggestedEvents, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        channelId: {type: string, format: uuid}
+        requestedBy: {type: string, format: uuid}
+        messageCount: {type: integer}
+        summary: {type: string}
+        decisions:
+          type: array
+          items: {type: string}
+        suggestedTasks:
+          type: array
+          items: {type: string}
+        suggestedEvents:
+          type: array
+          items: {type: string}
+        model: {type: string}
+        createdAt: {type: string, format: date-time}
 tags:
 - name: System
   description: Danh mục và trạng thái API
@@ -4538,3 +5488,9 @@ tags:
   description: Thông báo trong ứng dụng
 - name: Document
   description: Tài liệu CLB lưu trên Cloudflare R2 (năm/tháng/ngày)
+- name: Event
+  description: Quản lý sự kiện, đăng ký tham gia, điểm danh và lịch hoạt động CLB
+- name: Task
+  description: Giao việc, cập nhật tiến độ và nghiệm thu công việc CLB
+- name: Chat
+  description: Kênh trao đổi nội bộ và AI Bot tóm tắt cuộc họp CLB

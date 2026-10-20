@@ -1,6 +1,7 @@
 package com.vju.club.modules.membership.mapper;
 
 import com.vju.club.modules.departmentmember.entity.DepartmentMember;
+import com.vju.club.modules.membership.dto.record.MembershipRecord;
 import com.vju.club.modules.membership.dto.response.MembershipDepartmentResponse;
 import com.vju.club.modules.membership.dto.response.MembershipResponse;
 import com.vju.club.modules.membership.dto.response.MyMembershipResponse;
@@ -15,6 +16,10 @@ public interface MembershipMapper {
     @Mapping(target = "userId", source = "user.id")
     @Mapping(target = "clubId", source = "club.id")
     MembershipResponse toResponse(Membership membership);
+
+    @Mapping(target = "userId", source = "user.id")
+    @Mapping(target = "clubId", source = "club.id")
+    MembershipRecord toRecord(Membership membership);
 
     @Mapping(target = "id", source = "membership.id")
     @Mapping(target = "clubId", source = "membership.club.id")

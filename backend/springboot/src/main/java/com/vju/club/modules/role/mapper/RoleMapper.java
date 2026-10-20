@@ -1,6 +1,7 @@
 package com.vju.club.modules.role.mapper;
 
 import com.vju.club.modules.permission.entity.Permission;
+import com.vju.club.modules.role.dto.record.RoleRecord;
 import com.vju.club.modules.role.dto.response.RoleResponse;
 import com.vju.club.modules.role.dto.response.UserRoleResponse;
 import com.vju.club.modules.role.entity.Role;
@@ -15,6 +16,9 @@ import java.util.List;
 public interface RoleMapper {
     @Mapping(target = "permissionKeys", source = "permissions")
     RoleResponse toResponse(Role role);
+
+    @Mapping(target = "permissionKeys", source = "permissions")
+    RoleRecord toRecord(Role role);
 
     @Mapping(target = "userId", source = "user.id")
     @Mapping(target = "roleId", source = "role.id")

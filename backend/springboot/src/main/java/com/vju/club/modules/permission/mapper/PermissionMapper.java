@@ -1,5 +1,6 @@
 package com.vju.club.modules.permission.mapper;
 
+import com.vju.club.modules.permission.dto.record.PermissionGrantRecord;
 import com.vju.club.modules.permission.dto.response.EffectivePermissionResponse;
 import com.vju.club.modules.permission.dto.response.PermissionResponse;
 import com.vju.club.modules.permission.dto.response.UserPermissionResponse;
@@ -19,6 +20,14 @@ public interface PermissionMapper {
     @Mapping(target = "clubId", source = "club.id")
     @Mapping(target = "departmentId", source = "department.id")
     UserPermissionResponse toUserPermissionResponse(UserPermission grant);
+
+    @Mapping(target = "userId", source = "user.id")
+    @Mapping(target = "permissionId", source = "permission.id")
+    @Mapping(target = "permissionKey", source = "permission.permissionKey")
+    @Mapping(target = "clubId", source = "club.id")
+    @Mapping(target = "departmentId", source = "department.id")
+    @Mapping(target = "grantedBy", source = "grantedBy.id")
+    PermissionGrantRecord toGrantRecord(UserPermission grant);
 
     EffectivePermissionResponse toEffectiveResponse(EffectivePermissionRow row);
 }

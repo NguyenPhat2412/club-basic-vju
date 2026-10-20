@@ -1,5 +1,6 @@
 package com.vju.club.modules.clubapplication.mapper;
 
+import com.vju.club.modules.clubapplication.dto.record.ClubApplicationRecord;
 import com.vju.club.modules.clubapplication.dto.response.ClubApplicationResponse;
 import com.vju.club.modules.clubapplication.dto.response.ClubApplicationSummaryResponse;
 import com.vju.club.modules.clubapplication.entity.ClubApplication;
@@ -35,4 +36,11 @@ public interface ClubApplicationMapper {
     @Mapping(target = "clubCode", source = "club.code")
     @Mapping(target = "clubName", source = "club.name")
     ClubApplicationSummaryResponse toSummary(ClubApplication application);
+
+    @Mapping(target = "applicantId", source = "applicant.id")
+    @Mapping(target = "clubId", source = "club.id")
+    @Mapping(target = "clubCode", source = "club.code")
+    @Mapping(target = "clubName", source = "club.name")
+    @Mapping(target = "reviewedBy", source = "reviewedBy.id")
+    ClubApplicationRecord toRecord(ClubApplication application);
 }

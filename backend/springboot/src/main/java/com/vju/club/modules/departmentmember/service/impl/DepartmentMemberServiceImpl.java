@@ -1,27 +1,26 @@
 package com.vju.club.modules.departmentmember.service.impl;
 
-import lombok.RequiredArgsConstructor;
-import com.vju.club.modules.departmentmember.mapper.DepartmentMemberMapper;
-import com.vju.club.modules.departmentmember.service.DepartmentMemberService;
-
-import com.vju.club.security.Actor;
-import com.vju.club.modules.audit.enums.AuditAction;
-import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.common.dto.PageResponse;
-import com.vju.club.modules.departmentmember.dto.request.AddDepartmentMemberRequest;
-import com.vju.club.modules.departmentmember.dto.response.DepartmentMemberResponse;
-import com.vju.club.modules.departmentmember.dto.request.MoveDepartmentMemberRequest;
+import com.vju.club.error.ApiException;
+import com.vju.club.modules.audit.enums.AuditAction;
+import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.modules.department.entity.Department;
-import com.vju.club.modules.departmentmember.entity.DepartmentMember;
 import com.vju.club.modules.department.enums.DepartmentStatus;
+import com.vju.club.modules.department.repository.DepartmentRepository;
+import com.vju.club.modules.departmentmember.dto.request.AddDepartmentMemberRequest;
+import com.vju.club.modules.departmentmember.dto.request.MoveDepartmentMemberRequest;
+import com.vju.club.modules.departmentmember.dto.response.DepartmentMemberResponse;
+import com.vju.club.modules.departmentmember.entity.DepartmentMember;
+import com.vju.club.modules.departmentmember.mapper.DepartmentMemberMapper;
+import com.vju.club.modules.departmentmember.repository.DepartmentMemberRepository;
+import com.vju.club.modules.departmentmember.service.DepartmentMemberService;
 import com.vju.club.modules.membership.entity.Membership;
 import com.vju.club.modules.membership.enums.MembershipStatus;
-import com.vju.club.error.ApiException;
-import com.vju.club.modules.departmentmember.repository.DepartmentMemberRepository;
-import com.vju.club.modules.department.repository.DepartmentRepository;
 import com.vju.club.modules.membership.repository.MembershipRepository;
+import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +41,7 @@ public class DepartmentMemberServiceImpl implements DepartmentMemberService {
     private final AuditService auditService;
     private final DepartmentMemberMapper departmentMemberMapper;
 
+    @Override
     @Transactional(readOnly = true)
     public PageResponse<DepartmentMemberResponse> list(Actor actor, UUID departmentId, int offset, int limit) {
         authorize(actor, "department.member.view", departmentId);
@@ -51,6 +51,7 @@ public class DepartmentMemberServiceImpl implements DepartmentMemberService {
         return new PageResponse<>(items, departmentMemberRepository.countByDepartment_Id(departmentId), offset, limit);
     }
 
+    @Override
     @Transactional
     public DepartmentMemberResponse add(Actor actor, UUID departmentId, AddDepartmentMemberRequest request) {
         Department department = authorize(actor, "department.member.add", departmentId);
@@ -74,6 +75,7 @@ public class DepartmentMemberServiceImpl implements DepartmentMemberService {
         return departmentMemberMapper.toResponse(saved);
     }
 
+    @Override
     @Transactional
     public void remove(Actor actor, UUID departmentId, UUID membershipId) {
         authorize(actor, "department.member.remove", departmentId);
@@ -83,6 +85,7 @@ public class DepartmentMemberServiceImpl implements DepartmentMemberService {
                 Map.of("departmentId", departmentId, "membershipId", membershipId), null);
     }
 
+    @Override
     @Transactional
     public DepartmentMemberResponse move(Actor actor, UUID departmentId, UUID membershipId,
                                          MoveDepartmentMemberRequest request) {

@@ -25,4 +25,13 @@ public interface DepartmentMemberRepository extends JpaRepository<DepartmentMemb
     @Modifying(flushAutomatically = true)
     @Query("DELETE FROM DepartmentMember dm WHERE dm.membership.id = :membershipId")
     int deleteByMembershipId(@Param("membershipId") UUID membershipId);
+
+    @Query("SELECT COUNT(dm) > 0 FROM DepartmentMember dm WHERE dm.department.id = :departmentId "
+            + "AND dm.membership.user.id = :userId "
+            + "AND dm.membership.status = com.vju.club.modules.membership.enums.MembershipStatus.ACTIVE")
+    boolean isUserInDepartment(@Param("departmentId") UUID departmentId, @Param("userId") UUID userId);
+
+    @Query("SELECT dm.membership.user.id FROM DepartmentMember dm WHERE dm.department.id = :departmentId "
+            + "AND dm.membership.status = com.vju.club.modules.membership.enums.MembershipStatus.ACTIVE")
+    List<UUID> findActiveUserIdsByDepartmentId(@Param("departmentId") UUID departmentId);
 }

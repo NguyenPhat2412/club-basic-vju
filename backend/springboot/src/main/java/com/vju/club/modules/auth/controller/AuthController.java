@@ -6,6 +6,7 @@ import com.vju.club.modules.auth.service.AuthService;
 
 import com.vju.club.security.Actor;
 import com.vju.club.security.SessionSignIn;
+import com.vju.club.modules.auth.dto.record.SignedIn;
 import com.vju.club.modules.auth.dto.response.AuthResponse;
 import com.vju.club.modules.auth.dto.request.LoginRequest;
 import com.vju.club.modules.user.dto.response.UserResponse;
@@ -40,7 +41,7 @@ public class AuthController {
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest body,
                               HttpServletRequest request, HttpServletResponse response) {
-        AuthService.SignedIn signedIn = authService.login(body);
+        SignedIn signedIn = authService.login(body);
         sessionSignIn.signIn(signedIn.principal(), request, response);
         return signedIn.response();
     }

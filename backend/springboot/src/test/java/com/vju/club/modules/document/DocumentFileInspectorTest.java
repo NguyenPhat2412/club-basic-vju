@@ -10,6 +10,7 @@ import com.vju.club.modules.document.exception.InvalidDocumentNameException;
 import com.vju.club.modules.document.exception.SuspiciousDocumentNameException;
 import com.vju.club.modules.document.exception.UnsupportedDocumentTypeException;
 import com.vju.club.modules.document.service.DocumentFileInspector;
+import com.vju.club.modules.document.service.impl.DocumentFileInspectorImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -32,7 +33,7 @@ class DocumentFileInspectorTest {
     private static DocumentFileInspector inspector(DataSize max) {
         StorageProperties properties = new StorageProperties();
         properties.setMaxFileSize(max);
-        return new DocumentFileInspector(properties);
+        return new DocumentFileInspectorImpl(properties);
     }
 
     private DocumentFileInspector.InspectedFile inspect(String name, byte[] content) {

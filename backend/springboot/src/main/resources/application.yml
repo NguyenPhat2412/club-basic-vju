@@ -71,3 +71,9 @@ app:
       bucket: ${R2_BUCKET:}
       access-key-id: ${R2_ACCESS_KEY_ID:}
       secret-access-key: ${R2_SECRET_ACCESS_KEY:}
+  tasks:
+    overdue-check-interval: ${TASK_OVERDUE_CHECK_INTERVAL:300000}
+  ai:
+    base-url: ${AI_BASE_URL:https://router.anhchau.all1.vn/v1}
+    api-key: ${AI_API_KEY:}
+    model: ${AI_MODEL:apmarket}

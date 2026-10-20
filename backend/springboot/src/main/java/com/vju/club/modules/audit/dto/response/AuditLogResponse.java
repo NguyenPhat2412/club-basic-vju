@@ -18,3 +18,4 @@ public record AuditLogResponse(
         Map<String, Object> newValue,
         OffsetDateTime createdAt
 ) { }
+

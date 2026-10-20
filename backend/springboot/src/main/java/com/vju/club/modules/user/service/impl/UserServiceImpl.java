@@ -1,38 +1,37 @@
 package com.vju.club.modules.user.service.impl;
 
-import com.vju.club.modules.permission.annotation.RequirePermission;
-import lombok.RequiredArgsConstructor;
-import com.vju.club.modules.user.mapper.UserMapper;
-import com.vju.club.modules.user.service.UserService;
-import com.vju.club.modules.user.common.UserConstants;
-
-import com.vju.club.security.Actor;
-import com.vju.club.modules.user.dto.response.UserResponse;
-import com.vju.club.modules.audit.enums.AuditAction;
-import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.common.dto.PageResponse;
-import com.vju.club.modules.user.entity.User;
-import com.vju.club.modules.user.enums.UserStatus;
 import com.vju.club.error.ApiException;
-import com.vju.club.modules.user.repository.UserRepository;
-import com.vju.club.security.GrantGuard;
-import com.vju.club.security.PermissionAuthorizationService;
+import com.vju.club.modules.audit.enums.AuditAction;
+import com.vju.club.modules.audit.service.AuditService;
+import com.vju.club.modules.auth.service.UserSessionService;
+import com.vju.club.modules.permission.annotation.RequirePermission;
 import com.vju.club.modules.role.service.RoleService;
+import com.vju.club.modules.user.common.UserConstants;
+import com.vju.club.modules.user.dto.request.AdminUpdateUserRequest;
 import com.vju.club.modules.user.dto.request.CreateUserRequest;
 import com.vju.club.modules.user.dto.request.ResetPasswordRequest;
-import com.vju.club.modules.auth.service.UserSessionService;
-import com.vju.club.modules.user.dto.request.AdminUpdateUserRequest;
 import com.vju.club.modules.user.dto.request.UpdateProfileRequest;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import com.vju.club.modules.user.dto.request.UpdateUserStatusRequest;
+import com.vju.club.modules.user.dto.response.UserResponse;
+import com.vju.club.modules.user.entity.User;
+import com.vju.club.modules.user.enums.UserStatus;
+import com.vju.club.modules.user.mapper.UserMapper;
+import com.vju.club.modules.user.repository.UserRepository;
+import com.vju.club.modules.user.service.UserService;
+import com.vju.club.modules.user.specification.UserSpecifications;
+import com.vju.club.security.Actor;
+import com.vju.club.security.GrantGuard;
+import com.vju.club.security.PermissionAuthorizationService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.vju.club.modules.user.specification.UserSpecifications;
 
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -54,6 +53,7 @@ public class UserServiceImpl implements UserService {
     private final RoleService roleService;
     private final GrantGuard grantGuard;
 
+    @Override
     @Transactional
     @RequirePermission(UserConstants.PERMISSION_CREATE)
     public UserResponse create(Actor actor, CreateUserRequest request) {
@@ -82,6 +82,7 @@ public class UserServiceImpl implements UserService {
         return userMapper.toResponse(saved);
     }
 
+    @Override
     @Transactional
     @RequirePermission(UserConstants.PERMISSION_RESET_PASSWORD)
     public void resetPassword(Actor actor, UUID userId, ResetPasswordRequest request) {
@@ -94,11 +95,13 @@ public class UserServiceImpl implements UserService {
                 Map.of("revokedSessions", revoked));
     }
 
+    @Override
     @Transactional(readOnly = true)
     public UserResponse getCurrent(Actor actor) {
         return userMapper.toResponse(findUser(actor.id()));
     }
 
+    @Override
     @Transactional
     public UserResponse updateProfile(Actor actor, UpdateProfileRequest request) {
         User user = findUser(actor.id());
@@ -116,6 +119,7 @@ public class UserServiceImpl implements UserService {
         return userMapper.toResponse(saved);
     }
 
+    @Override
     @Transactional
     @RequirePermission(UserConstants.PERMISSION_UPDATE)
     public UserResponse updateUser(Actor actor, UUID userId, AdminUpdateUserRequest request) {
@@ -142,12 +146,14 @@ public class UserServiceImpl implements UserService {
         return userMapper.toResponse(saved);
     }
 
+    @Override
     @Transactional(readOnly = true)
     @RequirePermission(UserConstants.PERMISSION_VIEW)
     public UserResponse getById(Actor actor, UUID userId) {
         return userMapper.toResponse(findUser(userId));
     }
 
+    @Override
     @Transactional(readOnly = true)
     @RequirePermission(UserConstants.PERMISSION_VIEW)
     public PageResponse<UserResponse> search(Actor actor, String query, int offset, int limit,
@@ -167,6 +173,7 @@ public class UserServiceImpl implements UserService {
         return Sort.by(asc ? Sort.Direction.ASC : Sort.Direction.DESC, orderBy).and(Sort.by("id"));
     }
 
+    @Override
     @Transactional
     public UserResponse updateStatus(Actor actor, UUID userId, UpdateUserStatusRequest request) {
         authorizationService.require(actor,

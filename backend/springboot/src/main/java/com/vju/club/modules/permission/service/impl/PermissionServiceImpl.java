@@ -1,53 +1,52 @@
 package com.vju.club.modules.permission.service.impl;
 
-import com.vju.club.modules.permission.annotation.RequirePermission;
-import lombok.RequiredArgsConstructor;
-import com.vju.club.modules.permission.mapper.PermissionMapper;
-import com.vju.club.modules.permission.service.PermissionService;
-
-import com.vju.club.security.Actor;
+import com.vju.club.error.ApiException;
+import com.vju.club.modules.audit.entity.PermissionAuditLog;
 import com.vju.club.modules.audit.enums.AuditAction;
+import com.vju.club.modules.audit.enums.PermissionAuditAction;
+import com.vju.club.modules.audit.repository.PermissionAuditLogRepository;
 import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.modules.club.entity.Club;
+import com.vju.club.modules.club.repository.ClubRepository;
 import com.vju.club.modules.department.entity.Department;
-import com.vju.club.modules.permission.entity.Permission;
-import com.vju.club.modules.audit.enums.PermissionAuditAction;
-import com.vju.club.modules.audit.entity.PermissionAuditLog;
-import com.vju.club.modules.permission.enums.PermissionScope;
-import com.vju.club.modules.user.entity.User;
-import com.vju.club.modules.permission.entity.UserPermission;
-import com.vju.club.error.ApiException;
-import com.vju.club.modules.permission.dto.response.EffectivePermissionResponse;
+import com.vju.club.modules.department.repository.DepartmentRepository;
+import com.vju.club.modules.permission.annotation.RequirePermission;
 import com.vju.club.modules.permission.dto.request.GrantPermissionRequest;
-import com.vju.club.modules.permission.dto.response.PermissionGroupResponse;
 import com.vju.club.modules.permission.dto.request.ReplacePermissionsRequest;
+import com.vju.club.modules.permission.dto.response.EffectivePermissionResponse;
+import com.vju.club.modules.permission.dto.response.PermissionGroupResponse;
 import com.vju.club.modules.permission.dto.response.PermissionResponse;
 import com.vju.club.modules.permission.dto.response.UserPermissionResponse;
-import com.vju.club.modules.club.repository.ClubRepository;
-import com.vju.club.modules.department.repository.DepartmentRepository;
+import com.vju.club.modules.permission.entity.Permission;
+import com.vju.club.modules.permission.entity.UserPermission;
+import com.vju.club.modules.permission.enums.PermissionScope;
+import com.vju.club.modules.permission.mapper.PermissionMapper;
 import com.vju.club.modules.permission.repository.PermissionRepository;
-import com.vju.club.modules.audit.repository.PermissionAuditLogRepository;
 import com.vju.club.modules.permission.repository.UserPermissionRepository;
+import com.vju.club.modules.permission.service.PermissionService;
+import com.vju.club.modules.user.entity.User;
 import com.vju.club.modules.user.repository.UserRepository;
-import com.vju.club.security.PermissionAuthorizationService;
+import com.vju.club.security.Actor;
 import com.vju.club.security.GrantGuard;
+import com.vju.club.security.PermissionAuthorizationService;
 import com.vju.club.security.ScopeRules;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.OffsetDateTime;
 import java.time.Clock;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -65,6 +64,7 @@ public class PermissionServiceImpl implements PermissionService {
     private final PermissionMapper permissionMapper;
     private final GrantGuard grantGuard;
 
+    @Override
     @Transactional(readOnly = true)
     @RequirePermission("permission.view")
     public List<PermissionResponse> list(Actor actor) {
@@ -73,6 +73,7 @@ public class PermissionServiceImpl implements PermissionService {
                 .toList();
     }
 
+    @Override
     @Transactional(readOnly = true)
     @RequirePermission("permission.view")
     public List<PermissionGroupResponse> listGroups(Actor actor) {
@@ -84,6 +85,7 @@ public class PermissionServiceImpl implements PermissionService {
                 .map(entry -> new PermissionGroupResponse(entry.getKey(), entry.getValue())).toList();
     }
 
+    @Override
     @Transactional(readOnly = true)
     public List<UserPermissionResponse> listUserPermissions(Actor actor, UUID targetUserId) {
         if (!targetUserId.equals(actor.id())) {
@@ -94,6 +96,7 @@ public class PermissionServiceImpl implements PermissionService {
                 .map(permissionMapper::toUserPermissionResponse).toList();
     }
 
+    @Override
     @Transactional(readOnly = true)
     public List<EffectivePermissionResponse> listEffective(Actor actor, UUID targetUserId) {
         if (!targetUserId.equals(actor.id())) {
@@ -104,10 +107,10 @@ public class PermissionServiceImpl implements PermissionService {
                 .map(permissionMapper::toEffectiveResponse).toList();
     }
 
+    @Override
     @Transactional
     @RequirePermission("permission.assign")
-    public UserPermissionResponse grant(
-            Actor actor, UUID targetUserId, GrantPermissionRequest request) {
+    public UserPermissionResponse grant(Actor actor, UUID targetUserId, GrantPermissionRequest request) {
         User actorUser = findUser(actor.id());
         User target = findUser(targetUserId);
         Permission permission = permissionRepository.findById(request.permissionId())
@@ -131,6 +134,7 @@ public class PermissionServiceImpl implements PermissionService {
                 createGrant(actorUser, target, permission, request.scope(), club, department, request.reason()));
     }
 
+    @Override
     @Transactional
     @RequirePermission("permission.assign")
     public List<UserPermissionResponse> replace(Actor actor, UUID targetUserId, ReplacePermissionsRequest request) {
@@ -190,6 +194,7 @@ public class PermissionServiceImpl implements PermissionService {
                 .map(permissionMapper::toUserPermissionResponse).toList();
     }
 
+    @Override
     @Transactional
     @RequirePermission("permission.revoke")
     public void revoke(Actor actor, UUID targetUserId, UUID permissionId,
@@ -215,6 +220,7 @@ public class PermissionServiceImpl implements PermissionService {
         revokeGrant(actorUser, target, grant);
     }
 
+    @Override
     @Transactional
     @RequirePermission("permission.revoke")
     public void revokeByKey(Actor actor, UUID targetUserId, String permissionKey,

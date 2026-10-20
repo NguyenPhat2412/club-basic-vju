@@ -1,14 +1,12 @@
 package com.vju.club.modules.audit.service.impl;
 
-import lombok.RequiredArgsConstructor;
-import com.vju.club.modules.audit.enums.AuditAction;
-
-import com.vju.club.modules.audit.service.AuditService;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vju.club.modules.audit.entity.AuditLog;
+import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.audit.repository.AuditLogRepository;
+import com.vju.club.modules.audit.service.AuditService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashMap;
@@ -23,12 +21,14 @@ public class AuditServiceImpl implements AuditService {
 
     private final AuditLogRepository auditLogRepository;
 
+    @Override
     public void record(UUID actorUserId, AuditAction action, UUID resourceId, UUID clubId,
                        Map<String, ?> before, Map<String, ?> after) {
         auditLogRepository.save(new AuditLog(actorUserId, action.name(), action.resourceType().name(), resourceId,
                 clubId, toJson(before), toJson(after)));
     }
 
+    @Override
     public void recordChange(UUID actorUserId, AuditAction action, UUID resourceId, UUID clubId,
                              Map<String, ?> before, Map<String, ?> after) {
         Map<String, Object> oldValues = new LinkedHashMap<>();
