@@ -177,5 +177,7 @@ class AdminAccountApiTest extends ApiIntegrationTest {
                 Map.of("permissionIds", List.of(permission("club.view"))), 409, "SYSTEM_ROLE_IMMUTABLE");
         problem(patch("/api/v1/roles/" + role("CLUB_MEMBER")), adminToken, Map.of("active", false), 409,
                 "SYSTEM_ROLE_IMMUTABLE");
+        call(patch("/api/v1/roles/" + role("CLUB_MEMBER")), adminToken,
+                Map.of("permissionIds", memberPermissions), 200);
     }
 }
