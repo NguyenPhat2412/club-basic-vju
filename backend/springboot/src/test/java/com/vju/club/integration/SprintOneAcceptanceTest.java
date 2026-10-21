@@ -174,7 +174,7 @@ class SprintOneAcceptanceTest extends ApiIntegrationTest {
     void noHardCodedPositions() throws IOException {
         try (Stream<Path> files = Files.walk(Path.of("src/main/java"))) {
             List<String> offenders = files.filter(f -> f.toString().endsWith(".java"))
-                    .filter(f -> !f.toString().contains("/bootstrap/")).filter(f -> {
+                    .filter(f -> !f.toString().replace('\\', '/').contains("/bootstrap/")).filter(f -> {
                 try {
                     String code = Files.readString(f);
                     code = code.replace("ALREADY_CLUB_MEMBER", "");
