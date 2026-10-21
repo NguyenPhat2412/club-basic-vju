@@ -1,5 +1,6 @@
 package com.vju.club.modules.event.dto.response;
 
+import java.io.Serializable;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -22,5 +23,5 @@ public record EventResponse(
         String status,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
-) {
+) implements Serializable {
 }

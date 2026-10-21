@@ -1,5 +1,6 @@
 package com.vju.club.modules.event.mapper;
 
+import com.vju.club.modules.event.dto.record.EventRecord;
 import com.vju.club.modules.event.dto.response.EventAttendanceResponse;
 import com.vju.club.modules.event.dto.response.EventRegistrationResponse;
 import com.vju.club.modules.event.dto.response.EventResponse;
@@ -17,6 +18,10 @@ public interface EventMapper {
     @Mapping(target = "departmentId", source = "department.id")
     @Mapping(target = "departmentName", source = "department.name")
     EventResponse toResponse(Event event);
+
+    @Mapping(target = "clubId", source = "club.id")
+    @Mapping(target = "departmentId", source = "department.id")
+    EventRecord toRecord(Event event);
 
     @Mapping(target = "eventId", source = "event.id")
     @Mapping(target = "userId", source = "user.id")

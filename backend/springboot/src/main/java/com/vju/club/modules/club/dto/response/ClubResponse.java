@@ -1,5 +1,6 @@
 package com.vju.club.modules.club.dto.response;
 
+import java.io.Serializable;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -15,4 +16,4 @@ public record ClubResponse(
         String status,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
-) { }
+) implements Serializable { }

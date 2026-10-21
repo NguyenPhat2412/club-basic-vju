@@ -2,6 +2,7 @@ package com.vju.club.modules.chat.mapper;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.vju.club.modules.chat.dto.record.ChatChannelRecord;
 import com.vju.club.modules.chat.dto.response.AiSummaryResponse;
 import com.vju.club.modules.chat.dto.response.ChatChannelResponse;
 import com.vju.club.modules.chat.dto.response.ChatMessageResponse;
@@ -25,6 +26,11 @@ public interface ChatMapper {
     @Mapping(target = "eventId", source = "event.id")
     @Mapping(target = "eventTitle", source = "event.title")
     ChatChannelResponse toChannelResponse(ChatChannel channel);
+
+    @Mapping(target = "clubId", source = "club.id")
+    @Mapping(target = "departmentId", source = "department.id")
+    @Mapping(target = "eventId", source = "event.id")
+    ChatChannelRecord toRecord(ChatChannel channel);
 
     @Mapping(target = "channelId", source = "channel.id")
     @Mapping(target = "senderId", source = "sender.id")

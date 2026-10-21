@@ -201,6 +201,7 @@ public class DocumentController {
                 .contentLength(content.size())
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.attachment().filename(content.fileName(), StandardCharsets.UTF_8).build().toString())
+                .header(HttpHeaders.CACHE_CONTROL, "private, max-age=3600, must-revalidate")
                 .eTag("\"" + content.checksumSha256() + "\"")
                 .header("X-Document-Version", String.valueOf(content.version()))
                 .body(new InputStreamResource(content.content()));

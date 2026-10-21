@@ -9,6 +9,7 @@ import com.vju.club.error.ApiException;
 import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.modules.chat.common.ChatConstants;
+import com.vju.club.modules.chat.dto.record.ExtractedDigest;
 import com.vju.club.modules.chat.dto.request.CreateChatChannelRequest;
 import com.vju.club.modules.chat.dto.request.SendChatMessageRequest;
 import com.vju.club.modules.chat.dto.request.SummarizeChatRequest;
@@ -237,10 +238,6 @@ public class ChatServiceImpl implements ChatService {
         if (!allowed) {
             throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
         }
-    }
-
-    private record ExtractedDigest(String summary, List<String> decisions, List<String> suggestedTasks,
-                                   List<String> suggestedEvents, String model) {
     }
 
     private ExtractedDigest analyzeMessages(ChatChannel channel, List<ChatMessage> messages) {

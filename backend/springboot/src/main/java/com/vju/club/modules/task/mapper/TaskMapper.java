@@ -1,5 +1,6 @@
 package com.vju.club.modules.task.mapper;
 
+import com.vju.club.modules.task.dto.record.TaskRecord;
 import com.vju.club.modules.task.dto.response.TaskResponse;
 import com.vju.club.modules.task.entity.Task;
 import org.mapstruct.Mapper;
@@ -21,4 +22,12 @@ public interface TaskMapper {
     @Mapping(target = "assignerFullName", source = "assigner.fullName")
     @Mapping(target = "verifiedBy", source = "verifiedBy.id")
     TaskResponse toResponse(Task task);
+
+    @Mapping(target = "clubId", source = "club.id")
+    @Mapping(target = "departmentId", source = "department.id")
+    @Mapping(target = "eventId", source = "event.id")
+    @Mapping(target = "assigneeId", source = "assignee.id")
+    @Mapping(target = "assignerId", source = "assigner.id")
+    @Mapping(target = "verifiedBy", source = "verifiedBy.id")
+    TaskRecord toRecord(Task task);
 }

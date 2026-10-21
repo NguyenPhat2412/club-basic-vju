@@ -16,6 +16,11 @@ spring:
     timeout: ${SESSION_TIMEOUT:12h}
     jdbc:
       initialize-schema: never
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
   jpa:
     open-in-view: false
     hibernate:
@@ -77,3 +82,8 @@ app:
     base-url: ${AI_BASE_URL:https://router.anhchau.all1.vn/v1}
     api-key: ${AI_API_KEY:}
     model: ${AI_MODEL:apmarket}
+  cache:
+    type: ${CACHE_TYPE:simple}
+    ttl: ${CACHE_TTL:10m}
+    asset-max-bytes: ${CACHE_ASSET_MAX_BYTES:2097152}
+    asset-ttl: ${CACHE_ASSET_TTL:6h}

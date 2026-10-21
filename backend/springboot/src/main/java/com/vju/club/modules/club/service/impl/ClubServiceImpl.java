@@ -2,7 +2,10 @@ package com.vju.club.modules.club.service.impl;
 
 import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.common.dto.PageResponse;
+import com.vju.club.config.CacheConfig;
 import com.vju.club.error.ApiException;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.modules.club.common.ClubConstants;
@@ -43,6 +46,8 @@ public class ClubServiceImpl implements ClubService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.CACHE_PUBLIC_CLUBS,
+            key = "(#query ?: '') + ':' + (#category ?: '') + ':' + #offset + ':' + #limit")
     public PageResponse<ClubResponse> listPublic(String query, String category, int offset, int limit) {
         Specification<Club> spec = Specification.where(ClubSpecifications.hasKeyword(query))
                 .and(ClubSpecifications.hasCategory(category))
@@ -57,6 +62,7 @@ public class ClubServiceImpl implements ClubService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.CACHE_PUBLIC_CLUB_DETAIL, key = "#clubId")
     public ClubResponse getPublic(UUID clubId) {
         return clubMapper.toResponse(clubRepository.findByIdAndStatus(clubId, ClubStatus.ACTIVE)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND", "Club not found")));
@@ -105,6 +111,7 @@ public class ClubServiceImpl implements ClubService {
     @Override
     @Transactional
     @RequirePermission(ClubConstants.PERMISSION_CREATE)
+    @CacheEvict(cacheNames = {CacheConfig.CACHE_PUBLIC_CLUBS, CacheConfig.CACHE_PUBLIC_CLUB_DETAIL}, allEntries = true)
     public ClubResponse create(Actor actor, ClubRequest request) {
         String code = request.code().trim();
         if (clubRepository.existsByCodeIgnoreCase(code)) {
@@ -121,6 +128,7 @@ public class ClubServiceImpl implements ClubService {
     @Override
     @Transactional
     @RequirePermission(value = ClubConstants.PERMISSION_UPDATE, clubId = "clubId")
+    @CacheEvict(cacheNames = {CacheConfig.CACHE_PUBLIC_CLUBS, CacheConfig.CACHE_PUBLIC_CLUB_DETAIL}, allEntries = true)
     public ClubResponse update(Actor actor, UUID clubId, ClubPatchRequest request) {
         Club club = findClub(clubId);
         if (request.code() != null && !club.getCode().equalsIgnoreCase(request.code().trim())
@@ -136,6 +144,7 @@ public class ClubServiceImpl implements ClubService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {CacheConfig.CACHE_PUBLIC_CLUBS, CacheConfig.CACHE_PUBLIC_CLUB_DETAIL}, allEntries = true)
     public ClubResponse updateStatus(Actor actor, UUID clubId, ClubStatusRequest request) {
         authorizationService.require(actor,
                 request.status() == ClubStatus.ACTIVE ? "club.active" : "club.inactive",

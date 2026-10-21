@@ -28,7 +28,7 @@ export default function LoginPage() {
   return (
     <main className="grid min-h-svh bg-[#faf9f6] lg:grid-cols-[1.05fr_.95fr]">
       <section className="relative hidden min-h-svh overflow-hidden bg-[#292725] lg:block">
-        <div className="absolute inset-0 bg-cover bg-center opacity-65" style={{ backgroundImage: "url('https://vju.ac.vn/wp-content/uploads/2026/08/anh-cover-website-1-scaled.png')" }} />
+        <div className="absolute inset-0 bg-cover bg-center opacity-65" style={{ backgroundImage: "url('/images/vju-hero-cover.jpg')" }} />
         <div className="absolute inset-0 bg-gradient-to-br from-[#29151a]/80 via-[#292725]/45 to-[#292725]/80" />
         <div className="relative flex h-full flex-col justify-between p-12 xl:p-16">
           <Link href="/home" className="flex items-center gap-3 text-white"><span className="grid size-11 place-items-center rounded-full border border-[#d7b989] text-[11px] font-black tracking-widest">VJU</span><span className="border-l border-white/30 pl-3 text-sm font-semibold tracking-wide">CLUB<span className="font-normal text-[#e5c99d]">HUB</span></span></Link>

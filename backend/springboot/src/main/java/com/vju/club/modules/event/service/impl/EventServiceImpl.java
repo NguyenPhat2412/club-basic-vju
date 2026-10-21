@@ -2,7 +2,10 @@ package com.vju.club.modules.event.service.impl;
 
 import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.common.dto.PageResponse;
+import com.vju.club.config.CacheConfig;
 import com.vju.club.error.ApiException;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.modules.club.entity.Club;
@@ -83,6 +86,7 @@ public class EventServiceImpl implements EventService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.CACHE_PUBLIC_EVENTS, key = "#offset + ':' + #limit")
     public PageResponse<EventResponse> listPublic(int offset, int limit) {
         var page = eventRepository.findPublicEvents(new OffsetLimitRequest(offset, limit, EVENT_SORT));
         List<EventResponse> items = page.getContent().stream()
@@ -94,6 +98,7 @@ public class EventServiceImpl implements EventService {
     @Override
     @Transactional
     @RequirePermission(value = EventConstants.PERMISSION_CREATE, clubId = "clubId")
+    @CacheEvict(cacheNames = CacheConfig.CACHE_PUBLIC_EVENTS, allEntries = true)
     public EventResponse create(Actor actor, UUID clubId, CreateEventRequest request) {
         Club club = clubRepository.findById(clubId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND", "Club not found"));
@@ -141,6 +146,7 @@ public class EventServiceImpl implements EventService {
     @Override
     @Transactional
     @RequirePermission(value = EventConstants.PERMISSION_UPDATE, clubId = "clubId")
+    @CacheEvict(cacheNames = CacheConfig.CACHE_PUBLIC_EVENTS, allEntries = true)
     public EventResponse update(Actor actor, UUID clubId, UUID eventId, UpdateEventRequest request) {
         Event event = eventRepository.findWithRelationsById(eventId)
                 .filter(e -> e.getClub().getId().equals(clubId))

@@ -126,7 +126,7 @@ export default function HomePage() {
       </header>
 
       <section className="relative isolate min-h-[560px] overflow-hidden bg-[#252629] sm:min-h-[630px] lg:min-h-[670px]">
-        <div className="absolute inset-0 -z-20 bg-cover bg-[center_43%]" style={{ backgroundImage: "url('https://vju.ac.vn/wp-content/uploads/2026/08/anh-cover-website-1-scaled.png')" }} />
+        <div className="absolute inset-0 -z-20 bg-cover bg-[center_43%]" style={{ backgroundImage: "url('/images/vju-hero-cover.jpg')" }} />
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(21,23,26,.87)_0%,rgba(25,25,26,.64)_48%,rgba(25,25,26,.16)_100%)]" />
         <div className="mx-auto flex min-h-[560px] max-w-[1380px] flex-col justify-center px-6 py-20 sm:min-h-[630px] sm:px-10 lg:min-h-[670px] lg:px-16">
           <div className="max-w-[720px]">
@@ -172,7 +172,7 @@ export default function HomePage() {
         <div className="mx-auto grid max-w-[1380px] gap-10 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[.85fr_1.15fr] lg:items-center lg:px-12 lg:py-24">
           <div><Eyebrow>ĐỜI SỐNG VJU</Eyebrow><h2 className="mt-3 max-w-lg font-serif text-[38px] font-medium leading-[1.15] sm:text-[50px]">Ngoài lớp học,<br />còn cả một thế giới.</h2><p className="mt-5 max-w-lg text-[13px] leading-7 text-[#6d675f]">Những buổi gặp gỡ, dự án chung và sự kiện do sinh viên khởi xướng tạo nên bản sắc của cộng đồng VJU.</p><Link href="/clubs" className="mt-7 inline-flex items-center gap-3 bg-[#8e1f32] px-5 py-3.5 text-[10px] font-semibold text-white hover:bg-[#711829]">TÌM HOẠT ĐỘNG PHÙ HỢP <ArrowRight size={14} /></Link></div>
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            <div className="relative col-span-2 min-h-[210px] overflow-hidden bg-[#565d5e] sm:min-h-[290px]"><div className="absolute inset-0 bg-cover bg-center opacity-75 mix-blend-luminosity" style={{ backgroundImage: "url('https://vju.ac.vn/wp-content/uploads/2025/12/anh-cover-website-8-scaled.png')" }} /><div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent" /><div className="absolute bottom-5 left-5 text-white"><p className="text-[9px] font-semibold uppercase tracking-[.2em] text-white/70">CÙNG NHAU TRẢI NGHIỆM</p><p className="mt-1 font-serif text-[22px]">Một cộng đồng, nhiều sắc màu</p></div></div>
+            <div className="relative col-span-2 min-h-[210px] overflow-hidden bg-[#565d5e] sm:min-h-[290px]"><div className="absolute inset-0 bg-cover bg-center opacity-75 mix-blend-luminosity" style={{ backgroundImage: "url('/images/vju-campus-life.webp')" }} /><div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent" /><div className="absolute bottom-5 left-5 text-white"><p className="text-[9px] font-semibold uppercase tracking-[.2em] text-white/70">CÙNG NHAU TRẢI NGHIỆM</p><p className="mt-1 font-serif text-[22px]">Một cộng đồng, nhiều sắc màu</p></div></div>
             <div className="flex min-h-[120px] flex-col justify-between bg-white p-5 sm:min-h-[145px] sm:p-6"><CalendarDays className="text-[#8e1f32]" size={18} /><span className="font-serif text-[17px]">Sự kiện sinh viên</span></div>
             <div className="flex min-h-[120px] flex-col justify-between bg-[#8e1f32] p-5 text-white sm:min-h-[145px] sm:p-6"><UsersRound className="text-white/70" size={18} /><span className="font-serif text-[17px]">Kết nối câu lạc bộ</span></div>
           </div>

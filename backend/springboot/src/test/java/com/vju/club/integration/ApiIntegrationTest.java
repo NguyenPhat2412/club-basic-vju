@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cache.CacheManager;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -52,6 +53,7 @@ abstract class ApiIntegrationTest {
     @Autowired JdbcTemplate db;
     @Autowired PasswordEncoder passwords;
     @Autowired JdbcIndexedSessionRepository sessions;
+    @Autowired CacheManager cacheManager;
 
     MockMvc mvc;
     final ObjectMapper json = new ObjectMapper();
@@ -61,6 +63,10 @@ abstract class ApiIntegrationTest {
     @BeforeEach
     void resetDatabase() {
         mvc = TestSessions.mockMvc(context);
+        cacheManager.getCacheNames().forEach(name -> {
+            var cache = cacheManager.getCache(name);
+            if (cache != null) cache.clear();
+        });
         db.execute("TRUNCATE users, clubs, spring_session CASCADE");
         db.update("UPDATE permissions SET active = true");
         db.update("DELETE FROM roles WHERE NOT system");
