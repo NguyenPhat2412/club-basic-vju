@@ -1,6 +1,6 @@
 "use client";
 import { Fragment, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useFetchMutation, useFetchQuery, useFetchClient } from "@/lib/fetch-hooks";
 import { KeyRound, Lock, Save, Undo2 } from "lucide-react";
 import { apiModel, PermissionItem, Role, Scope } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
@@ -23,11 +23,11 @@ const fitsRole = (permission: PermissionItem, role: Role) => BREADTH[role.scope]
 
 export default function RolesPage() {
   const session = useSession();
-  const queryClient = useQueryClient();
+  const queryClient = useFetchClient();
   const canView = session.can("role.view");
   const canManage = session.can("role.manage");
-  const roles = useQuery({ queryKey: ["roles"], queryFn: apiModel.roles, enabled: canView });
-  const groups = useQuery({ queryKey: ["permission-groups"], queryFn: apiModel.permissionGroups, enabled: canView && session.can("permission.view") });
+  const roles = useFetchQuery({ queryKey: ["roles"], queryFn: apiModel.roles, enabled: canView });
+  const groups = useFetchQuery({ queryKey: ["permission-groups"], queryFn: apiModel.permissionGroups, enabled: canView && session.can("permission.view") });
   const [draft, setDraft] = useState<Record<string, Set<string>>>({});
   const [notice, setNotice] = useState("");
 
@@ -48,7 +48,7 @@ export default function RolesPage() {
     return { ...prev, [role.id]: next };
   });
 
-  const save = useMutation({
+  const save = useFetchMutation({
     mutationFn: async () => {
       for (const role of dirtyRoles) {
         const ids = [...keysOf(role)].map((k) => idByKey.get(k)).filter((id): id is string => !!id);

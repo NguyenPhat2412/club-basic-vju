@@ -23,7 +23,7 @@ function toLogin() {
   if (typeof window !== 'undefined' && window.location.pathname !== '/login') window.location.replace(new URL('/login', window.location.origin));
 }
 
-async function send(path: string, init: RequestInit = {}, retried = false): Promise<Response> {
+async function send(path: string, init: RequestInit = {}, retried = false, redirectOnUnauthorized = true): Promise<Response> {
   const method = (init.method || 'GET').toUpperCase();
   const headers: Record<string, string> = { ...(init.headers as Record<string, string> || {}) };
   if (UNSAFE.has(method)) { const token = await csrfToken(); if (token) headers['X-XSRF-TOKEN'] = token; }
@@ -32,10 +32,10 @@ async function send(path: string, init: RequestInit = {}, retried = false): Prom
     const error = await apiError(response.clone());
     if (error.code === 'CSRF_INVALID') {
       await fetch(`${API}/api/v1/auth/csrf`, { credentials: 'include' });
-      return send(path, init, true);
+      return send(path, init, true, redirectOnUnauthorized);
     }
   }
-  if (response.status === 401 && !SIGN_IN_PATHS.includes(path)) toLogin();
+  if (redirectOnUnauthorized && response.status === 401 && !SIGN_IN_PATHS.includes(path)) toLogin();
   if (!response.ok) throw await apiError(response);
   return response;
 }
@@ -43,6 +43,15 @@ async function send(path: string, init: RequestInit = {}, retried = false): Prom
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await send(path, { ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
   if (response.status === 204) return undefined as T; return response.json();
+}
+async function optionalApi<T>(path: string): Promise<T | null> {
+  try {
+    const response = await send(path, {}, false, false);
+    return response.json();
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) return null;
+    throw error;
+  }
 }
 export async function apiForm<T>(path: string, form: FormData): Promise<T> {
   return (await send(path, { method: 'POST', body: form })).json();
@@ -64,7 +73,7 @@ export const apiModel = {
   assignRole: (userId: string, body: RoleAssignmentInput) => api<UserRole>(`/users/${userId}/roles`, { method: 'POST', body: JSON.stringify(body) }),
   revokeRole: (userId: string, assignmentId: string) => api<void>(`/users/${userId}/roles/${assignmentId}`, { method: 'DELETE' }),
   updateUserStatus: (id: string, status: 'ACTIVE' | 'INACTIVE') => api<User>(`/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
-  me: () => api<User>('/auth/me'), effectivePermissions: () => api<EffectivePermission[]>('/users/me/effective-permissions'), clubs: (query = '', category = '', offset = 0, limit = 50) => api<Page<Club>>(`/clubs?${new URLSearchParams({ query, category, offset: String(offset), limit: String(limit) })}`), club: (id: string) => api<Club>(`/clubs/${id}`),
+  me: () => api<User>('/auth/me'), optionalMe: () => optionalApi<User>('/auth/me'), effectivePermissions: () => api<EffectivePermission[]>('/users/me/effective-permissions'), optionalEffectivePermissions: () => optionalApi<EffectivePermission[]>('/users/me/effective-permissions'), clubs: (query = '', category = '', offset = 0, limit = 50) => api<Page<Club>>(`/clubs?${new URLSearchParams({ query, category, offset: String(offset), limit: String(limit) })}`), club: (id: string) => api<Club>(`/clubs/${id}`),
   apply: (clubId: string, message: string) => api<Application>(`/clubs/${clubId}/applications`, { method: 'POST', body: JSON.stringify({ message }) }), myApplications: () => api<Page<ApplicationSummary>>('/users/me/applications?limit=50'), application: (id: string) => api<Application>(`/users/me/applications/${id}`), cancelApplication: (id: string) => api<Application>(`/users/me/applications/${id}/cancel`, { method: 'PATCH' }), myMemberships: () => api<Page<Membership>>('/users/me/memberships?limit=50'),
   clubApplications: (clubId: string) => api<Page<Application>>(`/clubs/${clubId}/applications?limit=50`), approve: (clubId: string, applicationId: string, note: string) => api<Application>(`/clubs/${clubId}/applications/${applicationId}/approve`, { method: 'POST', body: JSON.stringify({ reviewNote: note }) }), reject: (clubId: string, applicationId: string, note: string) => api<Application>(`/clubs/${clubId}/applications/${applicationId}/reject`, { method: 'POST', body: JSON.stringify({ reviewNote: note }) }),
   departments: (clubId: string) => api<Page<Department>>(`/clubs/${clubId}/departments?limit=50`),

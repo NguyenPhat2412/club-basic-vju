@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useFetchMutation, useFetchClient } from "@/lib/fetch-hooks";
 import { KeyRound } from "lucide-react";
 import { apiModel } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button";
 import { FormField, Input } from "@/components/ui/input";
 
 export function FirstLoginPassword({ email }: { email?: string }) {
-  const queryClient = useQueryClient();
+  const queryClient = useFetchClient();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirmation, setConfirmation] = useState("");
-  const mutation = useMutation({
+  const mutation = useFetchMutation({
     mutationFn: () => apiModel.changePassword(current, next),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["me"] }),
   });

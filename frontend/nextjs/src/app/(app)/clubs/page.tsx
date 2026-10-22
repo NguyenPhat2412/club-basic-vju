@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepFetchData, useFetchMutation, useFetchQuery, useFetchClient } from "@/lib/fetch-hooks";
 import { Building2, Compass, Mail, Search, Send, Sparkles } from "lucide-react";
 import { apiModel, Club } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
@@ -21,21 +21,21 @@ const PUBLIC_OVERVIEW: Club[] = [
 export default function ClubsPage() {
   const router = useRouter();
   const session = useOptionalSession();
-  const queryClient = useQueryClient();
+  const queryClient = useFetchClient();
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<Club | null>(null);
   const [message, setMessage] = useState("");
   const [notice, setNotice] = useState("");
 
-  const clubs = useQuery({
+  const clubs = useFetchQuery({
     queryKey: ["clubs", search, offset],
     queryFn: () => apiModel.clubs(search, "", offset, LIMIT),
-    placeholderData: keepPreviousData,
+    placeholderData: keepFetchData,
     enabled: !!session.user,
   });
 
-  const apply = useMutation({
+  const apply = useFetchMutation({
     mutationFn: () => apiModel.apply(selected!.id, message),
     onSuccess: () => {
       setNotice(`Đã gửi đơn đăng ký vào ${selected!.name}. Theo dõi tại "Đơn đăng ký của tôi".`);

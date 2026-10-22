@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, Bell, ClipboardList, Compass, ShieldCheck, UsersRound } from "lucide-react";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useFetchQueries, useFetchQuery } from "@/lib/fetch-hooks";
 import { apiModel } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 
@@ -10,15 +10,15 @@ const MANAGEMENT_PERMISSIONS = ["application.view", "application.review", "appli
 
 export default function DashboardPage() {
   const session = useOptionalSession();
-  const memberships = useQuery({ queryKey: ["dashboard", "memberships"], queryFn: apiModel.myMemberships, enabled: !!session.user });
-  const applications = useQuery({ queryKey: ["dashboard", "applications"], queryFn: apiModel.myApplications, enabled: !!session.user });
-  const notifications = useQuery({ queryKey: ["dashboard", "notifications"], queryFn: apiModel.notifications, enabled: !!session.user });
+  const memberships = useFetchQuery({ queryKey: ["dashboard", "memberships"], queryFn: apiModel.myMemberships, enabled: !!session.user });
+  const applications = useFetchQuery({ queryKey: ["dashboard", "applications"], queryFn: apiModel.myApplications, enabled: !!session.user });
+  const notifications = useFetchQuery({ queryKey: ["dashboard", "notifications"], queryFn: apiModel.notifications, enabled: !!session.user });
   const canManage = MANAGEMENT_PERMISSIONS.some(session.can);
   const canAdmin = session.can("user.view") || session.can("role.view");
   const managedClubScope = session.clubsWith(MANAGEMENT_PERMISSIONS);
-  const managedClubs = useQuery({ queryKey: ["dashboard", "manageable-clubs"], queryFn: () => apiModel.clubs("", "", 0, 100), enabled: !!session.user && canManage });
+  const managedClubs = useFetchQuery({ queryKey: ["dashboard", "manageable-clubs"], queryFn: () => apiModel.clubs("", "", 0, 100), enabled: !!session.user && canManage });
   const visibleManagedClubs = (managedClubs.data?.items ?? []).filter((club) => managedClubScope.global || managedClubScope.ids.has(club.id));
-  const reviewQueues = useQueries({ queries: visibleManagedClubs.map((club) => ({ queryKey: ["dashboard", "club-applications", club.id], queryFn: () => apiModel.clubApplications(club.id), enabled: canManage })) });
+  const reviewQueues = useFetchQueries({ queries: visibleManagedClubs.map((club) => ({ queryKey: ["dashboard", "club-applications", club.id], queryFn: () => apiModel.clubApplications(club.id), enabled: canManage })) });
   const unread = notifications.data?.items.filter((item) => !item.read).length ?? 0;
   const pending = applications.data?.items.filter((item) => item.status === "PENDING").length ?? 0;
   const pendingReview = reviewQueues.reduce((count, queue) => count + (queue.data?.items.filter((item) => item.status === "PENDING").length ?? 0), 0);

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useFetchMutation } from "@/lib/fetch-hooks";
 import { KeyRound } from "lucide-react";
 import { apiModel } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
@@ -11,7 +11,7 @@ export function ChangePasswordModal({ open, onClose }: { open: boolean; onClose:
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [done, setDone] = useState(false);
-  const mutation = useMutation({ mutationFn: () => apiModel.changePassword(current, next), onSuccess: () => { setDone(true); setCurrent(""); setNext(""); } });
+  const mutation = useFetchMutation({ mutationFn: () => apiModel.changePassword(current, next), onSuccess: () => { setDone(true); setCurrent(""); setNext(""); } });
   const close = () => { setDone(false); mutation.reset(); onClose(); };
   return (
     <ModalShell open={open} onClose={close} title="Đổi mật khẩu" icon={<KeyRound />} size="sm" onSubmit={done ? undefined : () => mutation.mutate()}

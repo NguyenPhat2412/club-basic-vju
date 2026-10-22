@@ -4,11 +4,11 @@ Frontend for the VJU Club management system. The application uses the Next.js Ap
 
 ## Run Locally
 
-Requirements: Node.js 20+ and pnpm 12 (see the `packageManager` field in `package.json`). From this directory:
+Requirements: Node.js 20+ and npm. From this directory:
 
 ```bash
-pnpm install
-pnpm dev
+npm ci
+npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). The backend should be running locally for API-backed features.
@@ -16,8 +16,8 @@ Open [http://localhost:3000](http://localhost:3000). The backend should be runni
 ## Checks
 
 ```bash
-pnpm lint
-pnpm build
+npm run lint
+npm run build
 ```
 
 For full-stack setup and backend configuration, see the repository [README](../../README.md).

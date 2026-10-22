@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepFetchData, useFetchQuery, useFetchClient } from "@/lib/fetch-hooks";
 import { Download, Eye, FileText, History, Link2, Pencil, RotateCcw, Trash2, Upload } from "lucide-react";
 import { apiModel, DocumentItem } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
@@ -28,7 +28,7 @@ function saveBlob(blob: Blob, fileName: string) {
 
 export default function DocumentsPage() {
   const session = useSession();
-  const queryClient = useQueryClient();
+  const queryClient = useFetchClient();
   const [clubId, setClubId] = useState("");
   const [trash, setTrash] = useState(false);
   const [search, setSearch] = useState("");
@@ -45,7 +45,7 @@ export default function DocumentsPage() {
   const [versionFile, setVersionFile] = useState<File | null>(null);
   const [versionInput, setVersionInput] = useState(0);
 
-  const clubs = useQuery({ queryKey: ["clubs", "documents"], queryFn: () => apiModel.clubs("", "", 0, 100), enabled: session.ready });
+  const clubs = useFetchQuery({ queryKey: ["clubs", "documents"], queryFn: () => apiModel.clubs("", "", 0, 100), enabled: session.ready });
   const scope = session.clubsWith(["document.view"]);
   const allowed = (clubs.data?.items ?? []).filter((c) => scope.global || scope.ids.has(c.id));
   const club = allowed.find((c) => c.id === clubId) ?? allowed[0];
@@ -53,18 +53,18 @@ export default function DocumentsPage() {
   const canRestore = session.canInClub("document.restore", activeClubId);
   const canUpload = session.canInClub("document.upload", activeClubId);
 
-  const documents = useQuery({
+  const documents = useFetchQuery({
     queryKey: ["documents", activeClubId, search, trash, offset],
     queryFn: () => apiModel.documents(activeClubId, { name: search, deleted: trash, offset, limit: LIMIT }),
-    enabled: !!activeClubId, placeholderData: keepPreviousData,
+    enabled: !!activeClubId, placeholderData: keepFetchData,
   });
-  const counts = useQuery({
+  const counts = useFetchQuery({
     queryKey: ["documents", activeClubId, "counts", canRestore],
     queryFn: async () => ({ live: (await apiModel.documentCount(activeClubId)).count, deleted: canRestore ? (await apiModel.documentCount(activeClubId, true)).count : 0 }),
     enabled: !!activeClubId,
   });
-  const detail = useQuery({ queryKey: ["document", detailId], queryFn: () => apiModel.documentDetail(detailId!), enabled: !!detailId });
-  const versions = useQuery({ queryKey: ["document", detailId, "versions"], queryFn: () => apiModel.documentVersions(detailId!), enabled: !!detailId && !detail.data?.deleted });
+  const detail = useFetchQuery({ queryKey: ["document", detailId], queryFn: () => apiModel.documentDetail(detailId!), enabled: !!detailId });
+  const versions = useFetchQuery({ queryKey: ["document", detailId, "versions"], queryFn: () => apiModel.documentVersions(detailId!), enabled: !!detailId && !detail.data?.deleted });
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["documents", activeClubId] });
   const run = async (action: () => Promise<unknown>, success: string) => {

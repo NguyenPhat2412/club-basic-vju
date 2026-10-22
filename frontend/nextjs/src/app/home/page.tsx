@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useFetchQuery } from "@/lib/fetch-hooks";
 import { ArrowDown, ArrowRight, Bell, BookOpen, CalendarDays, ChevronDown, Menu, UsersRound, X } from "lucide-react";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
-import { useQueryClient } from "@tanstack/react-query";
+import { useFetchClient } from "@/lib/fetch-hooks";
 import { useRouter } from "next/navigation";
 import { apiModel } from "@/lib/api";
 
@@ -23,9 +23,9 @@ const news = [
 
 export default function HomePage() {
   const session = useOptionalSession();
-  const clubsQuery = useQuery({ queryKey: ["home", "clubs"], queryFn: () => apiModel.clubs("", "", 0, 3), retry: 1, enabled: !!session.user });
+  const clubsQuery = useFetchQuery({ queryKey: ["home", "clubs"], queryFn: () => apiModel.clubs("", "", 0, 3), retry: 1, enabled: !!session.user });
   const router = useRouter();
-  const queryClient = useQueryClient();
+  const queryClient = useFetchClient();
   const [menuOpen, setMenuOpen] = useState(false);
   const featuredClubs = clubsQuery.data?.items.length ? clubsQuery.data.items.map((club, index) => ({
     category: club.activityField || "CÂU LẠC BỘ VJU",

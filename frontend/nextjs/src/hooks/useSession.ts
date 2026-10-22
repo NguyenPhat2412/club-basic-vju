@@ -1,11 +1,11 @@
 "use client";
-import { useQuery } from "@tanstack/react-query";
+import { useFetchQuery } from "@/lib/fetch-hooks";
 import { apiModel, EffectivePermission } from "@/lib/api";
 
 export function useSession() {
-  const me = useQuery({ queryKey: ["me"], queryFn: apiModel.me, staleTime: 60_000 });
+  const me = useFetchQuery({ queryKey: ["me"], queryFn: apiModel.me, staleTime: 60_000 });
   const mustChangePassword = !!me.data?.requiresPasswordChange;
-  const permissions = useQuery({ queryKey: ["me", "permissions"], queryFn: apiModel.effectivePermissions, enabled: me.isSuccess && !mustChangePassword, staleTime: 60_000 });
+  const permissions = useFetchQuery({ queryKey: ["me", "permissions"], queryFn: apiModel.effectivePermissions, enabled: me.isSuccess && !mustChangePassword, staleTime: 60_000 });
   const list = permissions.data ?? [];
   return {
     user: me.data,

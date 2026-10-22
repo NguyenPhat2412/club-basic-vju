@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useFetchMutation, useFetchQuery, useFetchClient } from "@/lib/fetch-hooks";
 import { ClipboardList, Eye, XCircle } from "lucide-react";
 import { apiModel, ApplicationSummary } from "@/lib/api";
 import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
@@ -14,12 +14,12 @@ import { Button } from "@/components/ui/button";
 import { formatDateTime, formatDay } from "@/lib/utils";
 
 export default function ApplicationsPage() {
-  const queryClient = useQueryClient();
+  const queryClient = useFetchClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
-  const list = useQuery({ queryKey: ["my-applications"], queryFn: apiModel.myApplications });
-  const detail = useQuery({ queryKey: ["my-applications", selectedId], queryFn: () => apiModel.application(selectedId!), enabled: !!selectedId });
-  const cancel = useMutation({
+  const list = useFetchQuery({ queryKey: ["my-applications"], queryFn: apiModel.myApplications });
+  const detail = useFetchQuery({ queryKey: ["my-applications", selectedId], queryFn: () => apiModel.application(selectedId!), enabled: !!selectedId });
+  const cancel = useFetchMutation({
     mutationFn: (id: string) => apiModel.cancelApplication(id),
     onSuccess: (app) => { setNotice(`Đã huỷ đơn vào ${app.clubName}.`); queryClient.invalidateQueries({ queryKey: ["my-applications"] }); },
   });

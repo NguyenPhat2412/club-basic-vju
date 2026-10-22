@@ -35,15 +35,15 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 
 ## Công nghệ
 
-| Thành phần | Công nghệ |
-|---|---|
-| Backend | Java 21, Spring Boot 4.1.1 (Web MVC, Security, OAuth2 Resource Server, Data JPA, Validation) |
-| Cơ sở dữ liệu | PostgreSQL 16, Flyway |
-| Xác thực | JWT HS256 (Nimbus), BCrypt |
-| Tài liệu API | OpenAPI 3.1, springdoc / Swagger UI |
-| Frontend | Next.js 16, React 19, TypeScript, pnpm |
-| Kiểm thử | JUnit 5, Mockito, Spring MockMvc trên PostgreSQL thật (Testcontainers); Python `unittest` cho contract |
-| Hạ tầng | Docker, Docker Compose, GitHub Actions |
+| Thành phần      | Công nghệ                                                                                                |
+| ----------------- | ---------------------------------------------------------------------------------------------------------- |
+| Backend           | Java 21, Spring Boot 4.1.1 (Web MVC, Security, OAuth2 Resource Server, Data JPA, Validation)               |
+| Cơ sở dữ liệu | PostgreSQL 16, Flyway                                                                                      |
+| Xác thực        | JWT HS256 (Nimbus), BCrypt                                                                                 |
+| Tài liệu API    | OpenAPI 3.1, springdoc / Swagger UI                                                                        |
+| Frontend          | Next.js 16, React 19, TypeScript, npm                                                                       |
+| Kiểm thử        | JUnit 5, Mockito, Spring MockMvc trên PostgreSQL thật (Testcontainers); Python `unittest` cho contract |
+| Hạ tầng         | Docker, Docker Compose, GitHub Actions                                                                     |
 
 ## Cấu trúc thư mục
 
@@ -106,6 +106,7 @@ modules/<module>/
 ```
 
 Quy ước:
+
 - **Chỉ làm việc với DTO ở ranh giới API.** Controller và interface service chỉ nhận/trả `record` trong `dto/`. Entity chỉ tồn tại bên trong service và repository.
 - **DTO là Java `record`**: ngắn gọn, bất biến, không có logic. Response DTO không biết đến entity.
 - **Chuyển entity → DTO bằng MapStruct** (`mapper/`), không dùng ModelMapper hay ObjectMapper. Mapper được sinh lúc compile và là Spring bean. Build được cấu hình `unmappedTargetPolicy=ERROR`, nên nếu thêm một trường vào DTO mà quên map thì compile sẽ báo lỗi ngay, thay vì lặng lẽ trả `null`.
@@ -114,7 +115,6 @@ Quy ước:
 - **Route công khai khai báo bằng `@PublicEndpoint`** trên handler; `SecurityConfig` tự đọc các route này, không còn danh sách URL viết cứng.
 - **JPA Auditing:** mọi entity kế thừa `TimestampedEntity` tự lưu `created_by`/`updated_by` (`@CreatedBy`/`@LastModifiedBy`, lấy từ JWT của request; NULL khi không có người đăng nhập). Thời điểm (`created_at`/`updated_at`) do Hibernate ghi.
 - **Validation** đặt trên request DTO: `@NotBlank` cho chuỗi bắt buộc, `@NotNull` cho UUID/enum/số và collection được phép rỗng, `@NotEmpty` cho collection phải có phần tử, `@Size`/`@Pattern`/`@URL` để giới hạn độ dài và định dạng. Mật khẩu dùng `@ValidPassword` (8 ký tự trở lên, tối đa 72 byte UTF-8 theo giới hạn của BCrypt).
-
 - **Service không phụ thuộc Spring Security:** controller nhận tham số `Actor` (người đang gọi, lấy từ JWT qua `ActorArgumentResolver`) và truyền xuống service. Nhờ vậy service unit test được bằng một `Actor` giả, không cần dựng security context.
 - **Kiểm tra quyền** nằm trong service và dùng chung `PermissionAuthorizationService`, vốn đọc view `effective_user_permissions` (gộp quyền trực tiếp và quyền từ vai trò).
 - **Exception theo nghiệp vụ:** module có nhiều lỗi riêng (như `document`) khai báo mỗi lỗi một lớp trong `exception/`, kế thừa `ApiException` với status và `code` cố định (ví dụ `DocumentVersionConflictException` → `409 DOCUMENT_VERSION_CONFLICT`). `GlobalExceptionHandler` xử lý chung, không cần thêm handler.
@@ -127,7 +127,7 @@ Quy ước:
 
 - JDK 21
 - Docker + Docker Compose
-- Node.js 20+ và pnpm (nếu chạy frontend)
+- Node.js 20+ và npm (nếu chạy frontend)
 - Python 3 + PyYAML (nếu chạy test contract)
 
 > Hướng dẫn chi tiết từng bước cho **macOS và Windows** (cài JDK/Docker, lệnh PowerShell/CMD, xử lý sự cố): xem [backend/springboot/README.md](backend/springboot/README.md).
@@ -163,13 +163,13 @@ Flyway tự chạy migration khi khởi động. Backend lắng nghe ở `http:/
 
 Khi `.env.local` có `DEMO_USER_PASSWORD`, backend sẽ tạo sẵn một bộ dữ liệu demo. Việc này chỉ diễn ra một lần: nếu CLB VJUA đã tồn tại thì bỏ qua.
 
-| Dữ liệu | Chi tiết |
-|---|---|
-| CLB | `VJUA` (CLB Học thuật VJU) |
-| 4 ban | Ban Truyền thông, Ban Chuyên môn, Ban Hậu cần, Ban Đối ngoại |
-| `demo.a@vju.local` | Chủ nhiệm VJUA (vai trò `CLUB_PRESIDENT`), thuộc Ban Chuyên môn |
-| `demo.b@vju.local` | Trưởng Ban Truyền thông (vai trò `DEPARTMENT_HEAD`) |
-| `demo.c@vju.local` | Thành viên Ban Truyền thông, được cấp trực tiếp `club.view` và `member.view` |
+| Dữ liệu                  | Chi tiết                                                                                              |
+| -------------------------- | ------------------------------------------------------------------------------------------------------ |
+| CLB                        | `VJUA` (CLB Học thuật VJU)                                                                         |
+| 4 ban                      | Ban Truyền thông, Ban Chuyên môn, Ban Hậu cần, Ban Đối ngoại                                  |
+| `demo.a@vju.local`       | Chủ nhiệm VJUA (vai trò `CLUB_PRESIDENT`), thuộc Ban Chuyên môn                                |
+| `demo.b@vju.local`       | Trưởng Ban Truyền thông (vai trò `DEPARTMENT_HEAD`)                                             |
+| `demo.c@vju.local`       | Thành viên Ban Truyền thông, được cấp trực tiếp `club.view` và `member.view`            |
 | `demo.student@vju.local` | Sinh viên ACTIVE chưa là thành viên, dùng để thử gửi và theo dõi đơn tuyển thành viên |
 
 Cả 4 user dùng chung mật khẩu `DEMO_USER_PASSWORD`. Dữ liệu demo không bao giờ được tạo ngoài profile `local`.
@@ -195,8 +195,8 @@ Kiểm thử toàn bộ API bằng Postman CLI: `docs/api/postman/run.sh auth` v
 
 ```bash
 cd frontend/nextjs
-pnpm install
-pnpm dev
+npm ci
+npm run dev
 ```
 
 Frontend chạy ở `http://localhost:3000`. Đây cũng là origin duy nhất mà CORS của backend cho phép.
@@ -205,23 +205,23 @@ Frontend chạy ở `http://localhost:3000`. Đây cũng là origin duy nhất m
 
 Backend đọc cấu hình từ biến môi trường:
 
-| Biến | Mặc định | Ý nghĩa |
-|---|---|---|
-| `JWT_SECRET` | *(không có, bắt buộc)* | Khoá ký JWT, tối thiểu 32 byte. Thiếu biến này thì app **không khởi động**. Profile `local` có sẵn giá trị dùng cho phát triển. |
-| `JWT_ACCESS_TOKEN_TTL` | `15m` | Thời hạn access token |
-| `JWT_REFRESH_TOKEN_TTL` | `30d` | Thời hạn refresh token |
-| `DB_URL` | `jdbc:postgresql://localhost:5432/club` | Chuỗi kết nối PostgreSQL |
-| `DB_USERNAME` / `DB_PASSWORD` | `club` / `club_local` | Tài khoản database |
-| `SERVER_PORT` | `8080` | Cổng HTTP |
-| `RATE_LIMIT_ENABLED` | `true` | Bật/tắt rate limit |
-| `RATE_LIMIT_MAX_REQUESTS` | `60` | Số request tối đa trong một cửa sổ, tính theo từng IP và từng endpoint |
-| `RATE_LIMIT_WINDOW` | `1m` | Độ dài cửa sổ rate limit |
-| `FORWARD_HEADERS_STRATEGY` | `native` | Chỉ tin `X-Forwarded-For` đến từ proxy có IP nội bộ/loopback, để rate limit thấy đúng IP người dùng khi chạy sau nginx |
-| `REFRESH_TOKEN_CLEANUP_CRON` | `0 30 3 * * *` | Lịch chạy job dọn refresh token |
-| `REFRESH_TOKEN_CLEANUP_RETENTION` | `7d` | Thời gian giữ lại refresh token đã chết trước khi xoá |
-| `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | `admin123@gmail.com` / `Admin123@` | Tạo admin ban đầu (chỉ có tác dụng ở profile `local`) |
-| `DEMO_USER_PASSWORD` | trống | Mật khẩu của 3 user demo; có giá trị thì tạo dữ liệu demo (chỉ profile `local`) |
-| `DEMO_DATA_ENABLED` | `true` | Tắt hẳn việc tạo dữ liệu demo |
+| Biến                                                    | Mặc định                               | Ý nghĩa                                                                                                                                                  |
+| -------------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `JWT_SECRET`                                           | *(không có, bắt buộc)*              | Khoá ký JWT, tối thiểu 32 byte. Thiếu biến này thì app **không khởi động**. Profile `local` có sẵn giá trị dùng cho phát triển. |
+| `JWT_ACCESS_TOKEN_TTL`                                 | `15m`                                   | Thời hạn access token                                                                                                                                    |
+| `JWT_REFRESH_TOKEN_TTL`                                | `30d`                                   | Thời hạn refresh token                                                                                                                                   |
+| `DB_URL`                                               | `jdbc:postgresql://localhost:5432/club` | Chuỗi kết nối PostgreSQL                                                                                                                                |
+| `DB_USERNAME` / `DB_PASSWORD`                        | `club` / `club_local`                 | Tài khoản database                                                                                                                                       |
+| `SERVER_PORT`                                          | `8080`                                  | Cổng HTTP                                                                                                                                                 |
+| `RATE_LIMIT_ENABLED`                                   | `true`                                  | Bật/tắt rate limit                                                                                                                                       |
+| `RATE_LIMIT_MAX_REQUESTS`                              | `60`                                    | Số request tối đa trong một cửa sổ, tính theo từng IP và từng endpoint                                                                           |
+| `RATE_LIMIT_WINDOW`                                    | `1m`                                    | Độ dài cửa sổ rate limit                                                                                                                              |
+| `FORWARD_HEADERS_STRATEGY`                             | `native`                                | Chỉ tin `X-Forwarded-For` đến từ proxy có IP nội bộ/loopback, để rate limit thấy đúng IP người dùng khi chạy sau nginx                   |
+| `REFRESH_TOKEN_CLEANUP_CRON`                           | `0 30 3 * * *`                          | Lịch chạy job dọn refresh token                                                                                                                         |
+| `REFRESH_TOKEN_CLEANUP_RETENTION`                      | `7d`                                    | Thời gian giữ lại refresh token đã chết trước khi xoá                                                                                             |
+| `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | `admin123@gmail.com` / `Admin123@`    | Tạo admin ban đầu (chỉ có tác dụng ở profile `local`)                                                                                            |
+| `DEMO_USER_PASSWORD`                                   | trống                                    | Mật khẩu của 3 user demo; có giá trị thì tạo dữ liệu demo (chỉ profile `local`)                                                               |
+| `DEMO_DATA_ENABLED`                                    | `true`                                  | Tắt hẳn việc tạo dữ liệu demo                                                                                                                        |
 
 Các biến `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT` dùng để tuỳ chỉnh container trong `docker-compose.yml`.
 
@@ -229,18 +229,18 @@ Các biến `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`
 
 Mọi route nghiệp vụ nằm dưới `/api/v1`. Chỉ đăng nhập, lấy cookie CSRF, API catalog và tài liệu API là công khai; mọi route còn lại cần cookie phiên `CLUB_SESSION`. Không có API tự đăng ký: tài khoản do admin tạo.
 
-| Nhóm | Route |
-|---|---|
-| **Auth** | `GET /auth/csrf` · `POST /auth/login` · `POST /auth/logout` · `POST /auth/change-password` · `GET /auth/me` |
-| **Users** | `GET /users/me` · `PATCH /users/me` · `GET /users` · `POST /users` (admin tạo tài khoản) · `GET /users/{userId}` · `PATCH /users/{userId}/password` (admin đặt lại mật khẩu) · `PATCH /users/{userId}/status` |
-| **Clubs** | `GET /clubs` · `POST /clubs` · `GET /clubs/{clubId}` · `PATCH /clubs/{clubId}` · `PATCH /clubs/{clubId}/status` |
-| **Departments** | `GET /clubs/{clubId}/departments` · `POST /clubs/{clubId}/departments` · `GET /departments/{id}` · `PATCH /departments/{id}` · `PATCH /departments/{id}/status` |
-| **Memberships** | `GET /clubs/{clubId}/memberships` (lọc `?status=`) · `POST /clubs/{clubId}/memberships` · `GET /memberships/{id}` · `PATCH /memberships/{id}` · `DELETE /memberships/{id}` |
-| **Department members** | `GET /departments/{id}/members` · `POST /departments/{id}/members` · `PATCH /departments/{id}/members/{membershipId}` (chuyển ban) · `DELETE /departments/{id}/members/{membershipId}` |
-| **Permissions** | `GET /permissions` · `GET /users/me/permissions` · `GET /users/{userId}/permissions` · `POST /users/{userId}/permissions` · `DELETE /users/{userId}/permissions/{permissionId}` · `GET /users/me/effective-permissions` · `GET /users/{userId}/effective-permissions` · `GET /permissions/groups` · `PUT /users/{userId}/permissions` |
-| **Roles** | `GET /roles` · `POST /roles` · `GET /roles/{roleId}` · `PATCH /roles/{roleId}` · `GET /users/me/roles` · `GET /users/{userId}/roles` · `POST /users/{userId}/roles` · `DELETE /users/{userId}/roles/{assignmentId}` |
-| **Audit** | `GET /audit-logs` (lọc theo `resourceType`, `resourceId`, `actorUserId`, `clubId`, `action`) |
-| **Khác** | `GET /api-catalog` · `GET /api-docs/phase1.yaml` |
+| Nhóm                        | Route                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Auth**               | `GET /auth/csrf` · `POST /auth/login` · `POST /auth/logout` · `POST /auth/change-password` · `GET /auth/me`                                                                                                                                                                                                                                       |
+| **Users**              | `GET /users/me` · `PATCH /users/me` · `GET /users` · `POST /users` (admin tạo tài khoản) · `GET /users/{userId}` · `PATCH /users/{userId}/password` (admin đặt lại mật khẩu) · `PATCH /users/{userId}/status`                                                                                                                       |
+| **Clubs**              | `GET /clubs` · `POST /clubs` · `GET /clubs/{clubId}` · `PATCH /clubs/{clubId}` · `PATCH /clubs/{clubId}/status`                                                                                                                                                                                                                                   |
+| **Departments**        | `GET /clubs/{clubId}/departments` · `POST /clubs/{clubId}/departments` · `GET /departments/{id}` · `PATCH /departments/{id}` · `PATCH /departments/{id}/status`                                                                                                                                                                                   |
+| **Memberships**        | `GET /clubs/{clubId}/memberships` (lọc `?status=`) · `POST /clubs/{clubId}/memberships` · `GET /memberships/{id}` · `PATCH /memberships/{id}` · `DELETE /memberships/{id}`                                                                                                                                                                     |
+| **Department members** | `GET /departments/{id}/members` · `POST /departments/{id}/members` · `PATCH /departments/{id}/members/{membershipId}` (chuyển ban) · `DELETE /departments/{id}/members/{membershipId}`                                                                                                                                                              |
+| **Permissions**        | `GET /permissions` · `GET /users/me/permissions` · `GET /users/{userId}/permissions` · `POST /users/{userId}/permissions` · `DELETE /users/{userId}/permissions/{permissionId}` · `GET /users/me/effective-permissions` · `GET /users/{userId}/effective-permissions` · `GET /permissions/groups` · `PUT /users/{userId}/permissions` |
+| **Roles**              | `GET /roles` · `POST /roles` · `GET /roles/{roleId}` · `PATCH /roles/{roleId}` · `GET /users/me/roles` · `GET /users/{userId}/roles` · `POST /users/{userId}/roles` · `DELETE /users/{userId}/roles/{assignmentId}`                                                                                                                      |
+| **Audit**              | `GET /audit-logs` (lọc theo `resourceType`, `resourceId`, `actorUserId`, `clubId`, `action`)                                                                                                                                                                                                                                                       |
+| **Khác**              | `GET /api-catalog` · `GET /api-docs/phase1.yaml`                                                                                                                                                                                                                                                                                                           |
 
 Chi tiết request/response nằm trong [docs/api/openapi.yaml](docs/api/openapi.yaml).
 
@@ -262,28 +262,28 @@ Khi kiểm tra quyền, hệ thống xét lần lượt grant cấp ban, rồi g
 
 Vai trò là một nhóm quyền. Mỗi vai trò có phạm vi hẹp nhất có thể gán; vai trò chỉ được chứa các quyền có phạm vi bằng hoặc hẹp hơn phạm vi của nó. Ví dụ, vai trò cấp CLB không chứa được `user.view`.
 
-| Vai trò hệ thống | Phạm vi | Quyền |
-|---|---|---|
-| `SYSTEM_ADMIN` | GLOBAL | Tất cả |
-| `CLUB_PRESIDENT` | CLUB | `club.view`, `club.update`, mọi quyền `department.*`, `member.*`, `department.member.*` |
-| `CLUB_VICE_PRESIDENT` | CLUB | `club.view`, `department.view`, `member.view`, `member.view_detail`, `member.add`, `member.update`, `department.member.*` |
-| `DEPARTMENT_HEAD` | DEPARTMENT | `department.update`, `department.member.*` |
-| `CLUB_MEMBER` | CLUB | `club.view`, `department.view`, `member.view` |
+| Vai trò hệ thống     | Phạm vi   | Quyền                                                                                                                                  |
+| ----------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `SYSTEM_ADMIN`        | GLOBAL     | Tất cả                                                                                                                                |
+| `CLUB_PRESIDENT`      | CLUB       | `club.view`, `club.update`, mọi quyền `department.*`, `member.*`, `department.member.*`                                     |
+| `CLUB_VICE_PRESIDENT` | CLUB       | `club.view`, `department.view`, `member.view`, `member.view_detail`, `member.add`, `member.update`, `department.member.*` |
+| `DEPARTMENT_HEAD`     | DEPARTMENT | `department.update`, `department.member.*`                                                                                          |
+| `CLUB_MEMBER`         | CLUB       | `club.view`, `department.view`, `member.view`                                                                                     |
 
 Vai trò hệ thống không sửa được qua API. Vai trò tuỳ chỉnh (tạo bằng quyền `role.manage`) có thể sửa tập quyền hoặc tắt đi, và thay đổi có hiệu lực ngay với mọi người đang giữ vai trò đó. Gán và thu hồi vai trò cần `permission.assign`/`permission.revoke`, và cũng được ghi audit log.
 
 ### Danh mục quyền
 
-| Module | Quyền (phạm vi mặc định) |
-|---|---|
-| user | `user.view`, `user.update`, `user.active`, `user.inactive` (GLOBAL) |
-| club | `club.create` (GLOBAL); `club.view`, `club.update`, `club.active`, `club.inactive` (CLUB) |
-| department | `department.view`, `department.create` (CLUB); `department.update`, `department.activate`, `department.inactive` (DEPARTMENT) |
-| member | `member.view`, `member.view_detail`, `member.add`, `member.update`, `member.remove` (CLUB) |
-| department.member | `department.member.view`, `department.member.add`, `department.member.remove` (DEPARTMENT) |
-| permission | `permission.view`, `permission.assign`, `permission.revoke` (GLOBAL) |
-| role | `role.view`, `role.manage` (GLOBAL) |
-| audit | `audit.view` (GLOBAL) |
+| Module            | Quyền (phạm vi mặc định)                                                                                                           |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| user              | `user.view`, `user.update`, `user.active`, `user.inactive` (GLOBAL)                                                             |
+| club              | `club.create` (GLOBAL); `club.view`, `club.update`, `club.active`, `club.inactive` (CLUB)                                     |
+| department        | `department.view`, `department.create` (CLUB); `department.update`, `department.activate`, `department.inactive` (DEPARTMENT) |
+| member            | `member.view`, `member.view_detail`, `member.add`, `member.update`, `member.remove` (CLUB)                                    |
+| department.member | `department.member.view`, `department.member.add`, `department.member.remove` (DEPARTMENT)                                        |
+| permission        | `permission.view`, `permission.assign`, `permission.revoke` (GLOBAL)                                                              |
+| role              | `role.view`, `role.manage` (GLOBAL)                                                                                                 |
+| audit             | `audit.view` (GLOBAL)                                                                                                                 |
 
 Chuyển thành viên sang ban khác cần `department.member.remove` ở ban nguồn **và** `department.member.add` ở ban đích.
 
@@ -297,18 +297,19 @@ Mọi lỗi trả về `application/problem+json` kèm trường `code` ổn đ�
 { "title": "CLUB_CODE_ALREADY_EXISTS", "status": 409, "detail": "Club code is already used", "code": "CLUB_CODE_ALREADY_EXISTS" }
 ```
 
-| HTTP | Mã lỗi thường gặp |
-|---|---|
-| 400 | `VALIDATION_ERROR`, `INVALID_SORT`, `CURRENT_PASSWORD_INVALID`, `PERMISSION_SCOPE_MISMATCH`, `INVALID_PERMISSION_SCOPE`, `ROLE_SCOPE_MISMATCH`, `ROLE_PERMISSION_SCOPE_MISMATCH`, `INVALID_SCOPE_TARGET`, `ROLE_INACTIVE`, `CROSS_CLUB_ASSIGNMENT`, `CROSS_CLUB_MOVE`, `SAME_DEPARTMENT`, `AMBIGUOUS_PERMISSION_GRANT` |
-| 401 | `UNAUTHORIZED`, `AUTH_TOKEN_EXPIRED` (access token hết hạn, nên gọi refresh), `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN` |
-| 403 | `PERMISSION_DENIED`, `ACCOUNT_INACTIVE` |
-| 404 | `NOT_FOUND` (route không tồn tại), `USER_NOT_FOUND`, `CLUB_NOT_FOUND`, `DEPARTMENT_NOT_FOUND`, `MEMBERSHIP_NOT_FOUND`, `CLUB_APPLICATION_NOT_FOUND`, … |
-| 405 / 415 | `METHOD_NOT_ALLOWED`, `UNSUPPORTED_MEDIA_TYPE` |
-| 409 | `EMAIL_ALREADY_EXISTS`, `STUDENT_CODE_ALREADY_EXISTS`, `CLUB_CODE_ALREADY_EXISTS`, `DEPARTMENT_NAME_ALREADY_EXISTS`, `MEMBERSHIP_ALREADY_EXISTS`, `ALREADY_CLUB_MEMBER`, `APPLICATION_ALREADY_PENDING`, `APPLICATION_ALREADY_REVIEWED`, `APPLICATION_CANNOT_BE_CANCELLED`, `DUPLICATE_MEMBERSHIP`, `CLUB_INACTIVE`, `USER_INACTIVE`, `DEPARTMENT_INACTIVE`, `MEMBERSHIP_NOT_ACTIVE`, `MEMBERSHIP_ALREADY_LEFT`, `PERMISSION_ALREADY_GRANTED`, `ROLE_ALREADY_ASSIGNED`, `ROLE_CODE_ALREADY_EXISTS`, `SYSTEM_ROLE_IMMUTABLE` |
-| 429 | `RATE_LIMIT_EXCEEDED`, kèm các header `Retry-After`, `X-RateLimit-Limit` và `X-RateLimit-Remaining` |
-| 500 | `INTERNAL_ERROR` (lỗi được ghi log ở server) |
+| HTTP      | Mã lỗi thường gặp                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 400       | `VALIDATION_ERROR`, `INVALID_SORT`, `CURRENT_PASSWORD_INVALID`, `PERMISSION_SCOPE_MISMATCH`, `INVALID_PERMISSION_SCOPE`, `ROLE_SCOPE_MISMATCH`, `ROLE_PERMISSION_SCOPE_MISMATCH`, `INVALID_SCOPE_TARGET`, `ROLE_INACTIVE`, `CROSS_CLUB_ASSIGNMENT`, `CROSS_CLUB_MOVE`, `SAME_DEPARTMENT`, `AMBIGUOUS_PERMISSION_GRANT`                                                                                                                                                                                                                 |
+| 401       | `UNAUTHORIZED`, `AUTH_TOKEN_EXPIRED` (access token hết hạn, nên gọi refresh), `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN`                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 403       | `PERMISSION_DENIED`, `ACCOUNT_INACTIVE`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 404       | `NOT_FOUND` (route không tồn tại), `USER_NOT_FOUND`, `CLUB_NOT_FOUND`, `DEPARTMENT_NOT_FOUND`, `MEMBERSHIP_NOT_FOUND`, `CLUB_APPLICATION_NOT_FOUND`, …                                                                                                                                                                                                                                                                                                                                                                                           |
+| 405 / 415 | `METHOD_NOT_ALLOWED`, `UNSUPPORTED_MEDIA_TYPE`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 409       | `EMAIL_ALREADY_EXISTS`, `STUDENT_CODE_ALREADY_EXISTS`, `CLUB_CODE_ALREADY_EXISTS`, `DEPARTMENT_NAME_ALREADY_EXISTS`, `MEMBERSHIP_ALREADY_EXISTS`, `ALREADY_CLUB_MEMBER`, `APPLICATION_ALREADY_PENDING`, `APPLICATION_ALREADY_REVIEWED`, `APPLICATION_CANNOT_BE_CANCELLED`, `DUPLICATE_MEMBERSHIP`, `CLUB_INACTIVE`, `USER_INACTIVE`, `DEPARTMENT_INACTIVE`, `MEMBERSHIP_NOT_ACTIVE`, `MEMBERSHIP_ALREADY_LEFT`, `PERMISSION_ALREADY_GRANTED`, `ROLE_ALREADY_ASSIGNED`, `ROLE_CODE_ALREADY_EXISTS`, `SYSTEM_ROLE_IMMUTABLE` |
+| 429       | `RATE_LIMIT_EXCEEDED`, kèm các header `Retry-After`, `X-RateLimit-Limit` và `X-RateLimit-Remaining`                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 500       | `INTERNAL_ERROR` (lỗi được ghi log ở server)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 Một số hành vi cần lưu ý:
+
 - Khi hai request đồng thời cùng vi phạm ràng buộc duy nhất, request thua nhận 409 với cùng mã lỗi như lúc kiểm tra thông thường, không bao giờ ra 500.
 - Với ID không tồn tại, chỉ người giữ quyền ở phạm vi `GLOBAL` nhận 404; người khác nhận 403. Nhờ vậy không ai dò được ID nào có thật.
 - Đăng nhập sai mật khẩu và dùng email không tồn tại cho ra cùng một phản hồi. Lỗi `ACCOUNT_INACTIVE` chỉ hiện khi người đăng nhập nhập đúng mật khẩu.
@@ -327,17 +328,18 @@ Các endpoint danh sách nhận `offset` (≥ 0, mặc định 0) và `limit` (1
 
 Flyway quản lý schema tại `backend/springboot/src/main/resources/db/migration/`:
 
-| Migration | Nội dung |
-|---|---|
-| `V1__create_phase1_schema.sql` | 8 bảng `users`, `clubs`, `departments`, `memberships`, `department_members`, `permissions`, `user_permissions`, `permission_audit_logs`; seed 25 quyền |
-| `V2__create_refresh_tokens.sql` | Bảng `refresh_tokens` (chỉ lưu SHA-256 của token) |
-| `V3__harden_constraints_and_indexes.sql` | Chuyển các ràng buộc nghiệp vụ xuống tầng DB và bổ sung index (chi tiết bên dưới) |
-| `V4__membership_history.sql` | Lưu lịch sử tham gia: mỗi user chỉ có tối đa một membership chưa kết thúc cho mỗi CLB |
-| `V5__roles.sql` | Bảng `roles`, `role_permissions`, `user_roles`; view `effective_user_permissions`; seed 5 vai trò hệ thống và 2 quyền `role.*` |
-| `V6__audit_log_and_membership_timestamps.sql` | Bảng `audit_logs` (chỉ được thêm, không sửa/xoá), `created_at`/`updated_at` cho membership, quyền `audit.view` |
-| `V7__club_applications.sql` | Bảng đơn đăng ký CLB, giới hạn trạng thái/nội dung, partial unique index cho đơn PENDING, 7 quyền application và audit resource `APPLICATION` |
+| Migration                                       | Nội dung                                                                                                                                                                |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `V1__create_phase1_schema.sql`                | 8 bảng `users`, `clubs`, `departments`, `memberships`, `department_members`, `permissions`, `user_permissions`, `permission_audit_logs`; seed 25 quyền |
+| `V2__create_refresh_tokens.sql`               | Bảng `refresh_tokens` (chỉ lưu SHA-256 của token)                                                                                                                  |
+| `V3__harden_constraints_and_indexes.sql`      | Chuyển các ràng buộc nghiệp vụ xuống tầng DB và bổ sung index (chi tiết bên dưới)                                                                          |
+| `V4__membership_history.sql`                  | Lưu lịch sử tham gia: mỗi user chỉ có tối đa một membership chưa kết thúc cho mỗi CLB                                                                       |
+| `V5__roles.sql`                               | Bảng `roles`, `role_permissions`, `user_roles`; view `effective_user_permissions`; seed 5 vai trò hệ thống và 2 quyền `role.*`                           |
+| `V6__audit_log_and_membership_timestamps.sql` | Bảng `audit_logs` (chỉ được thêm, không sửa/xoá), `created_at`/`updated_at` cho membership, quyền `audit.view`                                         |
+| `V7__club_applications.sql`                   | Bảng đơn đăng ký CLB, giới hạn trạng thái/nội dung, partial unique index cho đơn PENDING, 7 quyền application và audit resource `APPLICATION`           |
 
 Ràng buộc được đặt ngay ở tầng database, nên dữ liệu sai bị chặn kể cả khi ghi bằng SQL trực tiếp hoặc khi nhiều request chạy đồng thời:
+
 - **Duy nhất, không phân biệt hoa thường:** email, mã sinh viên, mã CLB, và tên ban trong một CLB (unique index trên `lower(...)`). Mỗi user chỉ có tối đa một membership **chưa kết thúc** trong một CLB; các membership đã `LEFT` được giữ làm lịch sử.
 - **Thành viên ban luôn cùng CLB:** `department_members.club_id` được ràng buộc bằng khoá ngoại ghép tới cả `departments(id, club_id)` lẫn `memberships(id, club_id)`, nên không thể xếp người vào ban của CLB khác.
 - **CHECK** cho các cột trạng thái; cho quan hệ scope ↔ `club_id`/`department_id`; cho quy tắc `left_at` có giá trị **khi và chỉ khi** membership ở trạng thái `LEFT`; cho `permission_key = module.action`; và cho quy tắc `revoked_by` chỉ có khi đã có `revoked_at`.

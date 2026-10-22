@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useFetchMutation, useFetchClient } from "@/lib/fetch-hooks";
 import { ArrowLeft, LockKeyhole, UserRound } from "lucide-react";
 import { apiModel } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
@@ -15,13 +15,13 @@ import { describeError } from "@/components/shared/ListPage";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const queryClient = useQueryClient();
+  const queryClient = useFetchClient();
   const session = useSession();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [notice, setNotice] = useState("");
-  const change = useMutation({
+  const change = useFetchMutation({
     mutationFn: () => apiModel.changePassword(currentPassword, newPassword),
     onSuccess: () => { setNotice("Mật khẩu đã được thay đổi thành công."); setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); queryClient.invalidateQueries({ queryKey: ["me"] }); },
   });

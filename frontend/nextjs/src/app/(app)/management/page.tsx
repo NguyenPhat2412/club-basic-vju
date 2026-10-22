@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useFetchMutation, useFetchQueries, useFetchQuery, useFetchClient } from "@/lib/fetch-hooks";
 import { Check, ClipboardList, Eye, ShieldCheck, UserRound, X } from "lucide-react";
 import { apiModel, Application, Department, Membership } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
@@ -20,7 +20,7 @@ const MANAGE_KEYS = ["application.view", "application.review", "application.appr
 
 export default function ManagementPage() {
   const session = useSession();
-  const queryClient = useQueryClient();
+  const queryClient = useFetchClient();
   const nameOf = useUserNames(session.can("user.view"));
   const [clubId, setClubId] = useState("");
   const [tab, setTab] = useState<"applications" | "members">("applications");
@@ -30,17 +30,17 @@ export default function ManagementPage() {
   const [memberId, setMemberId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
 
-  const clubs = useQuery({ queryKey: ["clubs", "manage"], queryFn: () => apiModel.clubs("", "", 0, 100), enabled: session.ready });
+  const clubs = useFetchQuery({ queryKey: ["clubs", "manage"], queryFn: () => apiModel.clubs("", "", 0, 100), enabled: session.ready });
   const scope = session.clubsWith(MANAGE_KEYS);
   const manageable = (clubs.data?.items ?? []).filter((c) => scope.global || scope.ids.has(c.id));
   const currentClub = manageable.find((c) => c.id === clubId) ?? manageable[0];
   const activeClubId = currentClub?.id ?? "";
 
-  const apps = useQuery({ queryKey: ["club-applications", activeClubId], queryFn: () => apiModel.clubApplications(activeClubId), enabled: !!activeClubId });
-  const members = useQuery({ queryKey: ["club-members", activeClubId], queryFn: () => apiModel.clubMemberships(activeClubId), enabled: !!activeClubId && tab === "members" });
-  const departments = useQuery({ queryKey: ["departments", activeClubId], queryFn: () => apiModel.departments(activeClubId), enabled: !!activeClubId && tab === "members" });
+  const apps = useFetchQuery({ queryKey: ["club-applications", activeClubId], queryFn: () => apiModel.clubApplications(activeClubId), enabled: !!activeClubId });
+  const members = useFetchQuery({ queryKey: ["club-members", activeClubId], queryFn: () => apiModel.clubMemberships(activeClubId), enabled: !!activeClubId && tab === "members" });
+  const departments = useFetchQuery({ queryKey: ["departments", activeClubId], queryFn: () => apiModel.departments(activeClubId), enabled: !!activeClubId && tab === "members" });
   const activeDepartments = (departments.data?.items ?? []).filter((d) => d.status === "ACTIVE");
-  const assignmentQueries = useQueries({ queries: activeDepartments.map((d) => ({ queryKey: ["department-members", d.id], queryFn: () => apiModel.departmentMembers(d.id) })) });
+  const assignmentQueries = useFetchQueries({ queries: activeDepartments.map((d) => ({ queryKey: ["department-members", d.id], queryFn: () => apiModel.departmentMembers(d.id) })) });
   const assignmentData = assignmentQueries.map((q) => q.data);
   const departmentsByMember = useMemo(() => {
     const result: Record<string, Department[]> = {};
@@ -48,13 +48,13 @@ export default function ManagementPage() {
     return result;
   }, [activeDepartments, assignmentData]);
 
-  const memberDetail = useQuery({ queryKey: ["membership", memberId], queryFn: () => apiModel.membership(memberId!), enabled: !!memberId });
+  const memberDetail = useFetchQuery({ queryKey: ["membership", memberId], queryFn: () => apiModel.membership(memberId!), enabled: !!memberId });
 
   const refreshMembers = () => {
     queryClient.invalidateQueries({ queryKey: ["club-members", activeClubId] });
     queryClient.invalidateQueries({ queryKey: ["department-members"] });
   };
-  const reviewMutation = useMutation({
+  const reviewMutation = useFetchMutation({
     mutationFn: ({ app, approve }: { app: Application; approve: boolean }) =>
       approve ? apiModel.approve(activeClubId, app.id, note) : apiModel.reject(activeClubId, app.id, note),
     onSuccess: (_, { approve }) => {
@@ -64,9 +64,9 @@ export default function ManagementPage() {
       refreshMembers();
     },
   });
-  const assign = useMutation({ mutationFn: ({ departmentId, membershipId }: { departmentId: string; membershipId: string }) => apiModel.addDepartmentMember(departmentId, membershipId), onSuccess: refreshMembers });
-  const unassign = useMutation({ mutationFn: ({ departmentId, membershipId }: { departmentId: string; membershipId: string }) => apiModel.removeDepartmentMember(departmentId, membershipId), onSuccess: refreshMembers });
-  const status = useMutation({
+  const assign = useFetchMutation({ mutationFn: ({ departmentId, membershipId }: { departmentId: string; membershipId: string }) => apiModel.addDepartmentMember(departmentId, membershipId), onSuccess: refreshMembers });
+  const unassign = useFetchMutation({ mutationFn: ({ departmentId, membershipId }: { departmentId: string; membershipId: string }) => apiModel.removeDepartmentMember(departmentId, membershipId), onSuccess: refreshMembers });
+  const status = useFetchMutation({
     mutationFn: ({ id, value }: { id: string; value: string }) => apiModel.updateMembership(id, value),
     onSuccess: () => { setNotice("Đã cập nhật trạng thái thành viên."); refreshMembers(); queryClient.invalidateQueries({ queryKey: ["membership", memberId] }); },
   });

@@ -1,5 +1,5 @@
 "use client";
-import { useQuery } from "@tanstack/react-query";
+import { useFetchQuery } from "@/lib/fetch-hooks";
 import { X } from "lucide-react";
 import { apiModel, Club, Role, RoleAssignmentInput, Scope } from "@/lib/api";
 import { FormField, Select } from "@/components/ui/input";
@@ -35,8 +35,8 @@ export function toAssignment(draft: RoleDraft, roles: Role[]): RoleAssignmentInp
 }
 
 export function useRoleOptions(enabled = true) {
-  const roles = useQuery({ queryKey: ["roles"], queryFn: apiModel.roles, enabled, staleTime: 60_000 });
-  const clubs = useQuery({ queryKey: ["clubs", "all"], queryFn: () => apiModel.clubs("", "", 0, 100), enabled, staleTime: 60_000 });
+  const roles = useFetchQuery({ queryKey: ["roles"], queryFn: apiModel.roles, enabled, staleTime: 60_000 });
+  const clubs = useFetchQuery({ queryKey: ["clubs", "all"], queryFn: () => apiModel.clubs("", "", 0, 100), enabled, staleTime: 60_000 });
   return {
     roles: (roles.data ?? []).filter((r) => r.active),
     clubs: clubs.data?.items ?? [],
@@ -53,7 +53,7 @@ export function RolePicker({ value, onChange, roles, clubs, onRemove }: {
 }) {
   const role = roles.find((r) => r.id === value.roleId);
   const needsClub = role?.scope === "CLUB" || role?.scope === "DEPARTMENT";
-  const departments = useQuery({
+  const departments = useFetchQuery({
     queryKey: ["departments", value.clubId],
     queryFn: () => apiModel.departments(value.clubId),
     enabled: role?.scope === "DEPARTMENT" && !!value.clubId,

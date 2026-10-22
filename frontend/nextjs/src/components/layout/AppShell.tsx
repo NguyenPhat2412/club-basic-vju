@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useFetchClient } from "@/lib/fetch-hooks";
 import { Bell, BookOpen, ChevronDown, ClipboardList, Compass, KeyRound, LogOut, Menu, ShieldCheck, Users, UsersRound, X } from "lucide-react";
 import { apiModel } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
@@ -15,7 +15,7 @@ type NavLink = { href: string; label: string; icon: ReactNode; visible?: boolean
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const queryClient = useQueryClient();
+  const queryClient = useFetchClient();
   const session = useOptionalSession();
   const publicClubRoute = pathname === "/clubs";
   const [menuOpen, setMenuOpen] = useState(false);

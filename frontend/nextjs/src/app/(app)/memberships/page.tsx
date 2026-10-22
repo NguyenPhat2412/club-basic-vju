@@ -1,5 +1,5 @@
 "use client";
-import { useQuery } from "@tanstack/react-query";
+import { useFetchQuery } from "@/lib/fetch-hooks";
 import { UsersRound } from "lucide-react";
 import { apiModel } from "@/lib/api";
 import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
@@ -10,7 +10,7 @@ import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
 import { formatDay } from "@/lib/utils";
 
 export default function MembershipsPage() {
-  const list = useQuery({ queryKey: ["my-memberships"], queryFn: apiModel.myMemberships });
+  const list = useFetchQuery({ queryKey: ["my-memberships"], queryFn: apiModel.myMemberships });
   return (
     <ListPage title="CLB đã tham gia">
       <BreadcrumbToolbar crumbs={[{ label: "Trang chủ", href: "/clubs" }, { label: "Câu lạc bộ" }, { label: "CLB đã tham gia" }]}

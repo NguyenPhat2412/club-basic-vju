@@ -1,5 +1,5 @@
 "use client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useFetchMutation, useFetchQuery, useFetchClient } from "@/lib/fetch-hooks";
 import { Bell, CheckCheck } from "lucide-react";
 import { apiModel } from "@/lib/api";
 import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
@@ -11,9 +11,9 @@ import { Badge, CountBadge } from "@/components/ui/badge";
 import { formatDay, formatTime } from "@/lib/utils";
 
 export default function NotificationsPage() {
-  const queryClient = useQueryClient();
-  const list = useQuery({ queryKey: ["notifications"], queryFn: apiModel.notifications });
-  const markRead = useMutation({ mutationFn: apiModel.markNotificationRead, onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }) });
+  const queryClient = useFetchClient();
+  const list = useFetchQuery({ queryKey: ["notifications"], queryFn: apiModel.notifications });
+  const markRead = useFetchMutation({ mutationFn: apiModel.markNotificationRead, onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }) });
   const unread = list.data?.items.filter((n) => !n.read).length ?? 0;
   return (
     <ListPage title="Thông báo">

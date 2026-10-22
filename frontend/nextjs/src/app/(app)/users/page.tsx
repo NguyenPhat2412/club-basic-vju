@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepFetchData, useFetchMutation, useFetchQuery, useFetchClient } from "@/lib/fetch-hooks";
 import { Eye, KeyRound, Lock, LockOpen, Plus, ShieldCheck, Trash2, UserPlus, Users } from "lucide-react";
 import { apiModel, User, UserRole } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
@@ -31,7 +31,7 @@ function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: (v
 
 export default function UsersPage() {
   const session = useSession();
-  const queryClient = useQueryClient();
+  const queryClient = useFetchClient();
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
   const [creating, setCreating] = useState(false);
@@ -45,16 +45,16 @@ export default function UsersPage() {
   const [detail, setDetail] = useState<User | null>(null);
   const [notice, setNotice] = useState("");
 
-  const users = useQuery({ queryKey: ["users", search, offset], queryFn: () => apiModel.users(search, offset, LIMIT), placeholderData: keepPreviousData, enabled: session.can("user.view") });
+  const users = useFetchQuery({ queryKey: ["users", search, offset], queryFn: () => apiModel.users(search, offset, LIMIT), placeholderData: keepFetchData, enabled: session.can("user.view") });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["users"] });
   const canAssign = session.can("permission.assign");
   const options = useRoleOptions(canAssign);
   const pendingRoles = roleDrafts.map((d) => toAssignment(d, options.roles));
   const rolesIncomplete = pendingRoles.some((r) => r === null);
-  const detailRoles = useQuery({ queryKey: ["user-roles", detail?.id], queryFn: () => apiModel.userRoles(detail!.id), enabled: !!detail && session.can("permission.view") });
+  const detailRoles = useFetchQuery({ queryKey: ["user-roles", detail?.id], queryFn: () => apiModel.userRoles(detail!.id), enabled: !!detail && session.can("permission.view") });
   const clubName = (id?: string) => options.clubs.find((c) => c.id === id)?.name ?? id;
 
-  const create = useMutation({
+  const create = useFetchMutation({
     mutationFn: () => apiModel.createUser({
       email: form.email, fullName: form.fullName, password: form.password, studentCode: form.studentCode || undefined, phone: form.phone || undefined,
       requiresPasswordChange: forceChange, roles: pendingRoles.filter((r) => r !== null),
@@ -64,20 +64,20 @@ export default function UsersPage() {
       setCreating(false); setForm(EMPTY_FORM); setRoleDrafts([]); setForceChange(true); refresh();
     },
   });
-  const reset = useMutation({
+  const reset = useFetchMutation({
     mutationFn: () => apiModel.resetPassword(resetFor!.id, newPassword, resetForceChange),
     onSuccess: () => { setNotice(`Đã đặt lại mật khẩu cho ${resetFor!.email}. Mọi phiên đăng nhập cũ của người này đã bị đăng xuất.`); setResetFor(null); setNewPassword(""); setResetForceChange(true); },
   });
-  const lock = useMutation({
+  const lock = useFetchMutation({
     mutationFn: (user: User) => apiModel.updateUserStatus(user.id, user.status === "ACTIVE" ? "INACTIVE" : "ACTIVE"),
     onSuccess: (user) => { setNotice(user.status === "ACTIVE" ? `Đã mở khoá ${user.email}.` : `Đã khoá ${user.email} và đăng xuất mọi phiên.`); setDetail(null); refresh(); },
   });
 
-  const assign = useMutation({
+  const assign = useFetchMutation({
     mutationFn: () => apiModel.assignRole(detail!.id, toAssignment(assignDraft, options.roles)!),
     onSuccess: () => { setAssignDraft(EMPTY_ROLE_DRAFT); detailRoles.refetch(); },
   });
-  const revoke = useMutation({
+  const revoke = useFetchMutation({
     mutationFn: (assignment: UserRole) => apiModel.revokeRole(assignment.userId, assignment.id),
     onSuccess: () => detailRoles.refetch(),
   });
