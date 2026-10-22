@@ -1,6 +1,6 @@
 # club-basic-vju
 
-Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt Nhật (VJU): quản lý tài khoản, câu lạc bộ, ban, thành viên và phân quyền chi tiết theo phạm vi.
+Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt Nhật (VJU) gồm các chức năng: quản lý tài khoản, câu lạc bộ, ban, thành viên và phân quyền chi tiết theo phạm vi.
 
 > **Trạng thái:** Phase 2 đã hoàn thiện luồng khám phá CLB → đăng ký → xét duyệt → membership → phân ban → thông báo và audit. Backend có automated unit/integration/acceptance tests; frontend Next.js có các màn hình student và management tương ứng.
 
