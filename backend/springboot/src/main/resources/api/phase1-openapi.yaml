@@ -114,8 +114,11 @@ paths:
       security: []
       description: 'Nhận ID token (credential) mà nút "Sign in with Google" trả cho trình duyệt. Backend kiểm tra
         chữ ký với khoá công khai của Google, iss, aud (= GOOGLE_CLIENT_ID), hạn dùng, email_verified, có hd
-        (tài khoản do trường quản lý) và email thuộc tên miền cho phép. Chỉ đăng nhập được email đã được admin
-        cấp tài khoản; không tự tạo tài khoản. Lần đầu gắn tài khoản với Google ID (sub); về sau Google ID khác
+        (tài khoản do trường quản lý) và email thuộc tên miền cho phép. Email trường chưa có tài khoản thì lần
+        đăng nhập đầu tự tạo một tài khoản sinh viên thường (họ tên và ảnh lấy từ Google; phần trước @ là mã sinh
+        viên nếu là dãy số và chưa ai dùng), không có vai trò hay CLB nào; vào CLB bằng cách nộp đơn. Đặt
+        GOOGLE_CREATE_ACCOUNTS=false thì chỉ email admin đã tạo mới vào được (403 GOOGLE_ACCOUNT_NOT_REGISTERED).
+        Lần đầu gắn tài khoản với Google ID (sub); về sau Google ID khác
         cùng email bị từ chối. Thành công thì đặt cookie phiên CLUB_SESSION như /auth/login. Cần header
         X-XSRF-TOKEN; giới hạn số lần như /auth/login. Lỗi: 401 GOOGLE_TOKEN_INVALID, 403 GOOGLE_DOMAIN_NOT_ALLOWED,
         403 GOOGLE_ACCOUNT_NOT_REGISTERED, 403 GOOGLE_ACCOUNT_MISMATCH, 403 ACCOUNT_INACTIVE, 404 GOOGLE_SIGN_IN_DISABLED.'

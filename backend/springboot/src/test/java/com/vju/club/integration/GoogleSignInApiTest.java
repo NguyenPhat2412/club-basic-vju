@@ -30,7 +30,7 @@ class GoogleSignInApiTest extends ApiIntegrationTest {
     @MockitoBean GoogleIdTokenVerifier verifier;
 
     private void google(String credential, String subject, String email, boolean verified, String hostedDomain) {
-        when(verifier.verify(credential)).thenReturn(new GoogleIdentity(subject, email, verified, hostedDomain));
+        when(verifier.verify(credential)).thenReturn(new GoogleIdentity(subject, email, verified, hostedDomain, null, null));
     }
 
     private MockHttpServletResponse signIn(String credential) throws Exception {
@@ -82,10 +82,47 @@ class GoogleSignInApiTest extends ApiIntegrationTest {
     }
 
     @Test
-    void schoolAccountsWithoutAnIssuedAccountAreTurnedAway() throws Exception {
-        google("stranger", "google-sub-9", "stranger@st.vju.ac.vn", true, "st.vju.ac.vn");
-        refused("stranger", 403, "GOOGLE_ACCOUNT_NOT_REGISTERED");
-        assertThat(count("SELECT count(*) FROM users WHERE email = 'stranger@st.vju.ac.vn'")).isZero();
+    void aStudentSigningInForTheFirstTimeGetsAPlainAccount() throws Exception {
+        when(verifier.verify("first")).thenReturn(new GoogleIdentity("google-sub-7", "23110209@st.vju.ac.vn", true,
+                "st.vju.ac.vn", "Nguyễn Xuân Phát", "https://lh3.googleusercontent.com/a/photo"));
+        MockHttpServletResponse response = signIn("first");
+        assertThat(response.getStatus()).as(response.getContentAsString()).isEqualTo(200);
+        JsonNode me = call(get("/api/v1/auth/me"), TestSessions.fromResponse(response), null, 200);
+        assertThat(me.path("email").asText()).isEqualTo("23110209@st.vju.ac.vn");
+        assertThat(me.path("fullName").asText()).isEqualTo("Nguyễn Xuân Phát");
+        assertThat(me.path("studentCode").asText()).isEqualTo("23110209");
+        assertThat(me.path("avatarUrl").asText()).isEqualTo("https://lh3.googleusercontent.com/a/photo");
+        assertThat(me.path("requiresPasswordChange").asBoolean()).isFalse();
+        UUID id = UUID.fromString(me.path("id").asText());
+
+        assertThat(count("SELECT count(*) FROM user_permissions WHERE user_id = ?", id)).isZero();
+        assertThat(count("SELECT count(*) FROM user_roles WHERE user_id = ?", id)).isZero();
+        assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ?", id)).isZero();
+        assertThat(count("SELECT count(*) FROM audit_logs WHERE action = 'USER_CREATED' AND resource_id = ?", id)).isEqualTo(1);
+
+        assertThat(signIn("first").getStatus()).isEqualTo(200);
+        assertThat(count("SELECT count(*) FROM users WHERE email = '23110209@st.vju.ac.vn'")).isEqualTo(1);
+    }
+
+    @Test
+    void theNewStudentCanBrowseClubsAndApply() throws Exception {
+        google("first", "google-sub-8", "binh.tran@st.vju.ac.vn", true, "st.vju.ac.vn");
+        String session = TestSessions.fromResponse(signIn("first"));
+        assertThat(call(get("/api/v1/clubs"), session, null, 200).path("total").asInt()).isPositive();
+        call(post("/api/v1/clubs/" + clubA + "/applications"), session, Map.of("message", "Em muốn tham gia CLB"), 201);
+        assertThat(count("SELECT count(*) FROM memberships m JOIN users u ON u.id = m.user_id "
+                + "WHERE u.email = 'binh.tran@st.vju.ac.vn'")).isZero();
+        JsonNode created = call(get("/api/v1/auth/me"), session, null, 200);
+        assertThat(created.path("studentCode").isNull()).isTrue();
+        assertThat(created.path("fullName").asText()).isEqualTo("binh.tran");
+    }
+
+    @Test
+    void aTakenStudentCodeIsNotCopiedFromTheEmail() throws Exception {
+        db.update("UPDATE users SET student_code = '23110209' WHERE id = ?", member);
+        google("first", "google-sub-9", "23110209@st.vju.ac.vn", true, "st.vju.ac.vn");
+        String session = TestSessions.fromResponse(signIn("first"));
+        assertThat(call(get("/api/v1/auth/me"), session, null, 200).path("studentCode").isNull()).isTrue();
     }
 
     @Test

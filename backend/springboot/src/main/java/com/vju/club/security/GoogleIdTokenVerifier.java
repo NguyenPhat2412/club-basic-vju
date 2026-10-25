@@ -40,6 +40,7 @@ public class GoogleIdTokenVerifier {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "GOOGLE_TOKEN_INVALID", "Google sign-in token is invalid or expired");
         }
         return new GoogleIdentity(jwt.getSubject(), jwt.getClaimAsString("email"),
-                Boolean.TRUE.equals(jwt.getClaimAsBoolean("email_verified")), jwt.getClaimAsString("hd"));
+                Boolean.TRUE.equals(jwt.getClaimAsBoolean("email_verified")), jwt.getClaimAsString("hd"),
+                jwt.getClaimAsString("name"), jwt.getClaimAsString("picture"));
     }
 }

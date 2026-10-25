@@ -24,9 +24,10 @@ Biến môi trường nằm ở `/srv/vju-club/deploy/.env` (quyền 600, không
 Email `@st.vju.ac.vn` chạy trên Google Workspace của trường. Khi bật tính năng:
 
 - Sinh viên bấm **"Đăng nhập bằng Google"** và dùng chính tài khoản email trường; hệ thống không lưu mật khẩu của họ.
-- Chỉ email **đã được admin tạo tài khoản** mới vào được. Email trường chưa được cấp sẽ bị từ chối; hệ thống không tự tạo tài khoản.
+- Sinh viên **không cần admin tạo trước**: lần đầu đăng nhập bằng Google, hệ thống tự tạo một tài khoản sinh viên thường (họ tên, ảnh lấy từ Google; mã sinh viên lấy từ phần trước `@` nếu là dãy số). Tài khoản mới không có vai trò hay CLB nào; muốn vào CLB thì nộp đơn, CLB duyệt là thành thành viên.
+- Muốn quay lại kiểu "chỉ email admin đã tạo mới vào được" thì đặt `GOOGLE_CREATE_ACCOUNTS=false`.
 - Email `@st.vju.ac.vn` không đăng nhập được bằng ô mật khẩu nữa. Admin và cán bộ (email khác) vẫn đăng nhập bằng mật khẩu như cũ.
-- Admin tạo tài khoản sinh viên không cần nhập mật khẩu. Tài khoản có mã sinh viên phải dùng email `@st.vju.ac.vn`.
+- Admin vẫn có thể tạo trước tài khoản sinh viên (không cần mật khẩu). Tài khoản có mã sinh viên phải dùng email `@st.vju.ac.vn`.
 - Lần đăng nhập đầu, tài khoản được gắn với Google ID của sinh viên; về sau một tài khoản Google khác dùng lại cùng địa chỉ sẽ bị chặn.
 
 ### Tạo OAuth Client ID (làm một lần)

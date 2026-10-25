@@ -30,14 +30,20 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private static final Pattern STUDENT_CODE = Pattern.compile("\\d{6,12}");
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
@@ -89,8 +95,7 @@ public class AuthServiceImpl implements AuthService {
             throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_DOMAIN_NOT_ALLOWED",
                     "Only school Google accounts can sign in");
         }
-        User user = userRepository.findByEmailIgnoreCase(email).orElseThrow(() -> new ApiException(
-                HttpStatus.FORBIDDEN, "GOOGLE_ACCOUNT_NOT_REGISTERED", "No account has been issued for this email"));
+        User user = userRepository.findByEmailIgnoreCase(email).orElseGet(() -> createStudent(identity, email));
         if (user.getGoogleSubject() != null && !user.getGoogleSubject().equals(identity.subject())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_ACCOUNT_MISMATCH",
                     "This account is linked to a different Google account");
@@ -105,6 +110,34 @@ public class AuthServiceImpl implements AuthService {
                 Map.of("email", saved.getEmail(), "method", "google"));
         ClubPrincipal principal = new ClubPrincipal(saved.getId(), saved.getEmail(), null, true);
         return new SignedIn(principal, new AuthResponse(userMapper.toResponse(saved)));
+    }
+
+    private User createStudent(GoogleIdentity identity, String email) {
+        if (!googleSignIn.isCreateAccounts()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_ACCOUNT_NOT_REGISTERED",
+                    "No account has been issued for this email");
+        }
+        String localPart = email.substring(0, email.indexOf('@'));
+        String name = identity.name() == null || identity.name().isBlank() ? localPart : identity.name().trim();
+        byte[] secret = new byte[32];
+        RANDOM.nextBytes(secret);
+        User user = new User();
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(Base64.getEncoder().encodeToString(secret)));
+        user.setFullName(name.length() > 200 ? name.substring(0, 200) : name);
+        if (STUDENT_CODE.matcher(localPart).matches() && !userRepository.existsByStudentCodeIgnoreCase(localPart)) {
+            user.setStudentCode(localPart);
+        }
+        String picture = identity.picture();
+        if (picture != null && picture.startsWith("https://") && picture.length() <= 500) {
+            user.setAvatarUrl(picture);
+        }
+        user.setStatus(UserStatus.ACTIVE);
+        user.setRequiresPasswordChange(false);
+        User saved = userRepository.saveAndFlush(user);
+        auditService.record(saved.getId(), AuditAction.USER_CREATED, saved.getId(), null, null,
+                Map.of("email", saved.getEmail(), "source", "google"));
+        return saved;
     }
 
     @Override

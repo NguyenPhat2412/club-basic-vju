@@ -47,7 +47,9 @@ class GoogleIdTokenVerifierTest {
                 .expirationTime(Date.from(now.plusSeconds(3600)))
                 .claim("email", "an.nguyen@st.vju.ac.vn")
                 .claim("email_verified", true)
-                .claim("hd", "st.vju.ac.vn");
+                .claim("hd", "st.vju.ac.vn")
+                .claim("name", "Nguyễn Xuân Phát")
+                .claim("picture", "https://lh3.googleusercontent.com/a/photo");
         customize.accept(claims);
         SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.RS256), claims.build());
         jwt.sign(new RSASSASigner(key.getPrivate()));
@@ -62,7 +64,8 @@ class GoogleIdTokenVerifierTest {
     @Test
     void readsTheIdentityFromAGenuineToken() throws Exception {
         GoogleIdentity identity = verifier.verify(token(google, claims -> { }));
-        assertThat(identity).isEqualTo(new GoogleIdentity("109876543210", "an.nguyen@st.vju.ac.vn", true, "st.vju.ac.vn"));
+        assertThat(identity).isEqualTo(new GoogleIdentity("109876543210", "an.nguyen@st.vju.ac.vn", true, "st.vju.ac.vn",
+                "Nguyễn Xuân Phát", "https://lh3.googleusercontent.com/a/photo"));
     }
 
     @Test

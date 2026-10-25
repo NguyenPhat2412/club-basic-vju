@@ -57,6 +57,7 @@ services:
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?set R2_SECRET_ACCESS_KEY}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_ALLOWED_DOMAINS: ${GOOGLE_ALLOWED_DOMAINS:-st.vju.ac.vn}
+      GOOGLE_CREATE_ACCOUNTS: ${GOOGLE_CREATE_ACCOUNTS:-true}
       AI_BASE_URL: ${AI_BASE_URL:-https://router.anhchau.all1.vn/v1}
       AI_API_KEY: ${AI_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-apmarket}

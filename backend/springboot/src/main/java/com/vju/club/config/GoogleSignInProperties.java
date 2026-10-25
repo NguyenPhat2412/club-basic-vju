@@ -14,6 +14,7 @@ public class GoogleSignInProperties {
     private String clientId = "";
     private List<String> allowedDomains = List.of("st.vju.ac.vn");
     private String jwkSetUri = "https://www.googleapis.com/oauth2/v3/certs";
+    private boolean createAccounts = true;
 
     public boolean isEnabled() {
         return clientId != null && !clientId.isBlank();

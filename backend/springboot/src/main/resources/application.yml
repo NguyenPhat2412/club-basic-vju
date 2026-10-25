@@ -60,12 +60,15 @@ app:
   session:
     cookie-secure: ${SESSION_COOKIE_SECURE:true}
   # Sign in with a school Google account. Off while GOOGLE_CLIENT_ID is empty. When on, emails on the
-  # allowed domains must sign in with Google (password login is refused for them), new accounts on those
-  # domains need no password, and an account with a student code must use one of those domains.
+  # allowed domains must sign in with Google (password login is refused for them), accounts on those domains
+  # need no password, and an account with a student code must use one of those domains.
   auth:
     google:
       client-id: ${GOOGLE_CLIENT_ID:}
       allowed-domains: ${GOOGLE_ALLOWED_DOMAINS:st.vju.ac.vn}
+      # true: a school account signs in on its own the first time (a plain student; clubs are joined by
+      # application). false: only addresses an admin created beforehand can sign in.
+      create-accounts: ${GOOGLE_CREATE_ACCOUNTS:true}
   rate-limit:
     enabled: ${RATE_LIMIT_ENABLED:true}
     max-requests: ${RATE_LIMIT_MAX_REQUESTS:60}
