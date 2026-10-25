@@ -41,10 +41,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private boolean isRateLimitedEndpoint(HttpServletRequest request) {
-        if (!"POST".equalsIgnoreCase(request.getMethod())) return false;
-        return switch (request.getRequestURI()) {
-            case "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh-token" -> true;
-            default -> false;
-        };
+        return "POST".equalsIgnoreCase(request.getMethod()) && "/api/v1/auth/login".equals(request.getRequestURI());
     }
 }

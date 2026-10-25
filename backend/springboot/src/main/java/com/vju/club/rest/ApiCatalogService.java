@@ -13,7 +13,6 @@ import java.util.Map;
 
 @Service
 public class ApiCatalogService {
-
     private final List<ApiCatalogEntry> entries;
 
     public ApiCatalogService() {

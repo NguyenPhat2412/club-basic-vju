@@ -1,24 +1,19 @@
 package com.vju.club.security;
 
+import lombok.RequiredArgsConstructor;
+import com.vju.club.modules.permission.entity.Permission;
+
 import com.vju.club.error.ApiException;
-import com.vju.club.repository.UserPermissionRepository;
+import com.vju.club.modules.permission.repository.UserPermissionRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
-/**
- * Answers "may this actor do X here?". A permission counts when granted directly or through an
- * active role, at the department, the department's club, or globally.
- */
 @Component
+@RequiredArgsConstructor
 public class PermissionAuthorizationService {
-
     private final UserPermissionRepository userPermissionRepository;
-
-    public PermissionAuthorizationService(UserPermissionRepository userPermissionRepository) {
-        this.userPermissionRepository = userPermissionRepository;
-    }
 
     public boolean hasPermission(Actor actor, String permissionKey, UUID clubId, UUID departmentId) {
         if (actor == null) {
@@ -42,17 +37,22 @@ public class PermissionAuthorizationService {
         return actor != null && userPermissionRepository.hasAnywhere(actor.id(), permissionKey);
     }
 
+    public java.util.Set<UUID> getPermittedClubIds(Actor actor, String permissionKey) {
+        if (actor == null) {
+            return java.util.Collections.emptySet();
+        }
+        return userPermissionRepository.findEffective(actor.id()).stream()
+                .filter(row -> permissionKey.equals(row.getPermissionKey()) && "CLUB".equals(row.getScope()) && row.getClubId() != null)
+                .map(UserPermissionRepository.EffectivePermissionRow::getClubId)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
     public void require(Actor actor, String permissionKey, UUID clubId, UUID departmentId) {
         if (!hasPermission(actor, permissionKey, clubId, departmentId)) {
             throw forbidden();
         }
     }
 
-    /**
-     * Error for a resource id that does not exist. Only callers holding the permission globally may
-     * learn that (404); everyone else gets the same 403 as for an existing resource they cannot
-     * access, so ids cannot be probed.
-     */
     public ApiException missingResource(Actor actor, String permissionKey, ApiException notFound) {
         return hasGlobalPermission(actor, permissionKey) ? notFound : forbidden();
     }

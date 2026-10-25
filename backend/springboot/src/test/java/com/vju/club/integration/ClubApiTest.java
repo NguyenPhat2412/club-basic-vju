@@ -1,5 +1,7 @@
 package com.vju.club.integration;
 
+import com.vju.club.modules.club.entity.Club;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +15,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 class ClubApiTest extends ApiIntegrationTest {
-
     @Test
     void createTrimsInputAndStartsActive() throws Exception {
         JsonNode created = call(post("/api/v1/clubs"), adminToken,

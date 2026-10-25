@@ -1,20 +1,25 @@
 package com.vju.club.permission;
 
-import com.vju.club.audit.AuditAction;
-import com.vju.club.audit.AuditService;
-import com.vju.club.entity.Club;
-import com.vju.club.entity.Permission;
-import com.vju.club.entity.PermissionScope;
-import com.vju.club.entity.User;
-import com.vju.club.entity.UserPermission;
-import com.vju.club.permission.dto.GrantPermissionRequest;
-import com.vju.club.permission.dto.ReplacePermissionsRequest;
-import com.vju.club.repository.ClubRepository;
-import com.vju.club.repository.DepartmentRepository;
-import com.vju.club.repository.PermissionAuditLogRepository;
-import com.vju.club.repository.PermissionRepository;
-import com.vju.club.repository.UserPermissionRepository;
-import com.vju.club.repository.UserRepository;
+import com.vju.club.modules.permission.mapper.PermissionMapperImpl;
+import com.vju.club.modules.permission.service.PermissionService;
+
+import com.vju.club.modules.permission.service.impl.PermissionServiceImpl;
+
+import com.vju.club.modules.audit.enums.AuditAction;
+import com.vju.club.modules.audit.service.AuditService;
+import com.vju.club.modules.club.entity.Club;
+import com.vju.club.modules.permission.entity.Permission;
+import com.vju.club.modules.permission.enums.PermissionScope;
+import com.vju.club.modules.user.entity.User;
+import com.vju.club.modules.permission.entity.UserPermission;
+import com.vju.club.modules.permission.dto.request.GrantPermissionRequest;
+import com.vju.club.modules.permission.dto.request.ReplacePermissionsRequest;
+import com.vju.club.modules.club.repository.ClubRepository;
+import com.vju.club.modules.department.repository.DepartmentRepository;
+import com.vju.club.modules.audit.repository.PermissionAuditLogRepository;
+import com.vju.club.modules.permission.repository.PermissionRepository;
+import com.vju.club.modules.permission.repository.UserPermissionRepository;
+import com.vju.club.modules.user.repository.UserRepository;
 import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +38,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import static com.vju.club.support.PermissionChecks.withPermissionChecks;
 import static com.vju.club.support.ApiErrors.FORBIDDEN;
 import static com.vju.club.support.ApiErrors.assertApiError;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,7 +54,6 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class PermissionServiceTest {
-
     @Mock PermissionRepository permissionRepository;
     @Mock UserPermissionRepository userPermissionRepository;
     @Mock PermissionAuditLogRepository permissionAuditLogRepository;
@@ -85,8 +90,8 @@ class PermissionServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PermissionService(permissionRepository, userPermissionRepository, permissionAuditLogRepository,
-                userRepository, clubRepository, departmentRepository, authorization, Clock.systemUTC(), audit);
+        service = withPermissionChecks(new PermissionServiceImpl(permissionRepository, userPermissionRepository, permissionAuditLogRepository,
+                userRepository, clubRepository, departmentRepository, authorization, Clock.systemUTC(), audit, new PermissionMapperImpl()), authorization);
         club.setId(UUID.randomUUID());
         when(userRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
         when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
@@ -121,8 +126,6 @@ class PermissionServiceTest {
     private ReplacePermissionsRequest replaceWith(String... keys) {
         return new ReplacePermissionsRequest(PermissionScope.CLUB, club.getId(), null, Set.of(keys), null);
     }
-
-    // ---- grant / revoke ----------------------------------------------------------------------------
 
     @Test
     void grantWritesBothTheGrantAndTheAuditTrail() {
@@ -196,8 +199,6 @@ class PermissionServiceTest {
         assertThat(globalGrant.getRevokedAt()).isNotNull();
         assertThat(clubGrant.getRevokedAt()).isNull();
     }
-
-    // ---- replace (PUT) ------------------------------------------------------------------------------
 
     @Test
     void replaceGrantsMissingAndRevokesExtraPermissions() {

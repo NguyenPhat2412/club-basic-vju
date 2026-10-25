@@ -3,9 +3,7 @@ package com.vju.club.common;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
-/** Pageable for the API's offset/limit paging, where offset need not be a multiple of limit. */
 public record OffsetLimitRequest(long offset, int limit, Sort sort) implements Pageable {
-
     public OffsetLimitRequest {
         if (offset < 0) throw new IllegalArgumentException("offset must be >= 0");
         if (limit < 1) throw new IllegalArgumentException("limit must be >= 1");

@@ -34,7 +34,9 @@ class ContractTest(unittest.TestCase):
                 self.assertTrue(successes)
                 for code, response in successes.items():
                     if str(code) != '204':
-                        self.assertIn('schema', response['content']['application/json'])
+                        content = response['content']
+                        self.assertTrue(content.get('application/json') or content.get('application/octet-stream'))
+                        self.assertTrue(all('schema' in media for media in content.values()))
 
     def test_list_envelopes_match_backend_offset_pagination(self):
         for name in ['UserListResponse', 'ClubListResponse', 'DepartmentListResponse', 'MembershipListResponse', 'DepartmentMemberListResponse']:
@@ -76,7 +78,7 @@ class ContractTest(unittest.TestCase):
     def test_post_creation_and_delete_status_codes(self):
         for path, method, op in self.operations():
             with self.subTest(path=path, method=method):
-                if method == 'post' and '/auth/' not in path:
+                if method == 'post' and '/auth/' not in path and not path.endswith('/approve') and not path.endswith('/reject') and not path.endswith('/restore'):
                     self.assertIn('201', op['responses'])
                 if method == 'delete':
                     self.assertIn('204', op['responses'])
@@ -121,15 +123,19 @@ class ContractTest(unittest.TestCase):
             self.assertEqual(schema['items']['$ref'], '#/components/schemas/UserPermission')
 
     def test_response_fields_match_java_records(self):
-        mapping = {'User': 'user/dto/UserResponse.java', 'TokenResponse': 'auth/dto/TokenResponse.java',
-                   'Club': 'club/dto/ClubResponse.java', 'Department': 'department/dto/DepartmentResponse.java',
-                   'Membership': 'membership/dto/MembershipResponse.java',
-                   'DepartmentMember': 'departmentmember/dto/DepartmentMemberResponse.java',
-                   'Permission': 'permission/dto/PermissionResponse.java',
-                   'UserPermission': 'permission/dto/UserPermissionResponse.java',
-                   'Role': 'role/dto/RoleResponse.java', 'UserRole': 'role/dto/UserRoleResponse.java',
-                   'EffectivePermission': 'permission/dto/EffectivePermissionResponse.java',
-                   'AuditLog': 'audit/dto/AuditLogResponse.java'}
+        mapping = {
+            'User': 'modules/user/dto/response/UserResponse.java',
+            'Club': 'modules/club/dto/response/ClubResponse.java',
+            'Department': 'modules/department/dto/response/DepartmentResponse.java',
+            'Membership': 'modules/membership/dto/response/MembershipResponse.java',
+            'DepartmentMember': 'modules/departmentmember/dto/response/DepartmentMemberResponse.java',
+            'Permission': 'modules/permission/dto/response/PermissionResponse.java',
+            'UserPermission': 'modules/permission/dto/response/UserPermissionResponse.java',
+            'Role': 'modules/role/dto/response/RoleResponse.java',
+            'UserRole': 'modules/role/dto/response/UserRoleResponse.java',
+            'EffectivePermission': 'modules/permission/dto/response/EffectivePermissionResponse.java',
+            'AuditLog': 'modules/audit/dto/response/AuditLogResponse.java',
+        }
         for schema_name, java_path in mapping.items():
             src = (ROOT / 'backend/springboot/src/main/java/com/vju/club' / java_path).read_text()
             fields = set(re.findall(r'(?:UUID|String|boolean|Instant|OffsetDateTime|PermissionScope|List<String>|Map<String, Object>)\s+(\w+)', src.split('public record', 1)[1].split('{', 1)[0]))

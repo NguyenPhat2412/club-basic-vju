@@ -2,15 +2,15 @@ package com.vju.club.integration;
 
 import com.vju.club.bootstrap.DemoDataSeeder;
 import com.vju.club.config.DemoDataProperties;
-import com.vju.club.repository.ClubRepository;
-import com.vju.club.repository.DepartmentMemberRepository;
-import com.vju.club.repository.DepartmentRepository;
-import com.vju.club.repository.MembershipRepository;
-import com.vju.club.repository.PermissionRepository;
-import com.vju.club.repository.RoleRepository;
-import com.vju.club.repository.UserPermissionRepository;
-import com.vju.club.repository.UserRepository;
-import com.vju.club.repository.UserRoleRepository;
+import com.vju.club.modules.club.repository.ClubRepository;
+import com.vju.club.modules.departmentmember.repository.DepartmentMemberRepository;
+import com.vju.club.modules.department.repository.DepartmentRepository;
+import com.vju.club.modules.membership.repository.MembershipRepository;
+import com.vju.club.modules.permission.repository.PermissionRepository;
+import com.vju.club.modules.role.repository.RoleRepository;
+import com.vju.club.modules.permission.repository.UserPermissionRepository;
+import com.vju.club.modules.user.repository.UserRepository;
+import com.vju.club.modules.role.repository.UserRoleRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -23,8 +23,22 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-/** The local-profile demo seed produces a usable demo: logins work and each user has the intended rights. */
 class DemoDataApiTest extends ApiIntegrationTest {
+    @Test
+    void demoStudentCanApplyAndDemoManagerCanReviewAndAssign() throws Exception {
+        seeder(DEMO_PASSWORD, true).seed();
+        UUID vjua = db.queryForObject("SELECT id FROM clubs WHERE code = 'VJUA'", UUID.class);
+        String student = login("demo.student@vju.local");
+        String manager = login("demo.a@vju.local");
+        var application = call(post("/api/v1/clubs/" + vjua + "/applications"), student,
+                Map.of("message", "Demo student application"), 201);
+        call(get("/api/v1/clubs/" + vjua + "/applications"), manager, null, 200);
+        var approved = call(post("/api/v1/clubs/" + vjua + "/applications/" + id(application) + "/approve"),
+                manager, Map.of(), 200);
+        assertThat(approved.path("membershipStatus").asText()).isEqualTo("ACTIVE");
+        call(post("/api/v1/departments/" + department("Ban Truyền thông") + "/members"), manager,
+                Map.of("membershipId", approved.path("membershipId").asText()), 201);
+    }
 
     private static final String DEMO_PASSWORD = "Demo-Password-123";
 
@@ -47,8 +61,7 @@ class DemoDataApiTest extends ApiIntegrationTest {
     }
 
     private String login(String email) throws Exception {
-        return call(post("/api/v1/auth/login"), null, Map.of("email", email, "password", DEMO_PASSWORD), 200)
-                .at("/tokens/accessToken").asText();
+        return login(email, DEMO_PASSWORD);
     }
 
     private UUID department(String name) {
@@ -65,7 +78,7 @@ class DemoDataApiTest extends ApiIntegrationTest {
         assertThat(db.queryForList("SELECT d.name FROM departments d JOIN clubs c ON c.id = d.club_id "
                 + "WHERE c.code = 'VJUA' ORDER BY d.name", String.class))
                 .containsExactlyInAnyOrder("Ban Truyền thông", "Ban Chuyên môn", "Ban Hậu cần", "Ban Đối ngoại");
-        assertThat(count("SELECT count(*) FROM users WHERE email LIKE 'demo._@vju.local'")).isEqualTo(3);
+        assertThat(count("SELECT count(*) FROM users WHERE email LIKE 'demo.%@vju.local'")).isEqualTo(4);
         assertThat(count("SELECT count(*) FROM memberships m JOIN clubs c ON c.id = m.club_id "
                 + "WHERE c.code = 'VJUA' AND m.status = 'ACTIVE'")).isEqualTo(3);
     }
@@ -78,18 +91,15 @@ class DemoDataApiTest extends ApiIntegrationTest {
         String b = login("demo.b@vju.local");
         String c = login("demo.c@vju.local");
 
-        // A: president of VJUA through the CLUB_PRESIDENT role.
         call(patch("/api/v1/clubs/" + vjua), a, Map.of("description", "Cập nhật bởi chủ nhiệm"), 200);
         call(post("/api/v1/clubs/" + vjua + "/departments"), a, Map.of("name", "Ban Sự kiện"), 201);
         problem(patch("/api/v1/clubs/" + clubA), a, Map.of("description", "no"), 403, "PERMISSION_DENIED");
 
-        // B: head of Ban Truyền thông only.
         call(patch("/api/v1/departments/" + department("Ban Truyền thông")), b, Map.of("description", "ok"), 200);
         call(get("/api/v1/departments/" + department("Ban Truyền thông") + "/members"), b, null, 200);
         problem(patch("/api/v1/departments/" + department("Ban Chuyên môn")), b, Map.of("description", "no"), 403,
                 "PERMISSION_DENIED");
 
-        // C: plain member with two direct permissions.
         call(get("/api/v1/clubs/" + vjua), c, null, 200);
         call(get("/api/v1/clubs/" + vjua + "/memberships"), c, null, 200);
         problem(patch("/api/v1/clubs/" + vjua), c, Map.of("description", "no"), 403, "PERMISSION_DENIED");

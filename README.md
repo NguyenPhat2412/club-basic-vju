@@ -1,8 +1,8 @@
 # club-basic-vju
 
-Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt Nhật (VJU): quản lý tài khoản, câu lạc bộ, ban, thành viên và phân quyền chi tiết theo phạm vi.
+Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt Nhật (VJU) gồm các chức năng: quản lý tài khoản, câu lạc bộ, ban, thành viên và phân quyền chi tiết theo phạm vi.
 
-> **Trạng thái:** Backend giai đoạn 1 đã hoàn thành. Toàn bộ 49 route đều `IMPLEMENTED` và có 309 test tự động. Frontend (Next.js) mới dừng ở bộ khung khởi tạo.
+> **Trạng thái:** Phase 2 đã hoàn thiện luồng khám phá CLB → đăng ký → xét duyệt → membership → phân ban → thông báo và audit. Backend có automated unit/integration/acceptance tests; frontend Next.js có các màn hình student và management tương ứng.
 
 ## Mục lục
 
@@ -28,7 +28,7 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 - **Ban:** mỗi CLB có nhiều ban. Tên ban là duy nhất trong phạm vi một CLB.
 - **Thành viên:** thêm thành viên vào CLB, tạm ngưng, cho rời CLB. Hệ thống lưu **lịch sử** tham gia: mỗi lần tham gia là một membership riêng, người đã rời có thể được thêm lại. Khi rời CLB, thành viên tự động bị gỡ khỏi mọi ban.
 - **Thành viên ban:** xếp thành viên vào ban, chuyển ban, gỡ khỏi ban. Chỉ xếp được thành viên đang hoạt động vào ban cùng CLB.
-- **Phân quyền:** 27 quyền, mỗi quyền được cấp theo một trong ba phạm vi `GLOBAL`, `CLUB` hoặc `DEPARTMENT`. Mọi lần cấp và thu hồi đều được ghi audit log.
+- **Phân quyền:** 35 quyền, mỗi quyền được cấp theo một trong ba phạm vi `GLOBAL`, `CLUB` hoặc `DEPARTMENT`. Mọi lần cấp và thu hồi đều được ghi audit log.
 - **Vai trò:** vai trò là nhóm quyền ứng với một chức vụ. Có 5 vai trò hệ thống (Quản trị hệ thống, Chủ nhiệm, Phó chủ nhiệm, Trưởng ban, Thành viên); admin có thể tạo thêm vai trò tuỳ chỉnh. Vai trò được gán theo cùng cơ chế scope như quyền.
 - **Audit log:** mọi thao tác nghiệp vụ quan trọng (khoá/mở tài khoản, tạo/sửa CLB và ban, thêm/xoá thành viên, cấp/thu hồi quyền và vai trò…) đều được ghi lại, kèm người thực hiện, thời điểm và giá trị trước/sau. Tra cứu qua `GET /audit-logs`.
 - **Bảo vệ:** giới hạn tần suất (rate limit) cho các endpoint đăng nhập/đăng ký/làm mới token. Mọi lỗi trả về theo định dạng RFC 7807. Người không có quyền không thể dò xem một ID có tồn tại hay không.
@@ -51,28 +51,30 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 .
 ├── backend/springboot/          # Backend Spring Boot (dịch vụ duy nhất)
 │   ├── src/main/java/com/vju/club/
-│   │   ├── auth/                # Đăng ký, đăng nhập, JWT, refresh token
-│   │   ├── user/                # Hồ sơ và quản trị người dùng
-│   │   ├── club/                # Câu lạc bộ
-│   │   ├── department/          # Ban
-│   │   ├── membership/          # Thành viên CLB
-│   │   ├── departmentmember/    # Thành viên ban
-│   │   ├── permission/          # Cấp/thu hồi quyền, quyền hiệu lực, audit log
-│   │   ├── role/                # Vai trò và gán vai trò
-│   │   ├── audit/               # Ghi và tra cứu audit log
+│   │   ├── modules/             # Mỗi tính năng một module (xem cấu trúc module bên dưới)
+│   │   │   ├── auth/            # Đăng ký, đăng nhập, JWT, refresh token
+│   │   │   ├── user/            # Hồ sơ và quản trị người dùng
+│   │   │   ├── club/            # Câu lạc bộ
+│   │   │   ├── clubapplication/ # Đơn xin vào CLB, duyệt/từ chối
+│   │   │   ├── department/      # Ban
+│   │   │   ├── membership/      # Thành viên CLB
+│   │   │   ├── departmentmember/# Thành viên ban
+│   │   │   ├── permission/      # Cấp/thu hồi quyền, quyền hiệu lực
+│   │   │   ├── role/            # Vai trò và gán vai trò
+│   │   │   ├── notification/    # Thông báo
+│   │   │   └── audit/           # Ghi và tra cứu audit log
 │   │   ├── security/            # Kiểm tra quyền, rate limit, filter trạng thái tài khoản
-│   │   ├── config/              # Cấu hình security, JWT, CORS
+│   │   ├── config/              # Cấu hình ứng dụng: security, JWT, CORS, OpenAPI (không chứa DTO)
 │   │   ├── error/               # Xử lý lỗi chung (ProblemDetail)
-│   │   ├── entity/, repository/ # Domain model và truy vấn dùng chung cho mọi module
 │   │   ├── common/              # Phân trang (PageResponse, OffsetLimitRequest)
 │   │   ├── bootstrap/           # Admin ban đầu và dữ liệu demo (chỉ profile local)
 │   │   └── rest/                # API catalog, phục vụ file OpenAPI
 │   ├── src/main/resources/
-│   │   ├── db/migration/        # Flyway: V1 schema + seed quyền, V2 refresh token, V3 ràng buộc + index, V4 lịch sử membership, V5 vai trò, V6 audit log
+│   │   ├── db/migration/        # Flyway: V1–V6 nền tảng, V7 club applications, V8 notifications, V9 created_by/updated_by
 │   │   └── api/                 # Bản copy runtime của OpenAPI và catalog
 │   ├── src/test/                # Unit test + integration test
 │   └── Dockerfile
-├── frontend/nextjs/             # Frontend Next.js (bộ khung khởi tạo)
+├── frontend/nextjs/             # Frontend Next.js: discovery, applications, memberships, management, notifications
 ├── docs/
 │   ├── api/                     # OpenAPI contract (nguồn gốc), catalog, test contract
 │   ├── database/                # Hướng dẫn database
@@ -83,10 +85,40 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 └── .github/workflows/backend.yml
 ```
 
-Mỗi module nghiệp vụ theo cùng một khuôn: `Controller` → `Service` → `Repository` (Spring Data) → `Entity`. Controller và service chia theo tính năng (`club/`, `role/`, …) kèm DTO của tính năng đó. Entity và repository nằm chung ở `entity/`, `repository/` vì nhiều tính năng cùng dùng một bảng (ví dụ quyền, thành viên).
+Mỗi module trong `modules/` theo cùng một khuôn:
+
+```text
+modules/<module>/
+├── controller/          # REST controller: chỉ nhận và trả DTO, không bao giờ để lộ entity
+├── service/             # Interface service (API của module)
+│   └── impl/            # XxxServiceImpl: nghiệp vụ, kiểm tra quyền, audit
+├── dto/
+│   ├── request/         # Java record cho request body, kèm Bean Validation
+│   └── response/        # Java record cho response, bất biến và không phụ thuộc entity
+├── mapper/              # MapStruct: entity → DTO, code sinh lúc compile
+├── entity/              # JPA entity, chỉ dùng bên trong service/repository
+├── enums/               # Enum dùng chung cho entity, DTO và controller
+├── repository/          # Spring Data repository
+├── specification/       # JPA Specification cho tìm kiếm động (nếu có)
+├── annotation/          # Annotation validation riêng của module
+├── exception/           # Exception riêng của module (nếu có), kế thừa ApiException
+└── common/              # Hằng số của module
+```
+
+Quy ước:
+- **Chỉ làm việc với DTO ở ranh giới API.** Controller và interface service chỉ nhận/trả `record` trong `dto/`. Entity chỉ tồn tại bên trong service và repository.
+- **DTO là Java `record`**: ngắn gọn, bất biến, không có logic. Response DTO không biết đến entity.
+- **Chuyển entity → DTO bằng MapStruct** (`mapper/`), không dùng ModelMapper hay ObjectMapper. Mapper được sinh lúc compile và là Spring bean. Build được cấu hình `unmappedTargetPolicy=ERROR`, nên nếu thêm một trường vào DTO mà quên map thì compile sẽ báo lỗi ngay, thay vì lặng lẽ trả `null`.
+- **Lombok cho code lặp:** entity dùng `@Getter`/`@Setter` (lớp nào cố ý không có setter cho một trường thì gắn `@Setter` theo từng trường); bean dùng `@RequiredArgsConstructor` để inject qua constructor. **Không dùng `@Data` cho entity**, vì `equals`/`hashCode`/`toString` sinh tự động sẽ chạm vào quan hệ lazy, gây load ngoài ý muốn và lặp vô hạn.
+- **Phân quyền khai báo bằng annotation:** `@RequirePermission("role.manage")` hoặc `@RequirePermission(value = "club.update", clubId = "clubId")` đặt trên method service; `RequirePermissionAspect` kiểm tra trước khi method chạy. Giữ lời gọi `PermissionAuthorizationService.require(...)` viết tay khi phải tải entity rồi mới biết CLB/ban, khi permission key phụ thuộc request, hoặc khi method được gọi từ bên trong chính lớp đó (AOP không chạy với self-invocation). `RequirePermissionUsageTest` báo lỗi nếu annotation trỏ tới tham số không tồn tại.
+- **Route công khai khai báo bằng `@PublicEndpoint`** trên handler; `SecurityConfig` tự đọc các route này, không còn danh sách URL viết cứng.
+- **JPA Auditing:** mọi entity kế thừa `TimestampedEntity` tự lưu `created_by`/`updated_by` (`@CreatedBy`/`@LastModifiedBy`, lấy từ JWT của request; NULL khi không có người đăng nhập). Thời điểm (`created_at`/`updated_at`) do Hibernate ghi.
+- **Validation** đặt trên request DTO: `@NotBlank` cho chuỗi bắt buộc, `@NotNull` cho UUID/enum/số và collection được phép rỗng, `@NotEmpty` cho collection phải có phần tử, `@Size`/`@Pattern`/`@URL` để giới hạn độ dài và định dạng. Mật khẩu dùng `@ValidPassword` (8 ký tự trở lên, tối đa 72 byte UTF-8 theo giới hạn của BCrypt).
 
 - **Service không phụ thuộc Spring Security:** controller nhận tham số `Actor` (người đang gọi, lấy từ JWT qua `ActorArgumentResolver`) và truyền xuống service. Nhờ vậy service unit test được bằng một `Actor` giả, không cần dựng security context.
 - **Kiểm tra quyền** nằm trong service và dùng chung `PermissionAuthorizationService`, vốn đọc view `effective_user_permissions` (gộp quyền trực tiếp và quyền từ vai trò).
+- **Exception theo nghiệp vụ:** module có nhiều lỗi riêng (như `document`) khai báo mỗi lỗi một lớp trong `exception/`, kế thừa `ApiException` với status và `code` cố định (ví dụ `DocumentVersionConflictException` → `409 DOCUMENT_VERSION_CONFLICT`). `GlobalExceptionHandler` xử lý chung, không cần thêm handler.
+- **File lưu ngoài database:** `DocumentStorage` có hai bản cài đặt: thư mục local (dev/test) và Cloudflare R2. File được ghi trước khi commit transaction; nếu transaction rollback thì file vừa ghi sẽ bị xoá. Xem [mục 9 README backend](backend/springboot/README.md#9-tài-liệu-clb-và-cloudflare-r2).
 - **Truy vấn** đều nằm trong repository: JPQL cho truy vấn thường, SQL gốc khi cần view của PostgreSQL. Phân trang dùng `OffsetLimitRequest`.
 
 ## Bắt đầu nhanh
@@ -98,34 +130,38 @@ Mỗi module nghiệp vụ theo cùng một khuôn: `Controller` → `Service` �
 - Node.js 20+ và pnpm (nếu chạy frontend)
 - Python 3 + PyYAML (nếu chạy test contract)
 
+> Hướng dẫn chi tiết từng bước cho **macOS và Windows** (cài JDK/Docker, lệnh PowerShell/CMD, xử lý sự cố): xem [backend/springboot/README.md](backend/springboot/README.md).
+
 ### 1. Khởi động PostgreSQL
 
 ```bash
 docker compose up -d postgres
 ```
 
-### 2. Chạy backend
+### 2. Tạo `backend/springboot/.env.local`
 
-Profile `local` cung cấp sẵn một JWT secret dùng cho phát triển:
+Profile `local` tự đọc file này (trên mọi hệ điều hành), nên không cần đặt biến môi trường bằng tay:
+
+```bash
+cp backend/springboot/.env.local.example backend/springboot/.env.local
+```
+
+Đăng nhập bằng admin dùng chung `admin123@gmail.com` / `Admin123@` (tự tạo ở profile `local`, vai trò `SYSTEM_ADMIN`). Đặt `DEMO_USER_PASSWORD` nếu muốn có dữ liệu demo. File này đã được gitignore.
+
+### 3. Chạy backend
 
 ```bash
 cd backend/springboot
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-Flyway tự chạy migration khi khởi động. Backend lắng nghe ở `http://localhost:8080`.
+Trên Windows: `.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=local"` (PowerShell) hoặc `mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local` (CMD).
 
-### 3. Tạo tài khoản admin đầu tiên
-
-Migration chỉ seed danh mục quyền và vai trò hệ thống, không tạo người dùng nào. Để tự tạo admin mang vai trò `SYSTEM_ADMIN` (phạm vi `GLOBAL`), chạy profile `local` kèm hai biến môi trường. Thao tác này an toàn khi chạy lại nhiều lần.
-
-```bash
-BOOTSTRAP_ADMIN_EMAIL=admin@vju.local BOOTSTRAP_ADMIN_PASSWORD='ChangeMe123!' ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
-```
+Flyway tự chạy migration khi khởi động. Backend lắng nghe ở `http://localhost:8080`. Profile `local` có sẵn JWT secret dùng cho phát triển; mọi môi trường khác bắt buộc đặt `JWT_SECRET`.
 
 ### 4. Dữ liệu demo (tuỳ chọn)
 
-Đặt thêm `DEMO_USER_PASSWORD` khi chạy profile `local`, backend sẽ tạo sẵn một bộ dữ liệu demo. Việc này chỉ diễn ra một lần: nếu CLB VJUA đã tồn tại thì bỏ qua.
+Khi `.env.local` có `DEMO_USER_PASSWORD`, backend sẽ tạo sẵn một bộ dữ liệu demo. Việc này chỉ diễn ra một lần: nếu CLB VJUA đã tồn tại thì bỏ qua.
 
 | Dữ liệu | Chi tiết |
 |---|---|
@@ -134,8 +170,9 @@ BOOTSTRAP_ADMIN_EMAIL=admin@vju.local BOOTSTRAP_ADMIN_PASSWORD='ChangeMe123!' ./
 | `demo.a@vju.local` | Chủ nhiệm VJUA (vai trò `CLUB_PRESIDENT`), thuộc Ban Chuyên môn |
 | `demo.b@vju.local` | Trưởng Ban Truyền thông (vai trò `DEPARTMENT_HEAD`) |
 | `demo.c@vju.local` | Thành viên Ban Truyền thông, được cấp trực tiếp `club.view` và `member.view` |
+| `demo.student@vju.local` | Sinh viên ACTIVE chưa là thành viên, dùng để thử gửi và theo dõi đơn tuyển thành viên |
 
-Cả 3 user dùng chung mật khẩu `DEMO_USER_PASSWORD`. Dữ liệu demo không bao giờ được tạo ngoài profile `local`.
+Cả 4 user dùng chung mật khẩu `DEMO_USER_PASSWORD`. Dữ liệu demo không bao giờ được tạo ngoài profile `local`.
 
 ### 5. Thử API
 
@@ -144,13 +181,15 @@ Cả 3 user dùng chung mật khẩu `DEMO_USER_PASSWORD`. Dữ liệu demo khô
 - Contract giai đoạn 1: http://localhost:8080/api-docs/phase1.yaml
 - Danh mục API: http://localhost:8080/api/v1/api-catalog
 
+Đăng nhập dùng **cookie phiên** `CLUB_SESSION` (HttpOnly) và **CSRF**: request ghi dữ liệu phải gửi header `X-XSRF-TOKEN` bằng giá trị cookie `XSRF-TOKEN` (lấy qua `GET /api/v1/auth/csrf`). Ví dụ với curl, cookie được lưu trong file `jar.txt`:
+
 ```bash
-curl -s -X POST localhost:8080/api/v1/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"admin@vju.local","password":"ChangeMe123!"}'
+curl -s -c jar.txt localhost:8080/api/v1/auth/csrf
+curl -s -b jar.txt -c jar.txt -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' -H "X-XSRF-TOKEN: $(awk '/XSRF-TOKEN/{print $7}' jar.txt)" -d '{"email":"admin123@gmail.com","password":"Admin123@"}'
+curl -s -b jar.txt localhost:8080/api/v1/auth/me
 ```
 
-Dùng `tokens.accessToken` trong kết quả làm header `Authorization: Bearer <token>` cho các request tiếp theo.
+Kiểm thử toàn bộ API bằng Postman CLI: `docs/api/postman/run.sh auth` và `docs/api/postman/run.sh documents` (xem [README backend](backend/springboot/README.md#kiểm-thử-api-bằng-postman-cli)).
 
 ### 6. Chạy frontend (tuỳ chọn)
 
@@ -180,7 +219,7 @@ Backend đọc cấu hình từ biến môi trường:
 | `FORWARD_HEADERS_STRATEGY` | `native` | Chỉ tin `X-Forwarded-For` đến từ proxy có IP nội bộ/loopback, để rate limit thấy đúng IP người dùng khi chạy sau nginx |
 | `REFRESH_TOKEN_CLEANUP_CRON` | `0 30 3 * * *` | Lịch chạy job dọn refresh token |
 | `REFRESH_TOKEN_CLEANUP_RETENTION` | `7d` | Thời gian giữ lại refresh token đã chết trước khi xoá |
-| `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | trống | Tạo admin ban đầu (chỉ có tác dụng ở profile `local`) |
+| `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | `admin123@gmail.com` / `Admin123@` | Tạo admin ban đầu (chỉ có tác dụng ở profile `local`) |
 | `DEMO_USER_PASSWORD` | trống | Mật khẩu của 3 user demo; có giá trị thì tạo dữ liệu demo (chỉ profile `local`) |
 | `DEMO_DATA_ENABLED` | `true` | Tắt hẳn việc tạo dữ liệu demo |
 
@@ -188,12 +227,12 @@ Các biến `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`
 
 ## Tổng quan API
 
-Mọi route nghiệp vụ nằm dưới `/api/v1`. Chỉ các route đăng ký, đăng nhập, làm mới token, API catalog và tài liệu API là công khai; mọi route còn lại cần Bearer token.
+Mọi route nghiệp vụ nằm dưới `/api/v1`. Chỉ đăng nhập, lấy cookie CSRF, API catalog và tài liệu API là công khai; mọi route còn lại cần cookie phiên `CLUB_SESSION`. Không có API tự đăng ký: tài khoản do admin tạo.
 
 | Nhóm | Route |
 |---|---|
-| **Auth** | `POST /auth/register` · `POST /auth/login` · `POST /auth/refresh-token` · `POST /auth/logout` · `POST /auth/change-password` · `GET /auth/me` |
-| **Users** | `GET /users/me` · `PATCH /users/me` · `GET /users` · `GET /users/{userId}` · `PATCH /users/{userId}/status` |
+| **Auth** | `GET /auth/csrf` · `POST /auth/login` · `POST /auth/logout` · `POST /auth/change-password` · `GET /auth/me` |
+| **Users** | `GET /users/me` · `PATCH /users/me` · `GET /users` · `POST /users` (admin tạo tài khoản) · `GET /users/{userId}` · `PATCH /users/{userId}/password` (admin đặt lại mật khẩu) · `PATCH /users/{userId}/status` |
 | **Clubs** | `GET /clubs` · `POST /clubs` · `GET /clubs/{clubId}` · `PATCH /clubs/{clubId}` · `PATCH /clubs/{clubId}/status` |
 | **Departments** | `GET /clubs/{clubId}/departments` · `POST /clubs/{clubId}/departments` · `GET /departments/{id}` · `PATCH /departments/{id}` · `PATCH /departments/{id}/status` |
 | **Memberships** | `GET /clubs/{clubId}/memberships` (lọc `?status=`) · `POST /clubs/{clubId}/memberships` · `GET /memberships/{id}` · `PATCH /memberships/{id}` · `DELETE /memberships/{id}` |
@@ -263,9 +302,9 @@ Mọi lỗi trả về `application/problem+json` kèm trường `code` ổn đ�
 | 400 | `VALIDATION_ERROR`, `INVALID_SORT`, `CURRENT_PASSWORD_INVALID`, `PERMISSION_SCOPE_MISMATCH`, `INVALID_PERMISSION_SCOPE`, `ROLE_SCOPE_MISMATCH`, `ROLE_PERMISSION_SCOPE_MISMATCH`, `INVALID_SCOPE_TARGET`, `ROLE_INACTIVE`, `CROSS_CLUB_ASSIGNMENT`, `CROSS_CLUB_MOVE`, `SAME_DEPARTMENT`, `AMBIGUOUS_PERMISSION_GRANT` |
 | 401 | `UNAUTHORIZED`, `AUTH_TOKEN_EXPIRED` (access token hết hạn, nên gọi refresh), `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN` |
 | 403 | `PERMISSION_DENIED`, `ACCOUNT_INACTIVE` |
-| 404 | `NOT_FOUND` (route không tồn tại), `USER_NOT_FOUND`, `CLUB_NOT_FOUND`, `DEPARTMENT_NOT_FOUND`, `MEMBERSHIP_NOT_FOUND`, … |
+| 404 | `NOT_FOUND` (route không tồn tại), `USER_NOT_FOUND`, `CLUB_NOT_FOUND`, `DEPARTMENT_NOT_FOUND`, `MEMBERSHIP_NOT_FOUND`, `CLUB_APPLICATION_NOT_FOUND`, … |
 | 405 / 415 | `METHOD_NOT_ALLOWED`, `UNSUPPORTED_MEDIA_TYPE` |
-| 409 | `EMAIL_ALREADY_EXISTS`, `STUDENT_CODE_ALREADY_EXISTS`, `CLUB_CODE_ALREADY_EXISTS`, `DEPARTMENT_NAME_ALREADY_EXISTS`, `MEMBERSHIP_ALREADY_EXISTS`, `CLUB_INACTIVE`, `USER_INACTIVE`, `DEPARTMENT_INACTIVE`, `MEMBERSHIP_NOT_ACTIVE`, `MEMBERSHIP_ALREADY_LEFT`, `PERMISSION_ALREADY_GRANTED`, `ROLE_ALREADY_ASSIGNED`, `ROLE_CODE_ALREADY_EXISTS`, `SYSTEM_ROLE_IMMUTABLE` |
+| 409 | `EMAIL_ALREADY_EXISTS`, `STUDENT_CODE_ALREADY_EXISTS`, `CLUB_CODE_ALREADY_EXISTS`, `DEPARTMENT_NAME_ALREADY_EXISTS`, `MEMBERSHIP_ALREADY_EXISTS`, `ALREADY_CLUB_MEMBER`, `APPLICATION_ALREADY_PENDING`, `APPLICATION_ALREADY_REVIEWED`, `APPLICATION_CANNOT_BE_CANCELLED`, `DUPLICATE_MEMBERSHIP`, `CLUB_INACTIVE`, `USER_INACTIVE`, `DEPARTMENT_INACTIVE`, `MEMBERSHIP_NOT_ACTIVE`, `MEMBERSHIP_ALREADY_LEFT`, `PERMISSION_ALREADY_GRANTED`, `ROLE_ALREADY_ASSIGNED`, `ROLE_CODE_ALREADY_EXISTS`, `SYSTEM_ROLE_IMMUTABLE` |
 | 429 | `RATE_LIMIT_EXCEEDED`, kèm các header `Retry-After`, `X-RateLimit-Limit` và `X-RateLimit-Remaining` |
 | 500 | `INTERNAL_ERROR` (lỗi được ghi log ở server) |
 
@@ -296,6 +335,7 @@ Flyway quản lý schema tại `backend/springboot/src/main/resources/db/migrati
 | `V4__membership_history.sql` | Lưu lịch sử tham gia: mỗi user chỉ có tối đa một membership chưa kết thúc cho mỗi CLB |
 | `V5__roles.sql` | Bảng `roles`, `role_permissions`, `user_roles`; view `effective_user_permissions`; seed 5 vai trò hệ thống và 2 quyền `role.*` |
 | `V6__audit_log_and_membership_timestamps.sql` | Bảng `audit_logs` (chỉ được thêm, không sửa/xoá), `created_at`/`updated_at` cho membership, quyền `audit.view` |
+| `V7__club_applications.sql` | Bảng đơn đăng ký CLB, giới hạn trạng thái/nội dung, partial unique index cho đơn PENDING, 7 quyền application và audit resource `APPLICATION` |
 
 Ràng buộc được đặt ngay ở tầng database, nên dữ liệu sai bị chặn kể cả khi ghi bằng SQL trực tiếp hoặc khi nhiều request chạy đồng thời:
 - **Duy nhất, không phân biệt hoa thường:** email, mã sinh viên, mã CLB, và tên ban trong một CLB (unique index trên `lower(...)`). Mỗi user chỉ có tối đa một membership **chưa kết thúc** trong một CLB; các membership đã `LEFT` được giữ làm lịch sử.
@@ -314,7 +354,7 @@ Khi chạy, Hibernate chỉ `validate` schema chứ không tự sửa. Mọi tha
 ## Kiểm thử
 
 ```bash
-# 309 test backend: unit + integration (cần Docker đang chạy)
+# 494 test backend: unit + integration (cần Docker đang chạy)
 cd backend/springboot && ./mvnw test
 
 # Kiểm tra OpenAPI contract (từ thư mục gốc)
@@ -354,6 +394,25 @@ GitHub Actions ([.github/workflows/backend.yml](.github/workflows/backend.yml)) 
 - **Đổi schema:** thêm migration Flyway mới, không sửa migration đã chạy.
 - **Thêm endpoint có kiểm tra quyền:** khai báo tham số `Actor actor` trong controller, rồi trong service gọi `PermissionAuthorizationService.require(actor, ...)`. Truyền cả `clubId` lẫn `departmentId` khi có để cơ chế kế thừa phạm vi hoạt động. Với ID không tồn tại, dùng `missingResource(...)`.
 - **Trước khi push:** chạy `./mvnw test` và bộ test contract.
+
+## Phase 2: Tuyển thành viên
+
+Phase 2 bổ sung luồng:
+
+`Student -> xem CLB ACTIVE -> gửi đơn -> theo dõi/hủy đơn -> reviewer theo scope CLB duyệt/từ chối -> APPROVED tạo Membership ACTIVE -> phân vào Department`.
+
+Endpoint chính:
+
+- `POST /api/v1/clubs/{clubId}/applications` tạo đơn `PENDING`.
+- `GET /api/v1/users/me/applications` và `GET /api/v1/users/me/applications/{applicationId}` xem đơn của mình.
+- `PATCH /api/v1/users/me/applications/{applicationId}/cancel` hủy đơn đang `PENDING`.
+- `GET /api/v1/clubs/{clubId}/applications` xem đơn theo scope CLB.
+- `POST /api/v1/clubs/{clubId}/applications/{applicationId}/approve` hoặc `/reject` xử lý đơn. Approve tạo Membership trong cùng transaction với cập nhật application.
+- `GET /api/v1/users/me/memberships` xem lịch sử membership cá nhân.
+
+Quyền mới gồm `application.view`, `application.view_detail`, `application.create`, `application.cancel`, `application.review`, `application.approve`, và `application.reject`; quyền quản lý đơn dùng scope `CLUB`. Applicant dùng ownership cho các thao tác cá nhân. Approval/rejection tạo thông báo in-app trong cùng transaction; người dùng đọc qua `/api/v1/users/me/notifications` và đánh dấu đã đọc qua `PATCH /api/v1/users/me/notifications/{notificationId}/read`.
+
+Migration `V7__club_applications.sql` tạo bảng application, partial unique index ngăn hai đơn `PENDING` trùng user/CLB, seed permission, và mở rộng audit resource type `APPLICATION`. Migration `V8__notifications.sql` tạo bảng thông báo, index theo user/thời gian và trigger `updated_at`.
 
 ## Tài liệu liên quan
 

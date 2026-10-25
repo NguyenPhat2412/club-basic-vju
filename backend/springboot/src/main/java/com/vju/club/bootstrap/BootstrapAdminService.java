@@ -1,14 +1,15 @@
 package com.vju.club.bootstrap;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.config.BootstrapAdminProperties;
-import com.vju.club.entity.PermissionScope;
-import com.vju.club.entity.Role;
-import com.vju.club.entity.User;
-import com.vju.club.entity.UserRole;
-import com.vju.club.entity.UserStatus;
-import com.vju.club.repository.RoleRepository;
-import com.vju.club.repository.UserRepository;
-import com.vju.club.repository.UserRoleRepository;
+import com.vju.club.modules.permission.enums.PermissionScope;
+import com.vju.club.modules.role.entity.Role;
+import com.vju.club.modules.user.entity.User;
+import com.vju.club.modules.role.entity.UserRole;
+import com.vju.club.modules.user.enums.UserStatus;
+import com.vju.club.modules.role.repository.RoleRepository;
+import com.vju.club.modules.user.repository.UserRepository;
+import com.vju.club.modules.role.repository.UserRoleRepository;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -17,11 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
-/** Creates the local administrator and gives it the SYSTEM_ADMIN role; safe to run on every start. */
 @Service
-@Profile("local")
+@Profile({"local", "prod"})
+@RequiredArgsConstructor
 public class BootstrapAdminService {
-
     static final String ADMIN_ROLE = "SYSTEM_ADMIN";
 
     private final BootstrapAdminProperties properties;
@@ -29,19 +29,6 @@ public class BootstrapAdminService {
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
     private final PasswordEncoder passwordEncoder;
-
-    public BootstrapAdminService(
-            BootstrapAdminProperties properties,
-            UserRepository userRepository,
-            RoleRepository roleRepository,
-            UserRoleRepository userRoleRepository,
-            PasswordEncoder passwordEncoder) {
-        this.properties = properties;
-        this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
-        this.userRoleRepository = userRoleRepository;
-        this.passwordEncoder = passwordEncoder;
-    }
 
     @Transactional
     public void bootstrap() {

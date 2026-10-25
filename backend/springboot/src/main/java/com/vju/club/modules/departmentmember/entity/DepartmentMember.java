@@ -1,0 +1,38 @@
+package com.vju.club.modules.departmentmember.entity;
+
+import lombok.Setter;
+import lombok.Getter;
+import com.vju.club.common.entity.BaseEntity;
+import com.vju.club.modules.department.entity.Department;
+import com.vju.club.modules.membership.entity.Membership;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+@Entity
+@Table(name = "department_members", uniqueConstraints = @UniqueConstraint(name = "uq_department_members_assignment", columnNames = {"department_id", "membership_id"}))
+@Getter
+@Setter
+public class DepartmentMember extends BaseEntity {
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "department_id", nullable = false)
+    private Department department;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "membership_id", nullable = false)
+    private Membership membership;
+
+    @Column(name = "club_id", nullable = false)
+    private UUID clubId;
+
+    @Column(name = "joined_at", nullable = false)
+    private OffsetDateTime joinedAt;
+}

@@ -10,10 +10,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-/** Runs in its own context with a tiny quota so the limiter is exercised end to end. */
 @TestPropertySource(properties = {"app.rate-limit.max-requests=3", "app.rate-limit.window=1m"})
 class RateLimitApiTest extends ApiIntegrationTest {
-
     private MockHttpServletResponse login(String ip) throws Exception {
         return send(post("/api/v1/auth/login").with(request -> {
             request.setRemoteAddr(ip);
@@ -35,7 +33,6 @@ class RateLimitApiTest extends ApiIntegrationTest {
         assertThat(throttled.getContentType()).startsWith("application/problem+json");
         assertThat(json.readTree(throttled.getContentAsString()).path("code").asText()).isEqualTo("RATE_LIMIT_EXCEEDED");
 
-        // Another client is unaffected, and so are non-auth endpoints.
         assertThat(login("198.51.100.2").getStatus()).isEqualTo(401);
         for (int i = 0; i < 5; i++) {
             assertThat(send(get("/api/v1/users/me"), memberToken, null).getStatus()).isEqualTo(200);

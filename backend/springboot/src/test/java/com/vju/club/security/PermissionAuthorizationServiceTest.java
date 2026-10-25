@@ -1,7 +1,7 @@
 package com.vju.club.security;
 
 import com.vju.club.error.ApiException;
-import com.vju.club.repository.UserPermissionRepository;
+import com.vju.club.modules.permission.repository.UserPermissionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -21,7 +21,6 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PermissionAuthorizationServiceTest {
-
     @Mock UserPermissionRepository repository;
     @InjectMocks PermissionAuthorizationService service;
 

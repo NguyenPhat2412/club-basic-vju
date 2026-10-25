@@ -1,26 +1,26 @@
 package com.vju.club.bootstrap;
 
 import com.vju.club.config.DemoDataProperties;
-import com.vju.club.entity.Club;
-import com.vju.club.entity.Department;
-import com.vju.club.entity.DepartmentMember;
-import com.vju.club.entity.Membership;
-import com.vju.club.entity.MembershipStatus;
-import com.vju.club.entity.PermissionScope;
-import com.vju.club.entity.Role;
-import com.vju.club.entity.User;
-import com.vju.club.entity.UserPermission;
-import com.vju.club.entity.UserRole;
-import com.vju.club.entity.UserStatus;
-import com.vju.club.repository.ClubRepository;
-import com.vju.club.repository.DepartmentMemberRepository;
-import com.vju.club.repository.DepartmentRepository;
-import com.vju.club.repository.MembershipRepository;
-import com.vju.club.repository.PermissionRepository;
-import com.vju.club.repository.RoleRepository;
-import com.vju.club.repository.UserPermissionRepository;
-import com.vju.club.repository.UserRepository;
-import com.vju.club.repository.UserRoleRepository;
+import com.vju.club.modules.club.entity.Club;
+import com.vju.club.modules.department.entity.Department;
+import com.vju.club.modules.departmentmember.entity.DepartmentMember;
+import com.vju.club.modules.membership.entity.Membership;
+import com.vju.club.modules.membership.enums.MembershipStatus;
+import com.vju.club.modules.permission.enums.PermissionScope;
+import com.vju.club.modules.role.entity.Role;
+import com.vju.club.modules.user.entity.User;
+import com.vju.club.modules.permission.entity.UserPermission;
+import com.vju.club.modules.role.entity.UserRole;
+import com.vju.club.modules.user.enums.UserStatus;
+import com.vju.club.modules.club.repository.ClubRepository;
+import com.vju.club.modules.departmentmember.repository.DepartmentMemberRepository;
+import com.vju.club.modules.department.repository.DepartmentRepository;
+import com.vju.club.modules.membership.repository.MembershipRepository;
+import com.vju.club.modules.permission.repository.PermissionRepository;
+import com.vju.club.modules.role.repository.RoleRepository;
+import com.vju.club.modules.permission.repository.UserPermissionRepository;
+import com.vju.club.modules.user.repository.UserRepository;
+import com.vju.club.modules.role.repository.UserRoleRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,19 +32,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Seeds a demo club for local development: club VJUA with four departments and three users.
- * A is president (CLUB_PRESIDENT role), B heads the communications department (DEPARTMENT_HEAD
- * role), C is a plain member holding two direct permissions, so both grant mechanisms can be shown.
- * Runs once: nothing happens if club VJUA already exists.
- */
 public class DemoDataSeeder {
-
     static final String CLUB_CODE = "VJUA";
     static final List<String> DEPARTMENTS = List.of("Ban Truyền thông", "Ban Chuyên môn", "Ban Hậu cần", "Ban Đối ngoại");
     static final String USER_A = "demo.a@vju.local";
     static final String USER_B = "demo.b@vju.local";
     static final String USER_C = "demo.c@vju.local";
+    static final String STUDENT = "demo.student@vju.local";
 
     private static final Logger log = LoggerFactory.getLogger(DemoDataSeeder.class);
 
@@ -81,7 +75,6 @@ public class DemoDataSeeder {
         this.clock = clock;
     }
 
-    /** @return true when data was created, false when skipped */
     @Transactional
     public boolean seed() {
         if (!properties.isEnabled()) return false;
@@ -96,6 +89,7 @@ public class DemoDataSeeder {
         User a = user(USER_A, "Nguyễn Văn A", "VJU-DEMO-A");
         User b = user(USER_B, "Trần Thị B", "VJU-DEMO-B");
         User c = user(USER_C, "Lê Văn C", "VJU-DEMO-C");
+        user(STUDENT, "Sinh viên đăng ký CLB", "VJU-DEMO-STUDENT");
 
         Club club = new Club();
         club.setCode(CLUB_CODE);
@@ -125,8 +119,8 @@ public class DemoDataSeeder {
         grant(c, "club.view", club, a);
         grant(c, "member.view", club, a);
 
-        log.info("Seeded demo club {} with {} departments and users {}, {}, {}",
-                CLUB_CODE, departments.size(), USER_A, USER_B, USER_C);
+        log.info("Seeded demo club {} with {} departments and users {}, {}, {}, {}",
+                CLUB_CODE, departments.size(), USER_A, USER_B, USER_C, STUDENT);
         return true;
     }
 

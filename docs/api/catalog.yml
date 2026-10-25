@@ -7,13 +7,6 @@ entries:
   authRequired: false
   permission: null
 - method: POST
-  path: /api/v1/auth/register
-  module: authentication
-  backend: backend/springboot
-  status: IMPLEMENTED
-  authRequired: false
-  permission: null
-- method: POST
   path: /api/v1/auth/login
   module: authentication
   backend: backend/springboot
@@ -27,8 +20,8 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: null
-- method: POST
-  path: /api/v1/auth/refresh-token
+- method: GET
+  path: /api/v1/auth/csrf
   module: authentication
   backend: backend/springboot
   status: IMPLEMENTED
@@ -41,6 +34,13 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: null
+- method: POST
+  path: /api/v1/users
+  module: user-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: user.create
 - method: GET
   path: /api/v1/users/me
   module: user-profile
@@ -69,6 +69,13 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: user.view
+- method: PATCH
+  path: /api/v1/users/{userId}/password
+  module: user-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: user.reset_password
 - method: PATCH
   path: /api/v1/users/{userId}/status
   module: user-profile
@@ -342,3 +349,164 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: audit.view
+- method: POST
+  path: /api/v1/clubs/{clubId}/applications
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.create (owner)
+- method: GET
+  path: /api/v1/users/me/applications
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/users/me/applications/{applicationId}
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: PATCH
+  path: /api/v1/users/me/applications/{applicationId}/cancel
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.cancel (owner)
+- method: GET
+  path: /api/v1/clubs/{clubId}/applications
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.view
+- method: GET
+  path: /api/v1/clubs/{clubId}/applications/{applicationId}
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.view | application.view_detail
+- method: POST
+  path: /api/v1/clubs/{clubId}/applications/{applicationId}/approve
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.approve | application.review
+- method: POST
+  path: /api/v1/clubs/{clubId}/applications/{applicationId}/reject
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.reject | application.review
+- method: GET
+  path: /api/v1/users/me/memberships
+  module: membership
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/users/me/notifications
+  module: notification
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: PATCH
+  path: /api/v1/users/me/notifications/{notificationId}/read
+  module: notification
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/clubs/{clubId}/documents
+  module: document
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: document.view
+- method: GET
+  path: /api/v1/clubs/{clubId}/documents/count
+  module: document
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: document.view
+- method: GET
+  path: /api/v1/clubs/{clubId}/documents/names
+  module: document
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: document.view
+- method: POST
+  path: /api/v1/clubs/{clubId}/documents
+  module: document
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: document.upload
+- method: GET
+  path: /api/v1/documents/{documentId}
+  module: document
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: document.view
+- method: PATCH
+  path: /api/v1/documents/{documentId}
+  module: document
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: document.update
+- method: DELETE
+  path: /api/v1/documents/{documentId}
+  module: document
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: document.delete
+- method: POST
+  path: /api/v1/documents/{documentId}/restore
+  module: document
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: document.restore
+- method: GET
+  path: /api/v1/documents/{documentId}/versions
+  module: document
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: document.view
+- method: POST
+  path: /api/v1/documents/{documentId}/versions
+  module: document
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: document.upload
+- method: GET
+  path: /api/v1/documents/{documentId}/download
+  module: document
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: document.view
+- method: GET
+  path: /api/v1/documents/{documentId}/download-url
+  module: document
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: document.view

@@ -13,7 +13,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 class DepartmentApiTest extends ApiIntegrationTest {
-
     @Test
     void createTrimsNameAndRejectsDuplicatesIgnoringCase() throws Exception {
         JsonNode created = call(post("/api/v1/clubs/" + clubA + "/departments"), adminToken, Map.of("name", "  Media  "), 201);

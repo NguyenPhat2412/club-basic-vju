@@ -1,19 +1,24 @@
 package com.vju.club.membership;
 
-import com.vju.club.audit.AuditAction;
-import com.vju.club.audit.AuditService;
-import com.vju.club.entity.Club;
-import com.vju.club.entity.ClubStatus;
-import com.vju.club.entity.Membership;
-import com.vju.club.entity.MembershipStatus;
-import com.vju.club.entity.User;
-import com.vju.club.entity.UserStatus;
-import com.vju.club.membership.dto.CreateMembershipRequest;
-import com.vju.club.membership.dto.UpdateMembershipRequest;
-import com.vju.club.repository.ClubRepository;
-import com.vju.club.repository.DepartmentMemberRepository;
-import com.vju.club.repository.MembershipRepository;
-import com.vju.club.repository.UserRepository;
+import com.vju.club.modules.membership.mapper.MembershipMapperImpl;
+import com.vju.club.modules.membership.service.MembershipService;
+
+import com.vju.club.modules.membership.service.impl.MembershipServiceImpl;
+
+import com.vju.club.modules.audit.enums.AuditAction;
+import com.vju.club.modules.audit.service.AuditService;
+import com.vju.club.modules.club.entity.Club;
+import com.vju.club.modules.club.enums.ClubStatus;
+import com.vju.club.modules.membership.entity.Membership;
+import com.vju.club.modules.membership.enums.MembershipStatus;
+import com.vju.club.modules.user.entity.User;
+import com.vju.club.modules.user.enums.UserStatus;
+import com.vju.club.modules.membership.dto.request.CreateMembershipRequest;
+import com.vju.club.modules.membership.dto.request.UpdateMembershipRequest;
+import com.vju.club.modules.club.repository.ClubRepository;
+import com.vju.club.modules.departmentmember.repository.DepartmentMemberRepository;
+import com.vju.club.modules.membership.repository.MembershipRepository;
+import com.vju.club.modules.user.repository.UserRepository;
 import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +28,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 
 import java.time.Clock;
@@ -32,11 +41,13 @@ import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.vju.club.support.PermissionChecks.withPermissionChecks;
 import static com.vju.club.support.ApiErrors.FORBIDDEN;
 import static com.vju.club.support.ApiErrors.assertApiError;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -45,7 +56,6 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class MembershipServiceTest {
-
     private static final Instant NOW = Instant.parse("2026-09-30T00:00:00Z");
 
     @Mock MembershipRepository membershipRepository;
@@ -62,8 +72,8 @@ class MembershipServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new MembershipService(membershipRepository, clubRepository, userRepository, departmentMemberRepository,
-                authorization, Clock.fixed(NOW, ZoneOffset.UTC), audit);
+        service = withPermissionChecks(new MembershipServiceImpl(membershipRepository, clubRepository, userRepository, departmentMemberRepository,
+                authorization, Clock.fixed(NOW, ZoneOffset.UTC), audit, new MembershipMapperImpl()), authorization);
         club.setId(UUID.randomUUID());
         club.setStatus(ClubStatus.ACTIVE);
         user.setId(UUID.randomUUID());
@@ -161,5 +171,32 @@ class MembershipServiceTest {
         UUID missing = UUID.randomUUID();
         when(clubRepository.existsById(missing)).thenReturn(false);
         assertApiError(() -> service.list(actor, missing, null, 0, 20), HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND");
+    }
+
+    @Test
+    void listSupportsSearchAndDepartmentFilters() {
+        UUID departmentId = UUID.randomUUID();
+        when(clubRepository.existsById(club.getId())).thenReturn(true);
+        when(membershipRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(java.util.List.of(), PageRequest.of(0, 20), 0));
+
+        service.list(actor, club.getId(), MembershipStatus.ACTIVE, departmentId, "student", 0, 20);
+
+        verify(membershipRepository).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    void userCanReadOwnMembershipHistoryWithoutGlobalPermission() {
+        Membership own = membership(MembershipStatus.ACTIVE);
+        own.setUser(user);
+        when(membershipRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(java.util.List.of(own), PageRequest.of(0, 20), 1));
+
+        var page = service.listMine(actor, null, 0, 20);
+
+        assertThat(page.total()).isEqualTo(1L);
+        assertThat(page.items()).hasSize(1);
+        assertThat(page.items().getFirst().clubId()).isEqualTo(club.getId());
+        verify(authorization, never()).require(any(), eq("member.view"), any(), any());
     }
 }

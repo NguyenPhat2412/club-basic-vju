@@ -1,17 +1,22 @@
 package com.vju.club.department;
 
-import com.vju.club.audit.AuditAction;
-import com.vju.club.audit.AuditService;
-import com.vju.club.department.dto.DepartmentPatchRequest;
-import com.vju.club.department.dto.DepartmentRequest;
-import com.vju.club.department.dto.DepartmentStatusRequest;
-import com.vju.club.entity.Club;
-import com.vju.club.entity.ClubStatus;
-import com.vju.club.entity.Department;
-import com.vju.club.entity.DepartmentStatus;
+import com.vju.club.modules.department.mapper.DepartmentMapperImpl;
+import com.vju.club.modules.department.service.DepartmentService;
+
+import com.vju.club.modules.department.service.impl.DepartmentServiceImpl;
+
+import com.vju.club.modules.audit.enums.AuditAction;
+import com.vju.club.modules.audit.service.AuditService;
+import com.vju.club.modules.department.dto.request.DepartmentPatchRequest;
+import com.vju.club.modules.department.dto.request.DepartmentRequest;
+import com.vju.club.modules.department.dto.request.DepartmentStatusRequest;
+import com.vju.club.modules.club.entity.Club;
+import com.vju.club.modules.club.enums.ClubStatus;
+import com.vju.club.modules.department.entity.Department;
+import com.vju.club.modules.department.enums.DepartmentStatus;
 import com.vju.club.error.ApiException;
-import com.vju.club.repository.ClubRepository;
-import com.vju.club.repository.DepartmentRepository;
+import com.vju.club.modules.club.repository.ClubRepository;
+import com.vju.club.modules.department.repository.DepartmentRepository;
 import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +31,7 @@ import org.springframework.http.HttpStatus;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.vju.club.support.PermissionChecks.withPermissionChecks;
 import static com.vju.club.support.ApiErrors.FORBIDDEN;
 import static com.vju.club.support.ApiErrors.assertApiError;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,7 +47,6 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class DepartmentServiceTest {
-
     @Mock DepartmentRepository departmentRepository;
     @Mock ClubRepository clubRepository;
     @Mock AuditService audit;
@@ -54,7 +59,7 @@ class DepartmentServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DepartmentService(departmentRepository, clubRepository, audit, authorization);
+        service = withPermissionChecks(new DepartmentServiceImpl(departmentRepository, clubRepository, audit, authorization, new DepartmentMapperImpl()), authorization);
         club.setId(UUID.randomUUID());
         club.setStatus(ClubStatus.ACTIVE);
         department.setId(UUID.randomUUID());

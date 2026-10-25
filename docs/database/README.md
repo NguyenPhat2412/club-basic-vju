@@ -18,8 +18,10 @@ The Spring Boot backend connects to `jdbc:postgresql://localhost:5432/club` by d
 | `V4__membership_history.sql` | Keeps membership history: at most one current (non-`LEFT`) membership per user and club |
 | `V5__roles.sql` | Roles (`roles`, `role_permissions`, `user_roles`), the `effective_user_permissions` view, 5 system roles and the `role.*` permissions |
 | `V6__audit_log_and_membership_timestamps.sql` | General `audit_logs`, membership `created_at`/`updated_at`, the `audit.view` permission |
+| `V7__club_applications.sql` | `club_applications`, pending-application uniqueness, application permissions, and `APPLICATION` audit resource support |
+| `V8__notifications.sql` | `notifications`, user/time index, and automatic `updated_at` maintenance |
 
-Tables: `users`, `clubs`, `departments`, `memberships`, `department_members`, `permissions`, `user_permissions`, `roles`, `role_permissions`, `user_roles`, `permission_audit_logs`, `audit_logs`, `refresh_tokens`; view `effective_user_permissions` (active direct grants plus active role assignments, used by every authorization check). Flyway records applied migrations in `flyway_schema_history`. Migrations seed the permission catalog only; no sample users, clubs, or memberships are created.
+Tables: `users`, `clubs`, `departments`, `memberships`, `department_members`, `permissions`, `user_permissions`, `roles`, `role_permissions`, `user_roles`, `permission_audit_logs`, `audit_logs`, `refresh_tokens`, `club_applications`, `notifications`; view `effective_user_permissions` (active direct grants plus active role assignments, used by every authorization check). Flyway records applied migrations in `flyway_schema_history`. Migrations seed the permission catalog only; no sample users, clubs, or memberships are created.
 
 ### Integrity rules enforced by PostgreSQL
 
@@ -29,6 +31,8 @@ Tables: `users`, `clubs`, `departments`, `memberships`, `department_members`, `p
 | A department member belongs to the department's club | `department_members.club_id` with composite FKs `fk_department_members_department_club` → `departments(id, club_id)` and `fk_department_members_membership_club` → `memberships(id, club_id)` |
 | `left_at` is set exactly when a membership is `LEFT` | `ck_memberships_left_at` |
 | A user has at most one current membership per club; `LEFT` rows are history | partial unique index `uq_memberships_user_club_current` |
+| A user has at most one pending application per club | partial unique index `uq_club_applications_pending`; `club_applications` also checks status/reviewer/cancellation consistency |
+| Application message and review note stay within API bounds | `VARCHAR(2000)` and `VARCHAR(1000)` columns |
 | Grant scope matches its target, and an active grant is never duplicated | `ck_user_permissions_scope`, partial unique indexes `uq_user_permissions_active_*` |
 | `revoked_by` only exists on revoked grants | `ck_user_permissions_revoked_by`, `ck_user_roles_revoked_by` |
 | Grants and role assignments are made at the item's scope or broader | triggers `trg_user_permissions_grant_scope`, `trg_user_roles_grant_scope` (`ck_*_grant_scope`) |
@@ -39,6 +43,7 @@ Tables: `users`, `clubs`, `departments`, `memberships`, `department_members`, `p
 | `permission_key` is `module.action` | `ck_permissions_key_matches_module_action` |
 | Audit history is immutable | `permission_audit_logs` FKs are `ON DELETE RESTRICT`; clubs and departments are deactivated, never deleted |
 | `updated_at` follows every update | `set_updated_at()` trigger on `users`, `clubs`, `departments` (keeps a value the statement sets itself) |
+| Notifications are user-owned and indexed by recency | `notifications.user_id` foreign key with `idx_notifications_user_created` |
 
 Every foreign-key column is indexed, and list queries are backed by `idx_memberships_club_joined` and `idx_department_members_department_joined`. Repository lookups use `lower(...)` so they hit the case-insensitive indexes.
 

@@ -1,5 +1,6 @@
 package com.vju.club.security;
 
+import lombok.RequiredArgsConstructor;
 import com.vju.club.config.RateLimitProperties;
 import org.springframework.stereotype.Service;
 
@@ -8,16 +9,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
+@RequiredArgsConstructor
 public class RateLimitService {
     private final RateLimitProperties properties;
     private final Clock clock;
     private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
     private final AtomicLong lastSweepAt = new AtomicLong();
-
-    public RateLimitService(RateLimitProperties properties, Clock clock) {
-        this.properties = properties;
-        this.clock = clock;
-    }
 
     public RateLimitDecision check(String key) {
         int limit = limit();
@@ -43,7 +40,6 @@ public class RateLimitService {
         }
     }
 
-    /** Drops finished windows at most once per window so the map cannot grow without bound. */
     private void sweepExpired(long now, long windowMillis) {
         long last = lastSweepAt.get();
         if (now - last < windowMillis || !lastSweepAt.compareAndSet(last, now)) {

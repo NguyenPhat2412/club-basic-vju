@@ -1,5 +1,7 @@
 package com.vju.club.integration;
 
+import com.vju.club.modules.club.entity.Club;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -17,7 +19,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 class AuditLogApiTest extends ApiIntegrationTest {
-
     private JsonNode logs(String... params) throws Exception {
         var request = get("/api/v1/audit-logs").param("limit", "100");
         for (int i = 0; i < params.length; i += 2) request.param(params[i], params[i + 1]);
@@ -106,11 +107,12 @@ class AuditLogApiTest extends ApiIntegrationTest {
     }
 
     @Test
-    void registrationAndPasswordChangeAreAuditedAsTheUser() throws Exception {
-        UUID registered = id(call(post("/api/v1/auth/register"), null,
-                Map.of("email", "self@vju.local", "password", PASSWORD, "fullName", "Self"), 201));
-        JsonNode page = logs("actorUserId", registered.toString());
-        assertThat(actions(page)).containsExactly("USER_REGISTERED");
+    void accountCreationIsAuditedAsTheAdminAndPasswordChangeAsTheUser() throws Exception {
+        UUID created = id(call(post("/api/v1/users"), adminToken,
+                Map.of("email", "new@vju.local", "password", PASSWORD, "fullName", "New"), 201));
+        JsonNode page = logs("resourceId", created.toString());
+        assertThat(actions(page)).containsExactly("USER_CREATED");
+        assertThat(page.at("/items/0/actorUserId").asText()).isEqualTo(admin.toString());
         assertThat(page.at("/items/0/newValue").toString()).doesNotContain(PASSWORD);
 
         call(post("/api/v1/auth/change-password"), memberToken, Map.of("currentPassword", PASSWORD, "newPassword", "Changed123!"), 204);

@@ -28,3 +28,8 @@ Thumbs.db
 
 __pycache__/
 *.pyc
+# Local-only credentials (bootstrap admin)
+.env.local
+
+# Local worktrees
+.worktrees/

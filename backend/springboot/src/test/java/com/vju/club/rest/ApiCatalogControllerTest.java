@@ -12,7 +12,6 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 class ApiCatalogControllerTest {
-
     @Test
     void catalogExposesImplementedAndPlannedRoutesForSpringBootBackend() throws Exception {
         ApiCatalogService service = new ApiCatalogService();
@@ -23,7 +22,10 @@ class ApiCatalogControllerTest {
         mockMvc.perform(get("/api/v1/api-catalog"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.path == '/api/v1/api-catalog')].status", hasItem("IMPLEMENTED")))
-                .andExpect(jsonPath("$[?(@.path == '/api/v1/auth/register')].status", hasItem("IMPLEMENTED")))
+                .andExpect(jsonPath("$[?(@.path == '/api/v1/users')].status", hasItem("IMPLEMENTED")))
+                .andExpect(jsonPath("$[?(@.path == '/api/v1/clubs/{clubId}/applications')].status", hasItem("IMPLEMENTED")))
+                .andExpect(jsonPath("$[?(@.path == '/api/v1/users/me/applications')].status", hasItem("IMPLEMENTED")))
+                .andExpect(jsonPath("$[?(@.path == '/api/v1/users/me/memberships')].status", hasItem("IMPLEMENTED")))
                 .andExpect(jsonPath("$[*].backend", everyItem(equalTo("backend/springboot"))));
     }
 

@@ -1,13 +1,18 @@
 package com.vju.club.club;
 
-import com.vju.club.audit.AuditAction;
-import com.vju.club.audit.AuditService;
-import com.vju.club.club.dto.ClubPatchRequest;
-import com.vju.club.club.dto.ClubRequest;
-import com.vju.club.club.dto.ClubStatusRequest;
-import com.vju.club.entity.Club;
-import com.vju.club.entity.ClubStatus;
-import com.vju.club.repository.ClubRepository;
+import com.vju.club.modules.club.mapper.ClubMapperImpl;
+import com.vju.club.modules.club.service.ClubService;
+
+import com.vju.club.modules.club.service.impl.ClubServiceImpl;
+
+import com.vju.club.modules.audit.enums.AuditAction;
+import com.vju.club.modules.audit.service.AuditService;
+import com.vju.club.modules.club.dto.request.ClubPatchRequest;
+import com.vju.club.modules.club.dto.request.ClubRequest;
+import com.vju.club.modules.club.dto.request.ClubStatusRequest;
+import com.vju.club.modules.club.entity.Club;
+import com.vju.club.modules.club.enums.ClubStatus;
+import com.vju.club.modules.club.repository.ClubRepository;
 import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,16 +23,22 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.vju.club.support.PermissionChecks.withPermissionChecks;
 import static com.vju.club.support.ApiErrors.FORBIDDEN;
 import static com.vju.club.support.ApiErrors.assertApiError;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
@@ -38,7 +49,6 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class ClubServiceTest {
-
     @Mock ClubRepository clubRepository;
     @Mock PermissionAuthorizationService authorization;
     @Mock AuditService audit;
@@ -48,7 +58,7 @@ class ClubServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ClubService(clubRepository, authorization, audit);
+        service = withPermissionChecks(new ClubServiceImpl(clubRepository, authorization, audit, new ClubMapperImpl()), authorization);
         when(clubRepository.saveAndFlush(any(Club.class))).thenAnswer(invocation -> {
             Club club = invocation.getArgument(0);
             if (club.getId() == null) club.setId(UUID.randomUUID());
@@ -148,8 +158,46 @@ class ClubServiceTest {
     }
 
     @Test
-    void getRequiresClubViewBeforeLookingTheClubUp() {
+    void activeUserWithoutClubViewCanDiscoverActiveClubs() {
+        Club active = club("ACTIVE");
+        active.setStatus(ClubStatus.ACTIVE);
+        when(authorization.hasGlobalPermission(actor, "club.view")).thenReturn(false);
+        when(authorization.hasAnyPermission(actor, "club.view")).thenReturn(false);
+        when(clubRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(java.util.List.of(active), PageRequest.of(0, 20), 1));
+
+        var page = service.list(actor, "", null, null, 0, 20);
+
+        assertThat(page.items()).extracting(response -> response.code()).containsExactly("ACTIVE");
+        verify(authorization, never()).require(actor, "club.view", null, null);
+    }
+
+    @Test
+    void globalViewerCanFilterByCategoryAndStatus() {
+        when(authorization.hasGlobalPermission(actor, "club.view")).thenReturn(true);
+        when(clubRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(java.util.List.of(), PageRequest.of(0, 20), 0));
+
+        service.list(actor, "music", "Arts", ClubStatus.INACTIVE, 0, 20);
+
+        verify(clubRepository).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    void activeUserWithoutClubViewCanGetAnActiveClub() {
         UUID id = UUID.randomUUID();
+        Club active = club("ACTIVE");
+        when(authorization.hasAnyPermission(actor, "club.view")).thenReturn(false);
+        when(clubRepository.findByIdAndStatus(id, ClubStatus.ACTIVE)).thenReturn(Optional.of(active));
+
+        assertThat(service.get(actor, id).id()).isEqualTo(active.getId());
+        verify(authorization, never()).require(actor, "club.view", id, null);
+    }
+
+    @Test
+    void permissionedGetStillRequiresClubViewBeforeLookingTheClubUp() {
+        UUID id = UUID.randomUUID();
+        when(authorization.hasAnyPermission(actor, "club.view")).thenReturn(true);
         doThrow(FORBIDDEN).when(authorization).require(actor, "club.view", id, null);
         assertApiError(() -> service.get(actor, id), HttpStatus.FORBIDDEN, "PERMISSION_DENIED");
         verify(clubRepository, never()).findById(any());

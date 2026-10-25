@@ -1,5 +1,7 @@
 package com.vju.club.support;
 
+import com.vju.club.modules.permission.entity.Permission;
+
 import com.vju.club.error.ApiException;
 import org.assertj.core.api.ThrowableAssert;
 import org.springframework.http.HttpStatus;

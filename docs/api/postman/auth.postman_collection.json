@@ -1,0 +1,1742 @@
+{
+  "info": {
+    "_postman_id": "cc148972-87b0-5d5d-9679-db43f4165fd4",
+    "name": "VJU Club – Đăng nhập & tài khoản",
+    "description": "Session cookie (CLUB_SESSION) + CSRF (XSRF-TOKEN / X-XSRF-TOKEN); tài khoản do admin cấp; đổi/đặt lại mật khẩu; khoá tài khoản; rate limit. Cần baseUrl, adminEmail, adminPassword.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const unsafe = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(pm.request.method);",
+          "const skip = pm.request.headers.has('X-No-Csrf');",
+          "if (skip) pm.request.headers.remove('X-No-Csrf');",
+          "const apply = () => pm.request.headers.upsert({ key: 'X-XSRF-TOKEN', value: pm.collectionVariables.get('xsrf') || '' });",
+          "if (skip) { /* sent without a CSRF token on purpose */ }",
+          "else if (unsafe && !pm.collectionVariables.get('xsrf')) {",
+          "  pm.sendRequest({ url: pm.variables.get('baseUrl') + '/api/v1/auth/csrf', method: 'GET' }, (err, res) => {",
+          "    if (!err) res.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').forEach(h => {",
+          "      const m = h.value.match(/^XSRF-TOKEN=([^;]*)/); if (m && m[1]) pm.collectionVariables.set('xsrf', decodeURIComponent(m[1]));",
+          "    });",
+          "    apply();",
+          "  });",
+          "} else if (unsafe) { apply(); }"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.response.headers.all().filter(h => h.key.toLowerCase() === 'set-cookie').forEach(h => {",
+          "  const m = h.value.match(/^XSRF-TOKEN=([^;]*)/); if (m) pm.collectionVariables.set('xsrf', decodeURIComponent(m[1]));",
+          "});"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "0. CSRF và phiên",
+      "item": [
+        {
+          "name": "Lấy cookie CSRF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "csrf"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/csrf"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const id = Date.now().toString(36) + Math.floor(Math.random()*1e4).toString(36);",
+                  "pm.collectionVariables.set(\"runId\", id);",
+                  "pm.collectionVariables.set(\"memberEmail\", \"auth.\" + id + \"@vju.local\");",
+                  "pm.collectionVariables.set(\"memberPassword\", \"Password123!\");",
+                  "pm.collectionVariables.set(\"newPassword\", \"NewPassword456!\");",
+                  "pm.collectionVariables.set(\"resetPassword\", \"ResetByAdmin789!\");",
+                  "pm.collectionVariables.set(\"adminEmailUpper\", pm.variables.get(\"adminEmail\").toUpperCase());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 204\", () => pm.response.to.have.status(204));",
+                  "const c = pm.response.headers.all().find(h => h.key.toLowerCase() === \"set-cookie\" && h.value.startsWith(\"XSRF-TOKEN=\"));",
+                  "pm.test(\"đặt cookie XSRF-TOKEN\", () => pm.expect(c).to.be.ok);",
+                  "pm.test(\"XSRF-TOKEN đọc được bằng JavaScript (không HttpOnly)\", () => pm.expect(c.value.toLowerCase()).to.not.include(\"httponly\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Chưa đăng nhập: /auth/me trả 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/me"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"code UNAUTHORIZED\", () => pm.expect(pm.response.json().code).to.eql(\"UNAUTHORIZED\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Đăng nhập",
+      "item": [
+        {
+          "name": "Thiếu token CSRF bị chặn",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-No-Csrf",
+                "value": "1"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{adminEmail}}\",\"password\":\"{{adminPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"code CSRF_INVALID\", () => pm.expect(pm.response.json().code).to.eql(\"CSRF_INVALID\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sai mật khẩu",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{adminEmail}}\",\"password\":\"WrongPassword!\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"code INVALID_CREDENTIALS\", () => pm.expect(pm.response.json().code).to.eql(\"INVALID_CREDENTIALS\"));",
+                  "pm.collectionVariables.set(\"wrongBody\", JSON.stringify(pm.response.json()));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Email không tồn tại: trả lời giống hệt sai mật khẩu",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"ghost.{{runId}}@vju.local\",\"password\":\"WrongPassword!\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"code INVALID_CREDENTIALS\", () => pm.expect(pm.response.json().code).to.eql(\"INVALID_CREDENTIALS\"));",
+                  "pm.test(\"không lộ email nào tồn tại\", () => pm.expect(JSON.stringify(pm.response.json())).to.eql(pm.collectionVariables.get(\"wrongBody\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Thiếu mật khẩu",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{adminEmail}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code VALIDATION_ERROR\", () => pm.expect(pm.response.json().code).to.eql(\"VALIDATION_ERROR\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin đăng nhập (email viết hoa)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{adminEmailUpper}}\",\"password\":\"{{adminPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.unset(\"xsrf\");",
+                  "pm.test(\"có cookie phiên CLUB_SESSION\", () => pm.expect(pm.cookies.has(\"CLUB_SESSION\")).to.be.true);",
+                  "const b = pm.response.json();",
+                  "pm.test(\"trả về user, không có token trong body\", () => { pm.expect(b.user.email).to.eql(pm.variables.get(\"adminEmail\").toLowerCase()); pm.expect(b).to.not.have.property(\"tokens\"); });",
+                  "const c = pm.response.headers.all().find(h => h.key.toLowerCase() === \"set-cookie\" && h.value.startsWith(\"CLUB_SESSION=\"));",
+                  "pm.test(\"cookie phiên HttpOnly + SameSite=Lax\", () => { pm.expect(c.value).to.include(\"HttpOnly\"); pm.expect(c.value).to.include(\"SameSite=Lax\"); });",
+                  "pm.collectionVariables.set(\"adminId\", b.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Phiên hoạt động: /auth/me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/me"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"đúng admin\", () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"adminId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Không còn API tự đăng ký",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/register"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"self.{{runId}}@vju.local\",\"password\":\"Password123!\",\"fullName\":\"Self\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"code NOT_FOUND\", () => pm.expect(pm.response.json().code).to.eql(\"NOT_FOUND\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Admin tạo tài khoản",
+      "item": [
+        {
+          "name": "Tạo tài khoản thành viên",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "raw": "{{baseUrl}}/api/v1/users"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{memberEmail}}\",\"password\":\"{{memberPassword}}\",\"fullName\":\"Thành viên Postman\",\"studentCode\":\"PM-{{runId}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"memberId\", pm.response.json().id);",
+                  "const u = pm.response.json();",
+                  "pm.test(\"ACTIVE, không lộ mật khẩu\", () => { pm.expect(u.status).to.eql(\"ACTIVE\"); pm.expect(pm.response.text()).to.not.include(\"Password123!\"); pm.expect(u).to.not.have.property(\"passwordHash\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Email trùng (khác hoa thường)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "raw": "{{baseUrl}}/api/v1/users"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"AUTH.{{runId}}@VJU.LOCAL\",\"password\":\"Password123!\",\"fullName\":\"Dup\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"code EMAIL_ALREADY_EXISTS\", () => pm.expect(pm.response.json().code).to.eql(\"EMAIL_ALREADY_EXISTS\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mã sinh viên trùng",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "raw": "{{baseUrl}}/api/v1/users"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"other.{{runId}}@vju.local\",\"password\":\"Password123!\",\"fullName\":\"Dup\",\"studentCode\":\"PM-{{runId}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"code STUDENT_CODE_ALREADY_EXISTS\", () => pm.expect(pm.response.json().code).to.eql(\"STUDENT_CODE_ALREADY_EXISTS\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Email sai định dạng",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "raw": "{{baseUrl}}/api/v1/users"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"not-an-email\",\"password\":\"Password123!\",\"fullName\":\"X\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code VALIDATION_ERROR\", () => pm.expect(pm.response.json().code).to.eql(\"VALIDATION_ERROR\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mật khẩu < 8 ký tự",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "raw": "{{baseUrl}}/api/v1/users"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"short.{{runId}}@vju.local\",\"password\":\"abc\",\"fullName\":\"X\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code VALIDATION_ERROR\", () => pm.expect(pm.response.json().code).to.eql(\"VALIDATION_ERROR\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tự gán trạng thái/vai trò bị chặn",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "raw": "{{baseUrl}}/api/v1/users"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"mass.{{runId}}@vju.local\",\"password\":\"Password123!\",\"fullName\":\"X\",\"status\":\"ACTIVE\",\"role\":\"SYSTEM_ADMIN\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code VALIDATION_ERROR\", () => pm.expect(pm.response.json().code).to.eql(\"VALIDATION_ERROR\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tìm thấy tài khoản vừa tạo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "{{runId}}"
+                }
+              ],
+              "raw": "{{baseUrl}}/api/v1/users?query={{runId}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"có trong danh sách\", () => pm.expect(pm.response.json().items.map(u => u.id)).to.include(pm.collectionVariables.get(\"memberId\")));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Phiên của thành viên",
+      "item": [
+        {
+          "name": "Thành viên đăng nhập",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{memberEmail}}\",\"password\":\"{{memberPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.unset(\"xsrf\");",
+                  "pm.test(\"có cookie phiên CLUB_SESSION\", () => pm.expect(pm.cookies.has(\"CLUB_SESSION\")).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Xem hồ sơ của mình",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ],
+              "raw": "{{baseUrl}}/api/v1/users/me"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"đúng thành viên\", () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"memberId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Không xem được danh sách tài khoản",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "raw": "{{baseUrl}}/api/v1/users"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"code PERMISSION_DENIED\", () => pm.expect(pm.response.json().code).to.eql(\"PERMISSION_DENIED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Không tạo được tài khoản",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "raw": "{{baseUrl}}/api/v1/users"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"nope.{{runId}}@vju.local\",\"password\":\"Password123!\",\"fullName\":\"X\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"code PERMISSION_DENIED\", () => pm.expect(pm.response.json().code).to.eql(\"PERMISSION_DENIED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Không tự đặt lại mật khẩu người khác",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{adminId}}",
+                "password"
+              ],
+              "raw": "{{baseUrl}}/api/v1/users/{{adminId}}/password"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"newPassword\":\"Hacked12345!\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"code PERMISSION_DENIED\", () => pm.expect(pm.response.json().code).to.eql(\"PERMISSION_DENIED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Đổi mật khẩu: sai mật khẩu hiện tại",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "change-password"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/change-password"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"currentPassword\":\"WrongPassword!\",\"newPassword\":\"{{newPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code CURRENT_PASSWORD_INVALID\", () => pm.expect(pm.response.json().code).to.eql(\"CURRENT_PASSWORD_INVALID\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Đổi mật khẩu: mật khẩu mới quá ngắn",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "change-password"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/change-password"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"currentPassword\":\"{{memberPassword}}\",\"newPassword\":\"short\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code VALIDATION_ERROR\", () => pm.expect(pm.response.json().code).to.eql(\"VALIDATION_ERROR\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Đổi mật khẩu thành công",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "change-password"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/change-password"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"currentPassword\":\"{{memberPassword}}\",\"newPassword\":\"{{newPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Phiên hiện tại vẫn dùng được sau khi đổi",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/me"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Đăng xuất",
+      "item": [
+        {
+          "name": "Đăng xuất",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/logout"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sau đăng xuất: /auth/me trả 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/me"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"code UNAUTHORIZED\", () => pm.expect(pm.response.json().code).to.eql(\"UNAUTHORIZED\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mật khẩu cũ không còn dùng được",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{memberEmail}}\",\"password\":\"{{memberPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"code INVALID_CREDENTIALS\", () => pm.expect(pm.response.json().code).to.eql(\"INVALID_CREDENTIALS\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mật khẩu mới đăng nhập được",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{memberEmail}}\",\"password\":\"{{newPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.unset(\"xsrf\");",
+                  "pm.test(\"có cookie phiên CLUB_SESSION\", () => pm.expect(pm.cookies.has(\"CLUB_SESSION\")).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Thành viên đăng xuất",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/logout"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Admin đặt lại mật khẩu và khoá",
+      "item": [
+        {
+          "name": "Admin đăng nhập",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{adminEmail}}\",\"password\":\"{{adminPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.unset(\"xsrf\");",
+                  "pm.test(\"có cookie phiên CLUB_SESSION\", () => pm.expect(pm.cookies.has(\"CLUB_SESSION\")).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Đặt lại mật khẩu: quá ngắn",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{memberId}}",
+                "password"
+              ],
+              "raw": "{{baseUrl}}/api/v1/users/{{memberId}}/password"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"newPassword\":\"short\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"code VALIDATION_ERROR\", () => pm.expect(pm.response.json().code).to.eql(\"VALIDATION_ERROR\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Đặt lại mật khẩu: tài khoản không tồn tại",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "00000000-0000-0000-0000-000000000000",
+                "password"
+              ],
+              "raw": "{{baseUrl}}/api/v1/users/00000000-0000-0000-0000-000000000000/password"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"newPassword\":\"{{resetPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"code USER_NOT_FOUND\", () => pm.expect(pm.response.json().code).to.eql(\"USER_NOT_FOUND\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Đặt lại mật khẩu cho thành viên quên mật khẩu",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{memberId}}",
+                "password"
+              ],
+              "raw": "{{baseUrl}}/api/v1/users/{{memberId}}/password"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"newPassword\":\"{{resetPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Khoá tài khoản thành viên",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{memberId}}",
+                "status"
+              ],
+              "raw": "{{baseUrl}}/api/v1/users/{{memberId}}/status"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\":\"INACTIVE\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"INACTIVE\", () => pm.expect(pm.response.json().status).to.eql(\"INACTIVE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bị khoá + đúng mật khẩu: báo tài khoản bị khoá",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{memberEmail}}\",\"password\":\"{{resetPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"code ACCOUNT_INACTIVE\", () => pm.expect(pm.response.json().code).to.eql(\"ACCOUNT_INACTIVE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bị khoá + sai mật khẩu: không lộ trạng thái",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{memberEmail}}\",\"password\":\"WrongPassword!\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"code INVALID_CREDENTIALS\", () => pm.expect(pm.response.json().code).to.eql(\"INVALID_CREDENTIALS\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin đăng nhập lại",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{adminEmail}}\",\"password\":\"{{adminPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.unset(\"xsrf\");",
+                  "pm.test(\"có cookie phiên CLUB_SESSION\", () => pm.expect(pm.cookies.has(\"CLUB_SESSION\")).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mở khoá tài khoản",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{memberId}}",
+                "status"
+              ],
+              "raw": "{{baseUrl}}/api/v1/users/{{memberId}}/status"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\":\"ACTIVE\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mật khẩu trước khi đặt lại không còn dùng được",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{memberEmail}}\",\"password\":\"{{newPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"code INVALID_CREDENTIALS\", () => pm.expect(pm.response.json().code).to.eql(\"INVALID_CREDENTIALS\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mật khẩu admin đặt lại dùng được",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{memberEmail}}\",\"password\":\"{{resetPassword}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.unset(\"xsrf\");",
+                  "pm.test(\"có cookie phiên CLUB_SESSION\", () => pm.expect(pm.cookies.has(\"CLUB_SESSION\")).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Thành viên đăng xuất lần cuối",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/logout"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Giới hạn đăng nhập (chạy cuối)",
+      "item": [
+        {
+          "name": "Đăng nhập sai liên tục đến khi bị chặn",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/api/v1/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{memberEmail}}\",\"password\":\"Brute-force!\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const n = (pm.collectionVariables.get(\"bruteCount\") || 0) + 1; pm.collectionVariables.set(\"bruteCount\", n);",
+                  "if (pm.response.code === 429) {",
+                  "  pm.test(\"bị chặn sau \" + n + \" lần thử\", () => pm.expect(n).to.be.at.most(70));",
+                  "  pm.test(\"thông báo rate limit\", () => pm.expect(pm.response.json().code).to.eql(\"RATE_LIMIT_EXCEEDED\"));",
+                  "} else if (n < 75) { pm.execution.setNextRequest(pm.info.requestName); }",
+                  "else { pm.test(\"không bị chặn sau 75 lần\", () => pm.expect.fail(\"no 429\")); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    }
+  ]
+}

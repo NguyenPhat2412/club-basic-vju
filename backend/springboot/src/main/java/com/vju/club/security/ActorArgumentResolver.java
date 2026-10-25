@@ -10,10 +10,8 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
-/** Resolves {@link Actor} controller arguments from the JWT of the current request. */
 @Component
 public class ActorArgumentResolver implements HandlerMethodArgumentResolver {
-
     @Override
     public boolean supportsParameter(MethodParameter parameter) {
         return Actor.class.equals(parameter.getParameterType());

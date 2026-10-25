@@ -1,8 +1,6 @@
 package com.vju.club.integration;
 
-import com.vju.club.auth.RefreshTokenCleanupJob;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.ConnectionCallback;
 
@@ -18,21 +16,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-/**
- * The database itself (migration V3) must reject invalid data, even when it bypasses the
- * application: raw SQL, another service, or two requests racing past the service checks.
- */
 class DatabaseConstraintsTest extends ApiIntegrationTest {
-
-    @Autowired RefreshTokenCleanupJob cleanupJob;
 
     private void rejects(String constraint, String sql, Object... args) {
         assertThatThrownBy(() -> db.update(sql, args))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining(constraint);
     }
-
-    // ---- 1. case-insensitive uniqueness ---------------------------------------------------------
 
     @Test
     void emailIsUniqueIgnoringCase() {
@@ -65,7 +55,7 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
         int[] next = {0};
         List<Integer> statuses = concurrently(8, () -> {
             String email = variants[next[0]++ % variants.length];
-            return () -> send(post("/api/v1/auth/register"), null,
+            return () -> send(post("/api/v1/users"), adminToken,
                     Map.of("email", email, "password", PASSWORD, "fullName", "Racer")).getStatus();
         });
         assertThat(statuses).containsOnly(201, 409);
@@ -84,8 +74,6 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
         assertThat(statuses).containsOnly(201, 409);
         assertThat(statuses).filteredOn(s -> s == 201).hasSize(1);
     }
-
-    // ---- 2. department members stay inside their club -------------------------------------------
 
     @Test
     void departmentMemberCannotCrossClubsWhateverClubIdIsClaimed() {
@@ -116,8 +104,6 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
         assertThat(count("SELECT count(*) FROM department_members WHERE membership_id IN (?, ?)", m1, m2)).isZero();
     }
 
-    // ---- 3. membership status and left_at agree -------------------------------------------------
-
     @Test
     void leftAtIsSetExactlyWhenMembershipIsLeft() {
         UUID mid = membership(user("x@test.local"), clubA);
@@ -139,8 +125,6 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
         db.update("INSERT INTO memberships(user_id, club_id, status) VALUES (?, ?, 'ACTIVE')", userId, clubB);
     }
 
-    // ---- 4. audit logs are immutable -----------------------------------------------------------
-
     @Test
     void clubWithAuditHistoryCannotBeDeleted() throws Exception {
         UUID lonely = club("LONELY");
@@ -149,8 +133,6 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
         rejects("permission_audit_logs_club_id_fkey", "DELETE FROM clubs WHERE id = ?", lonely);
         assertThat(count("SELECT count(*) FROM permission_audit_logs WHERE club_id = ?", lonely)).isEqualTo(2);
     }
-
-    // ---- 5 & 6. revoked_by and permission keys --------------------------------------------------
 
     @Test
     void revokeRecordsWhoRevoked() throws Exception {
@@ -176,7 +158,14 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
         db.update("DELETE FROM permissions WHERE permission_key = 'club.purge'");
     }
 
-    // ---- 7. indexes are usable --------------------------------------------------------------------
+    @Test
+    void applicationTextBoundsAreEnforcedByDatabase() {
+        UUID applicant = user("application-bounds@test.local");
+        assertThatThrownBy(() -> db.update(
+                "INSERT INTO club_applications(applicant_id, club_id, message) VALUES (?, ?, ?)",
+                applicant, clubA, "x".repeat(2001)))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
 
     private String plan(String sql) {
         return db.execute((ConnectionCallback<String>) connection -> {
@@ -214,8 +203,6 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
         assertThat(unindexed).isEmpty();
     }
 
-    // ---- 8. updated_at trigger -------------------------------------------------------------------
-
     @Test
     void rawSqlUpdatesStillBumpUpdatedAt() {
         db.update("UPDATE clubs SET updated_at = now() - interval '1 day' WHERE id = ?", clubA);
@@ -230,23 +217,5 @@ class DatabaseConstraintsTest extends ApiIntegrationTest {
         db.update("UPDATE users SET full_name = 'x', updated_at = '2030-01-01T00:00:00Z' WHERE id = ?", member);
         assertThat(db.queryForObject("SELECT updated_at FROM users WHERE id = ?", OffsetDateTime.class, member).getYear())
                 .isEqualTo(2030);
-    }
-
-    // ---- refresh token cleanup -------------------------------------------------------------------
-
-    @Test
-    void cleanupDeletesOnlyTokensDeadForLongerThanRetention() {
-        String insert = "INSERT INTO refresh_tokens(user_id, token_hash, expires_at, revoked_at) VALUES (?, ?, ?::timestamptz, ?::timestamptz)";
-        db.update(insert, member, "expired-long-ago", "2000-01-01T00:00:00Z", null);
-        db.update(insert, member, "revoked-long-ago", "2999-01-01T00:00:00Z", "2000-01-01T00:00:00Z");
-        db.update(insert, member, "active", "2999-01-01T00:00:00Z", null);
-        db.update("INSERT INTO refresh_tokens(user_id, token_hash, expires_at) VALUES (?, 'just-expired', now() - interval '1 hour')", member);
-        db.update("INSERT INTO refresh_tokens(user_id, token_hash, expires_at, revoked_at) "
-                + "VALUES (?, 'just-revoked', now() + interval '1 day', now() - interval '1 hour')", member);
-
-        assertThat(cleanupJob.purge()).isEqualTo(2);
-
-        assertThat(db.queryForList("SELECT token_hash FROM refresh_tokens WHERE user_id = ? ORDER BY token_hash", String.class, member))
-                .containsExactly("active", "just-expired", "just-revoked");
     }
 }

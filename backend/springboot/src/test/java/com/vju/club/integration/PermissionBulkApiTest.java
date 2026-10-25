@@ -17,9 +17,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** GET /permissions/groups and PUT /users/{userId}/permissions. */
 class PermissionBulkApiTest extends ApiIntegrationTest {
-
     private Map<String, Object> clubSet(String... keys) {
         Map<String, Object> body = new HashMap<>();
         body.put("scope", "CLUB");
@@ -64,7 +62,6 @@ class PermissionBulkApiTest extends ApiIntegrationTest {
 
         call(put("/api/v1/users/" + member + "/permissions"), adminToken, clubSet(), 200);
         assertThat(count("SELECT count(*) FROM user_permissions WHERE user_id = ? AND revoked_at IS NULL", member)).isZero();
-        // 3 grants, then 2 revokes + 1 grant, then 2 revokes.
         assertThat(count("SELECT count(*) FROM permission_audit_logs WHERE target_user_id = ?", member)).isEqualTo(8);
     }
 

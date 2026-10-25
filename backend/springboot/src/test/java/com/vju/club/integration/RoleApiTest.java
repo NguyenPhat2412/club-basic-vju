@@ -1,5 +1,7 @@
 package com.vju.club.integration;
 
+import com.vju.club.modules.role.entity.Role;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -18,7 +20,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 class RoleApiTest extends ApiIntegrationTest {
-
     private UUID role(String code) {
         return db.queryForObject("SELECT id FROM roles WHERE code = ?", UUID.class, code);
     }
@@ -43,8 +44,6 @@ class RoleApiTest extends ApiIntegrationTest {
         return new HashMap<>(Map.of("code", code, "name", "Role " + code, "scope", scope, "permissionIds", ids));
     }
 
-    // ---- system roles ---------------------------------------------------------------------------
-
     @Test
     void systemRolesAreSeededWithTheirPermissions() throws Exception {
         problem(get("/api/v1/roles"), memberToken, null, 403, "PERMISSION_DENIED");
@@ -67,8 +66,6 @@ class RoleApiTest extends ApiIntegrationTest {
     void systemRolesCannotBeEdited() throws Exception {
         problem(patch("/api/v1/roles/" + role("CLUB_MEMBER")), adminToken, Map.of("name", "Hacked"), 409, "SYSTEM_ROLE_IMMUTABLE");
     }
-
-    // ---- assignments grant real access ----------------------------------------------------------
 
     @Test
     void clubPresidentManagesTheirClubOnly() throws Exception {
@@ -98,7 +95,8 @@ class RoleApiTest extends ApiIntegrationTest {
 
     @Test
     void clubMemberRoleControlsWhichClubsAreListed() throws Exception {
-        problem(get("/api/v1/clubs"), memberToken, null, 403, "PERMISSION_DENIED");
+        JsonNode discoverable = call(get("/api/v1/clubs"), memberToken, null, 200);
+        assertThat(discoverable.path("total").asInt()).isEqualTo(2);
         assign(member, "CLUB_MEMBER", "CLUB", clubB, null);
         JsonNode clubs = call(get("/api/v1/clubs"), memberToken, null, 200);
         assertThat(clubs.path("total").asInt()).isEqualTo(1);
@@ -133,8 +131,6 @@ class RoleApiTest extends ApiIntegrationTest {
         problem(delete("/api/v1/users/" + admin + "/roles/" + assignment), adminToken, null, 404, "ROLE_ASSIGNMENT_NOT_FOUND");
         problem(delete("/api/v1/users/" + member + "/roles/" + UUID.randomUUID()), adminToken, null, 404, "ROLE_ASSIGNMENT_NOT_FOUND");
     }
-
-    // ---- assignment validation ------------------------------------------------------------------
 
     @Test
     void assignmentScopeMustBeAtLeastTheRoleScope() throws Exception {
@@ -184,8 +180,6 @@ class RoleApiTest extends ApiIntegrationTest {
         assertThat(mine.get(0).path("clubId").asText()).isEqualTo(clubA.toString());
         assertThat(call(get("/api/v1/users/" + member + "/roles"), adminToken, null, 200).size()).isEqualTo(1);
     }
-
-    // ---- custom roles ---------------------------------------------------------------------------
 
     @Test
     void customRoleIsCreatedWithNormalizedUniqueCode() throws Exception {
@@ -239,30 +233,27 @@ class RoleApiTest extends ApiIntegrationTest {
         problem(patch("/api/v1/roles/" + editor), adminToken, Map.of("permissionIds", List.of()), 400, "VALIDATION_ERROR");
     }
 
-    // ---- effective permissions ------------------------------------------------------------------
-
     @Test
     void effectivePermissionsCombineDirectGrantsAndRoles() throws Exception {
         grant(member, "user.view", "GLOBAL", null, null);
         assign(member, "CLUB_MEMBER", "CLUB", clubA, null);
 
         JsonNode effective = call(get("/api/v1/users/me/effective-permissions"), memberToken, null, 200);
-        assertThat(effective.size()).isEqualTo(4);
+        assertThat(effective.size()).isEqualTo(5);
         List<String> rows = new ArrayList<>();
         effective.forEach(e -> rows.add(e.path("permissionKey").asText() + "|" + e.path("source").asText() + "|"
                 + e.path("roleCode").asText("")));
         assertThat(rows).containsExactlyInAnyOrder("user.view|DIRECT|", "club.view|ROLE|CLUB_MEMBER",
-                "department.view|ROLE|CLUB_MEMBER", "member.view|ROLE|CLUB_MEMBER");
+                "department.view|ROLE|CLUB_MEMBER", "member.view|ROLE|CLUB_MEMBER",
+                "document.view|ROLE|CLUB_MEMBER");
 
         db.update("UPDATE permissions SET active = false WHERE permission_key = 'member.view'");
-        assertThat(call(get("/api/v1/users/me/effective-permissions"), memberToken, null, 200).size()).isEqualTo(3);
+        assertThat(call(get("/api/v1/users/me/effective-permissions"), memberToken, null, 200).size()).isEqualTo(4);
 
         problem(get("/api/v1/users/" + admin + "/effective-permissions"), memberToken, null, 403, "PERMISSION_DENIED");
-        assertThat(call(get("/api/v1/users/" + member + "/effective-permissions"), adminToken, null, 200).size()).isEqualTo(3);
+        assertThat(call(get("/api/v1/users/" + member + "/effective-permissions"), adminToken, null, 200).size()).isEqualTo(4);
         problem(get("/api/v1/users/" + UUID.randomUUID() + "/effective-permissions"), adminToken, null, 404, "USER_NOT_FOUND");
     }
-
-    // ---- database guards ------------------------------------------------------------------------
 
     @Test
     void databaseRejectsRolesAndGrantsThatBreakScopeRules() {

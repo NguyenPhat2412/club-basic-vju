@@ -1,0 +1,22 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+server:
+  forward-headers-strategy: framework
+
+app:
+  # Created once on first start when both are set; leave them empty after the first login.
+  bootstrap-admin:
+    email: ${BOOTSTRAP_ADMIN_EMAIL:}
+    password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+  session:
+    cookie-secure: true
+  security:
+    # Parent domain shared by the frontend and the API, so the frontend can read XSRF-TOKEN.
+    cookie-domain: ${COOKIE_DOMAIN:}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  storage:
+    type: ${STORAGE_TYPE:r2}
