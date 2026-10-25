@@ -61,7 +61,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         service = new AuthServiceImpl(userRepository, ENCODER, authenticationManager, userSessionService,
-                auditService, new UserMapperImpl());
+                auditService, new UserMapperImpl(), new com.vju.club.config.GoogleSignInProperties(), null);
         when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
             User u = invocation.getArgument(0);
             if (u.getId() == null) {

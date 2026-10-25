@@ -70,7 +70,8 @@ class UserServiceTest {
         when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         UserService raw = new UserServiceImpl(userRepository, authorization, auditService,
-                new UserMapperImpl(), passwordEncoder, userSessionService, roleService, grantGuard);
+                new UserMapperImpl(), passwordEncoder, userSessionService, roleService, grantGuard,
+                new com.vju.club.config.GoogleSignInProperties());
         service = withPermissionChecks(raw, authorization);
     }
 

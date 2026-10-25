@@ -52,7 +52,7 @@ class UserServiceCreateTest {
 
     @BeforeEach
     void setUp() {
-        service = new UserServiceImpl(userRepository, authorizationService, auditService, new UserMapperImpl(), ENCODER, userSessionService, roleService, grantGuard);
+        service = new UserServiceImpl(userRepository, authorizationService, auditService, new UserMapperImpl(), ENCODER, userSessionService, roleService, grantGuard, new com.vju.club.config.GoogleSignInProperties());
         when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
             User user = invocation.getArgument(0);
             user.setId(UUID.randomUUID());

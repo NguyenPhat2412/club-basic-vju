@@ -14,7 +14,7 @@ import java.util.List;
 
 public record CreateUserRequest(
         @NotBlank @Email @Size(max = 320) String email,
-        @NotBlank @ValidPassword String password,
+        @ValidPassword String password,
         @NotBlank @Size(max = 200) String fullName,
         @Size(max = 50) String studentCode,
         @Size(max = 32) @Pattern(regexp = PHONE_PATTERN, message = "may only contain digits, spaces and + ( ) - .") String phone,

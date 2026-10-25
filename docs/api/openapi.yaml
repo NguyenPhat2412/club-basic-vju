@@ -100,7 +100,69 @@ paths:
               password: DemoPassword123!
       description: 'Trả user và đặt cookie phiên CLUB_SESSION (HttpOnly, SameSite=Lax). Không có token trong body.
         Gửi kèm header X-XSRF-TOKEN lấy từ cookie XSRF-TOKEN (GET /auth/csrf). Tài khoản INACTIVE bị từ chối (403).
-        Tài khoản do admin cấp (POST /users); quên mật khẩu liên hệ admin.'
+        Tài khoản do admin cấp (POST /users); quên mật khẩu liên hệ admin. Khi bật đăng nhập Google, email thuộc
+        tên miền trường (mặc định st.vju.ac.vn) bị từ chối ở đây với 403 GOOGLE_SIGN_IN_REQUIRED, kể cả khi
+        email chưa có tài khoản; dùng POST /auth/google.'
+  /auth/google:
+    post:
+      operationId: auth.google
+      summary: Sign in with a school Google account
+      tags:
+      - Auth
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      security: []
+      description: 'Nhận ID token (credential) mà nút "Sign in with Google" trả cho trình duyệt. Backend kiểm tra
+        chữ ký với khoá công khai của Google, iss, aud (= GOOGLE_CLIENT_ID), hạn dùng, email_verified, có hd
+        (tài khoản do trường quản lý) và email thuộc tên miền cho phép. Chỉ đăng nhập được email đã được admin
+        cấp tài khoản; không tự tạo tài khoản. Lần đầu gắn tài khoản với Google ID (sub); về sau Google ID khác
+        cùng email bị từ chối. Thành công thì đặt cookie phiên CLUB_SESSION như /auth/login. Cần header
+        X-XSRF-TOKEN; giới hạn số lần như /auth/login. Lỗi: 401 GOOGLE_TOKEN_INVALID, 403 GOOGLE_DOMAIN_NOT_ALLOWED,
+        403 GOOGLE_ACCOUNT_NOT_REGISTERED, 403 GOOGLE_ACCOUNT_MISMATCH, 403 ACCOUNT_INACTIVE, 404 GOOGLE_SIGN_IN_DISABLED.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleLoginRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /auth/google/config:
+    get:
+      operationId: auth.google_config
+      summary: Google sign-in settings for the login page
+      tags:
+      - Auth
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      security: []
+      description: Cho trang đăng nhập biết có hiện nút Google không và Client ID nào để dùng. Client ID là thông
+        tin công khai. Khi chưa đặt GOOGLE_CLIENT_ID thì enabled=false, clientId=null.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleSignInConfig'
+              example:
+                enabled: true
+                clientId: 123456789-abc.apps.googleusercontent.com
+                allowedDomains:
+                - st.vju.ac.vn
   /auth/logout:
     post:
       operationId: auth.logout
@@ -483,7 +545,9 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-      description: 'Người dùng quên mật khẩu liên hệ admin; admin đặt mật khẩu mới. Mặc định người dùng phải đổi lại mật khẩu ở lần đăng nhập tiếp theo (requiresPasswordChange). Không có API tự đăng ký hay tự khôi phục mật khẩu.'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      description: 'Người dùng quên mật khẩu liên hệ admin; admin đặt mật khẩu mới. Mặc định người dùng phải đổi lại mật khẩu ở lần đăng nhập tiếp theo (requiresPasswordChange). Không có API tự đăng ký hay tự khôi phục mật khẩu. Tài khoản đăng nhập bằng Google (email tên miền trường khi đã bật Google) không dùng mật khẩu: trả 409 PASSWORD_NOT_USED.'
   /users/{userId}/status:
     patch:
       operationId: user.status
@@ -3854,9 +3918,12 @@ components:
         limit: {type: integer}
     CreateUserRequest:
       type: object
+      description: 'password bắt buộc, trừ khi bật đăng nhập Google và email thuộc tên miền trường: khi đó không cần
+        (gửi lên cũng bị bỏ qua) và requiresPasswordChange luôn false. Thiếu password cho email khác trả 400
+        PASSWORD_REQUIRED. Khi bật Google, có studentCode thì email phải thuộc tên miền trường (400
+        STUDENT_EMAIL_DOMAIN_REQUIRED).'
       required:
       - email
-      - password
       - fullName
       properties:
         email:
@@ -3902,6 +3969,32 @@ components:
         fullName: Nguyễn Xuân Phát
         studentCode: '23110209'
         phone: 0900000000
+    GoogleLoginRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - credential
+      properties:
+        credential:
+          type: string
+          maxLength: 4096
+          description: ID token (JWT) Google trả cho nút Sign in with Google
+    GoogleSignInConfig:
+      type: object
+      required:
+      - enabled
+      - allowedDomains
+      properties:
+        enabled:
+          type: boolean
+        clientId:
+          type:
+          - string
+          - 'null'
+        allowedDomains:
+          type: array
+          items:
+            type: string
     LoginRequest:
       type: object
       required:

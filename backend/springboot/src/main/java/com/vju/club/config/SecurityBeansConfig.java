@@ -20,10 +20,14 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 
+import com.vju.club.security.GoogleIdTokenVerifier;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+
 import java.time.Clock;
 
 @Configuration
-@EnableConfigurationProperties({BootstrapAdminProperties.class, RateLimitProperties.class, AiProperties.class})
+@EnableConfigurationProperties({BootstrapAdminProperties.class, RateLimitProperties.class, AiProperties.class,
+        GoogleSignInProperties.class})
 public class SecurityBeansConfig {
     @Bean
     Clock applicationClock() {
@@ -47,6 +51,13 @@ public class SecurityBeansConfig {
         FilterRegistrationBean<AccountStatusFilter> registration = new FilterRegistrationBean<>(filter);
         registration.setEnabled(false);
         return registration;
+    }
+
+    @Bean
+    GoogleIdTokenVerifier googleIdTokenVerifier(GoogleSignInProperties properties) {
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(properties.getJwkSetUri()).build();
+        decoder.setJwtValidator(GoogleIdTokenVerifier.validator(properties.getClientId()));
+        return new GoogleIdTokenVerifier(decoder);
     }
 
     @Bean

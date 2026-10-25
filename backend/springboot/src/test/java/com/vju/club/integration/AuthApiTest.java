@@ -347,4 +347,14 @@ class AuthApiTest extends ApiIntegrationTest {
         send(get("/api/v1/auth/csrf"), null, null);
         assertThat(count("SELECT count(*) FROM spring_session")).isEqualTo(before);
     }
+
+    @Test
+    void googleSignInStaysOffUntilAClientIdIsConfigured() throws Exception {
+        JsonNode config = call(get("/api/v1/auth/google/config"), null, null, 200);
+        assertThat(config.path("enabled").asBoolean()).isFalse();
+        assertThat(config.path("clientId").isNull()).isTrue();
+        problem(post("/api/v1/auth/google"), null, Map.of("credential", "anything"), 404, "GOOGLE_SIGN_IN_DISABLED");
+        user("an.nguyen@st.vju.ac.vn");
+        call(post("/api/v1/auth/login"), null, Map.of("email", "an.nguyen@st.vju.ac.vn", "password", PASSWORD), 200);
+    }
 }

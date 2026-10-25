@@ -48,4 +48,20 @@ class RateLimitApiTest extends ApiIntegrationTest {
         }), null, Map.of("email", "member@test.local", "password", PASSWORD));
         assertThat(response.getStatus()).isEqualTo(429);
     }
+
+    @Test
+    void googleSignInIsThrottledLikeThePasswordForm() throws Exception {
+        for (int i = 0; i < 3; i++) {
+            MockHttpServletResponse response = send(post("/api/v1/auth/google").with(request -> {
+                request.setRemoteAddr("198.51.100.7");
+                return request;
+            }), null, Map.of("credential", "x"));
+            assertThat(response.getStatus()).isNotEqualTo(429);
+        }
+        MockHttpServletResponse throttled = send(post("/api/v1/auth/google").with(request -> {
+            request.setRemoteAddr("198.51.100.7");
+            return request;
+        }), null, Map.of("credential", "x"));
+        assertThat(throttled.getStatus()).isEqualTo(429);
+    }
 }

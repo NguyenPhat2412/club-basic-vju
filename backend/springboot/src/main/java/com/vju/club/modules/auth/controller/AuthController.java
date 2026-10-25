@@ -9,6 +9,8 @@ import com.vju.club.security.SessionSignIn;
 import com.vju.club.modules.auth.dto.record.SignedIn;
 import com.vju.club.modules.auth.dto.response.AuthResponse;
 import com.vju.club.modules.auth.dto.request.LoginRequest;
+import com.vju.club.modules.auth.dto.request.GoogleLoginRequest;
+import com.vju.club.modules.auth.dto.response.GoogleSignInConfigResponse;
 import com.vju.club.modules.user.dto.response.UserResponse;
 import com.vju.club.modules.auth.dto.request.ChangePasswordRequest;
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,6 +46,21 @@ public class AuthController {
         SignedIn signedIn = authService.login(body);
         sessionSignIn.signIn(signedIn.principal(), request, response);
         return signedIn.response();
+    }
+
+    @PublicEndpoint(reason = "Starting a session with a school Google account")
+    @PostMapping("/google")
+    public AuthResponse loginWithGoogle(@Valid @RequestBody GoogleLoginRequest body,
+                                        HttpServletRequest request, HttpServletResponse response) {
+        SignedIn signedIn = authService.loginWithGoogle(body);
+        sessionSignIn.signIn(signedIn.principal(), request, response);
+        return signedIn.response();
+    }
+
+    @PublicEndpoint(reason = "The login page decides whether to show the Google button")
+    @GetMapping("/google/config")
+    public GoogleSignInConfigResponse googleSignInConfig() {
+        return authService.googleSignInConfig();
     }
 
     @PostMapping("/change-password")

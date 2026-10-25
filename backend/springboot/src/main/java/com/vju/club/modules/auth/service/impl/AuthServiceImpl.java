@@ -1,12 +1,15 @@
 package com.vju.club.modules.auth.service.impl;
 
+import com.vju.club.config.GoogleSignInProperties;
 import com.vju.club.error.ApiException;
 import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.audit.service.AuditService;
 import com.vju.club.modules.auth.dto.record.SignedIn;
 import com.vju.club.modules.auth.dto.request.ChangePasswordRequest;
+import com.vju.club.modules.auth.dto.request.GoogleLoginRequest;
 import com.vju.club.modules.auth.dto.request.LoginRequest;
 import com.vju.club.modules.auth.dto.response.AuthResponse;
+import com.vju.club.modules.auth.dto.response.GoogleSignInConfigResponse;
 import com.vju.club.modules.auth.service.AuthService;
 import com.vju.club.modules.auth.service.UserSessionService;
 import com.vju.club.modules.user.dto.response.UserResponse;
@@ -15,6 +18,8 @@ import com.vju.club.modules.user.enums.UserStatus;
 import com.vju.club.modules.user.mapper.UserMapper;
 import com.vju.club.modules.user.repository.UserRepository;
 import com.vju.club.security.ClubPrincipal;
+import com.vju.club.security.GoogleIdTokenVerifier;
+import com.vju.club.security.GoogleIdentity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -25,6 +30,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -38,11 +44,17 @@ public class AuthServiceImpl implements AuthService {
     private final UserSessionService userSessionService;
     private final AuditService auditService;
     private final UserMapper userMapper;
+    private final GoogleSignInProperties googleSignIn;
+    private final GoogleIdTokenVerifier googleIdTokenVerifier;
 
     @Override
     @Transactional
     public SignedIn login(LoginRequest request) {
         String email = normalizeEmail(request.email());
+        if (googleSignIn.isGoogleEmail(email)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_SIGN_IN_REQUIRED",
+                    "Accounts on this email domain sign in with Google");
+        }
         Authentication authentication;
         try {
             authentication = authenticationManager.authenticate(
@@ -62,6 +74,44 @@ public class AuthServiceImpl implements AuthService {
         auditService.record(user.getId(), AuditAction.USER_LOGGED_IN, user.getId(), null, null,
                 Map.of("email", user.getEmail()));
         return new SignedIn(principal, new AuthResponse(userMapper.toResponse(user)));
+    }
+
+    @Override
+    @Transactional
+    public SignedIn loginWithGoogle(GoogleLoginRequest request) {
+        if (!googleSignIn.isEnabled()) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "GOOGLE_SIGN_IN_DISABLED", "Google sign-in is not enabled");
+        }
+        GoogleIdentity identity = googleIdTokenVerifier.verify(request.credential());
+        String email = identity.email() == null ? null : normalizeEmail(identity.email());
+        if (!identity.emailVerified() || identity.hostedDomain() == null || identity.hostedDomain().isBlank()
+                || !googleSignIn.isGoogleEmail(email)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_DOMAIN_NOT_ALLOWED",
+                    "Only school Google accounts can sign in");
+        }
+        User user = userRepository.findByEmailIgnoreCase(email).orElseThrow(() -> new ApiException(
+                HttpStatus.FORBIDDEN, "GOOGLE_ACCOUNT_NOT_REGISTERED", "No account has been issued for this email"));
+        if (user.getGoogleSubject() != null && !user.getGoogleSubject().equals(identity.subject())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_ACCOUNT_MISMATCH",
+                    "This account is linked to a different Google account");
+        }
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_INACTIVE", "Account is inactive");
+        }
+        user.setGoogleSubject(identity.subject());
+        user.setRequiresPasswordChange(false);
+        User saved = userRepository.saveAndFlush(user);
+        auditService.record(saved.getId(), AuditAction.USER_LOGGED_IN, saved.getId(), null, null,
+                Map.of("email", saved.getEmail(), "method", "google"));
+        ClubPrincipal principal = new ClubPrincipal(saved.getId(), saved.getEmail(), null, true);
+        return new SignedIn(principal, new AuthResponse(userMapper.toResponse(saved)));
+    }
+
+    @Override
+    public GoogleSignInConfigResponse googleSignInConfig() {
+        return googleSignIn.isEnabled()
+                ? new GoogleSignInConfigResponse(true, googleSignIn.getClientId(), googleSignIn.getAllowedDomains())
+                : new GoogleSignInConfigResponse(false, null, List.of());
     }
 
     @Override

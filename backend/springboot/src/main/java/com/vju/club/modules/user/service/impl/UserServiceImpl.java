@@ -2,6 +2,7 @@ package com.vju.club.modules.user.service.impl;
 
 import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.common.dto.PageResponse;
+import com.vju.club.config.GoogleSignInProperties;
 import com.vju.club.error.ApiException;
 import com.vju.club.modules.audit.enums.AuditAction;
 import com.vju.club.modules.audit.service.AuditService;
@@ -33,6 +34,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -42,6 +45,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
+    private static final SecureRandom RANDOM = new SecureRandom();
     private static final Set<String> SORTABLE = Set.of("email", "fullName", "createdAt", "status");
 
     private final UserRepository userRepository;
@@ -52,6 +56,7 @@ public class UserServiceImpl implements UserService {
     private final UserSessionService userSessionService;
     private final RoleService roleService;
     private final GrantGuard grantGuard;
+    private final GoogleSignInProperties googleSignIn;
 
     @Override
     @Transactional
@@ -65,14 +70,19 @@ public class UserServiceImpl implements UserService {
         if (studentCode != null && userRepository.existsByStudentCodeIgnoreCase(studentCode)) {
             throw new ApiException(HttpStatus.CONFLICT, "STUDENT_CODE_ALREADY_EXISTS", "Student code is already registered");
         }
+        boolean googleAccount = googleSignIn.isGoogleEmail(email);
+        requireSchoolEmailForStudent(email, studentCode);
+        if (!googleAccount && (request.password() == null || request.password().isBlank())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "PASSWORD_REQUIRED", "A password is required for this account");
+        }
         User user = new User();
         user.setEmail(email);
-        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setPasswordHash(passwordEncoder.encode(googleAccount ? unusablePassword() : request.password()));
         user.setFullName(request.fullName().trim());
         user.setStudentCode(studentCode);
         user.setPhone(blankToNull(request.phone()));
         user.setStatus(UserStatus.ACTIVE);
-        user.setRequiresPasswordChange(!Boolean.FALSE.equals(request.requiresPasswordChange()));
+        user.setRequiresPasswordChange(!googleAccount && !Boolean.FALSE.equals(request.requiresPasswordChange()));
         User saved = userRepository.saveAndFlush(user);
         auditService.record(actor.id(), AuditAction.USER_CREATED, saved.getId(), null, null,
                 Map.of("email", saved.getEmail()));
@@ -87,6 +97,9 @@ public class UserServiceImpl implements UserService {
     @RequirePermission(UserConstants.PERMISSION_RESET_PASSWORD)
     public void resetPassword(Actor actor, UUID userId, ResetPasswordRequest request) {
         User user = findUser(userId);
+        if (googleSignIn.isGoogleEmail(user.getEmail())) {
+            throw new ApiException(HttpStatus.CONFLICT, "PASSWORD_NOT_USED", "This account signs in with Google");
+        }
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         user.setRequiresPasswordChange(!Boolean.FALSE.equals(request.requiresPasswordChange()));
         userRepository.saveAndFlush(user);
@@ -137,6 +150,7 @@ public class UserServiceImpl implements UserService {
                     && userRepository.existsByStudentCodeIgnoreCase(code)) {
                 throw new ApiException(HttpStatus.CONFLICT, "STUDENT_CODE_ALREADY_EXISTS", "Student code is already registered");
             }
+            requireSchoolEmailForStudent(user.getEmail(), code);
             user.setStudentCode(code);
         }
         if (request.phone() != null) user.setPhone(blankToNull(request.phone()));
@@ -204,6 +218,19 @@ public class UserServiceImpl implements UserService {
         values.put("phone", user.getPhone());
         values.put("avatarUrl", user.getAvatarUrl());
         return values;
+    }
+
+    private void requireSchoolEmailForStudent(String email, String studentCode) {
+        if (studentCode != null && googleSignIn.isEnabled() && !googleSignIn.isGoogleEmail(email)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "STUDENT_EMAIL_DOMAIN_REQUIRED",
+                    "Student accounts must use a school email address");
+        }
+    }
+
+    private static String unusablePassword() {
+        byte[] bytes = new byte[32];
+        RANDOM.nextBytes(bytes);
+        return Base64.getEncoder().encodeToString(bytes);
     }
 
     private User findUser(UUID userId) {

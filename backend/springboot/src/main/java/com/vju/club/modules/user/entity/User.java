@@ -40,4 +40,7 @@ public class User extends TimestampedEntity {
 
     @Column(name = "requires_password_change", nullable = false)
     private boolean requiresPasswordChange;
+
+    @Column(name = "google_subject")
+    private String googleSubject;
 }
