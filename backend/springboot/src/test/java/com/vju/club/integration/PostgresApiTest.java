@@ -144,10 +144,10 @@ public class PostgresApiTest {
         call(patch("/api/v1/clubs/"+a),memberToken,Map.of("name","Forbidden"),403);
         grant(member,"club.view","CLUB",a,null);
         var list=call(get("/api/v1/clubs"),memberToken,null,200);
-        assertThat(list.path("total").asInt()).isEqualTo(1);
-        assertThat(list.at("/items/0/id").asText()).isEqualTo(a.toString());
+        assertThat(list.path("total").asInt()).isEqualTo(2);
         call(get("/api/v1/clubs/"+a),memberToken,null,200);
-        call(get("/api/v1/clubs/"+b),memberToken,null,403);
+        call(get("/api/v1/clubs/"+b),memberToken,null,200);
+        call(patch("/api/v1/clubs/"+b),memberToken,Map.of("name","Forbidden"),403);
         call(post("/api/v1/users/"+member+"/permissions"),adminToken,assignment("club.update","CLUB",a,null),201);
         var updated=call(patch("/api/v1/clubs/"+a),memberToken,Map.of("name","New A"),200);
         assertThat(updated.path("code").asText()).isEqualTo("A");

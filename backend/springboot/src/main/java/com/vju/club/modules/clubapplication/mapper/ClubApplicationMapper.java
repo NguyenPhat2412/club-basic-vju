@@ -16,6 +16,9 @@ public interface ClubApplicationMapper {
 
     @Mapping(target = "id", source = "application.id")
     @Mapping(target = "applicantId", source = "application.applicant.id")
+    @Mapping(target = "applicantName", source = "application.applicant.fullName")
+    @Mapping(target = "applicantEmail", source = "application.applicant.email")
+    @Mapping(target = "applicantStudentCode", source = "application.applicant.studentCode")
     @Mapping(target = "clubId", source = "application.club.id")
     @Mapping(target = "clubCode", source = "application.club.code")
     @Mapping(target = "clubName", source = "application.club.name")

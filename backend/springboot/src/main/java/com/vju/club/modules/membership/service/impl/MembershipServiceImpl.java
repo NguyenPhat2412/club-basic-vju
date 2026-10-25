@@ -35,6 +35,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.vju.club.modules.permission.repository.UserPermissionRepository;
+import com.vju.club.modules.role.repository.UserRoleRepository;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -53,6 +55,8 @@ public class MembershipServiceImpl implements MembershipService {
     private final Clock clock;
     private final AuditService auditService;
     private final MembershipMapper membershipMapper;
+    private final UserRoleRepository userRoleRepository;
+    private final UserPermissionRepository userPermissionRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -128,8 +132,9 @@ public class MembershipServiceImpl implements MembershipService {
         membership.setStatus(MembershipStatus.ACTIVE);
         membership.setJoinedAt(now());
         Membership saved = membershipRepository.saveAndFlush(membership);
+        userRoleRepository.grantJoinRoles(user.getId(), clubId, actor.id());
         auditService.record(actor.id(), AuditAction.MEMBER_ADDED, saved.getId(), clubId, null,
-                Map.of("userId", user.getId(), "status", saved.getStatus()));
+                Map.of("userId", user.getId(), "status", saved.getStatus(), "joinRolesGranted", true));
         return membershipMapper.toResponse(saved);
     }
 
@@ -138,6 +143,9 @@ public class MembershipServiceImpl implements MembershipService {
     public MembershipResponse update(Actor actor, UUID membershipId, UpdateMembershipRequest request) {
         Membership membership = find(actor, MembershipConstants.PERMISSION_UPDATE, membershipId);
         authorizationService.require(actor, MembershipConstants.PERMISSION_UPDATE, membership.getClub().getId(), null);
+        if (request.status() == MembershipStatus.LEFT) {
+            authorizationService.require(actor, MembershipConstants.PERMISSION_REMOVE, membership.getClub().getId(), null);
+        }
         changeStatus(actor, membership, request.status());
         return membershipMapper.toResponse(membershipRepository.saveAndFlush(membership));
     }
@@ -160,13 +168,23 @@ public class MembershipServiceImpl implements MembershipService {
         }
         if (previous == status) return;
         membership.setStatus(status);
+        Map<String, Object> after = new java.util.LinkedHashMap<>();
+        after.put("status", status);
         if (status == MembershipStatus.LEFT) {
             membership.setLeftAt(now());
             departmentMemberRepository.deleteByMembershipId(membership.getId());
+            UUID userId = membership.getUser().getId();
+            UUID clubId = membership.getClub().getId();
+            after.put("revokedRoles", userRoleRepository.revokeAllInClub(userId, clubId, actor.id(), now()));
+            after.put("revokedPermissions", userPermissionRepository.revokeAllInClub(userId, clubId, actor.id(), now()));
+        } else if (status == MembershipStatus.ACTIVE) {
+            userRoleRepository.grantJoinRoles(membership.getUser().getId(), membership.getClub().getId(), actor.id());
+        } else {
+            userRoleRepository.revokeJoinRoles(membership.getUser().getId(), membership.getClub().getId(), actor.id(), now());
         }
         auditService.record(actor.id(), status == MembershipStatus.LEFT ? AuditAction.MEMBER_REMOVED
                         : AuditAction.MEMBER_STATUS_CHANGED, membership.getId(), membership.getClub().getId(),
-                Map.of("status", previous), Map.of("status", status));
+                Map.of("status", previous), after);
     }
 
     private Membership find(Actor actor, String permissionKey, UUID id) {

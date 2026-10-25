@@ -1,5 +1,7 @@
 package com.vju.club.modules.clubapplication.repository;
 
+import java.time.OffsetDateTime;
+import org.springframework.data.jpa.repository.Modifying;
 import com.vju.club.modules.clubapplication.entity.ClubApplication;
 import com.vju.club.modules.clubapplication.enums.ClubApplicationStatus;
 import jakarta.persistence.LockModeType;
@@ -40,4 +42,10 @@ public interface ClubApplicationRepository extends JpaRepository<ClubApplication
     @Query("SELECT a FROM ClubApplication a JOIN FETCH a.applicant JOIN FETCH a.club LEFT JOIN FETCH a.reviewedBy "
             + "WHERE a.id = :id AND a.club.id = :clubId")
     Optional<ClubApplication> findForReview(@Param("id") UUID id, @Param("clubId") UUID clubId);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = "UPDATE club_applications SET status = 'REJECTED', reviewed_by = :actorId, reviewed_at = :now, "
+            + "review_note = :note, updated_at = :now WHERE club_id = :clubId AND status = 'PENDING'", nativeQuery = true)
+    int rejectPendingForClub(@Param("clubId") UUID clubId, @Param("actorId") UUID actorId,
+                             @Param("now") OffsetDateTime now, @Param("note") String note);
 }

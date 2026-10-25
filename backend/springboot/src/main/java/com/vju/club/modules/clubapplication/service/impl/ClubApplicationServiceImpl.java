@@ -35,6 +35,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.vju.club.modules.role.repository.UserRoleRepository;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -54,6 +55,7 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
     private final Clock clock;
     private final NotificationService notificationService;
     private final ClubApplicationMapper clubApplicationMapper;
+    private final UserRoleRepository userRoleRepository;
 
     public ClubApplicationServiceImpl(ClubApplicationRepository applicationRepository,
                                       ClubRepository clubRepository,
@@ -63,7 +65,7 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
                                       AuditService auditService,
                                       Clock clock,
                                       ClubApplicationMapper clubApplicationMapper) {
-        this(applicationRepository, clubRepository, userRepository, membershipRepository, authorizationService, auditService, clock, null, clubApplicationMapper);
+        this(applicationRepository, clubRepository, userRepository, membershipRepository, authorizationService, auditService, clock, null, clubApplicationMapper, null);
     }
 
     @Autowired
@@ -75,8 +77,10 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
                                       AuditService auditService,
                                       Clock clock,
                                       NotificationService notificationService,
-                                      ClubApplicationMapper clubApplicationMapper) {
+                                      ClubApplicationMapper clubApplicationMapper,
+                                      UserRoleRepository userRoleRepository) {
         this.clubApplicationMapper = clubApplicationMapper;
+        this.userRoleRepository = userRoleRepository;
         this.applicationRepository = applicationRepository;
         this.clubRepository = clubRepository;
         this.userRepository = userRepository;
@@ -196,6 +200,12 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         ClubApplication application = applicationRepository.findForReview(applicationId, clubId)
                 .orElseThrow(() -> notFound("CLUB_APPLICATION_NOT_FOUND", "Club application not found"));
         ensurePending(application);
+        if (application.getClub().getStatus() != ClubStatus.ACTIVE) {
+            throw conflict("CLUB_INACTIVE", "Club is inactive");
+        }
+        if (application.getApplicant().getStatus() != UserStatus.ACTIVE) {
+            throw conflict("USER_INACTIVE", "The applicant's account is inactive");
+        }
         if (membershipRepository.findFirstByUser_IdAndClub_IdAndStatusNot(
                 application.getApplicant().getId(), clubId, MembershipStatus.LEFT).isPresent()) {
             throw conflict("DUPLICATE_MEMBERSHIP", "User already has a current membership in this club");
@@ -208,6 +218,9 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         membership.setStatus(MembershipStatus.ACTIVE);
         membership.setJoinedAt(now());
         Membership savedMembership = membershipRepository.saveAndFlush(membership);
+        if (userRoleRepository != null) {
+            userRoleRepository.grantJoinRoles(application.getApplicant().getId(), clubId, actor.id());
+        }
 
         Map<String, Object> approvalBefore = pendingAuditValues(application);
         application.setStatus(ClubApplicationStatus.APPROVED);
@@ -220,6 +233,7 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         membershipAfter.put("clubId", clubId);
         membershipAfter.put("applicationId", saved.getId());
         membershipAfter.put("status", MembershipStatus.ACTIVE);
+        membershipAfter.put("joinRolesGranted", true);
         auditService.record(actor.id(), AuditAction.MEMBERSHIP_CREATED, savedMembership.getId(), clubId, null,
                 membershipAfter);
         Map<String, Object> approvalAfter = applicationAuditValues(application, saved.getStatus(), savedMembership.getId());

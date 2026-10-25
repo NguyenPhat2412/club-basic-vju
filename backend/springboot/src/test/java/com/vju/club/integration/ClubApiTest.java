@@ -84,12 +84,17 @@ class ClubApiTest extends ApiIntegrationTest {
     }
 
     @Test
-    void clubScopedViewerSeesOnlyTheirClubs() throws Exception {
+    void clubScopedViewerStillDiscoversEveryActiveClub() throws Exception {
         grant(member, "club.view", "CLUB", clubB, null);
         JsonNode page = call(get("/api/v1/clubs"), memberToken, null, 200);
+        assertThat(page.path("total").asInt()).isEqualTo(2);
+        call(get("/api/v1/clubs/" + clubA), memberToken, null, 200);
+
+        db.update("UPDATE clubs SET status = 'INACTIVE' WHERE id = ?", clubA);
+        page = call(get("/api/v1/clubs"), memberToken, null, 200);
         assertThat(page.path("total").asInt()).isEqualTo(1);
         assertThat(page.at("/items/0/id").asText()).isEqualTo(clubB.toString());
-        problem(get("/api/v1/clubs/" + clubA), memberToken, null, 403, "PERMISSION_DENIED");
+        problem(get("/api/v1/clubs/" + clubA), memberToken, null, 404, "CLUB_NOT_FOUND");
     }
 
     @Test
@@ -97,7 +102,7 @@ class ClubApiTest extends ApiIntegrationTest {
         UUID ghost = UUID.randomUUID();
         problem(get("/api/v1/clubs/" + ghost), adminToken, null, 404, "CLUB_NOT_FOUND");
         grant(member, "club.view", "CLUB", clubA, null);
-        problem(get("/api/v1/clubs/" + ghost), memberToken, null, 403, "PERMISSION_DENIED");
+        problem(get("/api/v1/clubs/" + ghost), memberToken, null, 404, "CLUB_NOT_FOUND");
         problem(patch("/api/v1/clubs/" + ghost), adminToken, Map.of("name", "x"), 404, "CLUB_NOT_FOUND");
     }
 
@@ -125,8 +130,8 @@ class ClubApiTest extends ApiIntegrationTest {
         // Club A's admin still sees their managed (INACTIVE) Club A via management endpoint,
         // and can also browse active Club B via the public landing page endpoint
         JsonNode managedPage = call(get("/api/v1/clubs"), memberToken, null, 200);
-        assertThat(managedPage.path("total").asInt()).isEqualTo(1);
-        assertThat(managedPage.at("/items/0/id").asText()).isEqualTo(clubA.toString());
+        assertThat(managedPage.path("total").asInt()).isEqualTo(2);
+        assertThat(managedPage.toString()).contains(clubA.toString(), clubB.toString());
         call(get("/api/v1/public/clubs/" + clubB), memberToken, null, 200);
     }
 }

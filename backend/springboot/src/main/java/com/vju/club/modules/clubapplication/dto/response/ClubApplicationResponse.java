@@ -6,6 +6,9 @@ import java.util.UUID;
 public record ClubApplicationResponse(
         UUID id,
         UUID applicantId,
+        String applicantName,
+        String applicantEmail,
+        String applicantStudentCode,
         UUID clubId,
         String clubCode,
         String clubName,

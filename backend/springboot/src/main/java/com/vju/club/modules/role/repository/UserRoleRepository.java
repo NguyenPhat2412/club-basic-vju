@@ -3,9 +3,11 @@ package com.vju.club.modules.role.repository;
 import com.vju.club.modules.permission.enums.PermissionScope;
 import com.vju.club.modules.role.entity.UserRole;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,4 +36,26 @@ public interface UserRoleRepository extends JpaRepository<UserRole, UUID> {
             + "AND ur.role.active = true AND ur.revokedAt IS NULL "
             + "AND ur.user.status = com.vju.club.modules.user.enums.UserStatus.ACTIVE")
     long countActiveHolders(@Param("roleCode") String roleCode);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = "UPDATE user_roles SET revoked_at = :now, revoked_by = :actorId WHERE user_id = :userId "
+            + "AND revoked_at IS NULL AND (club_id = :clubId "
+            + "OR department_id IN (SELECT d.id FROM departments d WHERE d.club_id = :clubId))", nativeQuery = true)
+    int revokeAllInClub(@Param("userId") UUID userId, @Param("clubId") UUID clubId,
+                        @Param("actorId") UUID actorId, @Param("now") OffsetDateTime now);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = "INSERT INTO user_roles (user_id, role_id, scope, club_id, granted_by) "
+            + "SELECT :userId, r.id, 'CLUB', :clubId, :actorId FROM roles r WHERE r.granted_on_join AND r.active "
+            + "AND r.scope = 'CLUB' "
+            + "AND NOT EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = :userId AND ur.role_id = r.id "
+            + "AND ur.scope = 'CLUB' AND ur.club_id = :clubId AND ur.revoked_at IS NULL)", nativeQuery = true)
+    int grantJoinRoles(@Param("userId") UUID userId, @Param("clubId") UUID clubId, @Param("actorId") UUID actorId);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = "UPDATE user_roles SET revoked_at = :now, revoked_by = :actorId WHERE user_id = :userId "
+            + "AND club_id = :clubId AND scope = 'CLUB' AND revoked_at IS NULL "
+            + "AND role_id IN (SELECT r.id FROM roles r WHERE r.granted_on_join)", nativeQuery = true)
+    int revokeJoinRoles(@Param("userId") UUID userId, @Param("clubId") UUID clubId,
+                         @Param("actorId") UUID actorId, @Param("now") OffsetDateTime now);
 }

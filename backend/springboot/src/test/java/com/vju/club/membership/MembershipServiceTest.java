@@ -73,7 +73,9 @@ class MembershipServiceTest {
     @BeforeEach
     void setUp() {
         service = withPermissionChecks(new MembershipServiceImpl(membershipRepository, clubRepository, userRepository, departmentMemberRepository,
-                authorization, Clock.fixed(NOW, ZoneOffset.UTC), audit, new MembershipMapperImpl()), authorization);
+                authorization, Clock.fixed(NOW, ZoneOffset.UTC), audit, new MembershipMapperImpl(),
+                org.mockito.Mockito.mock(com.vju.club.modules.role.repository.UserRoleRepository.class),
+                org.mockito.Mockito.mock(com.vju.club.modules.permission.repository.UserPermissionRepository.class)), authorization);
         club.setId(UUID.randomUUID());
         club.setStatus(ClubStatus.ACTIVE);
         user.setId(UUID.randomUUID());

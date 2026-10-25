@@ -155,11 +155,19 @@ class AdminAccountApiTest extends ApiIntegrationTest {
     }
 
     @Test
-    void lastActiveSystemAdministratorCannotBeDeactivatedByAnotherAccount() throws Exception {
+    void onlyAnAdministratorCanManageAnotherAdministrator() throws Exception {
         giveSystemAdminRole(admin);
         grant(member, "user.inactive", "GLOBAL", null, null);
-        problem(patch("/api/v1/users/" + admin + "/status"), memberToken, Map.of("status", "INACTIVE"), 409,
-                "LAST_SYSTEM_ADMIN");
+        grant(member, "user.reset_password", "GLOBAL", null, null);
+        grant(member, "user.update", "GLOBAL", null, null);
+        problem(patch("/api/v1/users/" + admin + "/status"), memberToken, Map.of("status", "INACTIVE"), 403,
+                "PERMISSION_DENIED");
+        problem(patch("/api/v1/users/" + admin + "/password"), memberToken, Map.of("newPassword", "Takeover123!"), 403,
+                "PERMISSION_DENIED");
+        problem(patch("/api/v1/users/" + admin), memberToken, Map.of("fullName", "Hijacked"), 403, "PERMISSION_DENIED");
+        assertThat(count("SELECT count(*) FROM users WHERE id = ? AND status = 'ACTIVE' AND full_name <> 'Hijacked'", admin)).isEqualTo(1);
+        UUID plain = user("plain@test.local");
+        call(patch("/api/v1/users/" + plain + "/status"), memberToken, Map.of("status", "INACTIVE"), 200);
     }
 
     @Test

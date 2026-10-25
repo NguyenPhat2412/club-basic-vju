@@ -58,7 +58,9 @@ class ClubServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = withPermissionChecks(new ClubServiceImpl(clubRepository, authorization, audit, new ClubMapperImpl()), authorization);
+        service = withPermissionChecks(new ClubServiceImpl(clubRepository, authorization, audit, new ClubMapperImpl(),
+                org.mockito.Mockito.mock(com.vju.club.modules.clubapplication.repository.ClubApplicationRepository.class),
+                java.time.Clock.systemUTC()), authorization);
         when(clubRepository.saveAndFlush(any(Club.class))).thenAnswer(invocation -> {
             Club club = invocation.getArgument(0);
             if (club.getId() == null) club.setId(UUID.randomUUID());
@@ -195,11 +197,11 @@ class ClubServiceTest {
     }
 
     @Test
-    void permissionedGetStillRequiresClubViewBeforeLookingTheClubUp() {
+    void getWithoutClubViewForThatClubFallsBackToThePublicView() {
         UUID id = UUID.randomUUID();
-        when(authorization.hasAnyPermission(actor, "club.view")).thenReturn(true);
-        doThrow(FORBIDDEN).when(authorization).require(actor, "club.view", id, null);
-        assertApiError(() -> service.get(actor, id), HttpStatus.FORBIDDEN, "PERMISSION_DENIED");
+        when(authorization.hasPermission(actor, "club.view", id, null)).thenReturn(false);
+        when(clubRepository.findByIdAndStatus(id, ClubStatus.ACTIVE)).thenReturn(java.util.Optional.empty());
+        assertApiError(() -> service.get(actor, id), HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND");
         verify(clubRepository, never()).findById(any());
     }
 

@@ -22,6 +22,7 @@ import com.vju.club.modules.club.specification.ClubSpecifications;
 import com.vju.club.modules.permission.annotation.RequirePermission;
 import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
+import com.vju.club.modules.clubapplication.repository.ClubApplicationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
@@ -43,6 +44,8 @@ public class ClubServiceImpl implements ClubService {
     private final PermissionAuthorizationService authorizationService;
     private final AuditService auditService;
     private final ClubMapper clubMapper;
+    private final ClubApplicationRepository applicationRepository;
+    private final java.time.Clock clock;
 
     @Override
     @Transactional(readOnly = true)
@@ -85,8 +88,9 @@ public class ClubServiceImpl implements ClubService {
             spec = spec.and(ClubSpecifications.hasStatus(status));
         } else if (authorizationService.hasAnyPermission(actor, ClubConstants.PERMISSION_VIEW)) {
             Set<UUID> permittedClubIds = authorizationService.getPermittedClubIds(actor, ClubConstants.PERMISSION_VIEW);
-            spec = spec.and(ClubSpecifications.hasStatus(status))
-                    .and(ClubSpecifications.idIn(permittedClubIds));
+            Specification<Club> visible = Specification.where(ClubSpecifications.isDiscoverable())
+                    .or(ClubSpecifications.idIn(permittedClubIds));
+            spec = spec.and(ClubSpecifications.hasStatus(status)).and(visible);
         } else {
             spec = spec.and(ClubSpecifications.isDiscoverable());
         }
@@ -101,8 +105,7 @@ public class ClubServiceImpl implements ClubService {
     @Override
     @Transactional(readOnly = true)
     public ClubResponse get(Actor actor, UUID clubId) {
-        if (authorizationService.hasAnyPermission(actor, ClubConstants.PERMISSION_VIEW)) {
-            authorizationService.require(actor, ClubConstants.PERMISSION_VIEW, clubId, null);
+        if (authorizationService.hasPermission(actor, ClubConstants.PERMISSION_VIEW, clubId, null)) {
             return clubMapper.toResponse(findClub(clubId));
         }
         return getPublic(clubId);
@@ -153,9 +156,15 @@ public class ClubServiceImpl implements ClubService {
         Map<String, Object> before = Map.of("status", club.getStatus());
         club.setStatus(request.status());
         Club saved = clubRepository.saveAndFlush(club);
+        Map<String, Object> after = new LinkedHashMap<>();
+        after.put("status", saved.getStatus());
+        if (saved.getStatus() != ClubStatus.ACTIVE) {
+            after.put("rejectedPendingApplications", applicationRepository.rejectPendingForClub(clubId, actor.id(),
+                    java.time.OffsetDateTime.now(clock), "CLB tạm dừng hoạt động nên đơn được tự động từ chối."));
+        }
         auditService.recordChange(actor.id(), request.status() == ClubStatus.ACTIVE
                 ? AuditAction.CLUB_ACTIVATED : AuditAction.CLUB_DEACTIVATED, clubId, clubId,
-                before, Map.of("status", saved.getStatus()));
+                before, after);
         return clubMapper.toResponse(saved);
     }
 

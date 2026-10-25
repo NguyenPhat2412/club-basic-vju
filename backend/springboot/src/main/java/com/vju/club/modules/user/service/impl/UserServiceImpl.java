@@ -97,6 +97,7 @@ public class UserServiceImpl implements UserService {
     @RequirePermission(UserConstants.PERMISSION_RESET_PASSWORD)
     public void resetPassword(Actor actor, UUID userId, ResetPasswordRequest request) {
         User user = findUser(userId);
+        requireAdminToManageAdmin(actor, userId);
         if (googleSignIn.isGoogleEmail(user.getEmail())) {
             throw new ApiException(HttpStatus.CONFLICT, "PASSWORD_NOT_USED", "This account signs in with Google");
         }
@@ -137,6 +138,7 @@ public class UserServiceImpl implements UserService {
     @RequirePermission(UserConstants.PERMISSION_UPDATE)
     public UserResponse updateUser(Actor actor, UUID userId, AdminUpdateUserRequest request) {
         User user = findUser(userId);
+        requireAdminToManageAdmin(actor, userId);
         Map<String, Object> before = profile(user);
         if (request.fullName() != null) {
             if (request.fullName().isBlank()) {
@@ -193,6 +195,7 @@ public class UserServiceImpl implements UserService {
         authorizationService.require(actor,
                 request.status() == UserStatus.ACTIVE ? "user.active" : "user.inactive", null, null);
         User user = findUser(userId);
+        requireAdminToManageAdmin(actor, userId);
         if (request.status() != UserStatus.ACTIVE) {
             if (userId.equals(actor.id())) {
                 throw new ApiException(HttpStatus.CONFLICT, "CANNOT_DEACTIVATE_SELF", "You cannot deactivate your own account");
@@ -218,6 +221,13 @@ public class UserServiceImpl implements UserService {
         values.put("phone", user.getPhone());
         values.put("avatarUrl", user.getAvatarUrl());
         return values;
+    }
+
+    private void requireAdminToManageAdmin(Actor actor, UUID targetId) {
+        if (!actor.id().equals(targetId) && grantGuard.isSystemAdmin(targetId) && !grantGuard.isSystemAdmin(actor.id())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED",
+                    "Only a system administrator can manage another system administrator");
+        }
     }
 
     private void requireSchoolEmailForStudent(String email, String studentCode) {

@@ -99,11 +99,11 @@ class RoleApiTest extends ApiIntegrationTest {
         assertThat(discoverable.path("total").asInt()).isEqualTo(2);
         assign(member, "CLUB_MEMBER", "CLUB", clubB, null);
         JsonNode clubs = call(get("/api/v1/clubs"), memberToken, null, 200);
-        assertThat(clubs.path("total").asInt()).isEqualTo(1);
-        assertThat(clubs.at("/items/0/id").asText()).isEqualTo(clubB.toString());
+        assertThat(clubs.path("total").asInt()).isEqualTo(2);
         call(get("/api/v1/clubs/" + clubB + "/departments"), memberToken, null, 200);
         call(get("/api/v1/clubs/" + clubB + "/memberships"), memberToken, null, 200);
-        problem(get("/api/v1/clubs/" + clubA), memberToken, null, 403, "PERMISSION_DENIED");
+        call(get("/api/v1/clubs/" + clubA), memberToken, null, 200);
+        problem(get("/api/v1/clubs/" + clubA + "/memberships"), memberToken, null, 403, "PERMISSION_DENIED");
     }
 
     @Test

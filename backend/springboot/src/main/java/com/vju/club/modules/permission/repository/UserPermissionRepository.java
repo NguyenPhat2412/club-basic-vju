@@ -2,9 +2,11 @@ package com.vju.club.modules.permission.repository;
 
 import com.vju.club.modules.permission.entity.UserPermission;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -38,6 +40,13 @@ public interface UserPermissionRepository extends JpaRepository<UserPermission, 
             UUID userId, UUID permissionId);
 
     List<UserPermission> findByUser_IdAndRevokedAtIsNullOrderByGrantedAtDesc(UUID userId);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = "UPDATE user_permissions SET revoked_at = :now, revoked_by = :actorId WHERE user_id = :userId "
+            + "AND revoked_at IS NULL AND (club_id = :clubId "
+            + "OR department_id IN (SELECT d.id FROM departments d WHERE d.club_id = :clubId))", nativeQuery = true)
+    int revokeAllInClub(@Param("userId") UUID userId, @Param("clubId") UUID clubId,
+                        @Param("actorId") UUID actorId, @Param("now") OffsetDateTime now);
 
     interface EffectivePermissionRow {
         String getPermissionKey();
