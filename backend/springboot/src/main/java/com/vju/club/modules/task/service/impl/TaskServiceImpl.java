@@ -106,6 +106,12 @@ public class TaskServiceImpl implements TaskService {
                         "Department head can only assign tasks to members of their department");
             }
         }
+        if (!membershipRepository.existsByUser_IdAndClub_IdAndStatus(assignee.getId(), clubId, MembershipStatus.ACTIVE)) {
+            throw new ApiException(HttpStatus.CONFLICT, "ASSIGNEE_NOT_MEMBER", "The assignee is not an active member of this club");
+        }
+        if (department != null && !departmentMemberRepository.isUserInDepartment(department.getId(), assignee.getId())) {
+            throw new ApiException(HttpStatus.CONFLICT, "ASSIGNEE_NOT_IN_DEPARTMENT", "The assignee is not a member of this department");
+        }
 
         Event event = null;
         if (request.eventId() != null) {
@@ -180,6 +186,12 @@ public class TaskServiceImpl implements TaskService {
         if (task.getStatus() == TaskStatus.COMPLETED) {
             throw new ApiException(HttpStatus.CONFLICT, "TASK_ALREADY_COMPLETED", "Task is already verified and completed");
         }
+        if (!membershipRepository.existsByUser_IdAndClub_IdAndStatus(actor.id(), task.getClub().getId(), MembershipStatus.ACTIVE)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "You are no longer an active member of this club");
+        }
+        if (task.getStatus() == TaskStatus.OVERDUE && request.status() != null && request.status() != TaskStatus.DONE) {
+            throw new ApiException(HttpStatus.CONFLICT, "TASK_OVERDUE", "An overdue task can only be reported as done");
+        }
 
         Map<String, Object> before = snapshot(task);
         if (request.status() != null) {
@@ -199,6 +211,11 @@ public class TaskServiceImpl implements TaskService {
             } else if (request.progressPercent() > 0 && task.getStatus() == TaskStatus.TODO && request.status() == null) {
                 task.setStatus(TaskStatus.IN_PROGRESS);
             }
+        }
+        if (task.getStatus() == TaskStatus.DONE) {
+            task.setProgressPercent(100);
+        } else if (task.getStatus() == TaskStatus.TODO) {
+            task.setProgressPercent(0);
         }
         if (request.progressNote() != null) {
             task.setProgressNote(request.progressNote().strip());
@@ -225,6 +242,9 @@ public class TaskServiceImpl implements TaskService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "TASK_NOT_FOUND", "Task not found"));
         UUID deptId = task.getDepartment() == null ? null : task.getDepartment().getId();
         authorizationService.require(actor, TaskConstants.PERMISSION_VERIFY, task.getClub().getId(), deptId);
+        if (task.getAssignee().getId().equals(actor.id())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "SELF_VERIFICATION", "You cannot verify a task assigned to yourself");
+        }
         if (task.getStatus() != TaskStatus.DONE) {
             throw new ApiException(HttpStatus.CONFLICT, "TASK_NOT_DONE", "Task must be in DONE state before verification");
         }

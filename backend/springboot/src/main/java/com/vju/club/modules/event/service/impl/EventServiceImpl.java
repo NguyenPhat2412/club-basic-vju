@@ -53,6 +53,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -68,6 +69,15 @@ import java.util.UUID;
 public class EventServiceImpl implements EventService {
     private static final Sort EVENT_SORT = Sort.by(Sort.Order.desc("startTime"), Sort.Order.asc("id"));
     private static final Sort REGISTRATION_SORT = Sort.by(Sort.Order.asc("registeredAt"), Sort.Order.asc("id"));
+
+    private static final Set<EventStatus> PUBLIC_STATUSES = Set.of(EventStatus.OPEN_REGISTRATION,
+            EventStatus.CLOSED_REGISTRATION, EventStatus.COMPLETED);
+    private static final Map<EventStatus, Set<EventStatus>> ALLOWED_TRANSITIONS = Map.of(
+            EventStatus.DRAFT, Set.of(EventStatus.OPEN_REGISTRATION, EventStatus.CANCELLED),
+            EventStatus.OPEN_REGISTRATION, Set.of(EventStatus.CLOSED_REGISTRATION, EventStatus.COMPLETED, EventStatus.CANCELLED),
+            EventStatus.CLOSED_REGISTRATION, Set.of(EventStatus.OPEN_REGISTRATION, EventStatus.COMPLETED, EventStatus.CANCELLED));
+    private static final Duration ATTENDANCE_OPENS_BEFORE_START = Duration.ofHours(2);
+    private static final Duration MAX_CALENDAR_RANGE = Duration.ofDays(366);
 
     private final EventRepository eventRepository;
     private final EventRegistrationRepository registrationRepository;
@@ -114,6 +124,11 @@ public class EventServiceImpl implements EventService {
         }
 
         validateTimes(request.startTime(), request.endTime(), request.registrationDeadline());
+        OffsetDateTime createdAt = OffsetDateTime.now(clock);
+        if (!request.startTime().isAfter(createdAt) || !request.registrationDeadline().isAfter(createdAt)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_EVENT_TIME",
+                    "A new event must start, and close registration, in the future");
+        }
 
         Event event = new Event();
         event.setClub(club);
@@ -189,15 +204,31 @@ public class EventServiceImpl implements EventService {
             event.setAllowCtv(request.allowCtv());
         }
         if (request.maxParticipants() != null) {
+            long registered = registrationRepository.countByEvent_IdAndStatus(eventId, EventRegistrationStatus.REGISTERED);
+            if (request.maxParticipants() < registered) {
+                throw new ApiException(HttpStatus.CONFLICT, "MAX_PARTICIPANTS_TOO_LOW",
+                        "maxParticipants cannot be lower than the " + registered + " people already registered");
+            }
             event.setMaxParticipants(request.maxParticipants());
         }
-        if (request.status() != null) {
+        if (request.status() != null && request.status() != previousStatus) {
+            if (!ALLOWED_TRANSITIONS.getOrDefault(previousStatus, Set.of()).contains(request.status())) {
+                throw new ApiException(HttpStatus.CONFLICT, "INVALID_EVENT_STATUS_TRANSITION",
+                        "An event cannot move from " + previousStatus + " to " + request.status());
+            }
             event.setStatus(request.status());
         }
 
         Event saved = eventRepository.save(event);
         if (previousStatus == EventStatus.DRAFT && saved.getStatus() == EventStatus.OPEN_REGISTRATION) {
             notifyClubMembers(saved.getClub(), saved.getDepartment(), saved);
+        }
+        if (previousStatus != EventStatus.CANCELLED && saved.getStatus() == EventStatus.CANCELLED) {
+            for (UUID userId : registrationRepository.findRegisteredUserIds(saved.getId())) {
+                notificationService.create(userId, "Sự kiện đã huỷ: " + saved.getTitle(),
+                        "Sự kiện \"" + saved.getTitle() + "\" của CLB " + saved.getClub().getName() + " đã bị huỷ.",
+                        saved.getId());
+            }
         }
         auditService.recordChange(actor.id(), AuditAction.EVENT_UPDATED, saved.getId(), clubId, before, snapshot(saved));
         return eventMapper.toResponse(saved);
@@ -225,7 +256,9 @@ public class EventServiceImpl implements EventService {
         Event event = eventRepository.findWithRelationsById(eventId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
         UUID clubId = event.getClub().getId();
-        boolean canView = event.getStatus() == EventStatus.OPEN_REGISTRATION
+        boolean publiclyVisible = event.getClub().getStatus() == ClubStatus.ACTIVE
+                && PUBLIC_STATUSES.contains(event.getStatus());
+        boolean canView = publiclyVisible
                 || authorizationService.hasPermission(actor, EventConstants.PERMISSION_VIEW, clubId, null)
                 || authorizationService.hasPermission(actor, "club.view", clubId, null)
                 || membershipRepository.existsByUser_IdAndClub_IdAndStatus(actor.id(), clubId, MembershipStatus.ACTIVE);
@@ -238,8 +271,13 @@ public class EventServiceImpl implements EventService {
     @Override
     @Transactional
     public EventRegistrationResponse register(Actor actor, UUID eventId, EventRegistrationRequest request) {
+        eventRepository.lockById(eventId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
         Event event = eventRepository.findWithRelationsById(eventId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
+        if (event.getClub().getStatus() != ClubStatus.ACTIVE) {
+            throw new ApiException(HttpStatus.CONFLICT, "CLUB_INACTIVE", "Club is inactive");
+        }
         OffsetDateTime now = OffsetDateTime.now(clock);
         if (event.getStatus() != EventStatus.OPEN_REGISTRATION || now.isAfter(event.getRegistrationDeadline())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "REGISTRATION_CLOSED",
@@ -337,11 +375,26 @@ public class EventServiceImpl implements EventService {
         User checker = userRepository.findById(actor.id())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User not found"));
         OffsetDateTime now = OffsetDateTime.now(clock);
+        if (event.getStatus() == EventStatus.DRAFT || event.getStatus() == EventStatus.CANCELLED) {
+            throw new ApiException(HttpStatus.CONFLICT, "EVENT_NOT_HELD", "Attendance cannot be recorded for a draft or cancelled event");
+        }
+        if (now.isBefore(event.getStartTime().minus(ATTENDANCE_OPENS_BEFORE_START))) {
+            throw new ApiException(HttpStatus.CONFLICT, "EVENT_NOT_STARTED",
+                    "Attendance opens " + ATTENDANCE_OPENS_BEFORE_START.toHours() + " hours before the event starts");
+        }
         List<EventAttendanceResponse> results = new ArrayList<>();
 
         for (AttendanceItemRequest item : request.items()) {
             User participant = userRepository.findById(item.userId())
                     .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "Participant not found"));
+            boolean registered = registrationRepository.findByEvent_IdAndUser_IdAndStatus(
+                    eventId, participant.getId(), EventRegistrationStatus.REGISTERED).isPresent();
+            boolean memberAtMeeting = event.getEventType() == EventType.MEETING
+                    && membershipRepository.existsByUser_IdAndClub_IdAndStatus(participant.getId(), clubId, MembershipStatus.ACTIVE);
+            if (!registered && !memberAtMeeting) {
+                throw new ApiException(HttpStatus.CONFLICT, "PARTICIPANT_NOT_REGISTERED",
+                        "Attendance can only be recorded for people registered for this event");
+            }
             EventAttendance attendance = attendanceRepository.findByEvent_IdAndUser_Id(eventId, participant.getId())
                     .orElseGet(() -> {
                         EventAttendance created = new EventAttendance();
@@ -385,6 +438,9 @@ public class EventServiceImpl implements EventService {
         OffsetDateTime end = to != null ? to : OffsetDateTime.now(clock).plusDays(30);
         if (start.isAfter(end)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_TIME_RANGE", "Start time must not be after end time");
+        }
+        if (Duration.between(start, end).compareTo(MAX_CALENDAR_RANGE) > 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_TIME_RANGE", "The calendar range cannot exceed 366 days");
         }
 
         Set<UUID> clubIds = new LinkedHashSet<>(membershipRepository.findActiveClubIdsByUserId(actor.id()));

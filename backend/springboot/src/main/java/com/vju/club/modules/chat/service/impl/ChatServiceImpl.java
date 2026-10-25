@@ -40,6 +40,7 @@ import com.vju.club.modules.user.entity.User;
 import com.vju.club.modules.user.repository.UserRepository;
 import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
+import com.vju.club.modules.departmentmember.repository.DepartmentMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,6 +69,8 @@ import java.util.UUID;
 public class ChatServiceImpl implements ChatService {
     private static final Logger log = LoggerFactory.getLogger(ChatServiceImpl.class);
     private static final ObjectMapper JSON = new ObjectMapper();
+    private static final int SUMMARIES_PER_HOUR = 10;
+    private static final int MAX_MESSAGE_LENGTH = 4000;
     private static final Sort MESSAGE_SORT = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id"));
 
     private final ChatChannelRepository channelRepository;
@@ -82,6 +85,8 @@ public class ChatServiceImpl implements ChatService {
     private final AuditService auditService;
     private final AiProperties aiProperties;
     private final ChatMapper chatMapper;
+    private final DepartmentMemberRepository departmentMemberRepository;
+    private final java.time.Clock clock;
 
     @Override
     @Transactional
@@ -133,8 +138,12 @@ public class ChatServiceImpl implements ChatService {
     public List<ChatChannelResponse> listChannels(Actor actor, UUID clubId) {
         Club club = clubRepository.findById(clubId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND", "Club not found"));
-        requireClubChatAccess(actor, club.getId(), ChatConstants.PERMISSION_VIEW);
+        boolean officer = authorizationService.hasPermission(actor, ChatConstants.PERMISSION_VIEW, club.getId(), null);
+        if (!officer && !isActiveMember(actor, club.getId())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
+        }
         return channelRepository.findByClub_IdOrderByCreatedAtAsc(club.getId()).stream()
+                .filter(channel -> officer || canSeeAsMember(actor, channel))
                 .map(chatMapper::toChannelResponse)
                 .toList();
     }
@@ -144,7 +153,7 @@ public class ChatServiceImpl implements ChatService {
     public ChatMessageResponse sendMessage(Actor actor, UUID channelId, SendChatMessageRequest request) {
         ChatChannel channel = channelRepository.findWithRelationsById(channelId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CHANNEL_NOT_FOUND", "Chat channel not found"));
-        requireClubChatAccess(actor, channel.getClub().getId(), ChatConstants.PERMISSION_SEND);
+        requireChannelAccess(actor, channel, ChatConstants.PERMISSION_SEND, true);
 
         User sender = userRepository.findById(actor.id())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User not found"));
@@ -163,7 +172,7 @@ public class ChatServiceImpl implements ChatService {
     public PageResponse<ChatMessageResponse> listMessages(Actor actor, UUID channelId, int offset, int limit) {
         ChatChannel channel = channelRepository.findWithRelationsById(channelId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CHANNEL_NOT_FOUND", "Chat channel not found"));
-        requireClubChatAccess(actor, channel.getClub().getId(), ChatConstants.PERMISSION_VIEW);
+        requireChannelAccess(actor, channel, ChatConstants.PERMISSION_VIEW, false);
 
         var page = messageRepository.findByChannel_IdOrderByCreatedAtDesc(
                 channelId, new OffsetLimitRequest(offset, limit, MESSAGE_SORT));
@@ -176,7 +185,12 @@ public class ChatServiceImpl implements ChatService {
     public AiSummaryResponse summarizeChannel(Actor actor, UUID channelId, SummarizeChatRequest request) {
         ChatChannel channel = channelRepository.findWithRelationsById(channelId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CHANNEL_NOT_FOUND", "Chat channel not found"));
-        requireClubChatAccess(actor, channel.getClub().getId(), ChatConstants.PERMISSION_SUMMARIZE);
+        requireChannelAccess(actor, channel, ChatConstants.PERMISSION_SUMMARIZE, true);
+        if (summaryRepository.countByRequestedBy_IdAndCreatedAtAfter(actor.id(),
+                java.time.OffsetDateTime.now(clock).minusHours(1)) >= SUMMARIES_PER_HOUR) {
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "SUMMARY_LIMIT_REACHED",
+                    "At most " + SUMMARIES_PER_HOUR + " AI summaries per hour");
+        }
 
         int limit = request != null && request.messageLimit() != null ? request.messageLimit() : 50;
         List<ChatMessage> recentDesc = messageRepository.findByChannel_IdOrderByCreatedAtDesc(
@@ -211,7 +225,7 @@ public class ChatServiceImpl implements ChatService {
             botMsg.setChannel(channel);
             botMsg.setSender(null);
             botMsg.setSenderType(ChatSenderType.AI_BOT);
-            botMsg.setContent("[AI Tóm tắt thảo luận]\n" + digest.summary());
+            botMsg.setContent(fit("[AI Tóm tắt thảo luận]\n" + digest.summary(), MAX_MESSAGE_LENGTH));
             messageRepository.save(botMsg);
         }
 
@@ -225,19 +239,39 @@ public class ChatServiceImpl implements ChatService {
     public List<AiSummaryResponse> listSummaries(Actor actor, UUID channelId) {
         ChatChannel channel = channelRepository.findWithRelationsById(channelId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CHANNEL_NOT_FOUND", "Chat channel not found"));
-        requireClubChatAccess(actor, channel.getClub().getId(), ChatConstants.PERMISSION_VIEW);
+        requireChannelAccess(actor, channel, ChatConstants.PERMISSION_VIEW, false);
         return summaryRepository.findByChannel_IdOrderByCreatedAtDesc(channelId).stream()
                 .map(chatMapper::toSummaryResponse)
                 .toList();
     }
 
-    private void requireClubChatAccess(Actor actor, UUID clubId, String permissionKey) {
-        boolean allowed = authorizationService.hasPermission(actor, permissionKey, clubId, null)
-                || authorizationService.hasPermission(actor, "club.view", clubId, null)
-                || membershipRepository.existsByUser_IdAndClub_IdAndStatus(actor.id(), clubId, MembershipStatus.ACTIVE);
-        if (!allowed) {
+    private void requireChannelAccess(Actor actor, ChatChannel channel, String permissionKey, boolean write) {
+        UUID clubId = channel.getClub().getId();
+        if (write && channel.getClub().getStatus() != ClubStatus.ACTIVE) {
+            throw new ApiException(HttpStatus.CONFLICT, "CLUB_INACTIVE", "Club is inactive");
+        }
+        if (authorizationService.hasPermission(actor, permissionKey, clubId, null)) {
+            return;
+        }
+        if (ChatConstants.PERMISSION_SUMMARIZE.equals(permissionKey) || !canSeeAsMember(actor, channel)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
         }
+    }
+
+    private boolean isActiveMember(Actor actor, UUID clubId) {
+        return membershipRepository.existsByUser_IdAndClub_IdAndStatus(actor.id(), clubId, MembershipStatus.ACTIVE);
+    }
+
+    private boolean canSeeAsMember(Actor actor, ChatChannel channel) {
+        if (!isActiveMember(actor, channel.getClub().getId())) {
+            return false;
+        }
+        return channel.getDepartment() == null
+                || departmentMemberRepository.isUserInDepartment(channel.getDepartment().getId(), actor.id());
+    }
+
+    private static String fit(String text, int max) {
+        return text.length() <= max ? text : text.substring(0, max - 1) + "…";
     }
 
     private ExtractedDigest analyzeMessages(ChatChannel channel, List<ChatMessage> messages) {

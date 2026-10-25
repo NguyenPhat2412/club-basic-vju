@@ -42,11 +42,11 @@ public class NotificationController {
         return service.list(actor, offset, limit);
     }
 
-    @PatchMapping("/users/me/notifications/{id}/read")
+    @PatchMapping("/users/me/notifications/{notificationId}/read")
     @Operation(summary = "Đánh dấu đã đọc 1 thông báo")
     @ApiResponse(responseCode = "204", description = "Đã đánh dấu đã đọc")
-    public ResponseEntity<Void> markRead(Actor actor, @PathVariable UUID id) {
-        service.markRead(actor, id);
+    public ResponseEntity<Void> markRead(Actor actor, @PathVariable UUID notificationId) {
+        service.markRead(actor, notificationId);
         return ResponseEntity.noContent().build();
     }
 

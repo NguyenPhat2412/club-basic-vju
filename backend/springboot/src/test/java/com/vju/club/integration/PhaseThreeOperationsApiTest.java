@@ -68,6 +68,15 @@ class PhaseThreeOperationsApiTest extends ApiIntegrationTest {
         assertThat(calendar.size()).isEqualTo(1);
         assertThat(calendar.get(0).path("id").asText()).isEqualTo(eventId.toString());
 
+        // Attendance opens shortly before the event starts, and only for people who registered
+        problem(put("/api/v1/events/" + eventId + "/attendances"), adminToken, Map.of("items",
+                List.of(Map.of("userId", member.toString(), "status", "PRESENT"))), 409, "EVENT_NOT_STARTED");
+        db.update("UPDATE events SET registration_deadline = now() - interval '2 hours', "
+                + "start_time = now() - interval '1 hour', end_time = now() + interval '2 hours' WHERE id = ?", eventId);
+        UUID outsider = user("outsider@test.local");
+        problem(put("/api/v1/events/" + eventId + "/attendances"), adminToken, Map.of("items",
+                List.of(Map.of("userId", outsider.toString(), "status", "PRESENT"))), 409, "PARTICIPANT_NOT_REGISTERED");
+
         // Record attendance (TC07)
         JsonNode attendances = call(put("/api/v1/events/" + eventId + "/attendances"), adminToken, Map.of(
                 "items", List.of(
@@ -80,7 +89,9 @@ class PhaseThreeOperationsApiTest extends ApiIntegrationTest {
         JsonNode listedAttendances = call(get("/api/v1/events/" + eventId + "/attendances"), adminToken, null, 200);
         assertThat(listedAttendances.size()).isEqualTo(2);
 
-        // Cancel registration
+        // Cancel registration while registration is still open
+        db.update("UPDATE events SET start_time = now() + interval '2 days', end_time = now() + interval '2 days 3 hours', "
+                + "registration_deadline = now() + interval '1 day' WHERE id = ?", eventId);
         JsonNode cancelled = call(patch("/api/v1/events/" + eventId + "/registrations/me/cancel"),
                 memberToken, null, 200);
         assertThat(cancelled.path("status").asText()).isEqualTo("CANCELLED");
@@ -153,8 +164,10 @@ class PhaseThreeOperationsApiTest extends ApiIntegrationTest {
                 "content", "Đồng ý, giao cho Quốc nhiệm vụ chuẩn bị âm thanh ánh sáng trước hạn thứ Sáu nhé"
         ), 201);
 
-        // Trigger AI Summarizer
-        JsonNode summary = call(post("/api/v1/channels/" + channelId + "/summaries"), memberToken, Map.of(
+        // Plain members cannot spend AI calls; officers with chat.summarize can
+        problem(post("/api/v1/channels/" + channelId + "/summaries"), memberToken, Map.of("messageLimit", 20), 403,
+                "PERMISSION_DENIED");
+        JsonNode summary = call(post("/api/v1/channels/" + channelId + "/summaries"), adminToken, Map.of(
                 "messageLimit", 20,
                 "postToChannel", true
         ), 201);

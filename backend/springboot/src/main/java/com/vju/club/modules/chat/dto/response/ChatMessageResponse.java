@@ -8,7 +8,6 @@ public record ChatMessageResponse(
         UUID channelId,
         UUID senderId,
         String senderFullName,
-        String senderEmail,
         String senderType,
         String content,
         OffsetDateTime createdAt

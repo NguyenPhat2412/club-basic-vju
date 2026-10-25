@@ -20,7 +20,6 @@ public record TaskResponse(
         OffsetDateTime deadline,
         UUID assigneeId,
         String assigneeFullName,
-        String assigneeEmail,
         UUID assignerId,
         String assignerFullName,
         String progressNote,

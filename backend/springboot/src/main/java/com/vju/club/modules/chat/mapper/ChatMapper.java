@@ -35,7 +35,6 @@ public interface ChatMapper {
     @Mapping(target = "channelId", source = "channel.id")
     @Mapping(target = "senderId", source = "sender.id")
     @Mapping(target = "senderFullName", source = "sender.fullName")
-    @Mapping(target = "senderEmail", source = "sender.email")
     ChatMessageResponse toMessageResponse(ChatMessage message);
 
     @Mapping(target = "channelId", source = "channel.id")

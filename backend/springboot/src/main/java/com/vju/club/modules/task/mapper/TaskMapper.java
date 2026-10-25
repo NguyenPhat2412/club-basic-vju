@@ -17,7 +17,6 @@ public interface TaskMapper {
     @Mapping(target = "eventTitle", source = "event.title")
     @Mapping(target = "assigneeId", source = "assignee.id")
     @Mapping(target = "assigneeFullName", source = "assignee.fullName")
-    @Mapping(target = "assigneeEmail", source = "assignee.email")
     @Mapping(target = "assignerId", source = "assigner.id")
     @Mapping(target = "assignerFullName", source = "assigner.fullName")
     @Mapping(target = "verifiedBy", source = "verifiedBy.id")

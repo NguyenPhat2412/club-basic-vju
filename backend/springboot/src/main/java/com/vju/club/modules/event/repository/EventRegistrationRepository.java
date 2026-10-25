@@ -25,4 +25,8 @@ public interface EventRegistrationRepository extends JpaRepository<EventRegistra
     @Query("SELECT r.event.id FROM EventRegistration r WHERE r.user.id = :userId "
             + "AND r.status = com.vju.club.modules.event.enums.EventRegistrationStatus.REGISTERED")
     List<UUID> findRegisteredEventIdsByUserId(@Param("userId") UUID userId);
+
+    @Query("SELECT r.user.id FROM EventRegistration r WHERE r.event.id = :eventId "
+            + "AND r.status = com.vju.club.modules.event.enums.EventRegistrationStatus.REGISTERED")
+    List<UUID> findRegisteredUserIds(@Param("eventId") UUID eventId);
 }

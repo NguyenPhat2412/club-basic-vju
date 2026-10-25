@@ -28,6 +28,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.vju.club.modules.club.enums.ClubStatus;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,8 +55,8 @@ public class NotificationServiceImpl implements NotificationService {
         User user = users.findById(userId).orElseThrow();
         Notification notification = new Notification();
         notification.setUser(user);
-        notification.setTitle(title);
-        notification.setMessage(message);
+        notification.setTitle(fit(title, 160));
+        notification.setMessage(fit(message, 2000));
         notification.setReferenceId(referenceId);
         notification.setRead(false);
         notifications.save(notification);
@@ -92,6 +93,9 @@ public class NotificationServiceImpl implements NotificationService {
     public NotificationBroadcastResponse broadcast(Actor actor, UUID clubId, BroadcastNotificationRequest request) {
         Club club = clubRepository.findById(clubId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND", "Club not found"));
+        if (club.getStatus() != ClubStatus.ACTIVE) {
+            throw new ApiException(HttpStatus.CONFLICT, "CLUB_INACTIVE", "Club is inactive");
+        }
         UUID departmentId = request.departmentId();
         List<UUID> recipientIds;
         if (departmentId == null) {
@@ -118,5 +122,10 @@ public class NotificationServiceImpl implements NotificationService {
         auditService.record(actor.id(), AuditAction.NOTIFICATION_BROADCASTED, club.getId(), club.getId(), null, auditValues);
 
         return new NotificationBroadcastResponse(club.getId(), departmentId, recipientIds.size());
+    }
+
+    static String fit(String text, int max) {
+        if (text == null || text.length() <= max) return text;
+        return text.substring(0, max - 1) + "…";
     }
 }

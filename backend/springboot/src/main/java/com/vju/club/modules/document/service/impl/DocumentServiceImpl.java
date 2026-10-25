@@ -185,6 +185,9 @@ public class DocumentServiceImpl implements DocumentService {
     public DocumentResponse uploadVersion(Actor actor, UUID documentId, Integer expectedVersion, UploadedFile file) {
         Document document = live(visible(actor, documentRepository.findForUpdate(documentId), documentId));
         authorizationService.require(actor, DocumentConstants.PERMISSION_UPLOAD, clubId(document), null);
+        if (document.getClub().getStatus() != ClubStatus.ACTIVE) {
+            throw new ApiException(HttpStatus.CONFLICT, "CLUB_INACTIVE", "Club is inactive");
+        }
         if (expectedVersion != null && expectedVersion != document.getVersion()) {
             throw new DocumentVersionConflictException("Document is at version " + document.getVersion()
                     + ", not " + expectedVersion + "; reload it and try again");
