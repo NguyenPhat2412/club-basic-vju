@@ -438,7 +438,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"email\":\"{{memberEmail}}\",\"password\":\"{{memberPassword}}\",\"fullName\":\"Thành viên Postman\",\"studentCode\":\"PM-{{runId}}\"}"
+              "raw": "{\"email\":\"{{memberEmail}}\",\"password\":\"{{memberPassword}}\",\"fullName\":\"Thành viên Postman\",\"studentCode\":\"PM-{{runId}}\",\"requiresPasswordChange\":false}"
             }
           },
           "event": [
@@ -1312,7 +1312,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"newPassword\":\"{{resetPassword}}\"}"
+              "raw": "{\"newPassword\":\"{{resetPassword}}\",\"requiresPasswordChange\":false}"
             }
           },
           "event": [
@@ -1353,7 +1353,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"newPassword\":\"{{resetPassword}}\"}"
+              "raw": "{\"newPassword\":\"{{resetPassword}}\",\"requiresPasswordChange\":false}"
             }
           },
           "event": [

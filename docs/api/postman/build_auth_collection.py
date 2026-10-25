@@ -48,7 +48,7 @@ folders.append(("1. Đăng nhập", [
 
 folders.append(("2. Admin tạo tài khoản", [
     req("Tạo tài khoản thành viên", "POST", "/api/v1/users",
-        '{"email":"{{memberEmail}}","password":"{{memberPassword}}","fullName":"Thành viên Postman","studentCode":"PM-{{runId}}"}',
+        '{"email":"{{memberEmail}}","password":"{{memberPassword}}","fullName":"Thành viên Postman","studentCode":"PM-{{runId}}","requiresPasswordChange":false}',
         tests=js(status(201), save("memberId"), 'const u = pm.response.json();',
                  'pm.test("ACTIVE, không lộ mật khẩu", () => { pm.expect(u.status).to.eql("ACTIVE"); pm.expect(pm.response.text()).to.not.include("Password123!"); pm.expect(u).to.not.have.property("passwordHash"); });')),
     req("Email trùng (khác hoa thường)", "POST", "/api/v1/users", '{"email":"AUTH.{{runId}}@VJU.LOCAL","password":"Password123!","fullName":"Dup"}',
@@ -88,9 +88,9 @@ folders.append(("4. Đăng xuất", [
 folders.append(("5. Admin đặt lại mật khẩu và khoá", [
     login("Admin đăng nhập", "adminEmail", "adminPassword"),
     req("Đặt lại mật khẩu: quá ngắn", "PATCH", "/api/v1/users/{{memberId}}/password", '{"newPassword":"short"}', tests=problem(400, "VALIDATION_ERROR")),
-    req("Đặt lại mật khẩu: tài khoản không tồn tại", "PATCH", "/api/v1/users/00000000-0000-0000-0000-000000000000/password", '{"newPassword":"{{resetPassword}}"}',
+    req("Đặt lại mật khẩu: tài khoản không tồn tại", "PATCH", "/api/v1/users/00000000-0000-0000-0000-000000000000/password", '{"newPassword":"{{resetPassword}}","requiresPasswordChange":false}',
         tests=problem(404, "USER_NOT_FOUND")),
-    req("Đặt lại mật khẩu cho thành viên quên mật khẩu", "PATCH", "/api/v1/users/{{memberId}}/password", '{"newPassword":"{{resetPassword}}"}', tests=js(status(204))),
+    req("Đặt lại mật khẩu cho thành viên quên mật khẩu", "PATCH", "/api/v1/users/{{memberId}}/password", '{"newPassword":"{{resetPassword}}","requiresPasswordChange":false}', tests=js(status(204))),
     req("Khoá tài khoản thành viên", "PATCH", "/api/v1/users/{{memberId}}/status", '{"status":"INACTIVE"}',
         tests=js(status(200), 'pm.test("INACTIVE", () => pm.expect(pm.response.json().status).to.eql("INACTIVE"));')),
     req("Bị khoá + đúng mật khẩu: báo tài khoản bị khoá", "POST", "/api/v1/auth/login", '{"email":"{{memberEmail}}","password":"{{resetPassword}}"}',

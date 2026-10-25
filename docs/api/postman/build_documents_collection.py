@@ -19,7 +19,7 @@ folders.append(("0. Chuẩn bị", [
     req("Tạo CLB riêng cho lần chạy này", "POST", "/api/v1/clubs", '{"code":"PM-{{runId}}","name":"Postman Docs {{runId}}"}',
         tests=js(status(201), save("clubId"))),
     req("Admin tạo tài khoản thành viên (không có quyền)", "POST", "/api/v1/users",
-        '{"email":"docs.{{runId}}@vju.local","password":"{{memberPassword}}","fullName":"Docs Tester"}',
+        '{"email":"docs.{{runId}}@vju.local","password":"{{memberPassword}}","fullName":"Docs Tester","requiresPasswordChange":false}',
         tests=js(status(201), save("memberId"), save("memberEmail", "pm.response.json().email"))),
     req("Lấy id quyền document.view", "GET", "/api/v1/permissions",
         tests=js(status(200),

@@ -149,7 +149,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"email\":\"docs.{{runId}}@vju.local\",\"password\":\"{{memberPassword}}\",\"fullName\":\"Docs Tester\"}"
+              "raw": "{\"email\":\"docs.{{runId}}@vju.local\",\"password\":\"{{memberPassword}}\",\"fullName\":\"Docs Tester\",\"requiresPasswordChange\":false}"
             }
           },
           "event": [
