@@ -115,7 +115,7 @@ export default function HomePage() {
               <button onClick={signOut} className="bg-[#8e1f32] px-4 py-2.5 text-[11px] font-semibold text-white transition-colors hover:bg-[#711829]">Đăng xuất</button>
             </> : <>
               <Link href="/login" className="px-3 py-2 text-[11px] font-semibold text-[#3f3b37] hover:text-[#8e1f32]">Đăng nhập</Link>
-              <Link href="/register" className="bg-[#8e1f32] px-5 py-3 text-[11px] font-semibold text-white transition-colors hover:bg-[#711829]">Tham gia CLB</Link>
+              <Link href="/register" className="bg-[#8e1f32] px-5 py-3 text-[11px] font-semibold text-white transition-colors hover:bg-[#711829]">Đăng ký</Link>
             </>}
           </div>
 
@@ -127,6 +127,7 @@ export default function HomePage() {
           <MobileLink href="/home" onClick={() => setMenuOpen(false)}>Trang chủ</MobileLink><MobileLink href="/clubs" onClick={() => setMenuOpen(false)}>Khám phá câu lạc bộ</MobileLink>
           <MobileLink href="/applications" onClick={() => setMenuOpen(false)}>Đơn đăng ký</MobileLink><MobileLink href="/memberships" onClick={() => setMenuOpen(false)}>CLB đang tham gia</MobileLink>
           <MobileLink href={session.user ? "/dashboard" : "/login"} onClick={() => setMenuOpen(false)}>Dashboard</MobileLink><MobileLink href={session.user ? "/notifications" : "/login"} onClick={() => setMenuOpen(false)}>Thông báo / Đăng nhập</MobileLink>
+          {!session.user && <MobileLink href="/register" onClick={() => setMenuOpen(false)}>Đăng ký tài khoản</MobileLink>}
         </nav>}
       </header>
 
@@ -206,7 +207,7 @@ export default function HomePage() {
               <div className="mt-6 flex flex-wrap gap-3 text-[11px] text-[#77716a]">
                 <Link href="/login" className="font-semibold text-[#8e1f32] hover:underline">Mở trang đăng nhập riêng →</Link>
                 <span>·</span>
-                <Link href="/register" className="hover:text-[#8e1f32] hover:underline">Hướng dẫn cấp tài khoản</Link>
+                <Link href="/register" className="hover:text-[#8e1f32] hover:underline">Chưa có tài khoản? Đăng ký</Link>
               </div>
             </div>
 

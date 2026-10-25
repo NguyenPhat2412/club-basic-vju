@@ -60,7 +60,7 @@ export default function LoginPage() {
             <p className="text-[11px] leading-5 text-[#817a72]">Quyền truy cập được cấp bởi quản trị viên hoặc ban quản lý câu lạc bộ.</p>
             <button type="submit" disabled={loading} className="flex h-12 items-center justify-center gap-3 bg-[#8e1f32] text-[11px] font-semibold text-white transition-colors hover:bg-[#711829] disabled:opacity-60"><LockKeyhole size={15} />{loading ? "ĐANG ĐĂNG NHẬP…" : "ĐĂNG NHẬP"}<ArrowRight size={14} /></button>
           </form>
-          <p className="mt-6 border-t border-[#e8e4df] pt-5 text-[11px] text-[#77716a]">Chưa có tài khoản? <Link href="/register" className="font-semibold text-[#8e1f32] hover:underline">Xem hướng dẫn cấp tài khoản</Link></p>
+          <p className="mt-6 border-t border-[#e8e4df] pt-5 text-[11px] text-[#77716a]">Chưa có tài khoản? <Link href="/register" className="font-semibold text-[#8e1f32] hover:underline">Đăng ký ngay</Link></p>
         </div>
         <p className="text-[9px] tracking-wide text-[#99928a]">© 2026 VJU ClubHub</p>
       </section>

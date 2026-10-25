@@ -74,7 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>}
           </nav>
 
-          {!session.user && <div className="hidden items-center gap-2 lg:flex"><Link href="/register" className="bg-[#8e1f32] px-4 py-2.5 text-[10px] font-semibold text-white hover:bg-[#711829]">THAM GIA CLB</Link></div>}
+          {!session.user && <div className="hidden items-center gap-2 lg:flex"><Link href="/register" className="bg-[#8e1f32] px-4 py-2.5 text-[10px] font-semibold text-white hover:bg-[#711829]">ĐĂNG KÝ</Link></div>}
           <div className={cn("hidden items-center gap-2 lg:flex", !session.user && "lg:hidden")}>
             <Link href="/notifications" aria-label="Thông báo" className={cn("grid size-9 place-items-center transition-colors hover:text-[#8e1f32]", isActive("/notifications") && "text-[#8e1f32]")}><Bell size={17} /></Link>
             <div className="relative">

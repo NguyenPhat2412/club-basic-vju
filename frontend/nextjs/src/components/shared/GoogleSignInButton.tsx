@@ -33,7 +33,9 @@ export function useGoogleSignIn() {
   return useQuery({ queryKey: ["auth", "google-config"], queryFn: apiModel.googleConfig, staleTime: 5 * 60_000, retry: 1 });
 }
 
-export function GoogleSignInButton({ onSignedIn, width = 320, withDivider = false }: { onSignedIn: () => void; width?: number; withDivider?: boolean }) {
+type ButtonText = "signin_with" | "signup_with" | "continue_with";
+
+export function GoogleSignInButton({ onSignedIn, width = 320, withDivider = false, text = "signin_with" }: { onSignedIn: () => void; width?: number; withDivider?: boolean; text?: ButtonText }) {
   const config = useGoogleSignIn();
   const holder = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
@@ -64,16 +66,16 @@ export function GoogleSignInButton({ onSignedIn, width = 320, withDivider = fals
         },
       });
       holder.current.replaceChildren();
-      google.renderButton(holder.current, { type: "standard", theme: "outline", size: "large", text: "signin_with", shape: "rectangular", logo_alignment: "left", locale: "vi", width });
+      google.renderButton(holder.current, { type: "standard", theme: "outline", size: "large", text, shape: "rectangular", logo_alignment: "left", locale: "vi", width });
     }).catch(() => { if (!cancelled) setError("Không tải được nút đăng nhập Google. Vui lòng kiểm tra mạng và thử lại."); });
     return () => { cancelled = true; };
-  }, [clientId, domain, width]);
+  }, [clientId, domain, width, text]);
 
   if (!clientId) return null;
   return (
     <div className="grid gap-2">
       <div ref={holder} aria-busy={busy} className={busy ? "pointer-events-none min-h-10 opacity-60" : "min-h-10"} />
-      {busy && <p className="text-[11px] text-[#77716a]">Đang đăng nhập bằng Google…</p>}
+      {busy && <p className="text-[11px] text-[#77716a]">{text === "signup_with" ? "Đang tạo tài khoản…" : "Đang đăng nhập bằng Google…"}</p>}
       {error && <p role="alert" className="border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-800">{error}</p>}
       {withDivider && <OrDivider />}
     </div>
