@@ -37,6 +37,10 @@ class GoogleSignInApiTest extends ApiIntegrationTest {
         return send(post("/api/v1/auth/google"), null, Map.of("credential", credential));
     }
 
+    private MockHttpServletResponse signUp(String credential) throws Exception {
+        return send(post("/api/v1/auth/google"), null, Map.of("credential", credential, "register", true));
+    }
+
     private void refused(String credential, int status, String code) throws Exception {
         MockHttpServletResponse response = signIn(credential);
         assertThat(response.getStatus()).as(response.getContentAsString()).isEqualTo(status);
@@ -82,10 +86,17 @@ class GoogleSignInApiTest extends ApiIntegrationTest {
     }
 
     @Test
-    void aStudentSigningInForTheFirstTimeGetsAPlainAccount() throws Exception {
+    void signingInBeforeSigningUpPointsToTheRegisterPage() throws Exception {
+        google("first", "google-sub-7", "23110209@st.vju.ac.vn", true, "st.vju.ac.vn");
+        refused("first", 403, "GOOGLE_ACCOUNT_NOT_REGISTERED");
+        assertThat(count("SELECT count(*) FROM users WHERE email = '23110209@st.vju.ac.vn'")).isZero();
+    }
+
+    @Test
+    void aStudentSignsUpAsAPlainAccountAndThenSignsIn() throws Exception {
         when(verifier.verify("first")).thenReturn(new GoogleIdentity("google-sub-7", "23110209@st.vju.ac.vn", true,
                 "st.vju.ac.vn", "Nguyễn Xuân Phát", "https://lh3.googleusercontent.com/a/photo"));
-        MockHttpServletResponse response = signIn("first");
+        MockHttpServletResponse response = signUp("first");
         assertThat(response.getStatus()).as(response.getContentAsString()).isEqualTo(200);
         JsonNode me = call(get("/api/v1/auth/me"), TestSessions.fromResponse(response), null, 200);
         assertThat(me.path("email").asText()).isEqualTo("23110209@st.vju.ac.vn");
@@ -107,7 +118,7 @@ class GoogleSignInApiTest extends ApiIntegrationTest {
     @Test
     void theNewStudentCanBrowseClubsAndApply() throws Exception {
         google("first", "google-sub-8", "binh.tran@st.vju.ac.vn", true, "st.vju.ac.vn");
-        String session = TestSessions.fromResponse(signIn("first"));
+        String session = TestSessions.fromResponse(signUp("first"));
         assertThat(call(get("/api/v1/clubs"), session, null, 200).path("total").asInt()).isPositive();
         call(post("/api/v1/clubs/" + clubA + "/applications"), session, Map.of("message", "Em muốn tham gia CLB"), 201);
         assertThat(count("SELECT count(*) FROM memberships m JOIN users u ON u.id = m.user_id "
@@ -121,7 +132,7 @@ class GoogleSignInApiTest extends ApiIntegrationTest {
     void aTakenStudentCodeIsNotCopiedFromTheEmail() throws Exception {
         db.update("UPDATE users SET student_code = '23110209' WHERE id = ?", member);
         google("first", "google-sub-9", "23110209@st.vju.ac.vn", true, "st.vju.ac.vn");
-        String session = TestSessions.fromResponse(signIn("first"));
+        String session = TestSessions.fromResponse(signUp("first"));
         assertThat(call(get("/api/v1/auth/me"), session, null, 200).path("studentCode").isNull()).isTrue();
     }
 
@@ -138,6 +149,24 @@ class GoogleSignInApiTest extends ApiIntegrationTest {
             refused(credential, 403, "GOOGLE_DOMAIN_NOT_ALLOWED");
         }
         assertThat(count("SELECT count(*) FROM users WHERE google_subject IS NOT NULL")).isZero();
+    }
+
+    @Test
+    void signingUpWithAnExistingAccountJustSignsIn() throws Exception {
+        UUID existing = user(STUDENT);
+        google("good", "google-sub-1", STUDENT, true, "st.vju.ac.vn");
+        assertThat(signUp("good").getStatus()).isEqualTo(200);
+        assertThat(count("SELECT count(*) FROM users WHERE email = ?", STUDENT)).isEqualTo(1);
+        assertThat(db.queryForObject("SELECT google_subject FROM users WHERE id = ?", String.class, existing)).isEqualTo("google-sub-1");
+    }
+
+    @Test
+    void signUpStillRefusesOtherDomains() throws Exception {
+        google("gmail", "s1", "someone@gmail.com", true, null);
+        MockHttpServletResponse response = signUp("gmail");
+        assertThat(response.getStatus()).isEqualTo(403);
+        assertThat(json.readTree(response.getContentAsString()).path("code").asText()).isEqualTo("GOOGLE_DOMAIN_NOT_ALLOWED");
+        assertThat(count("SELECT count(*) FROM users WHERE email = 'someone@gmail.com'")).isZero();
     }
 
     @Test

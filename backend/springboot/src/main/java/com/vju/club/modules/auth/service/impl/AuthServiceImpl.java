@@ -95,7 +95,8 @@ public class AuthServiceImpl implements AuthService {
             throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_DOMAIN_NOT_ALLOWED",
                     "Only school Google accounts can sign in");
         }
-        User user = userRepository.findByEmailIgnoreCase(email).orElseGet(() -> createStudent(identity, email));
+        boolean register = Boolean.TRUE.equals(request.register());
+        User user = userRepository.findByEmailIgnoreCase(email).orElseGet(() -> createStudent(identity, email, register));
         if (user.getGoogleSubject() != null && !user.getGoogleSubject().equals(identity.subject())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_ACCOUNT_MISMATCH",
                     "This account is linked to a different Google account");
@@ -112,10 +113,14 @@ public class AuthServiceImpl implements AuthService {
         return new SignedIn(principal, new AuthResponse(userMapper.toResponse(saved)));
     }
 
-    private User createStudent(GoogleIdentity identity, String email) {
-        if (!googleSignIn.isCreateAccounts()) {
+    private User createStudent(GoogleIdentity identity, String email, boolean register) {
+        if (!register) {
             throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_ACCOUNT_NOT_REGISTERED",
-                    "No account has been issued for this email");
+                    "This school account has not signed up yet");
+        }
+        if (!googleSignIn.isCreateAccounts()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_SIGN_UP_CLOSED",
+                    "Sign-up is closed; an administrator issues accounts");
         }
         String localPart = email.substring(0, email.indexOf('@'));
         String name = identity.name() == null || identity.name().isBlank() ? localPart : identity.name().trim();

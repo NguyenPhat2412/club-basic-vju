@@ -18,10 +18,12 @@ class GoogleSignInIssuedOnlyApiTest extends ApiIntegrationTest {
     @MockitoBean GoogleIdTokenVerifier verifier;
 
     @Test
-    void withAccountCreationOffOnlyIssuedAddressesSignIn() throws Exception {
+    void withSignUpClosedOnlyIssuedAddressesSignIn() throws Exception {
         when(verifier.verify("stranger")).thenReturn(new GoogleIdentity("s9", "stranger@st.vju.ac.vn", true,
                 "st.vju.ac.vn", "Stranger", null));
         problem(post("/api/v1/auth/google"), null, Map.of("credential", "stranger"), 403, "GOOGLE_ACCOUNT_NOT_REGISTERED");
+        problem(post("/api/v1/auth/google"), null, Map.of("credential", "stranger", "register", true), 403,
+                "GOOGLE_SIGN_UP_CLOSED");
         assertThat(count("SELECT count(*) FROM users WHERE email = 'stranger@st.vju.ac.vn'")).isZero();
 
         user("issued@st.vju.ac.vn");

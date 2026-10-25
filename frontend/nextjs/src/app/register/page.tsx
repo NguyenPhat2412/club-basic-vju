@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, CheckCircle2, Info } from "lucide-react";
+import { Suspense } from "react";
 import { RegisterWithGoogle } from "./RegisterWithGoogle";
 
 const steps = [
@@ -15,7 +16,7 @@ export default function RegisterPage() {
       <section className="mx-auto mt-12 max-w-[960px] border border-[#e8e4df] bg-white sm:mt-16">
         <div className="grid lg:grid-cols-[.8fr_1.2fr]">
           <div className="bg-[#8e1f32] p-7 text-white sm:p-10 lg:p-12"><p className="text-[9px] font-semibold uppercase tracking-[.22em] text-white/65">THÀNH VIÊN VJU</p><h1 className="mt-4 font-serif text-[36px] leading-tight sm:text-[44px]">Bắt đầu hành trình cùng cộng đồng.</h1><p className="mt-5 text-[13px] leading-7 text-white/75">Sinh viên đăng nhập ngay bằng tài khoản Google của trường, không cần tạo mật khẩu.</p><Link href="/login" className="mt-8 inline-flex items-center gap-3 border border-white/45 px-5 py-3 text-[10px] font-semibold hover:bg-white/10">ĐÃ CÓ TÀI KHOẢN? ĐĂNG NHẬP <ArrowRight size={14} /></Link></div>
-          <div className="p-6 sm:p-10 lg:p-12"><p className="text-[9px] font-bold uppercase tracking-[.2em] text-[#8e1f32]">ĐĂNG KÝ TÀI KHOẢN</p><h2 className="mt-2 font-serif text-[28px]">Đăng ký tài khoản sinh viên</h2><RegisterWithGoogle />
+          <div className="p-6 sm:p-10 lg:p-12"><p className="text-[9px] font-bold uppercase tracking-[.2em] text-[#8e1f32]">ĐĂNG KÝ TÀI KHOẢN</p><h2 className="mt-2 font-serif text-[28px]">Đăng ký tài khoản sinh viên</h2><Suspense fallback={<div className="mt-6 h-[88px] animate-pulse bg-[#f3efe9]" />}><RegisterWithGoogle /></Suspense>
             <div className="mt-6 grid gap-3">{steps.map((step, index) => <div key={step} className="flex items-start gap-3 border-b border-[#eee9e2] pb-4"><span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#8e1f32]/8 text-[11px] font-semibold text-[#8e1f32]">{index + 1}</span><p className="pt-1 text-[12px] leading-6 text-[#514c46]">{step}</p></div>)}</div>
             <div className="mt-6 grid gap-3 sm:grid-cols-2"><InfoCard icon={<Info size={16} />} title="Không phải sinh viên?" text="Liên hệ quản trị viên hệ thống để được cấp tài khoản." /><InfoCard icon={<CheckCircle2 size={16} />} title="Đã đăng ký rồi?" text="Vào trang Đăng nhập và bấm Đăng nhập bằng Google." /></div>
           </div>

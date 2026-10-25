@@ -53,7 +53,7 @@ export async function apiBlob(path: string): Promise<Blob> {
 export const apiModel = {
   login: (email: string, password: string) => api<{ user: User }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   googleConfig: () => api<GoogleSignInConfig>('/auth/google/config'),
-  googleLogin: (credential: string) => api<{ user: User }>('/auth/google', { method: 'POST', body: JSON.stringify({ credential }) }),
+  googleLogin: (credential: string, register = false) => api<{ user: User }>('/auth/google', { method: 'POST', body: JSON.stringify({ credential, register }) }),
   logout: () => api<void>('/auth/logout', { method: 'POST' }),
   changePassword: (currentPassword: string, newPassword: string) => api<void>('/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
   users: (query = '', offset = 0, limit = 20) => api<Page<User>>(`/users?${new URLSearchParams({ query, offset: String(offset), limit: String(limit) })}`),

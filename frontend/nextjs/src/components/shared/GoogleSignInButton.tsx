@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { apiModel } from "@/lib/api";
+import { useRouter } from "next/navigation";
+import { ApiError, apiModel } from "@/lib/api";
 import { describeError } from "@/components/shared/ListPage";
 
 type GoogleId = {
@@ -33,10 +34,13 @@ export function useGoogleSignIn() {
   return useQuery({ queryKey: ["auth", "google-config"], queryFn: apiModel.googleConfig, staleTime: 5 * 60_000, retry: 1 });
 }
 
-type ButtonText = "signin_with" | "signup_with" | "continue_with";
+export const NOT_REGISTERED_URL = "/register?chua-dang-ky=1";
 
-export function GoogleSignInButton({ onSignedIn, width = 320, withDivider = false, text = "signin_with" }: { onSignedIn: () => void; width?: number; withDivider?: boolean; text?: ButtonText }) {
+export function GoogleSignInButton({ onSignedIn, width = 320, withDivider = false, mode = "signin" }: { onSignedIn: () => void; width?: number; withDivider?: boolean; mode?: "signin" | "signup" }) {
   const config = useGoogleSignIn();
+  const router = useRouter();
+  const register = mode === "signup";
+  const text = register ? "signup_with" : "signin_with";
   const holder = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -60,8 +64,11 @@ export function GoogleSignInButton({ onSignedIn, width = 320, withDivider = fals
         callback: async ({ credential }) => {
           if (!credential) return;
           setError(""); setBusy(true);
-          try { await apiModel.googleLogin(credential); signedIn.current(); }
-          catch (err) { setError(describeError(err)); }
+          try { await apiModel.googleLogin(credential, register); signedIn.current(); }
+          catch (err) {
+            if (!register && err instanceof ApiError && err.code === "GOOGLE_ACCOUNT_NOT_REGISTERED") { router.push(NOT_REGISTERED_URL); return; }
+            setError(describeError(err));
+          }
           finally { setBusy(false); }
         },
       });
@@ -69,13 +76,13 @@ export function GoogleSignInButton({ onSignedIn, width = 320, withDivider = fals
       google.renderButton(holder.current, { type: "standard", theme: "outline", size: "large", text, shape: "rectangular", logo_alignment: "left", locale: "vi", width });
     }).catch(() => { if (!cancelled) setError("Không tải được nút đăng nhập Google. Vui lòng kiểm tra mạng và thử lại."); });
     return () => { cancelled = true; };
-  }, [clientId, domain, width, text]);
+  }, [clientId, domain, width, text, register, router]);
 
   if (!clientId) return null;
   return (
     <div className="grid gap-2">
       <div ref={holder} aria-busy={busy} className={busy ? "pointer-events-none min-h-10 opacity-60" : "min-h-10"} />
-      {busy && <p className="text-[11px] text-[#77716a]">{text === "signup_with" ? "Đang tạo tài khoản…" : "Đang đăng nhập bằng Google…"}</p>}
+      {busy && <p className="text-[11px] text-[#77716a]">{register ? "Đang tạo tài khoản…" : "Đang đăng nhập bằng Google…"}</p>}
       {error && <p role="alert" className="border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-800">{error}</p>}
       {withDivider && <OrDivider />}
     </div>
