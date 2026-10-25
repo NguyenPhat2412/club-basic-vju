@@ -7,19 +7,10 @@ import { FormField, Select } from "@/components/ui/input";
 export type RoleDraft = { roleId: string; clubId: string; departmentId: string };
 export const EMPTY_ROLE_DRAFT: RoleDraft = { roleId: "", clubId: "", departmentId: "" };
 
-const ROLE_LABELS: Record<string, string> = {
-  SYSTEM_ADMIN: "Quản trị hệ thống",
-  CLUB_PRESIDENT: "Chủ nhiệm CLB",
-  CLUB_VICE_PRESIDENT: "Phó chủ nhiệm CLB",
-  DEPARTMENT_HEAD: "Trưởng ban",
-  CLUB_MEMBER: "Thành viên CLB",
-};
-
 const SCOPE_LABELS: Record<Scope, string> = { GLOBAL: "Toàn hệ thống", CLUB: "Theo CLB", DEPARTMENT: "Theo ban" };
 
 export function roleLabel(role: { code?: string; roleCode?: string; name?: string; roleName?: string }) {
-  const code = role.code ?? role.roleCode ?? "";
-  return ROLE_LABELS[code] ?? role.name ?? role.roleName ?? code;
+  return role.name ?? role.roleName ?? role.code ?? role.roleCode ?? "";
 }
 
 export function scopeLabel(scope: Scope) {

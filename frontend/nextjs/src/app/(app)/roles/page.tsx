@@ -1,18 +1,19 @@
 "use client";
 import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { KeyRound, Lock, Save, Undo2 } from "lucide-react";
+import { KeyRound, Lock, Plus, Save, ShieldPlus, Undo2 } from "lucide-react";
 import { apiModel, PermissionItem, Role, Scope } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
 import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
 import { describeError, ListPage } from "@/components/shared/ListPage";
 import { roleLabel, scopeLabel } from "@/components/shared/RolePicker";
 import { EmptyState, ErrorState, LoadingRows, Notice } from "@/components/shared/States";
+import { ModalShell } from "@/components/shared/Overlays";
+import { FormField, Input, Select, Textarea } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const ROLE_ORDER = ["SYSTEM_ADMIN", "CLUB_PRESIDENT", "CLUB_VICE_PRESIDENT", "DEPARTMENT_HEAD", "CLUB_MEMBER"];
 const BREADTH: Record<Scope, number> = { DEPARTMENT: 0, CLUB: 1, GLOBAL: 2 };
 const MODULE_LABELS: Record<string, string> = {
   user: "Tài khoản", club: "Câu lạc bộ", department: "Ban", member: "Thành viên", "department.member": "Thành viên ban",
@@ -20,7 +21,14 @@ const MODULE_LABELS: Record<string, string> = {
   event: "Sự kiện & lịch", task: "Công việc", chat: "Kênh chat & AI", notification: "Thông báo",
 };
 
-const fitsRole = (permission: PermissionItem, role: Role) => BREADTH[role.scope] >= BREADTH[permission.scope];
+const fitsRole = (permission: PermissionItem, role: Pick<Role, "scope">) => BREADTH[role.scope] >= BREADTH[permission.scope];
+const EMPTY_NEW_ROLE = { name: "", code: "", scope: "CLUB" as Scope, description: "" };
+
+function codeFromName(name: string) {
+  const code = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "d")
+    .toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 60);
+  return /^[A-Z]/.test(code) ? code : code ? `ROLE_${code}` : "";
+}
 
 export default function RolesPage() {
   const session = useSession();
@@ -31,9 +39,28 @@ export default function RolesPage() {
   const groups = useQuery({ queryKey: ["permission-groups"], queryFn: apiModel.permissionGroups, enabled: canView && session.can("permission.view") });
   const [draft, setDraft] = useState<Record<string, Set<string>>>({});
   const [notice, setNotice] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [newRole, setNewRole] = useState(EMPTY_NEW_ROLE);
+  const [newKeys, setNewKeys] = useState<Set<string>>(new Set());
+  const newCode = newRole.code.trim() || codeFromName(newRole.name);
+  const allPermissions = (groups.data ?? []).flatMap((g) => g.permissions.filter((p) => p.active));
+  const create = useMutation({
+    mutationFn: () => apiModel.createRole({
+      code: newCode, name: newRole.name.trim(), description: newRole.description.trim() || undefined, scope: newRole.scope,
+      permissionIds: allPermissions.filter((p) => newKeys.has(p.permissionKey) && fitsRole(p, newRole)).map((p) => p.id),
+    }),
+    onSuccess: async (role) => {
+      setNotice(`Đã tạo vai trò ${role.name}. Gán vai trò này cho người dùng ở trang Tài khoản.`);
+      setCreating(false); setNewRole(EMPTY_NEW_ROLE); setNewKeys(new Set());
+      await queryClient.invalidateQueries({ queryKey: ["roles"] });
+    },
+  });
+  const toggleNew = (key: string) => setNewKeys((prev) => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; });
+  const newFitting = allPermissions.filter((p) => newKeys.has(p.permissionKey) && fitsRole(p, newRole));
 
   const columns = useMemo(() => [...(roles.data ?? [])].filter((r) => r.active)
-    .sort((a, b) => (ROLE_ORDER.indexOf(a.code) + 1 || 99) - (ROLE_ORDER.indexOf(b.code) + 1 || 99) || a.code.localeCompare(b.code)), [roles.data]);
+    .sort((a, b) => Number(b.locked) - Number(a.locked) || BREADTH[b.scope] - BREADTH[a.scope]
+      || Number(b.system) - Number(a.system) || a.name.localeCompare(b.name, "vi")), [roles.data]);
   const idByKey = useMemo(() => new Map((groups.data ?? []).flatMap((g) => g.permissions.map((p) => [p.permissionKey, p.id] as const))), [groups.data]);
 
   const keysOf = (role: Role) => draft[role.id] ?? new Set(role.permissionKeys);
@@ -68,7 +95,7 @@ export default function RolesPage() {
     return <ListPage title="Vai trò & phân quyền"><EmptyState icon={<KeyRound />} title="Bạn không có quyền xem vai trò" /></ListPage>;
   }
 
-  const editable = (role: Role) => canManage && role.code !== "SYSTEM_ADMIN";
+  const editable = (role: Role) => canManage && !role.locked;
   const emptyRole = dirtyRoles.find((role) => keysOf(role).size === 0);
 
   return (
@@ -76,6 +103,7 @@ export default function RolesPage() {
       <BreadcrumbToolbar crumbs={[{ label: "Trang chủ", href: "/clubs" }, { label: "Hệ thống" }, { label: "Vai trò & phân quyền" }]}
         onRefresh={() => { roles.refetch(); groups.refetch(); }}
         extraActions={canManage ? <>
+          <Button variant="outline" size="sm" onClick={() => { setCreating(true); create.reset(); }}><Plus size={14} /> Tạo vai trò</Button>
           <Button variant="outline" size="sm" disabled={!dirtyRoles.length || save.isPending} onClick={() => { setDraft({}); save.reset(); }}><Undo2 size={14} /> Huỷ thay đổi</Button>
           <Button size="sm" disabled={!dirtyRoles.length || !!emptyRole || save.isPending} onClick={() => save.mutate()}><Save size={14} /> {save.isPending ? "Đang lưu…" : `Lưu thay đổi${dirtyRoles.length ? ` (${dirtyRoles.length})` : ""}`}</Button>
         </> : undefined} />
@@ -98,7 +126,7 @@ export default function RolesPage() {
                   {columns.map((role) => (
                     <th key={role.id} className="px-2 py-2.5 text-center">
                       <div className="flex flex-col items-center gap-1">
-                        <span className="flex items-center gap-1 text-xs font-bold">{role.code === "SYSTEM_ADMIN" && <Lock size={12} />}{roleLabel(role)}</span>
+                        <span className="flex items-center gap-1 text-xs font-bold">{role.locked && <Lock size={12} />}{roleLabel(role)}</span>
                         <Badge tone={dirtyRoles.includes(role) ? "primary" : "neutral"} dot={false}>{scopeLabel(role.scope)}{dirtyRoles.includes(role) ? " · đã sửa" : ""}</Badge>
                       </div>
                     </th>
@@ -139,6 +167,40 @@ export default function RolesPage() {
           </div>
         )}
       </div>
+      <ModalShell open={creating} onClose={() => setCreating(false)} title="Tạo vai trò" icon={<ShieldPlus />} onSubmit={() => create.mutate()}
+        submitLabel="Tạo vai trò" submitLoading={create.isPending} submitDisabled={!newRole.name.trim() || !newCode || newFitting.length === 0}>
+        <FormField label="Tên vai trò" required hint="Ví dụ: Trưởng ban Truyền thông, Thủ quỹ, Cộng tác viên."><Input value={newRole.name} onChange={(e) => setNewRole((r) => ({ ...r, name: e.target.value }))} /></FormField>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField label="Phạm vi" required hint="Vai trò theo ban chỉ chứa được quyền theo ban. Muốn duyệt đơn hay quản lý thành viên CLB thì chọn Theo CLB.">
+            <Select value={newRole.scope} onChange={(e) => setNewRole((r) => ({ ...r, scope: e.target.value as Scope }))}>
+              <option value="DEPARTMENT">{scopeLabel("DEPARTMENT")}</option>
+              <option value="CLUB">{scopeLabel("CLUB")}</option>
+              <option value="GLOBAL">{scopeLabel("GLOBAL")}</option>
+            </Select>
+          </FormField>
+          <FormField label="Mã vai trò" hint="Tự sinh từ tên nếu để trống."><Input value={newRole.code} placeholder={codeFromName(newRole.name) || "TRUONG_BAN"} onChange={(e) => setNewRole((r) => ({ ...r, code: e.target.value }))} /></FormField>
+        </div>
+        <FormField label="Mô tả"><Textarea value={newRole.description} onChange={(e) => setNewRole((r) => ({ ...r, description: e.target.value }))} /></FormField>
+        <div className="space-y-2">
+          <p className="text-sm font-bold">Quyền ({newFitting.length} đã chọn)</p>
+          <div className="max-h-72 space-y-3 overflow-auto rounded-lg border border-border/60 p-3">
+            {(groups.data ?? []).map((group) => {
+              const items = group.permissions.filter((p) => p.active && fitsRole(p, newRole));
+              if (!items.length) return null;
+              return <div key={group.module}>
+                <p className="mb-1 text-xs font-bold uppercase tracking-wide text-primary">{MODULE_LABELS[group.module] ?? group.module}</p>
+                {items.map((p) => (
+                  <label key={p.id} className="flex items-start gap-2 py-0.5 text-sm">
+                    <input type="checkbox" className="mt-0.5 size-4 accent-primary" checked={newKeys.has(p.permissionKey)} onChange={() => toggleNew(p.permissionKey)} />
+                    <span><span className="font-mono text-xs font-semibold">{p.permissionKey}</span>{p.description && <span className="block text-xs text-muted-foreground">{p.description}</span>}</span>
+                  </label>
+                ))}
+              </div>;
+            })}
+          </div>
+        </div>
+        {create.error && <p className="text-xs text-destructive">{describeError(create.error)}</p>}
+      </ModalShell>
     </ListPage>
   );
 }

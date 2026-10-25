@@ -60,6 +60,7 @@ export const apiModel = {
   createUser: (body: { email: string; password?: string; fullName: string; studentCode?: string; phone?: string; requiresPasswordChange?: boolean; roles?: RoleAssignmentInput[] }) => api<User>('/users', { method: 'POST', body: JSON.stringify(body) }),
   resetPassword: (id: string, newPassword: string, requiresPasswordChange = true) => api<void>(`/users/${id}/password`, { method: 'PATCH', body: JSON.stringify({ newPassword, requiresPasswordChange }) }),
   roles: () => api<Role[]>('/roles'),
+  createRole: (body: { code: string; name: string; description?: string; scope: Scope; permissionIds: string[] }) => api<Role>('/roles', { method: 'POST', body: JSON.stringify(body) }),
   updateRolePermissions: (id: string, permissionIds: string[]) => api<Role>(`/roles/${id}`, { method: 'PATCH', body: JSON.stringify({ permissionIds }) }),
   permissionGroups: () => api<PermissionGroup[]>('/permissions/groups'),
   userRoles: (userId: string) => api<UserRole[]>(`/users/${userId}/roles`),
@@ -99,7 +100,7 @@ export type DocumentItem = { id: string; clubId: string; ownerId: string; name: 
 export type DocumentVersion = { id: string; documentId: string; version: number; originalName: string; contentType: string; sizeBytes: number; checksumSha256: string; uploadedBy: string; createdAt: string };
 export type User = { id: string; email: string; fullName?: string; studentCode?: string; phone?: string; avatarUrl?: string; status: string; requiresPasswordChange?: boolean; createdAt?: string; updatedAt?: string };
 export type Scope = 'GLOBAL' | 'CLUB' | 'DEPARTMENT';
-export type Role = { id: string; code: string; name: string; description?: string; scope: Scope; system: boolean; active: boolean; permissionKeys: string[] };
+export type Role = { id: string; code: string; name: string; description?: string; scope: Scope; system: boolean; active: boolean; locked: boolean; permissionKeys: string[] };
 export type UserRole = { id: string; userId: string; roleId: string; roleCode: string; roleName: string; scope: Scope; clubId?: string; departmentId?: string; grantedAt: string };
 export type RoleAssignmentInput = { roleId: string; scope: Scope; clubId?: string; departmentId?: string };
 export type PermissionItem = { id: string; permissionKey: string; module: string; action: string; scope: Scope; description?: string; active: boolean };

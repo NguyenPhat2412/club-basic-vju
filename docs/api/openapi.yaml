@@ -4968,6 +4968,9 @@ components:
           description: Vai trò hệ thống (seed sẵn) không sửa được qua API.
         active:
           type: boolean
+        locked:
+          type: boolean
+          description: true cho vai trò Quản trị hệ thống, luôn toàn quyền, không sửa hay gỡ quyền được
         permissionKeys:
           type: array
           items:

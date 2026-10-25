@@ -15,6 +15,7 @@ import java.util.List;
 @Mapper
 public interface RoleMapper {
     @Mapping(target = "permissionKeys", source = "permissions")
+    @Mapping(target = "locked", expression = "java(com.vju.club.security.GrantGuard.SYSTEM_ADMIN.equals(role.getCode()))")
     RoleResponse toResponse(Role role);
 
     @Mapping(target = "permissionKeys", source = "permissions")

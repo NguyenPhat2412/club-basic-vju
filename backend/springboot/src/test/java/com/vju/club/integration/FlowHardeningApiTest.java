@@ -276,4 +276,39 @@ class FlowHardeningApiTest extends ApiIntegrationTest {
         problem(put("/api/v1/events/" + meeting + "/attendances"), adminToken,
                 Map.of("items", List.of(Map.of("userId", member.toString(), "status", "PRESENT"))), 409, "EVENT_NOT_HELD");
     }
+
+    @Test
+    void anAdminDefinedDepartmentHeadRoleCanReviewApplicationsOfItsClubOnly() throws Exception {
+        List<UUID> reviewPermissions = List.of(permission("application.view"), permission("application.approve"),
+                permission("application.reject"), permission("member.view"));
+        Map<String, Object> departmentScoped = new HashMap<>();
+        departmentScoped.put("code", "TRUONG_BAN_THU");
+        departmentScoped.put("name", "Trưởng ban (thử)");
+        departmentScoped.put("scope", "DEPARTMENT");
+        departmentScoped.put("permissionIds", reviewPermissions);
+        assertThat(send(post("/api/v1/roles"), adminToken, departmentScoped).getStatus()).isBetween(400, 499);
+
+        Map<String, Object> clubScoped = new HashMap<>(departmentScoped);
+        clubScoped.put("code", "TRUONG_BAN");
+        clubScoped.put("name", "Trưởng ban");
+        clubScoped.put("scope", "CLUB");
+        JsonNode role = call(post("/api/v1/roles"), adminToken, clubScoped, 201);
+        assertThat(role.path("locked").asBoolean()).isFalse();
+        assertThat(role.path("name").asText()).isEqualTo("Trưởng ban");
+
+        UUID head = user("head@test.local");
+        call(post("/api/v1/users/" + head + "/roles"), adminToken,
+                Map.of("roleId", id(role), "scope", "CLUB", "clubId", clubA), 201);
+        String headToken = token(head);
+
+        JsonNode toA = call(post("/api/v1/clubs/" + clubA + "/applications"), memberToken, Map.of("message", "A"), 201);
+        JsonNode toB = call(post("/api/v1/clubs/" + clubB + "/applications"), memberToken, Map.of("message", "B"), 201);
+        call(post("/api/v1/clubs/" + clubA + "/applications/" + id(toA) + "/approve"), headToken, Map.of(), 200);
+        problem(post("/api/v1/clubs/" + clubB + "/applications/" + id(toB) + "/approve"), headToken, Map.of(), 403, "PERMISSION_DENIED");
+
+        JsonNode roles = call(get("/api/v1/roles"), adminToken, null, 200);
+        long locked = 0;
+        for (JsonNode r : roles) if (r.path("locked").asBoolean()) locked++;
+        assertThat(locked).isEqualTo(1);
+    }
 }

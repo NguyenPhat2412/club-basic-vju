@@ -11,5 +11,6 @@ public record RoleResponse(
         String scope,
         boolean system,
         boolean active,
+        boolean locked,
         List<String> permissionKeys
 ) { }
