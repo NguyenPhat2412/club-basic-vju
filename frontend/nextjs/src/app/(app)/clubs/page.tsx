@@ -49,12 +49,14 @@ export default function ClubsPage() {
     },
   });
 
+  const loadedClubs = clubs.data?.items;
+  const clubsPending = clubs.isPending;
   const filteredItems = useMemo(() => {
-    const items = clubs.data?.items?.length ? clubs.data.items : (!clubs.isPending && !search.trim() ? PUBLIC_OVERVIEW : []);
+    const items = loadedClubs?.length ? loadedClubs : (!clubsPending && !search.trim() ? PUBLIC_OVERVIEW : []);
     if (!search.trim()) return items;
     const q = search.toLowerCase();
     return items.filter((club) => [club.name, club.code, club.activityField, club.description, club.contactEmail].join(" ").toLowerCase().includes(q));
-  }, [clubs.data?.items, clubs.isPending, search]);
+  }, [loadedClubs, clubsPending, search]);
 
   const open = (club: Club) => {
     setSelected(club);

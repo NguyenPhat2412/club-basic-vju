@@ -72,13 +72,17 @@ export default function ManagementPage() {
   });
   const mutationError = reviewMutation.error || assign.error || unassign.error || status.error;
 
-  const who = (userId: string) => {
+  const who = (userId: string, known?: { name?: string; email?: string; studentCode?: string }) => {
     const user = nameOf(userId);
+    const name = known?.name ?? user?.fullName ?? "Thành viên";
+    const sub = [known?.studentCode ?? user?.studentCode, known?.email ?? user?.email].filter(Boolean).join(" · ") || userId.slice(0, 8);
     return <div className="flex items-center gap-2.5">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 font-bold text-primary">{(user?.fullName ?? "?").slice(0, 1)}</span>
-      <div className="min-w-0"><p className="max-w-56 truncate font-bold">{user?.fullName ?? "Thành viên"}</p><p className="max-w-56 truncate font-mono text-[10.5px] text-muted-foreground">{user?.email ?? userId.slice(0, 8)}</p></div>
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 font-bold text-primary">{name.slice(0, 1)}</span>
+      <div className="min-w-0"><p className="max-w-56 truncate font-bold">{name}</p><p className="max-w-56 truncate font-mono text-[10.5px] text-muted-foreground">{sub}</p></div>
     </div>;
   };
+  const applicant = (a: Application) => who(a.applicantId, { name: a.applicantName, email: a.applicantEmail, studentCode: a.applicantStudentCode });
+  const memberOf = (m: Membership) => who(m.userId, { name: m.userFullName, studentCode: m.userStudentCode });
 
   const openReview = (app: Application, approve: boolean) => { setReview({ app, approve }); setNote(""); reviewMutation.reset(); };
   const pending = apps.data?.items.filter((a) => a.status === "PENDING").length ?? 0;
@@ -103,7 +107,7 @@ export default function ManagementPage() {
             : !apps.data.items.length ? <EmptyState icon={<ClipboardList />} title="Chưa có đơn đăng ký" />
               : <DataTable ariaLabel="Đơn đăng ký" rows={apps.data.items} rowKey={(a) => a.id} onRowClick={setDetailApp} columns={[
                 { key: "date", header: "Ngày gửi", render: (a) => <span className="font-mono font-bold text-primary">{formatDay(a.createdAt)}</span> },
-                { key: "applicant", header: "Người nộp", render: (a) => who(a.applicantId) },
+                { key: "applicant", header: "Người nộp", render: (a) => applicant(a) },
                 { key: "message", header: "Lời nhắn", className: "max-w-[360px]", render: (a) => <p className="truncate text-muted-foreground">{a.message}</p> },
                 { key: "status", header: "Trạng thái", render: (a) => <StatusBadge status={a.status} /> },
                 { key: "actions", header: "Thao tác", className: "text-right", render: (a) => <TableRowActions actions={[
@@ -118,7 +122,7 @@ export default function ManagementPage() {
           members.isPending ? <LoadingRows /> : members.isError ? <ErrorState message={describeError(members.error)} onRetry={() => members.refetch()} />
             : !members.data.items.length ? <EmptyState icon={<UserRound />} title="CLB chưa có thành viên" />
               : <DataTable ariaLabel="Thành viên" rows={members.data.items} rowKey={(m) => m.id} onRowClick={(m) => setMemberId(m.id)} columns={[
-                { key: "member", header: "Thành viên", render: (m) => who(m.userId) },
+                { key: "member", header: "Thành viên", render: (m) => memberOf(m) },
                 { key: "joined", header: "Ngày tham gia", render: (m) => <span className="font-mono font-bold text-primary">{formatDay(m.joinedAt)}</span> },
                 { key: "departments", header: "Ban", render: (m) => <DepartmentChips departments={departmentsByMember[m.id] ?? []}
                   onRemove={(d) => unassign.mutate({ departmentId: d.id, membershipId: m.id })} /> },
@@ -138,7 +142,7 @@ export default function ManagementPage() {
       <ModalShell open={!!review} onClose={() => setReview(null)} title={review?.approve ? "Duyệt đơn đăng ký" : "Từ chối đơn đăng ký"} icon={review?.approve ? <Check /> : <X />}
         size="sm" onSubmit={() => review && reviewMutation.mutate(review)} submitLabel={review?.approve ? "Duyệt" : "Từ chối"} submitDanger={!review?.approve}
         submitLoading={reviewMutation.isPending} submitDisabled={!note.trim()}>
-        {review && <p className="text-sm">{nameOf(review.app.applicantId)?.fullName ?? "Người nộp"} — <span className="text-muted-foreground">{review.app.message}</span></p>}
+        {review && <p className="text-sm">{review.app.applicantName ?? nameOf(review.app.applicantId)?.fullName ?? "Người nộp"} — <span className="text-muted-foreground">{review.app.message}</span></p>}
         <FormField label="Ghi chú xét duyệt" required><Textarea value={note} maxLength={1000} onChange={(e) => setNote(e.target.value)} placeholder="Lý do hoặc lời nhắn cho người nộp…" /></FormField>
         {reviewMutation.error && <p className="text-xs text-destructive">{describeError(reviewMutation.error)}</p>}
       </ModalShell>
@@ -149,7 +153,7 @@ export default function ManagementPage() {
           <Button size="sm" onClick={() => openReview(detailApp, true)}><Check size={14} /> Duyệt</Button>
         </> : undefined}>
         {detailApp && <DetailList rows={[
-          ["Người nộp", who(detailApp.applicantId)],
+          ["Người nộp", applicant(detailApp)],
           ["Trạng thái", <StatusBadge key="s" status={detailApp.status} />],
           ["Ngày gửi", formatDateTime(detailApp.createdAt)],
           ["Lời nhắn", <p key="m" className="whitespace-pre-line">{detailApp.message}</p>],
@@ -159,7 +163,7 @@ export default function ManagementPage() {
       </EntityDrawer>
 
       <EntityDrawer open={!!memberId} onClose={() => setMemberId(null)} title="Chi tiết thành viên" subtitle={currentClub?.name} icon={<UserRound />}>
-        {memberDetail.isPending ? <LoadingRows rows={3} /> : memberDetail.data && <MemberDetail membership={memberDetail.data} who={who}
+        {memberDetail.isPending ? <LoadingRows rows={3} /> : memberDetail.data && <MemberDetail membership={memberDetail.data} memberOf={memberOf}
           departments={departmentsByMember[memberDetail.data.id] ?? []} busy={status.isPending}
           onStatus={(value) => status.mutate({ id: memberDetail.data!.id, value })} />}
       </EntityDrawer>
@@ -177,12 +181,12 @@ function DepartmentChips({ departments, onRemove }: { departments: Department[];
   ))}</div>;
 }
 
-function MemberDetail({ membership, who, departments, busy, onStatus }: {
-  membership: Membership; who: (id: string) => React.ReactNode; departments: Department[]; busy: boolean; onStatus: (value: string) => void;
+function MemberDetail({ membership, memberOf, departments, busy, onStatus }: {
+  membership: Membership; memberOf: (m: Membership) => React.ReactNode; departments: Department[]; busy: boolean; onStatus: (value: string) => void;
 }) {
   return <>
     <DetailList rows={[
-      ["Thành viên", who(membership.userId)],
+      ["Thành viên", memberOf(membership)],
       ["Trạng thái", <StatusBadge key="s" status={membership.status} />],
       ["Ngày tham gia", formatDateTime(membership.joinedAt)],
       ["Ngày rời", formatDateTime(membership.leftAt)],

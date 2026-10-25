@@ -488,6 +488,7 @@ paths:
       - User
       x-permission: user.update
       x-implementation-status: IMPLEMENTED
+      description: 'Chỉ quản trị hệ thống mới thao tác được trên tài khoản quản trị hệ thống khác (403).'
       requestBody:
         required: true
         content:
@@ -552,7 +553,7 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-      description: 'Người dùng quên mật khẩu liên hệ admin; admin đặt mật khẩu mới. Mặc định người dùng phải đổi lại mật khẩu ở lần đăng nhập tiếp theo (requiresPasswordChange). Không có API tự đăng ký hay tự khôi phục mật khẩu. Tài khoản đăng nhập bằng Google (email tên miền trường khi đã bật Google) không dùng mật khẩu: trả 409 PASSWORD_NOT_USED.'
+      description: 'Người dùng quên mật khẩu liên hệ admin; admin đặt mật khẩu mới. Mặc định người dùng phải đổi lại mật khẩu ở lần đăng nhập tiếp theo (requiresPasswordChange). Không có API tự đăng ký hay tự khôi phục mật khẩu. Tài khoản đăng nhập bằng Google (email tên miền trường khi đã bật Google) không dùng mật khẩu: trả 409 PASSWORD_NOT_USED. Chỉ quản trị hệ thống mới thao tác được trên tài khoản quản trị hệ thống khác (403).'
   /users/{userId}/status:
     patch:
       operationId: user.status
@@ -606,8 +607,7 @@ paths:
       x-permission-rules:
         ACTIVE: user.active
         INACTIVE: user.inactive
-      description: 'Quyền phụ thuộc trạng thái mới trong body: ACTIVE → user.active,
-        INACTIVE → user.inactive.'
+      description: 'Quyền phụ thuộc trạng thái mới trong body: ACTIVE → user.active, INACTIVE → user.inactive. Chỉ quản trị hệ thống mới thao tác được trên tài khoản quản trị hệ thống khác (403).'
   /users/me/permissions:
     get:
       operationId: user.permissions
@@ -820,9 +820,7 @@ paths:
           default: 20
           maximum: 100
         description: Số bản ghi tối đa trong một lần lấy, mặc định 20, tối đa 100.
-      description: Người gọi có club.view chỉ thấy CLB đúng scope; người dùng ACTIVE
-        đã xác thực không có quyền này được khám phá các CLB ACTIVE. total là số CLB
-        được phép xem sau lọc.
+      description: 'Người gọi có club.view chỉ thấy CLB đúng scope; người dùng ACTIVE đã xác thực không có quyền này được khám phá các CLB ACTIVE. total là số CLB được phép xem sau lọc. Mọi CLB đang hoạt động, cộng các CLB (kể cả đã tạm dừng) mà người gọi có club.view; admin toàn cục thấy tất cả.'
     post:
       operationId: club.create
       summary: Create club
@@ -872,8 +870,7 @@ paths:
     get:
       operationId: club.get
       summary: Get club
-      description: Người dùng ACTIVE đã xác thực không có club.view được xem CLB ACTIVE;
-        người có club.view phải có quyền đúng scope cho CLB trên URL.
+      description: 'Người dùng ACTIVE đã xác thực không có club.view được xem CLB ACTIVE; người có club.view phải có quyền đúng scope cho CLB trên URL. Có club.view với CLB này thì xem đầy đủ; không thì xem như trang công khai (CLB tạm dừng hoặc không tồn tại trả 404 CLUB_NOT_FOUND).'
       tags:
       - Club
       x-permission: club.view
@@ -1018,8 +1015,7 @@ paths:
       x-permission-rules:
         ACTIVE: club.active
         INACTIVE: club.inactive
-      description: 'Quyền phụ thuộc trạng thái mới trong body: ACTIVE → club.active,
-        INACTIVE → club.inactive.'
+      description: 'Quyền phụ thuộc trạng thái mới trong body: ACTIVE → club.active, INACTIVE → club.inactive. Tạm dừng CLB tự động từ chối mọi đơn đang chờ (ghi chú: CLB tạm dừng hoạt động).'
   /clubs/{clubId}/departments:
     get:
       operationId: department.list
@@ -1389,10 +1385,7 @@ paths:
               $ref: '#/components/schemas/CreateMembershipRequest'
             example:
               userId: 11111111-1111-4111-8111-111111111111
-      description: >-
-        Thêm user vào CLB. Mỗi lần tham gia là một membership mới; user đã rời (LEFT)
-        có thể được thêm lại. Trả 409 MEMBERSHIP_ALREADY_EXISTS nếu user đang có membership
-        chưa kết thúc, CLUB_INACTIVE hoặc USER_INACTIVE.
+      description: 'Thêm user vào CLB. Mỗi lần tham gia là một membership mới; user đã rời (LEFT) có thể được thêm lại. Trả 409 MEMBERSHIP_ALREADY_EXISTS nếu user đang có membership chưa kết thúc, CLUB_INACTIVE hoặc USER_INACTIVE. Thêm trực tiếp cũng cấp các vai trò granted_on_join (CLUB_MEMBER).'
   /memberships/{membershipId}:
     get:
       operationId: membership.get
@@ -1504,8 +1497,7 @@ paths:
         schema:
           type: string
           format: uuid
-      description: Đưa thành viên ra khỏi CLB bằng trạng thái LEFT và ghi leftAt.
-        Không xóa user. Thành viên ACTIVE mới được phân vào ban.
+      description: 'Đưa thành viên ra khỏi CLB bằng trạng thái LEFT và ghi leftAt. Không xóa user. Thành viên ACTIVE mới được phân vào ban. Kết thúc tư cách thành viên: xoá khỏi các ban và thu hồi mọi vai trò, quyền riêng của người đó trong CLB và các ban của CLB.'
   /departments/{departmentId}/members:
     get:
       operationId: departmentMember.list
@@ -2414,7 +2406,7 @@ paths:
         các trường xét duyệt do backend quản lý. Trả 409 APPLICATION_ALREADY_PENDING
         hoặc ALREADY_CLUB_MEMBER khi đã có đơn PENDING hoặc membership chưa kết thúc.
       tags: [ClubApplication]
-      x-permission: application.create (owner)
+      x-permission: null
       x-implementation-status: IMPLEMENTED
       parameters:
       - name: clubId
@@ -2469,10 +2461,7 @@ paths:
     post:
       operationId: clubApplication.approve
       summary: Approve a club application and create membership
-      description: Yêu cầu application.approve hoặc application.review tại CLUB trên URL.
-        Chỉ xử lý PENDING; tạo Membership ACTIVE và chuyển đơn APPROVED trong cùng transaction.
-        Trả 409 APPLICATION_ALREADY_REVIEWED hoặc DUPLICATE_MEMBERSHIP; lỗi tạo membership
-        rollback toàn bộ thao tác. Response gồm membershipId, membershipStatus và membershipJoinedAt.
+      description: 'Yêu cầu application.approve hoặc application.review tại CLUB trên URL. Chỉ xử lý PENDING; tạo Membership ACTIVE và chuyển đơn APPROVED trong cùng transaction. Trả 409 APPLICATION_ALREADY_REVIEWED hoặc DUPLICATE_MEMBERSHIP; lỗi tạo membership rollback toàn bộ thao tác. Response gồm membershipId, membershipStatus và membershipJoinedAt. Tạo membership và cấp các vai trò có granted_on_join (CLUB_MEMBER) trong CLB. 409 CLUB_INACTIVE nếu CLB tạm dừng, 409 USER_INACTIVE nếu tài khoản người nộp bị khoá.'
       tags: [ClubApplication]
       x-permission: application.approve | application.review
       x-scope: CLUB
@@ -2602,7 +2591,7 @@ paths:
       description: Chỉ owner được hủy đơn PENDING; lưu trạng thái CANCELLED và cancelledAt,
         không hard delete. Trạng thái khác trả 409 APPLICATION_CANNOT_BE_CANCELLED.
       tags: [ClubApplication]
-      x-permission: application.cancel (owner)
+      x-permission: null
       x-implementation-status: IMPLEMENTED
       parameters:
       - name: applicationId
@@ -3153,6 +3142,7 @@ paths:
       x-permission: notification.send
       x-scope: CLUB
       x-implementation-status: IMPLEMENTED
+      description: '409 CLUB_INACTIVE nếu CLB tạm dừng.'
       parameters:
       - name: clubId
         in: path
@@ -3203,6 +3193,7 @@ paths:
       x-permission: event.create
       x-scope: CLUB
       x-implementation-status: IMPLEMENTED
+      description: 'startTime và registrationDeadline phải ở tương lai (400 INVALID_EVENT_TIME).'
       parameters:
       - name: clubId
         in: path
@@ -3265,6 +3256,7 @@ paths:
       tags: [Event]
       x-permission: event.view
       x-implementation-status: IMPLEMENTED
+      description: 'Ai cũng xem được sự kiện công khai (CLB hoạt động, trạng thái OPEN_REGISTRATION/CLOSED_REGISTRATION/COMPLETED); còn lại cần là thành viên hoặc có event.view/club.view.'
       parameters:
       - name: eventId
         in: path
@@ -3287,6 +3279,7 @@ paths:
       x-permission: event.update
       x-scope: CLUB
       x-implementation-status: IMPLEMENTED
+      description: 'Chuyển trạng thái hợp lệ: DRAFT→OPEN_REGISTRATION|CANCELLED; OPEN_REGISTRATION→CLOSED_REGISTRATION|COMPLETED|CANCELLED; CLOSED_REGISTRATION→OPEN_REGISTRATION|COMPLETED|CANCELLED; COMPLETED và CANCELLED là trạng thái cuối (409 INVALID_EVENT_STATUS_TRANSITION). maxParticipants không được thấp hơn số đã đăng ký (409 MAX_PARTICIPANTS_TOO_LOW). Huỷ sự kiện gửi thông báo cho người đã đăng ký.'
       parameters:
       - name: clubId
         in: path
@@ -3319,6 +3312,7 @@ paths:
       tags: [Event]
       x-permission: null
       x-implementation-status: IMPLEMENTED
+      description: '409 CLUB_INACTIVE nếu CLB tạm dừng; 409 EVENT_FULL khi hết chỗ (đếm có khoá, không vượt khi đăng ký đồng thời).'
       parameters:
       - name: eventId
         in: path
@@ -3369,6 +3363,7 @@ paths:
       tags: [Event]
       x-permission: null
       x-implementation-status: IMPLEMENTED
+      description: '400 REGISTRATION_CLOSED khi đã qua hạn hoặc không còn mở đăng ký.'
       parameters:
       - name: eventId
         in: path
@@ -3391,6 +3386,7 @@ paths:
       tags: [Event]
       x-permission: event.attendance
       x-implementation-status: IMPLEMENTED
+      description: 'Chỉ cho sự kiện không ở DRAFT/CANCELLED (409 EVENT_NOT_HELD), từ 2 giờ trước giờ bắt đầu (409 EVENT_NOT_STARTED), và chỉ cho người đã đăng ký (với MEETING: cả thành viên CLB), ngược lại 409 PARTICIPANT_NOT_REGISTERED.'
       parameters:
       - name: eventId
         in: path
@@ -3443,6 +3439,7 @@ paths:
       tags: [Event]
       x-permission: null
       x-implementation-status: IMPLEMENTED
+      description: 'Gồm sự kiện (itemType EVENT) và hạn công việc của tôi (TASK_DEADLINE). Khoảng thời gian tối đa 366 ngày (400 INVALID_TIME_RANGE).'
       parameters:
       - name: from
         in: query
@@ -3457,7 +3454,8 @@ paths:
             application/json:
               schema:
                 type: array
-                items: {$ref: '#/components/schemas/Event'}
+                items: {$ref: '#/components/schemas/CalendarItem'}
+        '400': {$ref: '#/components/responses/BadRequest'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
   /clubs/{clubId}/tasks:
@@ -3468,6 +3466,7 @@ paths:
       x-permission: task.create
       x-scope: CLUB
       x-implementation-status: IMPLEMENTED
+      description: 'Người nhận phải là thành viên đang hoạt động của CLB (409 ASSIGNEE_NOT_MEMBER) và thuộc ban nếu có departmentId (409 ASSIGNEE_NOT_IN_DEPARTMENT).'
       parameters:
       - name: clubId
         in: path
@@ -3559,6 +3558,7 @@ paths:
       tags: [Task]
       x-permission: null
       x-implementation-status: IMPLEMENTED
+      description: 'Người nhận phải còn là thành viên CLB. Việc OVERDUE chỉ được báo DONE (409 TASK_OVERDUE). DONE luôn là 100%, TODO là 0%.'
       parameters:
       - name: taskId
         in: path
@@ -3587,6 +3587,7 @@ paths:
       tags: [Task]
       x-permission: task.verify
       x-implementation-status: IMPLEMENTED
+      description: 'Không tự nghiệm thu việc giao cho chính mình (403 SELF_VERIFICATION).'
       parameters:
       - name: taskId
         in: path
@@ -3639,6 +3640,7 @@ paths:
       x-permission: chat.view
       x-scope: CLUB
       x-implementation-status: IMPLEMENTED
+      description: 'Ban chủ nhiệm (chat.view) thấy mọi kênh; thành viên thấy kênh chung và kênh của ban mình.'
       parameters:
       - name: clubId
         in: path
@@ -3665,6 +3667,7 @@ paths:
       tags: [Chat]
       x-permission: chat.send
       x-implementation-status: IMPLEMENTED
+      description: 'Thành viên CLB (kênh ban: thành viên ban đó) hoặc chat.send. CLB tạm dừng chỉ đọc (409 CLUB_INACTIVE).'
       parameters:
       - name: channelId
         in: path
@@ -3691,6 +3694,7 @@ paths:
       tags: [Chat]
       x-permission: chat.view
       x-implementation-status: IMPLEMENTED
+      description: 'Thành viên CLB (kênh ban: thành viên ban đó) hoặc chat.view.'
       parameters:
       - name: channelId
         in: path
@@ -3718,6 +3722,7 @@ paths:
       tags: [Chat]
       x-permission: chat.summarize
       x-implementation-status: IMPLEMENTED
+      description: 'Chỉ người có chat.summarize; tối đa 10 lần mỗi giờ mỗi người (429 SUMMARY_LIMIT_REACHED). Nội dung tin nhắn được gửi tới dịch vụ AI cấu hình ở AI_BASE_URL.'
       parameters:
       - name: channelId
         in: path
@@ -3824,6 +3829,9 @@ components:
       properties:
         id: {type: string, format: uuid}
         applicantId: {type: string, format: uuid}
+        applicantName: {type: [string, 'null'], description: Họ tên người nộp (cho người duyệt đơn)}
+        applicantEmail: {type: [string, 'null']}
+        applicantStudentCode: {type: [string, 'null']}
         clubId: {type: string, format: uuid}
         clubCode: {type: string}
         clubName: {type: string}
@@ -4358,6 +4366,14 @@ components:
         userId:
           type: string
           format: uuid
+        userFullName:
+          type:
+          - string
+          - 'null'
+        userStudentCode:
+          type:
+          - string
+          - 'null'
         clubId:
           type: string
           format: uuid
@@ -4892,6 +4908,8 @@ components:
       - userId: 11111111-1111-4111-8111-111111111111
     UpdateMembershipRequest:
       type: object
+      description: LEFT kết thúc tư cách thành viên giống DELETE /memberships/{id} nên cần thêm quyền member.remove.
+        SUSPENDED/INACTIVE tạm thu hồi các vai trò được cấp khi vào CLB (CLUB_MEMBER); ACTIVE cấp lại.
       required:
       - status
       properties:
@@ -5542,6 +5560,20 @@ components:
       required: [content]
       properties:
         content: {type: string, maxLength: 4000}
+    CalendarItem:
+      type: object
+      required: [id, itemType, clubId, clubName, title, status, startTime, endTime]
+      properties:
+        id: {type: string, format: uuid}
+        itemType: {type: string, enum: [EVENT, TASK_DEADLINE]}
+        clubId: {type: string, format: uuid}
+        clubName: {type: string}
+        departmentId: {type: [string, 'null'], format: uuid}
+        title: {type: string}
+        status: {type: string}
+        location: {type: [string, 'null']}
+        startTime: {type: string, format: date-time}
+        endTime: {type: string, format: date-time}
     ChatMessage:
       type: object
       required: [id, channelId, senderType, content, createdAt]
@@ -5550,7 +5582,6 @@ components:
         channelId: {type: string, format: uuid}
         senderId: {type: [string, 'null'], format: uuid}
         senderFullName: {type: [string, 'null']}
-        senderEmail: {type: [string, 'null']}
         senderType: {type: string, enum: [USER, AI_BOT]}
         content: {type: string}
         createdAt: {type: string, format: date-time}

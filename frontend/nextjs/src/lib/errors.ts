@@ -1,6 +1,22 @@
 import { ApiError } from "@/lib/api";
 
 const MESSAGES: Record<string, string> = {
+  INVALID_EVENT_TIME: "Thời gian sự kiện không hợp lệ: phải bắt đầu ở tương lai, kết thúc sau khi bắt đầu, và hạn đăng ký không muộn hơn giờ bắt đầu.",
+  INVALID_TIME_RANGE: "Khoảng thời gian không hợp lệ (tối đa 1 năm).",
+  EVENT_FULL: "Sự kiện đã đủ người đăng ký.",
+  ALREADY_REGISTERED: "Bạn đã đăng ký sự kiện này rồi.",
+  REGISTRATION_CLOSED: "Sự kiện đã đóng đăng ký hoặc đã qua hạn.",
+  TASK_NOT_DONE: "Công việc chưa được báo hoàn thành nên chưa thể nghiệm thu.",
+  ASSIGNEE_NOT_MEMBER: "Chỉ giao việc được cho thành viên đang hoạt động của CLB.",
+  ASSIGNEE_NOT_IN_DEPARTMENT: "Người nhận việc không thuộc ban này.",
+  TASK_OVERDUE: "Công việc đã quá hạn, chỉ có thể báo hoàn thành.",
+  SELF_VERIFICATION: "Bạn không thể tự nghiệm thu công việc được giao cho chính mình.",
+  INVALID_EVENT_STATUS_TRANSITION: "Không thể chuyển sự kiện sang trạng thái này.",
+  MAX_PARTICIPANTS_TOO_LOW: "Số chỗ tối đa không được thấp hơn số người đã đăng ký.",
+  EVENT_NOT_HELD: "Không thể điểm danh cho sự kiện nháp hoặc đã huỷ.",
+  EVENT_NOT_STARTED: "Chỉ điểm danh được từ 2 giờ trước khi sự kiện bắt đầu.",
+  PARTICIPANT_NOT_REGISTERED: "Chỉ điểm danh được người đã đăng ký sự kiện.",
+  SUMMARY_LIMIT_REACHED: "Bạn đã dùng hết lượt tóm tắt AI trong giờ này. Vui lòng thử lại sau.",
   INVALID_CREDENTIALS: "Email hoặc mật khẩu không đúng.",
   ACCOUNT_INACTIVE: "Tài khoản đã bị khoá. Vui lòng liên hệ quản trị viên.",
   GOOGLE_SIGN_IN_REQUIRED: "Email sinh viên đăng nhập bằng nút \"Đăng nhập bằng Google\", không dùng mật khẩu.",

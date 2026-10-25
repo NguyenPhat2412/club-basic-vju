@@ -397,7 +397,7 @@ entries:
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: application.create (owner)
+  permission: null
 - method: GET
   path: /api/v1/users/me/applications
   module: club-application
@@ -418,7 +418,7 @@ entries:
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: application.cancel (owner)
+  permission: null
 - method: GET
   path: /api/v1/clubs/{clubId}/applications
   module: club-application
