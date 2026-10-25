@@ -12,6 +12,7 @@ import { Pagination } from "@/components/shared/Pagination";
 import { EmptyState, ErrorState, LoadingRows, Notice } from "@/components/shared/States";
 import { RowAction, TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError, ListPage } from "@/components/shared/ListPage";
+import { useGoogleSignIn } from "@/components/shared/GoogleSignInButton";
 import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormField, Input } from "@/components/ui/input";
@@ -53,14 +54,21 @@ export default function UsersPage() {
   const rolesIncomplete = pendingRoles.some((r) => r === null);
   const detailRoles = useQuery({ queryKey: ["user-roles", detail?.id], queryFn: () => apiModel.userRoles(detail!.id), enabled: !!detail && session.can("permission.view") });
   const clubName = (id?: string) => options.clubs.find((c) => c.id === id)?.name ?? id;
+  const google = useGoogleSignIn();
+  const googleDomains = google.data?.enabled ? google.data.allowedDomains : [];
+  const isGoogleEmail = (email: string) => googleDomains.some((d) => email.trim().toLowerCase().endsWith(`@${d.toLowerCase()}`));
+  const googleAccount = isGoogleEmail(form.email);
+  const studentNeedsSchoolEmail = googleDomains.length > 0 && !!form.studentCode.trim() && !!form.email && !googleAccount;
 
   const create = useMutation({
     mutationFn: () => apiModel.createUser({
-      email: form.email, fullName: form.fullName, password: form.password, studentCode: form.studentCode || undefined, phone: form.phone || undefined,
-      requiresPasswordChange: forceChange, roles: pendingRoles.filter((r) => r !== null),
+      email: form.email, fullName: form.fullName, password: googleAccount ? undefined : form.password, studentCode: form.studentCode || undefined, phone: form.phone || undefined,
+      requiresPasswordChange: googleAccount ? false : forceChange, roles: pendingRoles.filter((r) => r !== null),
     }),
     onSuccess: (user) => {
-      setNotice(`Đã tạo tài khoản ${user.email}. Gửi mật khẩu ban đầu cho người dùng qua kênh riêng${forceChange ? "; họ sẽ phải đổi mật khẩu ở lần đăng nhập đầu" : ""}.`);
+      setNotice(isGoogleEmail(user.email)
+        ? `Đã tạo tài khoản ${user.email}. Sinh viên đăng nhập bằng nút "Đăng nhập bằng Google" với email trường, không cần mật khẩu.`
+        : `Đã tạo tài khoản ${user.email}. Gửi mật khẩu ban đầu cho người dùng qua kênh riêng${forceChange ? "; họ sẽ phải đổi mật khẩu ở lần đăng nhập đầu" : ""}.`);
       setCreating(false); setForm(EMPTY_FORM); setRoleDrafts([]); setForceChange(true); refresh();
     },
   });
@@ -92,7 +100,7 @@ export default function UsersPage() {
   };
   const actionsFor = (user: User): RowAction[] => [
     { icon: <Eye />, label: "Xem chi tiết", onClick: () => setDetail(user) },
-    ...(session.can("user.reset_password") ? [{ icon: <KeyRound />, label: "Đặt lại mật khẩu", onClick: () => { setResetFor(user); setNewPassword(""); reset.reset(); } }] : []),
+    ...(session.can("user.reset_password") && !isGoogleEmail(user.email) ? [{ icon: <KeyRound />, label: "Đặt lại mật khẩu", onClick: () => { setResetFor(user); setNewPassword(""); reset.reset(); } }] : []),
     ...(user.id !== session.user?.id && session.can(user.status === "ACTIVE" ? "user.inactive" : "user.active")
       ? [{ icon: user.status === "ACTIVE" ? <Lock /> : <LockOpen />, label: user.status === "ACTIVE" ? "Khoá tài khoản" : "Mở khoá", danger: user.status === "ACTIVE", onClick: () => toggleLock(user), disabled: lock.isPending }]
       : []),
@@ -129,15 +137,22 @@ export default function UsersPage() {
       {users.data && <Pagination offset={offset} limit={LIMIT} total={users.data.total} onOffset={setOffset} />}
 
       <ModalShell open={creating} onClose={() => setCreating(false)} title="Tạo tài khoản" icon={<UserPlus />} onSubmit={() => create.mutate()}
-        submitLabel="Tạo tài khoản" submitLoading={create.isPending} submitDisabled={!form.email || !form.fullName || form.password.length < 8 || rolesIncomplete}>
-        <FormField label="Email" required><Input type="email" autoComplete="off" value={form.email} onChange={set("email")} placeholder="sinhvien@vju.ac.vn" /></FormField>
+        submitLabel="Tạo tài khoản" submitLoading={create.isPending} submitDisabled={!form.email || !form.fullName || (!googleAccount && form.password.length < 8) || studentNeedsSchoolEmail || rolesIncomplete}>
+        <FormField label="Email" required><Input type="email" autoComplete="off" value={form.email} onChange={set("email")} placeholder={googleDomains[0] ? `masv@${googleDomains[0]}` : "sinhvien@vju.ac.vn"} /></FormField>
         <FormField label="Họ và tên" required><Input value={form.fullName} onChange={set("fullName")} /></FormField>
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField label="Mã sinh viên"><Input value={form.studentCode} onChange={set("studentCode")} /></FormField>
           <FormField label="Điện thoại"><Input value={form.phone} onChange={set("phone")} /></FormField>
         </div>
-        <FormField label="Mật khẩu ban đầu" required hint="Tối thiểu 8 ký tự. Gửi cho người dùng qua kênh riêng."><Input type="text" autoComplete="new-password" value={form.password} onChange={set("password")} /></FormField>
-        <Checkbox checked={forceChange} onChange={setForceChange} label="Bắt buộc người dùng đổi mật khẩu ở lần đăng nhập đầu (khuyến nghị)" />
+        {studentNeedsSchoolEmail && <p className="text-xs text-destructive">Tài khoản sinh viên (có mã sinh viên) phải dùng email @{googleDomains[0]}.</p>}
+        {googleAccount ? (
+          <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs leading-5">
+            Sinh viên này sẽ đăng nhập bằng <b>tài khoản Google của trường</b> ({form.email.trim()}), không cần mật khẩu. Chỉ cần báo cho sinh viên vào trang đăng nhập và bấm &quot;Đăng nhập bằng Google&quot;.
+          </p>
+        ) : (<>
+          <FormField label="Mật khẩu ban đầu" required hint="Tối thiểu 8 ký tự. Gửi cho người dùng qua kênh riêng."><Input type="text" autoComplete="new-password" value={form.password} onChange={set("password")} /></FormField>
+          <Checkbox checked={forceChange} onChange={setForceChange} label="Bắt buộc người dùng đổi mật khẩu ở lần đăng nhập đầu (khuyến nghị)" />
+        </>)}
         {canAssign && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">

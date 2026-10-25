@@ -7,6 +7,7 @@ import { ArrowDown, ArrowRight, Bell, BookOpen, CalendarDays, ChevronDown, LockK
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { useRouter } from "next/navigation";
 import { apiModel } from "@/lib/api";
+import { GoogleSignInButton } from "@/components/shared/GoogleSignInButton";
 import { describeError } from "@/components/shared/ListPage";
 import { FormField, Input } from "@/components/ui/input";
 
@@ -58,14 +59,18 @@ export default function HomePage() {
     color: CLUB_COLORS[index % CLUB_COLORS.length],
   })) : news;
 
+  const afterSignIn = () => {
+    queryClient.clear();
+    router.push("/dashboard");
+  };
+
   const submitLogin = async (event: FormEvent) => {
     event.preventDefault();
     setLoginError("");
     setLoginLoading(true);
     try {
       await apiModel.login(email, password);
-      queryClient.clear();
-      router.push("/dashboard");
+      afterSignIn();
     } catch (err) {
       setLoginError(describeError(err));
     } finally {
@@ -209,6 +214,7 @@ export default function HomePage() {
               <p className="text-[9px] font-bold uppercase tracking-[.22em] text-[#8e1f32]">ĐĂNG NHẬP NHANH</p>
               <h3 className="mt-2 font-serif text-[26px]">Tài khoản VJU ClubHub</h3>
               <div className="mt-5 grid gap-4">
+                <GoogleSignInButton onSignedIn={afterSignIn} width={300} withDivider />
                 <FormField label="Địa chỉ email">
                   <Input
                     required

@@ -4,7 +4,7 @@ export class ApiError extends Error { constructor(message: string, public status
 async function apiError(response: Response) { let message = `Request failed (${response.status})`; let code: string | undefined; try { const body = await response.json(); message = body.detail || body.message || body.title || message; code = body.code; } catch {} return new ApiError(message, response.status, code); }
 
 const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-const SIGN_IN_PATHS = ['/auth/login'];
+const SIGN_IN_PATHS = ['/auth/login', '/auth/google'];
 
 function csrfCookie() {
   if (typeof document === 'undefined') return null;
@@ -52,10 +52,12 @@ export async function apiBlob(path: string): Promise<Blob> {
 }
 export const apiModel = {
   login: (email: string, password: string) => api<{ user: User }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  googleConfig: () => api<GoogleSignInConfig>('/auth/google/config'),
+  googleLogin: (credential: string) => api<{ user: User }>('/auth/google', { method: 'POST', body: JSON.stringify({ credential }) }),
   logout: () => api<void>('/auth/logout', { method: 'POST' }),
   changePassword: (currentPassword: string, newPassword: string) => api<void>('/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
   users: (query = '', offset = 0, limit = 20) => api<Page<User>>(`/users?${new URLSearchParams({ query, offset: String(offset), limit: String(limit) })}`),
-  createUser: (body: { email: string; password: string; fullName: string; studentCode?: string; phone?: string; requiresPasswordChange?: boolean; roles?: RoleAssignmentInput[] }) => api<User>('/users', { method: 'POST', body: JSON.stringify(body) }),
+  createUser: (body: { email: string; password?: string; fullName: string; studentCode?: string; phone?: string; requiresPasswordChange?: boolean; roles?: RoleAssignmentInput[] }) => api<User>('/users', { method: 'POST', body: JSON.stringify(body) }),
   resetPassword: (id: string, newPassword: string, requiresPasswordChange = true) => api<void>(`/users/${id}/password`, { method: 'PATCH', body: JSON.stringify({ newPassword, requiresPasswordChange }) }),
   roles: () => api<Role[]>('/roles'),
   updateRolePermissions: (id: string, permissionIds: string[]) => api<Role>(`/roles/${id}`, { method: 'PATCH', body: JSON.stringify({ permissionIds }) }),
@@ -111,3 +113,4 @@ export type Membership = { id: string; userId: string; clubId: string; clubCode:
 export type Department = { id: string; clubId: string; name: string; description?: string; status: string };
 export type DepartmentMember = { id: string; departmentId: string; membershipId: string; userId: string; joinedAt: string };
 export type Notification = { id: string; title: string; message: string; read: boolean; referenceId?: string; createdAt: string };
+export type GoogleSignInConfig = { enabled: boolean; clientId: string | null; allowedDomains: string[] };
