@@ -20,19 +20,20 @@ import java.util.UUID;
 
 public interface ClubApplicationRepository extends JpaRepository<ClubApplication, UUID>, JpaSpecificationExecutor<ClubApplication> {
     @Override
-    @EntityGraph(attributePaths = {"applicant", "club", "reviewedBy"})
+    @EntityGraph(attributePaths = {"applicant", "club", "reviewedBy", "preferredDepartment", "secondaryDepartment"})
     Page<ClubApplication> findAll(Specification<ClubApplication> spec, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"applicant", "club", "reviewedBy"})
+    @EntityGraph(attributePaths = {"applicant", "club", "reviewedBy", "preferredDepartment", "secondaryDepartment"})
     Optional<ClubApplication> findByIdAndApplicant_Id(UUID id, UUID applicantId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT a FROM ClubApplication a JOIN FETCH a.applicant JOIN FETCH a.club LEFT JOIN FETCH a.reviewedBy "
+            + "LEFT JOIN FETCH a.preferredDepartment LEFT JOIN FETCH a.secondaryDepartment "
             + "WHERE a.id = :id AND a.applicant.id = :applicantId")
     Optional<ClubApplication> findForUpdateByIdAndApplicant_Id(@Param("id") UUID id,
                                                                 @Param("applicantId") UUID applicantId);
 
-    @EntityGraph(attributePaths = {"applicant", "club", "reviewedBy"})
+    @EntityGraph(attributePaths = {"applicant", "club", "reviewedBy", "preferredDepartment", "secondaryDepartment"})
     Optional<ClubApplication> findByIdAndClub_Id(UUID id, UUID clubId);
 
     Optional<ClubApplication> findByApplicant_IdAndClub_IdAndStatus(
@@ -40,6 +41,7 @@ public interface ClubApplicationRepository extends JpaRepository<ClubApplication
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT a FROM ClubApplication a JOIN FETCH a.applicant JOIN FETCH a.club LEFT JOIN FETCH a.reviewedBy "
+            + "LEFT JOIN FETCH a.preferredDepartment LEFT JOIN FETCH a.secondaryDepartment "
             + "WHERE a.id = :id AND a.club.id = :clubId")
     Optional<ClubApplication> findForReview(@Param("id") UUID id, @Param("clubId") UUID clubId);
 

@@ -9,9 +9,12 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 class ClubApplicationApiTest extends ApiIntegrationTest {
     @Test
@@ -191,5 +194,102 @@ class ClubApplicationApiTest extends ApiIntegrationTest {
                 .isEqualTo("PENDING");
         assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ?", applicant, clubA))
                 .isZero();
+    }
+
+    @Test
+    void formBuilderCrudAndDetailedApplicationWithPdfUploadAndApprovalDepartmentAssignment() throws Exception {
+        Map<String, Object> formReq = Map.of(
+                "title", "Đơn tuyển thành viên Gen 9",
+                "description", "Điền đầy đủ thông tin và nộp CV PDF",
+                "status", "OPEN",
+                "fields", List.of(Map.of(
+                        "key", "interview_slot",
+                        "label", "Ca phỏng vấn",
+                        "type", "SELECT",
+                        "required", true,
+                        "placeholder", "Chọn ca",
+                        "options", List.of("Sáng Thứ 7", "Chiều Chủ Nhật")
+                )),
+                "allowAttachments", true,
+                "requireAttachment", false,
+                "maxAttachments", 5,
+                "isDefault", true
+        );
+        JsonNode createdForm = call(post("/api/v1/clubs/" + clubA + "/application-forms"), adminToken, formReq, 201);
+        UUID formId = id(createdForm);
+
+        JsonNode activeForm = call(get("/api/v1/clubs/" + clubA + "/application-form"), memberToken, null, 200);
+        assertThat(activeForm.path("id").asText()).isEqualTo(formId.toString());
+        assertThat(activeForm.path("fields").size()).isEqualTo(1);
+        assertThat(activeForm.path("departments").size()).isEqualTo(2);
+
+        // Missing required custom field is rejected
+        problem(post(applications(clubA)), memberToken, Map.of(
+                "formId", formId,
+                "message", "Em muốn tham gia CLB"
+        ), 400, "MISSING_REQUIRED_FORM_FIELD");
+
+        // Submit detailed application
+        JsonNode app = call(post(applications(clubA)), memberToken, Map.ofEntries(
+                Map.entry("formId", formId),
+                Map.entry("preferredDepartmentId", depA1),
+                Map.entry("secondaryDepartmentId", depA2),
+                Map.entry("applicantPhone", "0912345678"),
+                Map.entry("facultyMajor", "Công nghệ thông tin (BCSE)"),
+                Map.entry("academicYear", "K8 - Năm 3"),
+                Map.entry("gpa", "3.65"),
+                Map.entry("socialPortfolioUrl", "https://github.com/student"),
+                Map.entry("selfIntroduction", "Năng động, nhiệt huyết"),
+                Map.entry("skillsExperience", "Thiết kế Canva, lập trình Web"),
+                Map.entry("availability", "Tối T3, T5 và cuối tuần"),
+                Map.entry("message", "Mong muốn đóng góp cho CLB"),
+                Map.entry("customAnswers", Map.of("interview_slot", "Sáng Thứ 7"))
+        ), 201);
+        UUID appId = id(app);
+        assertThat(app.path("preferredDepartmentId").asText()).isEqualTo(depA1.toString());
+        assertThat(app.path("facultyMajor").asText()).isEqualTo("Công nghệ thông tin (BCSE)");
+        assertThat(app.at("/customAnswers/interview_slot").asText()).isEqualTo("Sáng Thứ 7");
+
+        // Upload PDF attachment to application
+        byte[] pdfBytes = "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        var uploadReq = multipart("/api/v1/applications/" + appId + "/files")
+                .file(new org.springframework.mock.web.MockMultipartFile("file", "cv-ung-vien.pdf", "application/pdf", pdfBytes))
+                .param("fileCategory", "APPLICANT_CV_PDF");
+        JsonNode uploadedFile = call(uploadReq, memberToken, null, 201);
+        UUID fileId = id(uploadedFile);
+        assertThat(uploadedFile.path("fileType").asText()).isEqualTo("PDF");
+
+        // Update application while PENDING
+        JsonNode updatedApp = call(put("/api/v1/users/me/applications/" + appId), memberToken, Map.of(
+                "facultyMajor", "Khoa học máy tính & Kỹ thuật",
+                "gpa", "3.75",
+                "message", "Mong muốn gắn bó lâu dài với CLB",
+                "customAnswers", Map.of("interview_slot", "Chiều Chủ Nhật")
+        ), 200);
+        assertThat(updatedApp.path("facultyMajor").asText()).isEqualTo("Khoa học máy tính & Kỹ thuật");
+        assertThat(updatedApp.path("attachments").size()).isEqualTo(1);
+
+        // Download attachment
+        var downloadResp = send(get("/api/v1/application-files/" + fileId + "/download"), adminToken, null);
+        assertThat(downloadResp.getStatus()).isEqualTo(200);
+        assertThat(downloadResp.getContentAsByteArray()).isEqualTo(pdfBytes);
+
+        // Approve application -> automatically assigns to preferredDepartmentId (depA1)
+        JsonNode approved = call(post(applications(clubA) + "/" + appId + "/approve"), adminToken,
+                Map.of("reviewNote", "Hồ sơ rất tốt"), 200);
+        assertThat(approved.path("status").asText()).isEqualTo("APPROVED");
+        assertThat(count("SELECT count(*) FROM department_members WHERE department_id = ? AND club_id = ?", depA1, clubA))
+                .isEqualTo(1);
+
+        // Reviewer CRUD: update application details & reviewNote via PUT /clubs/{clubId}/applications/{appId}
+        JsonNode managerUpdated = call(put(applications(clubA) + "/" + appId), adminToken, Map.of(
+                "gpa", "3.85",
+                "reviewNote", "Cập nhật ghi chú duyệt và phân thêm vào Ban 2",
+                "assignDepartmentId", depA2
+        ), 200);
+        assertThat(managerUpdated.path("gpa").asText()).isEqualTo("3.85");
+        assertThat(managerUpdated.path("reviewNote").asText()).isEqualTo("Cập nhật ghi chú duyệt và phân thêm vào Ban 2");
+        assertThat(count("SELECT count(*) FROM department_members WHERE department_id = ? AND club_id = ?", depA2, clubA))
+                .isEqualTo(1);
     }
 }

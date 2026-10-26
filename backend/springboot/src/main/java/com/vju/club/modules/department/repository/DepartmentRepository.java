@@ -1,6 +1,7 @@
 package com.vju.club.modules.department.repository;
 
 import com.vju.club.modules.department.entity.Department;
+import com.vju.club.modules.department.enums.DepartmentStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -11,6 +12,7 @@ import java.util.UUID;
 
 public interface DepartmentRepository extends JpaRepository<Department, UUID> {
     List<Department> findByClub_IdOrderByNameAscIdAsc(UUID clubId, Pageable pageable);
+    List<Department> findByClub_IdAndStatusOrderByNameAsc(UUID clubId, DepartmentStatus status);
     @Query("SELECT count(d) > 0 FROM Department d WHERE d.club.id = :clubId AND lower(d.name) = lower(:name)")
     boolean existsByClub_IdAndNameIgnoreCase(@Param("clubId") UUID clubId, @Param("name") String name);
     long countByClub_Id(UUID clubId);

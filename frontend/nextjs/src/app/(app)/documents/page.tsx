@@ -52,6 +52,8 @@ export default function DocumentsPage() {
   const activeClubId = club?.id ?? "";
   const canRestore = session.canInClub("document.restore", activeClubId);
   const canUpload = session.canInClub("document.upload", activeClubId);
+  const canUpdate = session.canInClub("document.update", activeClubId);
+  const canDelete = session.canInClub("document.delete", activeClubId);
 
   const documents = useQuery({
     queryKey: ["documents", activeClubId, search, trash, offset],
@@ -131,13 +133,13 @@ export default function DocumentsPage() {
               { key: "updated", header: trash ? "Ngày xoá" : "Cập nhật", render: (x) => { const t = trash ? x.deletedAt : x.updatedAt; return <span className="font-mono">{formatDay(t)} <span className="text-muted-foreground">{formatTime(t)}</span></span>; } },
               { key: "status", header: "Trạng thái", render: (x) => x.deleted ? <Badge tone="danger">Đã xoá</Badge> : <Badge tone="primary">Đang dùng</Badge> },
               { key: "actions", header: "Thao tác", className: "text-right", render: (x) => <TableRowActions actions={x.deleted
-                ? [{ icon: <Eye />, label: "Xem chi tiết", onClick: () => openDetail(x) }, { icon: <RotateCcw />, label: "Khôi phục", onClick: () => restore(x) }]
+                ? [{ icon: <Eye />, label: "Xem chi tiết", onClick: () => openDetail(x) }, ...(canRestore ? [{ icon: <RotateCcw />, label: "Khôi phục", onClick: () => restore(x) }] : [])]
                 : [
                   { icon: <Eye />, label: "Xem chi tiết", onClick: () => openDetail(x) },
                   { icon: <Download />, label: "Tải xuống", onClick: () => download(x) },
                   { icon: <Link2 />, label: "Mở link R2", onClick: () => openLink(x) },
-                  { icon: <Pencil />, label: "Sửa", onClick: () => openDetail(x) },
-                  { icon: <Trash2 />, label: "Xoá mềm", danger: true, onClick: () => softDelete(x) },
+                  ...(canUpdate ? [{ icon: <Pencil />, label: "Sửa", onClick: () => openDetail(x) }] : []),
+                  ...(canDelete ? [{ icon: <Trash2 />, label: "Xoá mềm", danger: true, onClick: () => softDelete(x) }] : []),
                 ]} /> },
             ]} />}
       {documents.data && documents.data.total > 0 && <Pagination offset={offset} limit={LIMIT} total={documents.data.total} onOffset={setOffset} />}
@@ -159,7 +161,7 @@ export default function DocumentsPage() {
           : <>
             <Button variant="outline" size="sm" onClick={() => download(d)}><Download size={14} /> Tải xuống</Button>
             <Button variant="outline" size="sm" onClick={() => openLink(d)}><Link2 size={14} /> Link R2</Button>
-            <Button variant="destructive" size="sm" onClick={() => softDelete(d)}><Trash2 size={14} /> Xoá mềm</Button>
+            {canDelete && <Button variant="destructive" size="sm" onClick={() => softDelete(d)}><Trash2 size={14} /> Xoá mềm</Button>}
           </>)}>
         {detail.isPending ? <LoadingRows rows={4} /> : d && <>
           <DetailList rows={[
@@ -174,11 +176,11 @@ export default function DocumentsPage() {
             ["Cập nhật", formatDateTime(d.updatedAt)],
           ]} />
           {!d.deleted && <>
-            <Section title="Sửa thông tin" icon={<Pencil />}>
+            {canUpdate && <Section title="Sửa thông tin" icon={<Pencil />}>
               <FormField label="Tên tài liệu"><Input value={editName} onChange={(e) => setEditName(e.target.value)} /></FormField>
               <FormField label="appDetailKey" hint="Bỏ trống để xoá"><Input value={editKey} onChange={(e) => setEditKey(e.target.value)} /></FormField>
               <Button size="sm" className="justify-self-end" onClick={() => saveEdit(d)}>Lưu thay đổi</Button>
-            </Section>
+            </Section>}
             <Section title="Lịch sử phiên bản" icon={<History />}>
               <div className="divide-y divide-border/60 rounded-lg border border-border">
                 {(versions.data ?? []).map((v) => (

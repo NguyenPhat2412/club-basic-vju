@@ -30,9 +30,10 @@ public interface UserPermissionRepository extends JpaRepository<UserPermission, 
             + "AND e.permission_key = :permissionKey)", nativeQuery = true)
     boolean hasAnywhere(@Param("userId") UUID userId, @Param("permissionKey") String permissionKey);
 
-    @Query(value = "SELECT e.permission_key AS permissionKey, e.scope AS scope, e.club_id AS clubId, "
+    @Query(value = "SELECT e.permission_key AS permissionKey, e.scope AS scope, COALESCE(e.club_id, d.club_id) AS clubId, "
             + "e.department_id AS departmentId, e.source AS source, r.code AS roleCode "
             + "FROM effective_user_permissions e LEFT JOIN roles r ON r.id = e.role_id "
+            + "LEFT JOIN departments d ON d.id = e.department_id "
             + "WHERE e.user_id = :userId ORDER BY e.permission_key, e.scope, e.source, r.code", nativeQuery = true)
     List<EffectivePermissionRow> findEffective(@Param("userId") UUID userId);
 

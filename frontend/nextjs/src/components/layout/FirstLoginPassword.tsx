@@ -1,7 +1,7 @@
 "use client";
+import Image from "next/image";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { KeyRound } from "lucide-react";
 import { apiModel } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ export function FirstLoginPassword({ email }: { email?: string }) {
       <form className="panel-modal w-full max-w-md space-y-4 p-6"
         onSubmit={(e) => { e.preventDefault(); if (canSubmit) mutation.mutate(); }}>
         <div className="flex items-center gap-3">
-          <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><KeyRound size={20} /></span>
+          <Image src="/images/vju-logo.png" alt="Logo Trường Đại học Việt Nhật (VJU)" width={44} height={44} className="size-11 shrink-0 rounded-full bg-white p-0.5 object-contain shadow-xs ring-1 ring-border" />
           <div>
             <h1 className="text-lg font-black tracking-tight">Đặt mật khẩu của bạn</h1>
             <p className="text-xs text-muted-foreground">{email}</p>

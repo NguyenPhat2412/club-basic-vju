@@ -1,6 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { type EffectivePermission, type User } from "@/lib/api";
+import { clubIdsWith, departmentIdsWith } from "./useSession";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -30,14 +31,10 @@ export function useOptionalSession() {
     mustChangePassword: !!me.data?.requiresPasswordChange,
     can: (key: string) => list.some((permission) => permission.permissionKey === key),
     canInClub: (key: string, clubId: string) => list.some((permission) => permission.permissionKey === key && (permission.scope === "GLOBAL" || permission.clubId === clubId)),
+    canClubWide: (key: string, clubId: string) => list.some((permission) => permission.permissionKey === key && (permission.scope === "GLOBAL" || (permission.scope === "CLUB" && permission.clubId === clubId))),
+    canInDepartment: (key: string, clubId: string, departmentId?: string) =>
+      list.some((permission) => permission.permissionKey === key && (permission.scope === "GLOBAL" || (permission.scope === "CLUB" && permission.clubId === clubId) || (departmentId ? permission.departmentId === departmentId : permission.clubId === clubId))),
     clubsWith: (keys: string[]) => clubIdsWith(list, keys),
-  };
-}
-
-function clubIdsWith(list: EffectivePermission[], keys: string[]) {
-  const relevant = list.filter((permission) => keys.includes(permission.permissionKey));
-  return {
-    global: relevant.some((permission) => permission.scope === "GLOBAL"),
-    ids: new Set(relevant.map((permission) => permission.clubId).filter((id): id is string => !!id)),
+    departmentsWith: (keys: string[], clubId: string) => departmentIdsWith(list, keys, clubId),
   };
 }

@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -162,5 +163,19 @@ class UserApiTest extends ApiIntegrationTest {
         assertThat(response.getStatus()).isEqualTo(403);
         assertThat(json.readTree(response.getContentAsString()).path("code").asText()).isEqualTo("CSRF_INVALID");
         assertThat(db.queryForObject("SELECT full_name FROM users WHERE id = ?", String.class, member)).isEqualTo("member@test.local");
+    }
+
+    @Test
+    void adminDeletesUserCleanlyAndAuditsDeletion() throws Exception {
+        UUID doomed = user("doomed@test.local");
+        String doomedToken = token(doomed);
+        membership(doomed, clubA);
+        problem(delete("/api/v1/users/" + doomed), memberToken, null, 403, "PERMISSION_DENIED");
+        problem(delete("/api/v1/users/" + admin), adminToken, null, 409, "CANNOT_DELETE_SELF");
+
+        call(delete("/api/v1/users/" + doomed), adminToken, null, 204);
+        assertThat(count("SELECT count(*) FROM users WHERE id = ?", doomed)).isZero();
+        problem(get("/api/v1/users/me"), doomedToken, null, 401, "UNAUTHORIZED");
+        assertThat(count("SELECT count(*) FROM audit_logs WHERE action = 'USER_DELETED' AND resource_id = ?", doomed)).isEqualTo(1);
     }
 }

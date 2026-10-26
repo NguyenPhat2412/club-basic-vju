@@ -720,3 +720,108 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: chat.view
+- method: DELETE
+  path: /api/v1/users/{userId}
+  module: user-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: user.delete
+- method: GET
+  path: /api/v1/clubs/{clubId}/application-form
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/clubs/{clubId}/application-forms
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.manage_form | application.view
+- method: POST
+  path: /api/v1/clubs/{clubId}/application-forms
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.manage_form | application.review
+- method: PUT
+  path: /api/v1/clubs/{clubId}/application-forms/{formId}
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.manage_form | application.review
+- method: DELETE
+  path: /api/v1/clubs/{clubId}/application-forms/{formId}
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.manage_form | application.review
+- method: POST
+  path: /api/v1/clubs/{clubId}/application-forms/{formId}/files
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.manage_form | application.review
+- method: DELETE
+  path: /api/v1/clubs/{clubId}/application-forms/{formId}/files/{fileId}
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.manage_form | application.review
+- method: PUT
+  path: /api/v1/users/me/applications/{applicationId}
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: DELETE
+  path: /api/v1/users/me/applications/{applicationId}
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: PUT
+  path: /api/v1/clubs/{clubId}/applications/{applicationId}
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.update | application.review
+- method: DELETE
+  path: /api/v1/clubs/{clubId}/applications/{applicationId}
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.delete | application.review
+- method: POST
+  path: /api/v1/applications/{applicationId}/files
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: DELETE
+  path: /api/v1/applications/{applicationId}/files/{fileId}
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/application-files/{fileId}/download
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null

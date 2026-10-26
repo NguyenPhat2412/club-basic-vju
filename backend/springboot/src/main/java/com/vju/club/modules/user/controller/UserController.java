@@ -12,6 +12,7 @@ import com.vju.club.modules.user.dto.request.UpdateUserStatusRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -87,5 +88,11 @@ public class UserController {
             @PathVariable UUID userId,
             @Valid @RequestBody UpdateUserStatusRequest request) {
         return userService.updateStatus(actor, userId, request);
+    }
+
+    @DeleteMapping("/{userId}")
+    public ResponseEntity<Void> deleteUser(Actor actor, @PathVariable UUID userId) {
+        userService.deleteUser(actor, userId);
+        return ResponseEntity.noContent().build();
     }
 }

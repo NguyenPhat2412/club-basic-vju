@@ -11,6 +11,7 @@ public final class UserConstants {
     public static final String PERMISSION_INACTIVE = "user.inactive";
     public static final String PERMISSION_RESET_PASSWORD = "user.reset_password";
     public static final String PERMISSION_MANAGE = "user.manage";
+    public static final String PERMISSION_DELETE = "user.delete";
 
     public static final String DEFAULT_SORT_BY = "createdAt";
     public static final String DEFAULT_SORT_DIRECTION = "desc";

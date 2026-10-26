@@ -214,6 +214,27 @@ public class UserServiceImpl implements UserService {
         return userMapper.toResponse(saved);
     }
 
+    @Override
+    @Transactional
+    @RequirePermission(UserConstants.PERMISSION_DELETE)
+    public void deleteUser(Actor actor, UUID userId) {
+        User user = findUser(userId);
+        if (userId.equals(actor.id())) {
+            throw new ApiException(HttpStatus.CONFLICT, "CANNOT_DELETE_SELF", "You cannot delete your own account");
+        }
+        requireAdminToManageAdmin(actor, userId);
+        grantGuard.requireNotLastSystemAdmin(userId);
+        Map<String, Object> before = new LinkedHashMap<>();
+        before.put("email", user.getEmail());
+        before.put("fullName", user.getFullName());
+        before.put("studentCode", user.getStudentCode());
+        before.put("status", user.getStatus());
+        userSessionService.endAllSessions(userId);
+        userRepository.delete(user);
+        userRepository.flush();
+        auditService.record(actor.id(), AuditAction.USER_DELETED, userId, null, before, null);
+    }
+
     private static Map<String, Object> profile(User user) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("fullName", user.getFullName());

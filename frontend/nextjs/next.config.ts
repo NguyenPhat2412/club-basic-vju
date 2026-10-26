@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   devIndicators: false,
+  images: {
+    unoptimized: true,
+  },
   async headers() {
     return [
       {

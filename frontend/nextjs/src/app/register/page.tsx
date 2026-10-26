@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, CheckCircle2, Info } from "lucide-react";
 import { Suspense } from "react";
@@ -12,7 +13,7 @@ const steps = [
 export default function RegisterPage() {
   return (
     <main className="min-h-svh bg-[#faf9f6] px-5 py-7 sm:px-8">
-      <div className="mx-auto flex max-w-[1120px] items-center justify-between"><Link href="/home" className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-full border border-[#b58b54] text-[11px] font-black tracking-widest text-[#8e1f32]">VJU</span><span className="border-l border-[#d8d1c8] pl-3 text-sm font-semibold">CLUB<span className="font-normal text-[#8e1f32]">HUB</span></span></Link><Link href="/home" className="inline-flex items-center gap-2 text-[11px] text-[#716b64] hover:text-[#8e1f32]"><ArrowLeft size={14} /> Trang chủ</Link></div>
+      <div className="mx-auto flex max-w-[1120px] items-center justify-between"><Link href="/home" className="flex items-center gap-3"><Image src="/images/vju-logo.png" alt="Logo Trường Đại học Việt Nhật (VJU)" width={44} height={44} className="size-11 shrink-0 rounded-full bg-white object-contain shadow-xs" /><span className="border-l border-[#d8d1c8] pl-3 text-sm font-semibold">CLUB<span className="font-normal text-[#8e1f32]">HUB</span></span></Link><Link href="/home" className="inline-flex items-center gap-2 text-[11px] text-[#716b64] hover:text-[#8e1f32]"><ArrowLeft size={14} /> Trang chủ</Link></div>
       <section className="mx-auto mt-12 max-w-[960px] border border-[#e8e4df] bg-white sm:mt-16">
         <div className="grid lg:grid-cols-[.8fr_1.2fr]">
           <div className="bg-[#8e1f32] p-7 text-white sm:p-10 lg:p-12"><p className="text-[9px] font-semibold uppercase tracking-[.22em] text-white/65">THÀNH VIÊN VJU</p><h1 className="mt-4 font-serif text-[36px] leading-tight sm:text-[44px]">Bắt đầu hành trình cùng cộng đồng.</h1><p className="mt-5 text-[13px] leading-7 text-white/75">Sinh viên đăng nhập ngay bằng tài khoản Google của trường, không cần tạo mật khẩu.</p><Link href="/login" className="mt-8 inline-flex items-center gap-3 border border-white/45 px-5 py-3 text-[10px] font-semibold hover:bg-white/10">ĐÃ CÓ TÀI KHOẢN? ĐĂNG NHẬP <ArrowRight size={14} /></Link></div>

@@ -1,47 +1,272 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { ReactNode, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ReactNode, Suspense, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Bell, BookOpen, ChevronDown, ClipboardList, Compass, KeyRound, LogOut, Menu, ShieldCheck, Users, UsersRound, X } from "lucide-react";
+import {
+  Bell,
+  ChevronDown,
+  FileText,
+  KeyRound,
+  LogOut,
+  Menu,
+  Moon,
+  Network,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ShieldCheck,
+  Sun,
+  UserCheck,
+  Users,
+  UsersRound,
+  X,
+} from "lucide-react";
 import { apiModel } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
+import { CLUB_WORKSPACE_KEYS } from "@/hooks/useSession";
+import { useThemePreference } from "@/hooks/useThemePreference";
 import { cn } from "@/lib/utils";
 import { ChangePasswordModal } from "./ChangePasswordModal";
 import { FirstLoginPassword } from "./FirstLoginPassword";
 
-type NavLink = { href: string; label: string; icon: ReactNode; visible?: boolean };
+type SubNavItem = {
+  href: string;
+  label: string;
+  tab?: string;
+  visible?: boolean;
+};
+
+type NavParentGroup = {
+  id: string;
+  label: string;
+  icon: ReactNode;
+  items: SubNavItem[];
+};
+
+type NavSection = {
+  id: string;
+  title?: string;
+  groups: NavParentGroup[];
+};
 
 export function AppShell({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={<div className="flex h-svh w-full bg-background" />}>
+      <AppShellInner>{children}</AppShellInner>
+    </Suspense>
+  );
+}
+
+function AppShellInner({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentTab = searchParams.get("tab");
   const router = useRouter();
   const queryClient = useQueryClient();
   const session = useOptionalSession();
+  const { dark, toggleTheme } = useThemePreference();
+
   const publicClubRoute = pathname === "/clubs";
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [clubMenuOpen, setClubMenuOpen] = useState(false);
-  const [managementMenuOpen, setManagementMenuOpen] = useState(false);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [closedSections, setClosedSections] = useState<Set<string>>(new Set());
+  const [closedGroups, setClosedGroups] = useState<Set<string>>(new Set());
   const [passwordOpen, setPasswordOpen] = useState(false);
 
   useEffect(() => {
-    if (session.settled && !session.user && !publicClubRoute) router.replace("/login");
+    if (session.settled && !session.user && !publicClubRoute) {
+      router.replace("/login");
+    }
   }, [publicClubRoute, router, session.settled, session.user]);
 
-  const canManage = ["application.view", "application.review", "member.view", "department.member.add"].some(session.can);
-  const clubLinks: NavLink[] = [
-    { href: "/clubs", label: "Khám phá câu lạc bộ", icon: <Compass size={16} /> },
-    { href: "/memberships", label: "CLB đang tham gia", icon: <UsersRound size={16} /> },
-    { href: "/applications", label: "Đơn đăng ký của tôi", icon: <ClipboardList size={16} /> },
-    { href: "/notifications", label: "Thông báo", icon: <Bell size={16} /> },
-  ].filter((item) => !!session.user || item.href === "/clubs");
-  const managementLinks: NavLink[] = [
-    { href: "/management", label: "Quản lý câu lạc bộ", icon: <ShieldCheck size={16} />, visible: canManage },
-    { href: "/documents", label: "Kho tài liệu", icon: <BookOpen size={16} />, visible: session.can("document.view") },
-    { href: "/users", label: "Tài khoản", icon: <Users size={16} />, visible: session.can("user.view") },
-    { href: "/roles", label: "Vai trò & phân quyền", icon: <KeyRound size={16} />, visible: session.can("role.view") },
-  ].filter((item) => item.visible && !session.mustChangePassword);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setCollapsed((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  const hasAnyPerm = (keys: string[]) => keys.some(session.can);
+
+  const canDept = hasAnyPerm([
+    "department.view",
+    "department.create",
+    "department.update",
+    "department.activate",
+    "department.inactive",
+  ]);
+  const canClubSettings = hasAnyPerm([
+    "club.create",
+    "club.update",
+    "club.active",
+    "club.inactive",
+    "notification.send",
+  ]);
+  const canMembers = hasAnyPerm([
+    "member.view",
+    "member.view_detail",
+    "member.add",
+    "member.update",
+    "member.remove",
+    "department.member.view",
+    "department.member.add",
+    "department.member.remove",
+  ]);
+  const canApplications = hasAnyPerm([
+    "application.view",
+    "application.view_detail",
+    "application.review",
+    "application.approve",
+    "application.reject",
+    "application.update",
+    "application.delete",
+  ]);
+  const canForms = hasAnyPerm([
+    "application.manage_form",
+    "application.review",
+    "application.approve",
+    "application.view",
+  ]);
+  const canEvents = hasAnyPerm([
+    "event.view",
+    "event.create",
+    "event.update",
+    "event.attendance",
+  ]);
+  const canTasks = hasAnyPerm(["task.view", "task.create", "task.verify"]);
+  const canChat = hasAnyPerm(["chat.view", "chat.send", "chat.summarize"]);
+  const canAnyClubWorkspace = CLUB_WORKSPACE_KEYS.some(session.can) || session.can("club.create");
+
+  const rawSections: NavSection[] = [
+    {
+      id: "sec-personal",
+      groups: [
+        {
+          id: "grp-portal",
+          label: "Cổng cá nhân",
+          icon: <UserCheck size={15} />,
+          items: [
+            { href: "/clubs", label: "Khám phá câu lạc bộ", visible: true },
+            { href: "/memberships", label: "CLB đang tham gia", visible: !!session.user },
+            { href: "/applications", label: "Đơn đăng ký của tôi", visible: !!session.user },
+            { href: "/schedule", label: "Lịch & Công việc của tôi", visible: !!session.user },
+            { href: "/notifications", label: "Thông báo của tôi", visible: !!session.user },
+            { href: "/documents", label: "Quy chế và nội quy", visible: !!session.user && session.can("document.view") },
+            { href: "/profile", label: "Hồ sơ cá nhân", visible: !!session.user },
+          ],
+        },
+      ],
+    },
+    {
+      id: "sec-club",
+      title: "2. CÂU LẠC BỘ & NHÂN SỰ",
+      groups: [
+        {
+          id: "grp-org",
+          label: "Cơ cấu nội bộ",
+          icon: <Network size={15} />,
+          items: [
+            {
+              href: "/management?tab=departments",
+              tab: "departments",
+              label: "Phòng ban chuyên môn",
+              visible: canDept,
+            },
+            {
+              href: "/management?tab=settings",
+              tab: "settings",
+              label: "Thông tin & Chi nhánh CLB",
+              visible: canClubSettings,
+            },
+            {
+              href: "/management?tab=members",
+              tab: "members",
+              label: "Thành viên & Phân ban",
+              visible: canMembers,
+            },
+          ],
+        },
+        {
+          id: "grp-hr",
+          label: "Quản lý nhân sự CLB",
+          icon: <UsersRound size={15} />,
+          items: [
+            {
+              href: "/management?tab=applications",
+              tab: "applications",
+              label: "Hồ sơ ứng tuyển",
+              visible: canApplications || (canAnyClubWorkspace && !canDept && !canMembers && !canEvents && !canTasks && !canChat && !canClubSettings),
+            },
+            {
+              href: "/management?tab=forms",
+              tab: "forms",
+              label: "Biểu mẫu tuyển thành viên",
+              visible: canForms,
+            },
+          ],
+        },
+        {
+          id: "grp-ops",
+          label: "Báo cáo & Điều phối",
+          icon: <FileText size={15} />,
+          items: [
+            {
+              href: "/management?tab=events",
+              tab: "events",
+              label: "Sự kiện & Điểm danh",
+              visible: canEvents,
+            },
+            {
+              href: "/management?tab=tasks",
+              tab: "tasks",
+              label: "Báo cáo công việc",
+              visible: canTasks,
+            },
+            {
+              href: "/management?tab=chat",
+              tab: "chat",
+              label: "Kênh trao đổi & AI",
+              visible: canChat,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "sec-system",
+      title: "3. QUẢN TRỊ HỆ THỐNG",
+      groups: [
+        {
+          id: "grp-sys",
+          label: "Cấu hình & Phân quyền",
+          icon: <ShieldCheck size={15} />,
+          items: [
+            { href: "/users", label: "Hồ sơ tài khoản", visible: session.can("user.view") },
+            { href: "/roles", label: "Chức vụ & Phân quyền", visible: session.can("role.view") },
+            { href: "/audit-logs", label: "Nhật ký hệ thống", visible: session.can("audit.view") },
+          ],
+        },
+      ],
+    },
+  ];
+
+  const sections: NavSection[] = rawSections
+    .map((sec) => ({
+      ...sec,
+      groups: sec.groups
+        .map((grp) => ({
+          ...grp,
+          items: grp.items.filter((item) => item.visible !== false && !session.mustChangePassword),
+        }))
+        .filter((grp) => grp.items.length > 0),
+    }))
+    .filter((sec) => sec.groups.length > 0);
 
   const signOut = async () => {
     await apiModel.logout().catch(() => undefined);
@@ -49,73 +274,501 @@ export function AppShell({ children }: { children: ReactNode }) {
     router.replace("/home");
   };
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
-  const linkClass = (href: string) => cn("inline-flex min-h-10 items-center gap-2 border-b-2 px-2 text-[12px] font-medium transition-colors", isActive(href) ? "border-[#8e1f32] text-[#8e1f32]" : "border-transparent text-[#4d4944] hover:text-[#8e1f32]");
+  const toggleSection = (id: string) =>
+    setClosedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
-  return (
-    <div className="flex min-h-svh flex-col bg-background text-foreground">
-      <div className="bg-[#8e1f32] px-4 py-1.5 text-center text-[9px] font-semibold tracking-[.16em] text-white sm:text-[10px]">TRƯỜNG ĐẠI HỌC VIỆT NHẬT · ĐẠI HỌC QUỐC GIA HÀ NỘI</div>
-      <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-xl">
-        <div className="mx-auto flex min-h-[76px] max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-7 lg:px-10">
-          <Link href="/home" className="flex shrink-0 items-center gap-3" aria-label="VJU ClubHub">
-            <span className="grid size-11 place-items-center rounded-full border border-[#b58b54] text-[11px] font-black tracking-widest text-[#8e1f32]">VJU</span>
-            <span className="hidden border-l border-border pl-3 sm:block"><span className="block text-[9px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Vietnam Japan University</span><span className="mt-1 block text-[16px] font-semibold tracking-wide">CLUB<span className="font-normal text-[#8e1f32]">HUB</span></span></span>
+  const toggleGroup = (id: string) =>
+    setClosedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const isSubItemActive = (item: SubNavItem) => {
+    if (item.tab) {
+      if (pathname !== "/management") return false;
+      if (!currentTab) return item.tab === "applications";
+      return currentTab === item.tab;
+    }
+    return pathname === item.href || pathname.startsWith(`${item.href}/`);
+  };
+
+  const isOverviewActive = pathname === "/dashboard";
+
+  const activePageTitle = (() => {
+    if (isOverviewActive) return "Tổng quan";
+    for (const sec of sections) {
+      for (const grp of sec.groups) {
+        for (const item of grp.items) {
+          if (isSubItemActive(item)) return item.label;
+        }
+      }
+    }
+    if (pathname === "/management") return "Không gian & Quản lý CLB";
+    return "Cổng thông tin CLB";
+  })();
+
+  const sidebarContent = (isMobile = false) => {
+    const isCollapsed = !isMobile && collapsed;
+    return (
+      <aside
+        className={cn(
+          "flex h-full select-none flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200",
+          isCollapsed ? "w-13" : "w-56"
+        )}
+      >
+        {/* Cột trái - Header thương hiệu */}
+        <div className="flex h-13 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border px-3">
+          <Link
+            href="/home"
+            className="flex min-w-0 items-center gap-2.5"
+            aria-label="VJU ClubHub"
+          >
+            <Image
+              src="/images/vju-logo.png"
+              alt="Logo Trường Đại học Việt Nhật (VJU)"
+              width={36}
+              height={36}
+              className="size-9 shrink-0 rounded-full bg-white p-0.5 object-contain shadow-xs ring-1 ring-border/70"
+            />
+            {!isCollapsed && (
+              <div className="min-w-0 leading-tight">
+                <p className="truncate text-[13px] font-extrabold tracking-tight text-foreground">
+                  CLUB<span className="text-primary">HUB</span>
+                </p>
+                <p className="truncate text-[10px] font-medium text-muted-foreground">
+                  ĐH Việt Nhật · ĐHQGHN
+                </p>
+              </div>
+            )}
           </Link>
+          {isMobile ? (
+            <button
+              type="button"
+              aria-label="Đóng menu"
+              onClick={() => setMobileOpen(false)}
+              className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent"
+            >
+              <X size={14} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              aria-label={isCollapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
+              title="Thu gọn / Mở rộng (Ctrl+B)"
+              onClick={() => setCollapsed((v) => !v)}
+              className="hidden size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent lg:flex"
+            >
+              {isCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
+            </button>
+          )}
+        </div>
 
-          <nav className="hidden h-[76px] items-center gap-4 lg:flex" aria-label="Điều hướng chính">
-            <Link href={session.user ? "/dashboard" : "/login"} className={linkClass("/dashboard")}>{session.user ? "Dashboard" : "Đăng nhập"}</Link>
-            <div className="relative" onMouseEnter={() => setClubMenuOpen(true)} onMouseLeave={() => setClubMenuOpen(false)}>
-              <button onClick={() => setClubMenuOpen((open) => !open)} aria-expanded={clubMenuOpen} className={cn("inline-flex min-h-10 items-center gap-1 border-b-2 px-2 text-[12px] font-medium transition-colors", clubLinks.some((item) => isActive(item.href)) ? "border-[#8e1f32] text-[#8e1f32]" : "border-transparent text-[#4d4944] hover:text-[#8e1f32]")}>Câu lạc bộ <ChevronDown size={13} /></button>
-              {clubMenuOpen && <Dropdown className="left-0"><DropdownLinks links={clubLinks} active={isActive} onNavigate={() => setClubMenuOpen(false)} /></Dropdown>}
-            </div>
-            {managementLinks.length > 0 && <div className="relative" onMouseEnter={() => setManagementMenuOpen(true)} onMouseLeave={() => setManagementMenuOpen(false)}>
-              <button onClick={() => setManagementMenuOpen((open) => !open)} aria-expanded={managementMenuOpen} className={cn("inline-flex min-h-10 items-center gap-1 border-b-2 px-2 text-[12px] font-medium transition-colors", managementLinks.some((item) => isActive(item.href)) ? "border-[#8e1f32] text-[#8e1f32]" : "border-transparent text-[#4d4944] hover:text-[#8e1f32]")}>Quản lý <ChevronDown size={13} /></button>
-              {managementMenuOpen && <Dropdown className="left-0"><DropdownLinks links={managementLinks} active={isActive} onNavigate={() => setManagementMenuOpen(false)} /></Dropdown>}
-            </div>}
-          </nav>
+        {/* Danh sách điều hướng phân cấp kiểu cây */}
+        <nav
+          aria-label="Điều hướng chính"
+          className="flex-1 space-y-0.5 overflow-y-auto px-2 py-2"
+        >
+          {/* Mục đơn trên cùng: Tổng quan */}
+          {session.user && !session.mustChangePassword && (
+            <Link
+              href="/dashboard"
+              title="Tổng quan"
+              onClick={() => setMobileOpen(false)}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors",
+                isOverviewActive
+                  ? "bg-sidebar-accent font-semibold text-foreground shadow-2xs"
+                  : "font-medium text-foreground/90 hover:bg-sidebar-accent/60",
+                isCollapsed && "justify-center px-1.5"
+              )}
+            >
+              <span className="shrink-0 text-primary">
+                <UserCheck size={15} />
+              </span>
+              {!isCollapsed && <span className="truncate">Tổng quan</span>}
+            </Link>
+          )}
 
-          {!session.user && <div className="hidden items-center gap-2 lg:flex"><Link href="/register" className="bg-[#8e1f32] px-4 py-2.5 text-[10px] font-semibold text-white hover:bg-[#711829]">ĐĂNG KÝ</Link></div>}
-          <div className={cn("hidden items-center gap-2 lg:flex", !session.user && "lg:hidden")}>
-            <Link href="/notifications" aria-label="Thông báo" className={cn("grid size-9 place-items-center transition-colors hover:text-[#8e1f32]", isActive("/notifications") && "text-[#8e1f32]")}><Bell size={17} /></Link>
-            <div className="relative">
-              <button onClick={() => setProfileMenuOpen((open) => !open)} aria-haspopup="menu" aria-expanded={profileMenuOpen} className="flex items-center gap-2 border-l border-border pl-3 text-left">
-                <span className="grid size-9 place-items-center rounded-full bg-[#8e1f32] text-[13px] font-semibold text-white">{(session.user?.fullName || session.user?.email || "V").slice(0, 1).toUpperCase()}</span>
-                <span className="max-w-36"><span className="block truncate text-[11px] font-semibold">{session.user?.fullName || session.user?.email}</span><span className="block truncate text-[9px] text-muted-foreground">Tài khoản VJU</span></span><ChevronDown size={13} />
+          {sections.map((section) => {
+            const sectionOpen = !closedSections.has(section.id);
+            return (
+              <div key={section.id} className={cn(section.title && "pt-1.5")}>
+                {section.title && !isCollapsed && (
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(section.id)}
+                    className="flex w-full items-center justify-between rounded-md px-2.5 py-1 text-left transition-colors hover:bg-sidebar-accent/40"
+                  >
+                    <span className="truncate text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      {section.title}
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        "size-3 shrink-0 text-muted-foreground transition-transform duration-150",
+                        !sectionOpen && "-rotate-90"
+                      )}
+                    />
+                  </button>
+                )}
+
+                {(sectionOpen || isCollapsed) && (
+                  <div className="mt-0.5 space-y-0.5">
+                    {section.groups.map((group) => {
+                      const groupOpen = !closedGroups.has(group.id);
+                      const hasActiveChild = group.items.some(isSubItemActive);
+
+                      if (isCollapsed) {
+                        const firstHref = group.items[0]?.href ?? "/dashboard";
+                        return (
+                          <Link
+                            key={group.id}
+                            href={firstHref}
+                            title={`${group.label}: ${group.items.map((i) => i.label).join(", ")}`}
+                            onClick={() => setMobileOpen(false)}
+                            className={cn(
+                              "flex items-center justify-center rounded-lg p-2 transition-colors",
+                              hasActiveChild
+                                ? "bg-primary/10 text-primary"
+                                : "text-primary/85 hover:bg-sidebar-accent"
+                            )}
+                          >
+                            {group.icon}
+                          </Link>
+                        );
+                      }
+
+                      return (
+                        <div key={group.id} className="space-y-0.5">
+                          <button
+                            type="button"
+                            onClick={() => toggleGroup(group.id)}
+                            className={cn(
+                              "flex w-full items-center justify-between gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-sidebar-accent/60",
+                              hasActiveChild ? "font-semibold text-foreground" : "font-medium text-foreground/90"
+                            )}
+                          >
+                            <span className="flex min-w-0 items-center gap-2">
+                              <span className="shrink-0 text-primary">{group.icon}</span>
+                              <span className="truncate">{group.label}</span>
+                            </span>
+                            <ChevronDown
+                              className={cn(
+                                "size-3.5 shrink-0 text-muted-foreground transition-transform duration-150",
+                                !groupOpen && "-rotate-90"
+                              )}
+                            />
+                          </button>
+
+                          {groupOpen && (
+                            <ul className="ml-3.5 space-y-0.5 border-l border-border/80 pl-2 pt-0.5">
+                              {group.items.map((item) => {
+                                const active = isSubItemActive(item);
+                                return (
+                                  <li key={item.href}>
+                                    <Link
+                                      href={item.href}
+                                      onClick={() => setMobileOpen(false)}
+                                      className={cn(
+                                        "flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors",
+                                        active
+                                          ? "bg-sidebar-accent font-semibold text-foreground shadow-2xs"
+                                          : "text-foreground/80 hover:bg-sidebar-accent/55 hover:text-foreground"
+                                      )}
+                                    >
+                                      <span
+                                        className={cn(
+                                          "size-1 shrink-0 rounded-full border transition-colors",
+                                          active
+                                            ? "border-primary bg-primary"
+                                            : "border-muted-foreground/70 bg-transparent"
+                                        )}
+                                      />
+                                      <span className="truncate">{item.label}</span>
+                                    </Link>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+
+        {/* Chân Sidebar: Thông tin tóm tắt tài khoản */}
+        {!isCollapsed && session.user && (
+          <div className="border-t border-sidebar-border p-2">
+            <div className="flex items-center justify-between gap-1.5 rounded-lg bg-sidebar-accent/50 px-2.5 py-1.5">
+              <div className="min-w-0 leading-tight">
+                <p className="truncate text-[11px] font-bold text-foreground">
+                  {session.user.fullName || session.user.email}
+                </p>
+                <p className="truncate text-[10px] text-muted-foreground">
+                  {session.user.studentCode || session.user.email}
+                </p>
+              </div>
+              <button
+                type="button"
+                title="Đăng xuất"
+                aria-label="Đăng xuất"
+                onClick={signOut}
+                className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              >
+                <LogOut size={13} />
               </button>
-              {profileMenuOpen && <div role="menu" className="panel-modal absolute right-0 top-12 z-50 w-52 p-1.5 shadow-xl">
-                <button role="menuitem" onClick={() => { setProfileMenuOpen(false); router.push("/profile"); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs hover:bg-muted"><Users size={14} /> Hồ sơ cá nhân</button>
-                <button role="menuitem" onClick={() => { setProfileMenuOpen(false); setPasswordOpen(true); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs hover:bg-muted"><KeyRound size={14} /> Đổi mật khẩu</button>
-                <button role="menuitem" onClick={signOut} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs text-destructive hover:bg-destructive/10"><LogOut size={14} /> Đăng xuất</button>
-              </div>}
             </div>
           </div>
+        )}
+      </aside>
+    );
+  };
 
-          <button onClick={() => setMenuOpen((open) => !open)} aria-label={menuOpen ? "Đóng menu" : "Mở menu"} className="grid size-10 place-items-center border border-border lg:hidden">{menuOpen ? <X size={19} /> : <Menu size={19} />}</button>
+  return (
+    <div className="flex h-svh min-h-0 w-full overflow-hidden bg-background text-foreground">
+      {/* Cột trái: Sidebar cố định trên Desktop */}
+      <div className="hidden h-full shrink-0 lg:block">{sidebarContent(false)}</div>
+
+      {/* Ngăn kéo Sidebar trên Mobile */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-50 flex bg-black/50 backdrop-blur-2xs lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        >
+          <div className="h-full" onClick={(e) => e.stopPropagation()}>
+            {sidebarContent(true)}
+          </div>
         </div>
-        {menuOpen && <nav className="absolute left-0 right-0 top-full max-h-[calc(100vh-6rem)] overflow-y-auto border-b border-border bg-card px-4 py-3 shadow-xl lg:hidden">
-          <Link href={session.user ? "/dashboard" : "/login"} onClick={() => setMenuOpen(false)} className="block border-b border-border py-3 text-[13px] font-medium">{session.user ? "Dashboard" : "Đăng nhập"}</Link>
-          <p className="pb-1 pt-4 text-[9px] font-bold uppercase tracking-[.17em] text-muted-foreground">Câu lạc bộ</p>
-          {clubLinks.map((item) => <MobileNavLink key={item.href} item={item} active={isActive(item.href)} close={() => setMenuOpen(false)} />)}
-          {managementLinks.length > 0 && <><p className="pb-1 pt-4 text-[9px] font-bold uppercase tracking-[.17em] text-muted-foreground">Quản lý</p>{managementLinks.map((item) => <MobileNavLink key={item.href} item={item} active={isActive(item.href)} close={() => setMenuOpen(false)} />)}</>}
-          {session.user && <p className="mt-3 border-t border-border pt-3 text-[11px] text-muted-foreground">{session.user.fullName || session.user.email}</p>}
-          <Link href="/profile" onClick={() => setMenuOpen(false)} className={cn("block py-3 text-[12px]", !session.user && "hidden")}>Hồ sơ cá nhân</Link>
-          <button onClick={signOut} className={cn("py-2 text-[12px] font-semibold text-[#8e1f32]", !session.user && "hidden")}>Đăng xuất</button>
-        </nav>}
-      </header>
+      )}
 
-      <main data-design-system="vju-app" className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        {session.user && session.mustChangePassword ? (
-          <FirstLoginPassword email={session.user.email} />
-        ) : session.user || publicClubRoute ? (
-          children
-        ) : null}
-      </main>
-      <footer className="border-t border-border bg-card px-4 py-3 text-center text-[9px] tracking-wide text-muted-foreground sm:text-left"><div className="mx-auto flex max-w-[1440px] flex-col gap-1 sm:flex-row sm:justify-between"><span>VJU ClubHub · Cổng thông tin câu lạc bộ sinh viên</span><span>Trường Đại học Việt Nhật · ĐHQGHN</span></div></footer>
+      {/* Cột phải: Thanh tiêu đề trên cùng (Topbar) + Nội dung chính */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <Topbar
+          pageTitle={activePageTitle}
+          onMenu={() => setMobileOpen(true)}
+          authenticated={!!session.user}
+          name={session.user?.fullName || session.user?.email}
+          subtitle={session.user?.studentCode || session.user?.email}
+          onPassword={() => setPasswordOpen(true)}
+          onProfile={() => router.push("/profile")}
+          onSignOut={signOut}
+          dark={dark}
+          onToggleTheme={toggleTheme}
+          notificationsActive={pathname === "/notifications"}
+        />
+
+        <main
+          data-design-system="admin-v1"
+          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto"
+        >
+          {session.user && session.mustChangePassword ? (
+            <FirstLoginPassword email={session.user.email} />
+          ) : session.user || publicClubRoute ? (
+            children
+          ) : null}
+        </main>
+      </div>
+
       <ChangePasswordModal open={passwordOpen} onClose={() => setPasswordOpen(false)} />
     </div>
   );
 }
 
-function Dropdown({ children, className }: { children: ReactNode; className: string }) { return <div className={cn("panel-modal absolute top-[calc(100%-1px)] z-50 min-w-60 border border-border bg-card p-1.5 shadow-xl", className)}>{children}</div>; }
-function DropdownLinks({ links, active, onNavigate }: { links: NavLink[]; active: (href: string) => boolean; onNavigate: () => void }) { return <>{links.map((item) => <Link key={item.href} href={item.href} onClick={onNavigate} className={cn("flex items-center gap-3 px-3 py-2.5 text-[12px] transition-colors hover:bg-[#8e1f32]/5 hover:text-[#8e1f32]", active(item.href) && "bg-[#8e1f32]/5 font-semibold text-[#8e1f32]")}>{item.icon}<span>{item.label}</span></Link>)}</>; }
-function MobileNavLink({ item, active, close }: { item: NavLink; active: boolean; close: () => void }) { return <Link href={item.href} onClick={close} className={cn("flex items-center gap-3 border-b border-border/70 py-3 text-[12px]", active ? "font-semibold text-[#8e1f32]" : "text-foreground")}>{item.icon}{item.label}</Link>; }
+function Topbar({
+  pageTitle,
+  onMenu,
+  authenticated,
+  name,
+  subtitle,
+  onPassword,
+  onProfile,
+  onSignOut,
+  dark,
+  onToggleTheme,
+  notificationsActive,
+}: {
+  pageTitle: string;
+  onMenu: () => void;
+  authenticated: boolean;
+  name?: string;
+  subtitle?: string;
+  onPassword: () => void;
+  onProfile: () => void;
+  onSignOut: () => void;
+  dark: boolean;
+  onToggleTheme: () => void;
+  notificationsActive: boolean;
+}) {
+  const [now, setNow] = useState<Date | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const tick = () => setNow(new Date());
+    const timer = setTimeout(tick, 0);
+    const interval = setInterval(tick, 1000);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, []);
+
+  return (
+    <header className="relative z-40 flex h-12 shrink-0 select-none items-center justify-between gap-2 border-b border-border bg-card px-3 sm:px-5">
+      {/* Cụm tiêu đề bên trái trên cột nội dung */}
+      <div className="flex min-w-0 items-center gap-2.5">
+        <button
+          type="button"
+          aria-label="Mở menu"
+          onClick={onMenu}
+          className="flex size-8 items-center justify-center rounded-md border border-border/70 hover:bg-muted lg:hidden"
+        >
+          <Menu size={17} />
+        </button>
+        <span className="hidden items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1 text-[11px] font-bold text-primary sm:inline-flex">
+          <Image
+            src="/images/vju-logo.png"
+            alt="Logo VJU"
+            width={20}
+            height={20}
+            className="size-5 shrink-0 rounded-full bg-white p-0.5 object-contain shadow-2xs"
+          />
+          TRƯỜNG ĐẠI HỌC VIỆT NHẬT
+        </span>
+        <span className="hidden text-muted-foreground/50 sm:inline">/</span>
+        <h2 className="truncate text-sm font-bold text-foreground">{pageTitle}</h2>
+      </div>
+
+      {/* Cụm công cụ & tài khoản bên phải */}
+      <div className="flex shrink-0 items-center gap-2">
+        {now && (
+          <span className="hidden items-center gap-2 rounded-lg border border-border/60 bg-secondary/40 px-2.5 py-1 text-xs md:inline-flex">
+            <b className="font-mono font-bold text-primary">{now.toLocaleTimeString("vi-VN")}</b>
+            <span className="text-muted-foreground">
+              {now.toLocaleDateString("vi-VN", {
+                weekday: "short",
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })}
+            </span>
+          </span>
+        )}
+
+        <button
+          type="button"
+          aria-label="Chuyển giao diện sáng/tối"
+          onClick={onToggleTheme}
+          className="relative h-8 w-14 rounded-full border border-border/70 bg-muted/70 p-0.5"
+        >
+          <span
+            className={cn(
+              "flex size-6 items-center justify-center rounded-full bg-background shadow-xs transition-transform",
+              dark && "translate-x-6"
+            )}
+          >
+            {dark ? <Moon size={13} className="text-primary" /> : <Sun size={13} className="text-primary" />}
+          </span>
+        </button>
+
+        {authenticated ? (
+          <>
+            <Link
+              href="/notifications"
+              aria-label="Thông báo"
+              title="Thông báo"
+              className={cn(
+                "grid size-8 place-items-center rounded-lg border border-border/60 transition-colors hover:bg-muted hover:text-primary",
+                notificationsActive && "border-primary/30 bg-primary/10 text-primary"
+              )}
+            >
+              <Bell size={15} />
+            </Link>
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                className="flex items-center gap-2 rounded-lg border border-transparent px-2 py-1 hover:border-border/60 hover:bg-muted"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+              >
+                <div className="hidden text-right sm:block">
+                  <p className="max-w-36 truncate text-xs font-bold">{name ?? "Tài khoản"}</p>
+                  <p className="max-w-36 truncate text-[10px] text-muted-foreground">{subtitle}</p>
+                </div>
+                <span className="flex size-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                  {(name ?? "V").slice(0, 1).toUpperCase()}
+                </span>
+              </button>
+
+              {menuOpen && (
+                <div
+                  role="menu"
+                  className="panel-modal absolute right-0 top-11 z-50 w-52 p-1.5 fade-in"
+                  onMouseLeave={() => setMenuOpen(false)}
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onProfile();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs font-medium hover:bg-muted"
+                  >
+                    <Users size={14} className="text-primary" /> Hồ sơ cá nhân
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onPassword();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs font-medium hover:bg-muted"
+                  >
+                    <KeyRound size={14} className="text-primary" /> Đổi mật khẩu
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={onSignOut}
+                    className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs font-medium text-destructive hover:bg-destructive/10"
+                  >
+                    <LogOut size={14} /> Đăng xuất
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Link
+              href="/login"
+              className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+            >
+              Đăng nhập
+            </Link>
+            <Link
+              href="/register"
+              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
+            >
+              Đăng ký
+            </Link>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}

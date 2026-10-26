@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -93,7 +94,7 @@ export default function HomePage() {
       <header className="relative z-30 border-b border-[#e8e4df] bg-[#faf9f6]">
         <div className="mx-auto flex min-h-[88px] max-w-[1380px] items-center justify-between gap-5 px-5 sm:px-8 lg:px-12">
           <Link href="/home" className="flex min-w-0 items-center gap-3.5" aria-label="VJU ClubHub - Trang chủ">
-            <span className="flex size-[52px] shrink-0 items-center justify-center rounded-full border border-[#b58b54] text-[13px] font-black tracking-widest text-[#8e1f32]">VJU</span>
+            <Image src="/images/vju-logo.png" alt="Logo Trường Đại học Việt Nhật (VJU)" width={52} height={52} className="size-[52px] shrink-0 rounded-full bg-white object-contain shadow-xs" />
             <span className="min-w-0 border-l border-[#d8d1c8] pl-3.5">
               <span className="block text-[9px] font-semibold uppercase tracking-[.16em] text-[#77716a] sm:text-[10px]">Vietnam Japan University</span>
               <span className="mt-1 block text-[17px] font-semibold tracking-[.02em] text-[#292725]">CLUB<span className="font-normal text-[#8e1f32]">HUB</span></span>
@@ -267,7 +268,7 @@ export default function HomePage() {
 
       <footer className="bg-[#262522] text-white">
         <div className="mx-auto grid max-w-[1380px] gap-10 px-5 py-12 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr] lg:px-12 lg:py-16">
-          <div><div className="flex items-center gap-3"><span className="grid size-11 place-items-center rounded-full border border-[#b58b54] text-[11px] font-black tracking-widest text-[#e5c99d]">VJU</span><span className="font-semibold tracking-wide">CLUB<span className="font-normal text-[#e5c99d]">HUB</span></span></div><p className="mt-5 max-w-sm text-[12px] leading-6 text-white/60">Cổng thông tin câu lạc bộ và hoạt động sinh viên Trường Đại học Việt Nhật.</p></div>
+          <div><div className="flex items-center gap-3"><Image src="/images/vju-logo.png" alt="Logo Trường Đại học Việt Nhật (VJU)" width={44} height={44} className="size-11 shrink-0 rounded-full bg-white p-0.5 object-contain shadow-xs" /><span className="font-semibold tracking-wide">CLUB<span className="font-normal text-[#e5c99d]">HUB</span></span></div><p className="mt-5 max-w-sm text-[12px] leading-6 text-white/60">Cổng thông tin câu lạc bộ và hoạt động sinh viên Trường Đại học Việt Nhật.</p></div>
           <div><p className="text-[9px] font-bold uppercase tracking-[.2em] text-[#e5c99d]">LIÊN KẾT NHANH</p><div className="mt-4 grid gap-3 text-[12px] text-white/75"><Link className="hover:text-white" href="/clubs">Khám phá câu lạc bộ</Link><Link className="hover:text-white" href="/applications">Đơn đăng ký</Link><Link className="hover:text-white" href="/memberships">CLB đang tham gia</Link><Link className="hover:text-white" href="/notifications">Thông báo</Link></div></div>
           <div><p className="text-[9px] font-bold uppercase tracking-[.2em] text-[#e5c99d]">TRƯỜNG ĐẠI HỌC VIỆT NHẬT</p><p className="mt-4 text-[12px] leading-6 text-white/75">Đại học Quốc gia Hà Nội<br />Hòa Lạc, Hà Nội, Việt Nam</p><a className="mt-3 inline-flex items-center gap-2 text-[11px] text-white/60 hover:text-white" href="https://vju.ac.vn" target="_blank" rel="noreferrer">vju.ac.vn <ArrowRight size={12} /></a></div>
         </div>

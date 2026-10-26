@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -35,7 +36,7 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-cover bg-center opacity-65" style={{ backgroundImage: "url('/images/vju-hero-cover.jpg')" }} />
         <div className="absolute inset-0 bg-gradient-to-br from-[#29151a]/80 via-[#292725]/45 to-[#292725]/80" />
         <div className="relative flex h-full flex-col justify-between p-12 xl:p-16">
-          <Link href="/home" className="flex items-center gap-3 text-white"><span className="grid size-11 place-items-center rounded-full border border-[#d7b989] text-[11px] font-black tracking-widest">VJU</span><span className="border-l border-white/30 pl-3 text-sm font-semibold tracking-wide">CLUB<span className="font-normal text-[#e5c99d]">HUB</span></span></Link>
+          <Link href="/home" className="flex items-center gap-3 text-white"><Image src="/images/vju-logo.png" alt="Logo Trường Đại học Việt Nhật (VJU)" width={44} height={44} className="size-11 shrink-0 rounded-full bg-white p-0.5 object-contain shadow-xs" /><span className="border-l border-white/30 pl-3 text-sm font-semibold tracking-wide">CLUB<span className="font-normal text-[#e5c99d]">HUB</span></span></Link>
           <div className="max-w-lg pb-8 text-white"><p className="text-[9px] font-semibold uppercase tracking-[.23em] text-[#e5c99d]">CỘNG ĐỒNG SINH VIÊN VJU</p><h1 className="mt-5 font-serif text-[48px] leading-[1.12] xl:text-[60px]">Nơi những ý tưởng gặp nhau.</h1><p className="mt-5 max-w-md text-sm leading-7 text-white/75">Đăng nhập để kết nối với câu lạc bộ, theo dõi hoạt động và tiếp tục hành trình của bạn.</p></div>
           <p className="text-[9px] tracking-wide text-white/55">TRƯỜNG ĐẠI HỌC VIỆT NHẬT · ĐHQGHN</p>
         </div>
@@ -44,7 +45,7 @@ export default function LoginPage() {
       <section className="flex min-h-svh flex-col justify-between px-5 py-7 sm:px-10 lg:px-14 xl:px-20">
         <Link href="/home" className="inline-flex items-center gap-2 self-start text-[11px] font-medium text-[#716b64] hover:text-[#8e1f32]"><ArrowLeft size={14} /> Về trang chủ</Link>
         <div className="mx-auto w-full max-w-[430px] py-10">
-          <div className="mb-8 lg:hidden"><span className="grid size-11 place-items-center rounded-full border border-[#b58b54] text-[11px] font-black tracking-widest text-[#8e1f32]">VJU</span></div>
+          <div className="mb-8 lg:hidden"><Image src="/images/vju-logo.png" alt="Logo Trường Đại học Việt Nhật (VJU)" width={48} height={48} className="size-12 rounded-full bg-white object-contain shadow-xs" /></div>
           <p className="text-[9px] font-bold uppercase tracking-[.22em] text-[#8e1f32]">KHU VỰC THÀNH VIÊN</p><h2 className="mt-3 font-serif text-[37px] leading-tight sm:text-[43px]">Chào mừng trở lại.</h2><p className="mt-3 text-[13px] leading-6 text-[#77716a]">Đăng nhập bằng tài khoản VJU để mở không gian câu lạc bộ của bạn.</p>
           {googleOn && (
             <div className="mt-8 grid gap-4">

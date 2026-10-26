@@ -8,7 +8,12 @@ public record ClubApplicationSummaryResponse(
         UUID clubId,
         String clubCode,
         String clubName,
+        UUID preferredDepartmentId,
+        String preferredDepartmentName,
+        String facultyMajor,
+        String academicYear,
         String status,
+        int attachmentCount,
         OffsetDateTime createdAt,
         OffsetDateTime reviewedAt,
         OffsetDateTime cancelledAt

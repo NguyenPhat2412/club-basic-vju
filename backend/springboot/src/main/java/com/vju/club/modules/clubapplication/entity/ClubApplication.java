@@ -5,6 +5,7 @@ import lombok.Getter;
 import com.vju.club.modules.clubapplication.enums.ClubApplicationStatus;
 import com.vju.club.common.entity.TimestampedEntity;
 import com.vju.club.modules.club.entity.Club;
+import com.vju.club.modules.department.entity.Department;
 import com.vju.club.modules.user.entity.User;
 
 import jakarta.persistence.Column;
@@ -32,8 +33,47 @@ public class ClubApplication extends TimestampedEntity {
     @JoinColumn(name = "club_id", nullable = false)
     private Club club;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "form_id")
+    private ClubApplicationForm form;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "preferred_department_id")
+    private Department preferredDepartment;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "secondary_department_id")
+    private Department secondaryDepartment;
+
+    @Column(name = "applicant_phone", length = 30)
+    private String applicantPhone;
+
+    @Column(name = "faculty_major", length = 150)
+    private String facultyMajor;
+
+    @Column(name = "academic_year", length = 50)
+    private String academicYear;
+
+    @Column(name = "gpa", length = 20)
+    private String gpa;
+
+    @Column(name = "social_portfolio_url", length = 500)
+    private String socialPortfolioUrl;
+
+    @Column(name = "self_introduction", length = 2000)
+    private String selfIntroduction;
+
+    @Column(name = "skills_experience", length = 2000)
+    private String skillsExperience;
+
+    @Column(name = "availability", length = 500)
+    private String availability;
+
     @Column(nullable = false, length = 2000)
     private String message;
+
+    @Column(name = "custom_answers", nullable = false, columnDefinition = "TEXT")
+    private String customAnswers = "{}";
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
