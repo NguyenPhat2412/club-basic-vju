@@ -111,7 +111,7 @@ export default function UsersPage() {
         onRefresh={() => users.refetch()}
         addLabel="Tạo tài khoản" onAdd={session.can("user.create") ? () => { setCreating(true); create.reset(); setRoleDrafts(canAssign ? [EMPTY_ROLE_DRAFT] : []); } : undefined} />
       {notice && <Notice tone="success">{notice}</Notice>}
-      {lock.error && <Notice tone="error">{describeError(lock.error)}</Notice>}
+      {lock.error !== undefined && <Notice tone="error">{describeError(lock.error)}</Notice>}
       {users.isPending ? <LoadingRows /> : users.isError ? <ErrorState message={describeError(users.error)} onRetry={() => users.refetch()} />
         : !users.data.items.length ? <EmptyState icon={<Users />} title="Không tìm thấy tài khoản" />
           : <DataTable ariaLabel="Tài khoản" rows={users.data.items} rowKey={(u) => u.id} onRowClick={setDetail} columns={[
@@ -153,7 +153,7 @@ export default function UsersPage() {
             <p className="text-xs text-muted-foreground">Bạn chỉ gán được vai trò gồm các quyền mà chính bạn đang có.</p>
           </div>
         )}
-        {create.error && <p className="text-xs text-destructive">{describeError(create.error)}</p>}
+        {create.error !== undefined && <p className="text-xs text-destructive">{describeError(create.error)}</p>}
       </ModalShell>
 
       <ModalShell open={!!resetFor} onClose={() => setResetFor(null)} title="Đặt lại mật khẩu" icon={<KeyRound />} size="sm" onSubmit={() => reset.mutate()}
@@ -161,7 +161,7 @@ export default function UsersPage() {
         <p className="text-sm">Tài khoản: <b>{resetFor?.email}</b></p>
         <FormField label="Mật khẩu mới" required hint="Mọi phiên đăng nhập hiện có của người này sẽ bị đăng xuất."><Input type="text" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} /></FormField>
         <Checkbox checked={resetForceChange} onChange={setResetForceChange} label="Bắt buộc đổi lại mật khẩu ở lần đăng nhập tiếp theo" />
-        {reset.error && <p className="text-xs text-destructive">{describeError(reset.error)}</p>}
+        {reset.error !== undefined && <p className="text-xs text-destructive">{describeError(reset.error)}</p>}
       </ModalShell>
 
       <EntityDrawer open={!!detail} onClose={() => { setDetail(null); setAssignDraft(EMPTY_ROLE_DRAFT); assign.reset(); revoke.reset(); }} title={detail?.fullName ?? ""} subtitle={detail?.email} icon={<Users />}>
@@ -190,12 +190,12 @@ export default function UsersPage() {
                     </li>
                   ))}
                 </ul>}
-            {revoke.error && <p className="mt-2 text-xs text-destructive">{describeError(revoke.error)}</p>}
+            {revoke.error !== undefined && <p className="mt-2 text-xs text-destructive">{describeError(revoke.error)}</p>}
             {canAssign && (
               <div className="mt-3 space-y-2">
                 <RolePicker value={assignDraft} onChange={setAssignDraft} roles={options.roles} clubs={options.clubs} />
                 <Button size="sm" disabled={!toAssignment(assignDraft, options.roles) || assign.isPending} onClick={() => assign.mutate()}><Plus size={14} /> Gán vai trò</Button>
-                {assign.error && <p className="text-xs text-destructive">{describeError(assign.error)}</p>}
+                {assign.error !== undefined && <p className="text-xs text-destructive">{describeError(assign.error)}</p>}
               </div>
             )}
           </Section>

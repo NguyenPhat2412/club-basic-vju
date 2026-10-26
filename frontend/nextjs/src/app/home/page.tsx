@@ -23,7 +23,7 @@ const news = [
 
 export default function HomePage() {
   const session = useOptionalSession();
-  const clubsQuery = useFetchQuery({ queryKey: ["home", "clubs"], queryFn: () => apiModel.clubs("", "", 0, 3), retry: 1, enabled: !!session.user });
+  const clubsQuery = useFetchQuery({ queryKey: ["home", "clubs", !!session.user], queryFn: async () => session.user ? apiModel.clubs("", "", 0, 3) : await apiModel.publicClubs("", "", 0, 3), retry: 1 });
   const router = useRouter();
   const queryClient = useFetchClient();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -72,7 +72,7 @@ export default function HomePage() {
               <button onClick={signOut} className="bg-[#8e1f32] px-4 py-2.5 text-[11px] font-semibold text-white transition-colors hover:bg-[#711829]">Đăng xuất</button>
             </> : <>
               <Link href="/login" className="px-3 py-2 text-[11px] font-semibold text-[#3f3b37] hover:text-[#8e1f32]">Đăng nhập</Link>
-              <Link href="/register" className="bg-[#8e1f32] px-5 py-3 text-[11px] font-semibold text-white transition-colors hover:bg-[#711829]">Tham gia CLB</Link>
+              <Link href="/clubs" className="bg-[#8e1f32] px-5 py-3 text-[11px] font-semibold text-white transition-colors hover:bg-[#711829]">Tham gia CLB</Link>
             </>}
           </div>
 
@@ -97,7 +97,7 @@ export default function HomePage() {
             <p className="mt-6 max-w-[520px] text-[14px] leading-7 text-white/80 sm:text-[15px]">Tìm câu lạc bộ phù hợp, gặp những người cùng sở thích và cùng tạo nên những trải nghiệm đáng nhớ tại VJU.</p>
             <div className="mt-9 flex flex-wrap gap-3">
               <Link href="/clubs" className="inline-flex min-h-12 items-center gap-5 bg-[#9b273a] px-6 text-[11px] font-semibold text-white transition-colors hover:bg-[#7c1c2d]">KHÁM PHÁ CÂU LẠC BỘ <ArrowRight size={15} /></Link>
-              <Link href={session.user ? "/dashboard" : "/register"} className="inline-flex min-h-12 items-center border border-white/55 px-6 text-[11px] font-semibold text-white transition-colors hover:bg-white/10">{session.user ? "VÀO DASHBOARD" : "TRỞ THÀNH THÀNH VIÊN"}</Link>
+              <Link href={session.user ? "/dashboard" : "/clubs"} className="inline-flex min-h-12 items-center border border-white/55 px-6 text-[11px] font-semibold text-white transition-colors hover:bg-white/10">{session.user ? "VÀO DASHBOARD" : "TRỞ THÀNH THÀNH VIÊN"}</Link>
             </div>
           </div>
           <div className="mt-14 flex items-center gap-3 text-[9px] font-medium uppercase tracking-[.2em] text-white/70"><span className="grid size-8 place-items-center rounded-full border border-white/40"><ArrowDown size={13} /></span> Khám phá đời sống câu lạc bộ</div>
@@ -109,7 +109,7 @@ export default function HomePage() {
         <div className="mx-auto grid max-w-[1380px] divide-y divide-[#e8e4df] px-5 sm:px-8 md:grid-cols-3 md:divide-x md:divide-y-0 lg:px-12">
           <IntroItem icon={<UsersRound size={19} />} title="Cộng đồng đa sắc màu" text="Kết nối với những người bạn cùng đam mê." href="/clubs" />
           <IntroItem icon={<CalendarDays size={19} />} title="Hoạt động quanh năm" text="Trải nghiệm, khám phá và trưởng thành cùng nhau." href="#hoat-dong" />
-          <IntroItem icon={<BookOpen size={19} />} title="Phát triển cùng VJU" text="Tích lũy kỹ năng ngoài giảng đường." href="/register" />
+          <IntroItem icon={<BookOpen size={19} />} title="Phát triển cùng VJU" text="Tích lũy kỹ năng ngoài giảng đường." href="/clubs" />
         </div>
       </section>
 
@@ -144,7 +144,7 @@ export default function HomePage() {
       <section id="tin-tuc" className="mx-auto max-w-[1380px] px-5 py-20 sm:px-8 sm:py-24 lg:px-12">
         <div className="flex items-end justify-between gap-4"><div><Eyebrow>BẢNG TIN CÂU LẠC BỘ</Eyebrow><h2 className="mt-3 font-serif text-[36px] font-medium sm:text-[46px]">Tin tức & sự kiện</h2></div><Link href="/notifications" className="hidden items-center gap-2 text-[10px] font-semibold text-[#8e1f32] sm:inline-flex">XEM THÔNG BÁO <ArrowRight size={14} /></Link></div>
         <div className="mt-9 divide-y divide-[#e8e4df] border-y border-[#e8e4df]">
-          {news.map((item, index) => <Link href={session.user ? "/notifications" : "/clubs"} key={item.title} className="group grid gap-3 py-5 transition-colors hover:bg-white sm:grid-cols-[120px_125px_1fr_24px] sm:items-center sm:gap-5 sm:px-4">
+          {news.map((item) => <Link href={session.user ? "/notifications" : "/clubs"} key={item.title} className="group grid gap-3 py-5 transition-colors hover:bg-white sm:grid-cols-[120px_125px_1fr_24px] sm:items-center sm:gap-5 sm:px-4">
             <span className="text-[10px] tracking-wide text-[#8a837b]">{item.date}</span><span className="text-[9px] font-bold tracking-[.13em]" style={{ color: item.color }}>{item.category}</span><span className="font-serif text-[19px] leading-snug group-hover:text-[#8e1f32]">{item.title}</span><ArrowRight size={16} className="hidden text-[#8e1f32] transition-transform group-hover:translate-x-1 sm:block" />
           </Link>)}
         </div>
@@ -154,7 +154,7 @@ export default function HomePage() {
       <section className="bg-[#8e1f32] text-white">
         <div className="mx-auto flex max-w-[1380px] flex-col gap-7 px-5 py-12 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12">
           <div><p className="text-[9px] font-semibold uppercase tracking-[.22em] text-white/65">SẴN SÀNG CHO HÀNH TRÌNH MỚI?</p><h2 className="mt-2 font-serif text-[29px] sm:text-[36px]">Câu lạc bộ tiếp theo đang chờ bạn.</h2></div>
-          <Link href={session.user ? "/clubs" : "/register"} className="inline-flex min-h-12 shrink-0 items-center justify-center gap-4 border border-white/60 px-6 text-[10px] font-semibold hover:bg-white hover:text-[#8e1f32]">{session.user ? "KHÁM PHÁ CÂU LẠC BỘ" : "THAM GIA CỘNG ĐỒNG VJU"}<ArrowRight size={15} /></Link>
+          <Link href="/clubs" className="inline-flex min-h-12 shrink-0 items-center justify-center gap-4 border border-white/60 px-6 text-[10px] font-semibold hover:bg-white hover:text-[#8e1f32]">{session.user ? "KHÁM PHÁ CÂU LẠC BỘ" : "THAM GIA CỘNG ĐỒNG VJU"}<ArrowRight size={15} /></Link>
         </div>
       </section>
 

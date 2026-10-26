@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useFetchClient } from "@/lib/fetch-hooks";
@@ -8,19 +8,30 @@ import { ArrowLeft, ArrowRight, LockKeyhole } from "lucide-react";
 import { apiModel } from "@/lib/api";
 import { describeError } from "@/components/shared/ListPage";
 import { FormField, Input } from "@/components/ui/input";
+import { rememberAccount } from "@/lib/account-switcher";
 
 export default function LoginPage() {
   const router = useRouter();
   const queryClient = useFetchClient();
-  const [email, setEmail] = useState("");
+  const emailInput = useRef<HTMLInputElement>(null);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    const savedEmail = new URLSearchParams(window.location.search).get("email");
+    if (savedEmail && emailInput.current) emailInput.current.value = savedEmail;
+  }, []);
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setError(""); setLoading(true);
-    try { await apiModel.login(email, password); queryClient.clear(); router.push("/dashboard"); }
+    try {
+      const email = emailInput.current?.value ?? "";
+      const result = await apiModel.login(email, password);
+      rememberAccount({ email: result.user.email, name: result.user.fullName || result.user.email });
+      queryClient.clear(); router.push("/dashboard");
+    }
     catch (err) { setError(describeError(err)); }
     finally { setLoading(false); }
   };
@@ -43,7 +54,7 @@ export default function LoginPage() {
           <div className="mb-8 lg:hidden"><span className="grid size-11 place-items-center rounded-full border border-[#b58b54] text-[11px] font-black tracking-widest text-[#8e1f32]">VJU</span></div>
           <p className="text-[9px] font-bold uppercase tracking-[.22em] text-[#8e1f32]">KHU VỰC THÀNH VIÊN</p><h2 className="mt-3 font-serif text-[37px] leading-tight sm:text-[43px]">Chào mừng trở lại.</h2><p className="mt-3 text-[13px] leading-6 text-[#77716a]">Đăng nhập bằng tài khoản VJU để mở không gian câu lạc bộ của bạn.</p>
           <form onSubmit={submit} className="mt-8 grid gap-5">
-            <FormField label="Địa chỉ email"><Input required type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="sinhvien@vju.ac.vn" className="h-12 rounded-none border-[#d8d1c8] bg-white px-4 text-[13px]" /></FormField>
+            <FormField label="Địa chỉ email"><Input ref={emailInput} required type="email" autoComplete="username" placeholder="sinhvien@vju.ac.vn" className="h-12 rounded-none border-[#d8d1c8] bg-white px-4 text-[13px]" /></FormField>
             <FormField label="Mật khẩu"><Input required type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} className="h-12 rounded-none border-[#d8d1c8] bg-white px-4 text-[13px]" /></FormField>
             {error && <p role="alert" className="border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">{error}</p>}
             <p className="text-[11px] leading-5 text-[#817a72]">Quyền truy cập được cấp bởi quản trị viên hoặc ban quản lý câu lạc bộ.</p>

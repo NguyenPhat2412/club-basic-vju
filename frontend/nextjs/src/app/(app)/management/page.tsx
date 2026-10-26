@@ -95,7 +95,7 @@ export default function ManagementPage() {
         </>}
         onRefresh={() => { apps.refetch(); if (tab === "members") refreshMembers(); }} />
       {notice && <Notice tone="success">{notice}</Notice>}
-      {mutationError && <Notice tone="error">{describeError(mutationError)}</Notice>}
+      {mutationError !== undefined && <Notice tone="error">{describeError(mutationError)}</Notice>}
 
       {!session.ready || clubs.isPending ? <LoadingRows /> : !manageable.length ? <EmptyState icon={<ShieldCheck />} title="Bạn chưa được giao quản lý CLB nào" />
         : tab === "applications" ? (
@@ -140,7 +140,7 @@ export default function ManagementPage() {
         submitLoading={reviewMutation.isPending} submitDisabled={!note.trim()}>
         {review && <p className="text-sm">{nameOf(review.app.applicantId)?.fullName ?? "Người nộp"} — <span className="text-muted-foreground">{review.app.message}</span></p>}
         <FormField label="Ghi chú xét duyệt" required><Textarea value={note} maxLength={1000} onChange={(e) => setNote(e.target.value)} placeholder="Lý do hoặc lời nhắn cho người nộp…" /></FormField>
-        {reviewMutation.error && <p className="text-xs text-destructive">{describeError(reviewMutation.error)}</p>}
+        {reviewMutation.error !== undefined && <p className="text-xs text-destructive">{describeError(reviewMutation.error)}</p>}
       </ModalShell>
 
       <EntityDrawer open={!!detailApp} onClose={() => setDetailApp(null)} title="Chi tiết đơn đăng ký" subtitle={currentClub?.name} icon={<ClipboardList />}

@@ -9,6 +9,7 @@ import { apiModel } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { cn } from "@/lib/utils";
 import { ChangePasswordModal } from "./ChangePasswordModal";
+import { getSavedAccounts, rememberAccount } from "@/lib/account-switcher";
 
 type NavLink = { href: string; label: string; icon: ReactNode; visible?: boolean };
 
@@ -23,6 +24,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [managementMenuOpen, setManagementMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const userEmail = session.user?.email;
+  const userName = session.user?.fullName;
+  const savedAccounts = getSavedAccounts();
+  if (userEmail && !savedAccounts.some((account) => account.email.toLowerCase() === userEmail.toLowerCase())) {
+    savedAccounts.unshift({ email: userEmail, name: userName || userEmail });
+  }
+  useEffect(() => {
+    if (!userEmail) return;
+    const account = { email: userEmail, name: userName || userEmail };
+    rememberAccount(account);
+  }, [userEmail, userName]);
 
   useEffect(() => {
     if (session.settled && !session.user && !publicClubRoute) router.replace("/login");
@@ -83,6 +95,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
               {profileMenuOpen && <div role="menu" className="panel-modal absolute right-0 top-12 z-50 w-52 p-1.5 shadow-xl">
                 <button role="menuitem" onClick={() => { setProfileMenuOpen(false); router.push("/profile"); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs hover:bg-muted"><Users size={14} /> Hồ sơ cá nhân</button>
+                <div className="my-1 border-t border-border pt-1">
+                  <p className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-[.14em] text-muted-foreground">Chuyển tài khoản</p>
+                  {savedAccounts.filter((account) => account.email.toLowerCase() !== session.user?.email.toLowerCase()).map((account) => <button key={account.email} role="menuitem" onClick={() => { setProfileMenuOpen(false); router.push(`/login?email=${encodeURIComponent(account.email)}`); }} className="block w-full truncate px-3 py-2 text-left text-[11px] hover:bg-muted">{account.name}<span className="block truncate text-[9px] text-muted-foreground">{account.email}</span></button>)}
+                  <button role="menuitem" onClick={() => { setProfileMenuOpen(false); router.push("/login"); }} className="w-full px-3 py-2 text-left text-[11px] font-semibold text-[#8e1f32] hover:bg-muted">Thêm tài khoản khác</button>
+                </div>
                 <button role="menuitem" onClick={() => { setProfileMenuOpen(false); setPasswordOpen(true); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs hover:bg-muted"><KeyRound size={14} /> Đổi mật khẩu</button>
                 <button role="menuitem" onClick={signOut} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs text-destructive hover:bg-destructive/10"><LogOut size={14} /> Đăng xuất</button>
               </div>}
@@ -97,6 +114,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           {clubLinks.map((item) => <MobileNavLink key={item.href} item={item} active={isActive(item.href)} close={() => setMenuOpen(false)} />)}
           {managementLinks.length > 0 && <><p className="pb-1 pt-4 text-[9px] font-bold uppercase tracking-[.17em] text-muted-foreground">Quản lý</p>{managementLinks.map((item) => <MobileNavLink key={item.href} item={item} active={isActive(item.href)} close={() => setMenuOpen(false)} />)}</>}
           {session.user && <p className="mt-3 border-t border-border pt-3 text-[11px] text-muted-foreground">{session.user.fullName || session.user.email}</p>}
+          {session.user && savedAccounts.filter((account) => account.email.toLowerCase() !== session.user?.email.toLowerCase()).map((account) => <Link key={account.email} href={`/login?email=${encodeURIComponent(account.email)}`} onClick={() => setMenuOpen(false)} className="block py-2 text-[11px] text-[#8e1f32]">Chuyển sang {account.name}</Link>)}
+          {session.user && <Link href="/login" onClick={() => setMenuOpen(false)} className="block py-2 text-[11px] font-semibold text-[#8e1f32]">Thêm tài khoản khác</Link>}
           <Link href="/profile" onClick={() => setMenuOpen(false)} className={cn("block py-3 text-[12px]", !session.user && "hidden")}>Hồ sơ cá nhân</Link>
           <button onClick={signOut} className={cn("py-2 text-[12px] font-semibold text-[#8e1f32]", !session.user && "hidden")}>Đăng xuất</button>
         </nav>}

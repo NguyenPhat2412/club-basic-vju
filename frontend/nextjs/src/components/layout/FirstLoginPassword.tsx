@@ -45,7 +45,7 @@ export function FirstLoginPassword({ email }: { email?: string }) {
         </FormField>
         {mismatch && <p className="text-xs text-destructive">Mật khẩu nhập lại không khớp.</p>}
         {sameAsCurrent && <p className="text-xs text-destructive">Mật khẩu mới phải khác mật khẩu được cấp.</p>}
-        {mutation.error && <p className="text-xs text-destructive">{errorMessage(mutation.error)}</p>}
+        {mutation.error !== undefined && <p className="text-xs text-destructive">{errorMessage(mutation.error)}</p>}
         <Button type="submit" className="w-full" disabled={!canSubmit || mutation.isPending}>
           {mutation.isPending ? "Đang lưu…" : "Lưu mật khẩu và tiếp tục"}
         </Button>

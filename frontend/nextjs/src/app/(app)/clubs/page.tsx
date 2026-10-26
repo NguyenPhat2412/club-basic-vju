@@ -29,10 +29,9 @@ export default function ClubsPage() {
   const [notice, setNotice] = useState("");
 
   const clubs = useFetchQuery({
-    queryKey: ["clubs", search, offset],
-    queryFn: () => apiModel.clubs(search, "", offset, LIMIT),
+    queryKey: ["clubs", search, offset, !!session.user],
+    queryFn: () => session.user ? apiModel.clubs(search, "", offset, LIMIT) : apiModel.publicClubs(search, "", offset, LIMIT),
     placeholderData: keepFetchData,
-    enabled: !!session.user,
   });
 
   const apply = useFetchMutation({
@@ -46,11 +45,11 @@ export default function ClubsPage() {
   });
 
   const filteredItems = useMemo(() => {
-    const items = session.user ? clubs.data?.items ?? [] : PUBLIC_OVERVIEW;
+    const items = clubs.data?.items?.length ? clubs.data.items : PUBLIC_OVERVIEW;
     if (!search.trim()) return items;
     const q = search.toLowerCase();
     return items.filter((club) => [club.name, club.code, club.activityField, club.description, club.contactEmail].join(" ").toLowerCase().includes(q));
-  }, [clubs.data?.items, search, session.user]);
+  }, [clubs.data?.items, search]);
 
   const open = (club: Club) => {
     setSelected(club);
@@ -152,7 +151,7 @@ export default function ClubsPage() {
 
                     <div className="mt-5 flex gap-2">
                       <Button variant="outline" className="flex-1 rounded-full" onClick={() => open(club)}>Chi tiết</Button>
-                      <Button className="flex-1 rounded-full" onClick={() => session.user ? open(club) : router.push("/login")} disabled={club.status !== "ACTIVE"}>{session.user ? "Gửi đơn" : "Đăng nhập"}</Button>
+                      <Button className="flex-1 rounded-full" onClick={() => open(club)} disabled={club.status !== "ACTIVE"}>Đăng ký</Button>
                     </div>
                   </article>
                 ))}
@@ -184,17 +183,16 @@ export default function ClubsPage() {
             ]} />
 
             <Section title="Gửi đơn đăng ký" icon={<Send />}>
-              {!session.user ? (
-                <div className="grid gap-3"><p className="text-sm text-muted-foreground">Đăng nhập để gửi đơn tham gia câu lạc bộ này.</p><Button onClick={() => router.push("/login")}>Đăng nhập để tiếp tục</Button></div>
-              ) : selected.status !== "ACTIVE" ? (
+              {selected.status !== "ACTIVE" ? (
                 <p className="text-sm text-muted-foreground">CLB hiện đang tạm ngừng nhận thành viên.</p>
               ) : (
                 <>
+                  {!session.user && <div className="border border-[#e7d8b8] bg-[#fbf6ec] p-3 text-xs leading-5 text-[#695a46]">Bạn có thể xem thông tin công khai mà không cần đăng nhập. Để gửi đơn trực tuyến, hệ thống hiện cần tài khoản thành viên.</div>}
                   <Textarea maxLength={2000} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Chia sẻ lý do bạn muốn tham gia…" aria-label="Lời nhắn" />
                   {apply.error && <p className="text-xs text-destructive">{describeError(apply.error)}</p>}
-                  <Button className="justify-self-end text-xs font-bold" disabled={!message.trim() || apply.isPending} onClick={() => apply.mutate()}>
+                  {session.user ? <Button className="justify-self-end text-xs font-bold" disabled={!message.trim() || apply.isPending} onClick={() => apply.mutate()}>
                     <Send size={14} /> {apply.isPending ? "Đang gửi…" : "Gửi đơn"}
-                  </Button>
+                  </Button> : <Button className="justify-self-end text-xs font-bold" onClick={() => router.push("/login")}><Send size={14} /> Đăng nhập để tiếp tục</Button>}
                 </>
               )}
             </Section>

@@ -1,6 +1,6 @@
 "use client";
 import { useFetchQuery } from "@/lib/fetch-hooks";
-import { apiModel, type EffectivePermission, type User } from "@/lib/api";
+import { apiModel, type EffectivePermission } from "@/lib/api";
 
 export function useOptionalSession() {
   const me = useFetchQuery({ queryKey: ["optional-me"], queryFn: apiModel.optionalMe, staleTime: 60_000 });

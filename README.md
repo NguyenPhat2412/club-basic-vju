@@ -41,7 +41,7 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 | Cơ sở dữ liệu | PostgreSQL 16, Flyway                                                                                      |
 | Xác thực        | JWT HS256 (Nimbus), BCrypt                                                                                 |
 | Tài liệu API    | OpenAPI 3.1, springdoc / Swagger UI                                                                        |
-| Frontend          | Next.js 16, React 19, TypeScript, npm                                                                       |
+| Frontend          | Next.js 16, React 19, TypeScript, npm                                                                      |
 | Kiểm thử        | JUnit 5, Mockito, Spring MockMvc trên PostgreSQL thật (Testcontainers); Python `unittest` cho contract |
 | Hạ tầng         | Docker, Docker Compose, GitHub Actions                                                                     |
 

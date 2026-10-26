@@ -30,7 +30,7 @@ export default function ApplicationsPage() {
       <BreadcrumbToolbar crumbs={[{ label: "Trang chủ", href: "/clubs" }, { label: "Câu lạc bộ" }, { label: "Đơn đăng ký của tôi" }]}
         titleBadge={<CountBadge>{list.data?.total ?? 0}</CountBadge>} onRefresh={() => list.refetch()} />
       {notice && <Notice tone="success">{notice}</Notice>}
-      {cancel.error && <Notice tone="error">{describeError(cancel.error)}</Notice>}
+      {cancel.error !== undefined && <Notice tone="error">{describeError(cancel.error)}</Notice>}
       {list.isPending ? <LoadingRows /> : list.isError ? <ErrorState message={describeError(list.error)} onRetry={() => list.refetch()} />
         : !list.data.items.length ? <EmptyState icon={<ClipboardList />} title="Bạn chưa gửi đơn nào" description="Vào Khám phá CLB để chọn CLB phù hợp." />
           : <DataTable ariaLabel="Đơn đăng ký" rows={list.data.items} rowKey={(a) => a.id} onRowClick={(a) => setSelectedId(a.id)} columns={[

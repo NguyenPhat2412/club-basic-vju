@@ -85,7 +85,7 @@ export default function RolesPage() {
       </p>
       {notice && <Notice tone="success">{notice}</Notice>}
       {emptyRole && <Notice tone="error">Vai trò {roleLabel(emptyRole)} phải còn ít nhất một quyền.</Notice>}
-      {save.error && <Notice tone="error">{describeError(save.error)}</Notice>}
+      {save.error !== undefined && <Notice tone="error">{describeError(save.error)}</Notice>}
       {roles.isPending || groups.isPending ? <LoadingRows /> : roles.isError || groups.isError
         ? <ErrorState message={describeError(roles.error ?? groups.error)} onRetry={() => { roles.refetch(); groups.refetch(); }} />
         : (
