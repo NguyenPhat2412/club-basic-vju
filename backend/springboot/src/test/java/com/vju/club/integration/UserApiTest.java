@@ -178,4 +178,16 @@ class UserApiTest extends ApiIntegrationTest {
         problem(get("/api/v1/users/me"), doomedToken, null, 401, "UNAUTHORIZED");
         assertThat(count("SELECT count(*) FROM audit_logs WHERE action = 'USER_DELETED' AND resource_id = ?", doomed)).isEqualTo(1);
     }
+
+    @Test
+    void lockAndUnlockSeparateFromDeactivate() throws Exception {
+        JsonNode locked = call(patch("/api/v1/users/" + member + "/status"), adminToken, Map.of("status", "LOCKED"), 200);
+        assertThat(locked.path("status").asText()).isEqualTo("LOCKED");
+        problem(post("/api/v1/auth/login"), null, Map.of("email", "member@test.local", "password", PASSWORD),
+                403, "ACCOUNT_LOCKED");
+
+        JsonNode unlocked = call(patch("/api/v1/users/" + member + "/status"), adminToken, Map.of("status", "ACTIVE"), 200);
+        assertThat(unlocked.path("status").asText()).isEqualTo("ACTIVE");
+        call(post("/api/v1/auth/login"), null, Map.of("email", "member@test.local", "password", PASSWORD), 200);
+    }
 }

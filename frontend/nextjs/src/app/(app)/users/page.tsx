@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Ban,
   CheckCircle2,
   Eye,
   KeyRound,
@@ -12,11 +13,12 @@ import {
   Save,
   ShieldAlert,
   ShieldCheck,
+  Sparkles,
   Trash2,
   UserPlus,
   Users,
 } from "lucide-react";
-import { apiModel, User, UserRole } from "@/lib/api";
+import { apiModel, PermissionItem, Scope, User, UserPermission, UserRole } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
 import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
 import { DataTable } from "@/components/shared/DataTable";
@@ -69,7 +71,7 @@ export default function UsersPage() {
   const session = useSession();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE" | "MUST_CHANGE">("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "LOCKED" | "INACTIVE" | "MUST_CHANGE">("ALL");
   const [offset, setOffset] = useState(0);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -79,6 +81,11 @@ export default function UsersPage() {
   const [newPassword, setNewPassword] = useState("");
   const [resetForceChange, setResetForceChange] = useState(true);
   const [assignDraft, setAssignDraft] = useState<RoleDraft>(EMPTY_ROLE_DRAFT);
+  const [permId, setPermId] = useState("");
+  const [permScope, setPermScope] = useState<Scope>("CLUB");
+  const [permClubId, setPermClubId] = useState("");
+  const [permDeptId, setPermDeptId] = useState("");
+  const [permReason, setPermReason] = useState("");
   const [detail, setDetail] = useState<User | null>(null);
   const [editFullName, setEditFullName] = useState("");
   const [editStudentCode, setEditStudentCode] = useState("");
@@ -110,6 +117,31 @@ export default function UsersPage() {
     queryFn: () => apiModel.userRoles(detail!.id),
     enabled: !!detail && session.can("permission.view"),
   });
+  const detailPermissions = useQuery({
+    queryKey: ["user-permissions", detail?.id],
+    queryFn: () => apiModel.userPermissions(detail!.id),
+    enabled: !!detail && session.can("permission.view"),
+  });
+  const detailEffective = useQuery({
+    queryKey: ["user-effective-permissions", detail?.id],
+    queryFn: () => apiModel.userEffectivePermissions(detail!.id),
+    enabled: !!detail && session.can("permission.view"),
+  });
+  const permGroups = useQuery({
+    queryKey: ["permission-groups"],
+    queryFn: () => apiModel.permissionGroups(),
+    enabled: !!detail && session.can("permission.view"),
+  });
+  const permDepartments = useQuery({
+    queryKey: ["perm-departments", permClubId],
+    queryFn: () => apiModel.departments(permClubId),
+    enabled: !!detail && permScope === "DEPARTMENT" && !!permClubId,
+  });
+  const allPermissions = useMemo<PermissionItem[]>(
+    () => (permGroups.data ?? []).flatMap((g) => g.permissions).filter((p) => p.active),
+    [permGroups.data]
+  );
+  const selectedPerm = allPermissions.find((p) => p.id === permId);
   const clubName = (id?: string) => options.clubs.find((c) => c.id === id)?.name ?? id;
   const google = useGoogleSignIn();
   const googleDomains = google.data?.enabled ? google.data.allowedDomains : [];
@@ -122,13 +154,14 @@ export default function UsersPage() {
   const rawItems = useMemo(() => users.data?.items ?? [], [users.data?.items]);
   const filteredRows = useMemo(() => {
     if (statusFilter === "ACTIVE") return rawItems.filter((u) => u.status === "ACTIVE");
-    if (statusFilter === "INACTIVE") return rawItems.filter((u) => u.status !== "ACTIVE");
+    if (statusFilter === "LOCKED") return rawItems.filter((u) => u.status === "LOCKED");
+    if (statusFilter === "INACTIVE") return rawItems.filter((u) => u.status === "INACTIVE");
     if (statusFilter === "MUST_CHANGE") return rawItems.filter((u) => !!u.requiresPasswordChange);
     return rawItems;
   }, [rawItems, statusFilter]);
 
   const activeCount = rawItems.filter((u) => u.status === "ACTIVE").length;
-  const lockedCount = rawItems.filter((u) => u.status !== "ACTIVE").length;
+  const lockedCount = rawItems.filter((u) => u.status === "LOCKED" || u.status === "INACTIVE").length;
   const mustChangeCount = rawItems.filter((u) => !!u.requiresPasswordChange).length;
 
   const create = useMutation({
@@ -189,15 +222,17 @@ export default function UsersPage() {
     },
   });
   const lock = useMutation({
-    mutationFn: (user: User) =>
-      apiModel.updateUserStatus(user.id, user.status === "ACTIVE" ? "INACTIVE" : "ACTIVE"),
+    mutationFn: ({ user, nextStatus }: { user: User; nextStatus: "ACTIVE" | "LOCKED" | "INACTIVE" }) =>
+      apiModel.updateUserStatus(user.id, nextStatus),
     onSuccess: (user) => {
       setNotice(
         user.status === "ACTIVE"
-          ? `Đã mở khoá ${user.email}.`
-          : `Đã khoá ${user.email} và đăng xuất mọi phiên.`
+          ? `Đã mở khoá / kích hoạt tài khoản ${user.email}.`
+          : user.status === "LOCKED"
+            ? `Đã khoá tạm thời tài khoản ${user.email} (PB-05.3) và đăng xuất mọi phiên.`
+            : `Đã vô hiệu hoá tài khoản ${user.email} (PB-05.4) và đăng xuất mọi phiên.`
       );
-      setDetail(null);
+      setDetail(user);
       refresh();
     },
   });
@@ -207,29 +242,65 @@ export default function UsersPage() {
     onSuccess: () => {
       setAssignDraft(EMPTY_ROLE_DRAFT);
       detailRoles.refetch();
+      detailEffective.refetch();
     },
   });
   const revoke = useMutation({
     mutationFn: (assignment: UserRole) => apiModel.revokeRole(assignment.userId, assignment.id),
-    onSuccess: () => detailRoles.refetch(),
+    onSuccess: () => {
+      detailRoles.refetch();
+      detailEffective.refetch();
+    },
+  });
+  const grantDirectPerm = useMutation({
+    mutationFn: () =>
+      apiModel.grantPermission(detail!.id, {
+        permissionId: permId,
+        scope: permScope,
+        clubId: permScope === "CLUB" ? permClubId : undefined,
+        departmentId: permScope === "DEPARTMENT" ? permDeptId : undefined,
+        reason: permReason.trim() || undefined,
+      }),
+    onSuccess: () => {
+      setPermId("");
+      setPermReason("");
+      detailPermissions.refetch();
+      detailEffective.refetch();
+    },
+  });
+  const revokeDirectPerm = useMutation({
+    mutationFn: (perm: UserPermission) =>
+      apiModel.revokePermission(detail!.id, perm.permissionId, {
+        scope: perm.scope,
+        clubId: perm.clubId,
+        departmentId: perm.departmentId,
+      }),
+    onSuccess: () => {
+      detailPermissions.refetch();
+      detailEffective.refetch();
+    },
   });
   const removeRole = (assignment: UserRole) => {
     if (confirm(`Thu hồi vai trò ${roleLabel(assignment)} của ${detail?.email}?`)) revoke.mutate(assignment);
   };
-  const assignmentTarget = (a: UserRole) =>
+  const assignmentTarget = (a: { scope: string; clubId?: string; departmentId?: string }) =>
     a.scope === "GLOBAL"
       ? scopeLabel("GLOBAL")
       : a.scope === "CLUB"
         ? `CLB ${clubName(a.clubId)}`
         : "Theo ban chuyên môn";
 
-  const toggleLock = (user: User) => {
+  const changeStatus = (user: User, nextStatus: "ACTIVE" | "LOCKED" | "INACTIVE") => {
     if (
-      user.status === "ACTIVE" &&
-      !confirm(`Khoá tài khoản ${user.email}? Người này sẽ bị đăng xuất ngay.`)
+      nextStatus !== "ACTIVE" &&
+      !confirm(
+        nextStatus === "LOCKED"
+          ? `Khoá tạm thời tài khoản ${user.email} (PB-05.3)? Người này sẽ bị đăng xuất ngay.`
+          : `Vô hiệu hoá tài khoản ${user.email} (PB-05.4)? Người này sẽ bị đăng xuất ngay.`
+      )
     )
       return;
-    lock.mutate(user);
+    lock.mutate({ user, nextStatus });
   };
   const confirmDelete = (user: User) => {
     if (confirm(`Xoá vĩnh viễn tài khoản ${user.email}? Thao tác này không thể hoàn tác.`))
@@ -251,14 +322,29 @@ export default function UsersPage() {
           },
         ]
       : []),
-    ...(user.id !== session.user?.id &&
-    session.can(user.status === "ACTIVE" ? "user.inactive" : "user.active")
+    ...(user.id !== session.user?.id && user.status === "ACTIVE" && session.can("user.inactive")
       ? [
           {
-            icon: user.status === "ACTIVE" ? <Lock /> : <LockOpen />,
-            label: user.status === "ACTIVE" ? "Khoá tài khoản" : "Mở khoá",
-            danger: user.status === "ACTIVE",
-            onClick: () => toggleLock(user),
+            icon: <Lock />,
+            label: "Khoá tạm thời (PB-05.3)",
+            onClick: () => changeStatus(user, "LOCKED"),
+            disabled: lock.isPending,
+          },
+          {
+            icon: <Ban />,
+            label: "Vô hiệu hoá (PB-05.4)",
+            danger: true,
+            onClick: () => changeStatus(user, "INACTIVE"),
+            disabled: lock.isPending,
+          },
+        ]
+      : []),
+    ...(user.id !== session.user?.id && user.status !== "ACTIVE" && session.can("user.active")
+      ? [
+          {
+            icon: <LockOpen />,
+            label: user.status === "LOCKED" ? "Mở khoá tài khoản" : "Kích hoạt lại tài khoản",
+            onClick: () => changeStatus(user, "ACTIVE"),
             disabled: lock.isPending,
           },
         ]
@@ -312,7 +398,8 @@ export default function UsersPage() {
           >
             <option value="ALL">Tất cả trạng thái</option>
             <option value="ACTIVE">Đang hoạt động</option>
-            <option value="INACTIVE">Đã khoá / Ngừng HĐ</option>
+            <option value="LOCKED">Tạm khoá (PB-05.3)</option>
+            <option value="INACTIVE">Vô hiệu hoá (PB-05.4)</option>
             <option value="MUST_CHANGE">Chờ đổi mật khẩu</option>
           </Select>
         }
@@ -711,6 +798,180 @@ export default function UsersPage() {
                   <Plus size={14} /> Gán vai trò
                 </Button>
                 {assign.error && <p className="text-xs text-destructive">{describeError(assign.error)}</p>}
+              </div>
+            )}
+          </Section>
+        )}
+        {detail && session.can("permission.view") && (
+          <Section title="Quyền trực tiếp (PB-07.1, PB-07.2)" icon={<KeyRound />}>
+            {detailPermissions.isPending ? (
+              <LoadingRows rows={2} />
+            ) : detailPermissions.isError ? (
+              <ErrorState message={describeError(detailPermissions.error)} />
+            ) : !detailPermissions.data.length ? (
+              <p className="text-sm text-muted-foreground">Chưa có quyền lẻ nào được cấp trực tiếp.</p>
+            ) : (
+              <ul className="grid gap-2">
+                {detailPermissions.data.map((p) => (
+                  <li
+                    key={p.id}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-border/60 px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-mono text-xs font-bold text-primary">{p.permissionKey}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {assignmentTarget(p)} · từ {formatDay(p.grantedAt)}
+                      </p>
+                    </div>
+                    {session.can("permission.revoke") && (
+                      <button
+                        type="button"
+                        aria-label="Thu hồi quyền trực tiếp"
+                        onClick={() => {
+                          if (confirm(`Thu hồi quyền trực tiếp ${p.permissionKey} của ${detail.email}?`)) {
+                            revokeDirectPerm.mutate(p);
+                          }
+                        }}
+                        disabled={revokeDirectPerm.isPending}
+                        className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {revokeDirectPerm.error && (
+              <p className="mt-2 text-xs text-destructive">{describeError(revokeDirectPerm.error)}</p>
+            )}
+            {canAssign && (
+              <div className="mt-3 grid gap-2.5 rounded-lg border border-border/70 bg-muted/20 p-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Cấp quyền trực tiếp mới
+                </p>
+                <FormField label="Quyền nghiệp vụ">
+                  <Select
+                    value={permId}
+                    onChange={(e) => {
+                      const nextId = e.target.value;
+                      setPermId(nextId);
+                      const found = allPermissions.find((item) => item.id === nextId);
+                      if (found) setPermScope(found.scope);
+                    }}
+                  >
+                    <option value="">-- Chọn quyền cần cấp --</option>
+                    {allPermissions.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.permissionKey} ({item.scope}) — {item.description || item.action}
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  <FormField label="Phạm vi áp dụng">
+                    <Select
+                      value={permScope}
+                      onChange={(e) => {
+                        setPermScope(e.target.value as Scope);
+                        setPermClubId("");
+                        setPermDeptId("");
+                      }}
+                    >
+                      <option value="GLOBAL">Toàn hệ thống (GLOBAL)</option>
+                      <option value="CLUB" disabled={selectedPerm?.scope === "GLOBAL"}>
+                        Theo CLB (CLUB)
+                      </option>
+                      <option
+                        value="DEPARTMENT"
+                        disabled={selectedPerm?.scope === "GLOBAL" || selectedPerm?.scope === "CLUB"}
+                      >
+                        Theo Ban (DEPARTMENT)
+                      </option>
+                    </Select>
+                  </FormField>
+                  {(permScope === "CLUB" || permScope === "DEPARTMENT") && (
+                    <FormField label="Câu lạc bộ">
+                      <Select
+                        value={permClubId}
+                        onChange={(e) => {
+                          setPermClubId(e.target.value);
+                          setPermDeptId("");
+                        }}
+                      >
+                        <option value="">-- Chọn CLB --</option>
+                        {options.clubs.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} ({c.code})
+                          </option>
+                        ))}
+                      </Select>
+                    </FormField>
+                  )}
+                </div>
+                {permScope === "DEPARTMENT" && permClubId && (
+                  <FormField label="Ban chuyên môn">
+                    <Select value={permDeptId} onChange={(e) => setPermDeptId(e.target.value)}>
+                      <option value="">-- Chọn ban --</option>
+                      {(permDepartments.data?.items ?? []).map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </FormField>
+                )}
+                <FormField label="Lý do cấp quyền (audit)">
+                  <Input
+                    value={permReason}
+                    onChange={(e) => setPermReason(e.target.value)}
+                    placeholder="VD: Phân quyền phụ trách duyệt đơn tuyển thành viên"
+                  />
+                </FormField>
+                <Button
+                  size="sm"
+                  className="justify-self-start"
+                  disabled={
+                    !permId ||
+                    (permScope === "CLUB" && !permClubId) ||
+                    (permScope === "DEPARTMENT" && !permDeptId) ||
+                    grantDirectPerm.isPending
+                  }
+                  onClick={() => grantDirectPerm.mutate()}
+                >
+                  <Plus size={14} /> {grantDirectPerm.isPending ? "Đang cấp…" : "Cấp quyền trực tiếp"}
+                </Button>
+                {grantDirectPerm.error && (
+                  <p className="text-xs text-destructive">{describeError(grantDirectPerm.error)}</p>
+                )}
+              </div>
+            )}
+          </Section>
+        )}
+        {detail && session.can("permission.view") && (
+          <Section title="Quyền hiệu lực tổng hợp (PB-09.1, PB-09.2)" icon={<Sparkles />}>
+            {detailEffective.isPending ? (
+              <LoadingRows rows={2} />
+            ) : detailEffective.isError ? (
+              <ErrorState message={describeError(detailEffective.error)} />
+            ) : !detailEffective.data.length ? (
+              <p className="text-sm text-muted-foreground">Tài khoản hiện chưa có quyền hiệu lực nào.</p>
+            ) : (
+              <div className="max-h-56 overflow-y-auto rounded-lg border border-border/60 divide-y divide-border/50">
+                {detailEffective.data.map((ep, idx) => (
+                  <div
+                    key={`${ep.permissionKey}-${ep.scope}-${ep.clubId || ""}-${ep.departmentId || ""}-${ep.source}-${ep.roleCode || ""}-${idx}`}
+                    className="flex items-center justify-between gap-2 px-3 py-2 text-xs"
+                  >
+                    <div className="min-w-0">
+                      <span className="font-mono font-bold text-foreground">{ep.permissionKey}</span>
+                      <p className="truncate text-[11px] text-muted-foreground">{assignmentTarget(ep)}</p>
+                    </div>
+                    <Badge tone={ep.source === "DIRECT" ? "primary" : "neutral"}>
+                      {ep.source === "DIRECT" ? "Trực tiếp (DIRECT)" : `Vai trò: ${ep.roleCode}`}
+                    </Badge>
+                  </div>
+                ))}
               </div>
             )}
           </Section>

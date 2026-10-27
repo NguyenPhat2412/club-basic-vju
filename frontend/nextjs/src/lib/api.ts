@@ -77,8 +77,20 @@ export const apiModel = {
   userRoles: (userId: string) => api<UserRole[]>(`/users/${userId}/roles`),
   assignRole: (userId: string, body: RoleAssignmentInput) => api<UserRole>(`/users/${userId}/roles`, { method: 'POST', body: JSON.stringify(body) }),
   revokeRole: (userId: string, assignmentId: string) => api<void>(`/users/${userId}/roles/${assignmentId}`, { method: 'DELETE' }),
-  updateUserStatus: (id: string, status: 'ACTIVE' | 'INACTIVE') => api<User>(`/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  userPermissions: (userId: string) => api<UserPermission[]>(`/users/${userId}/permissions`),
+  userEffectivePermissions: (userId: string) => api<EffectivePermission[]>(`/users/${userId}/effective-permissions`),
+  grantPermission: (userId: string, body: GrantPermissionInput) => api<UserPermission>(`/users/${userId}/permissions`, { method: 'POST', body: JSON.stringify(body) }),
+  revokePermission: (userId: string, permissionId: string, q: { scope?: Scope; clubId?: string; departmentId?: string } = {}) =>
+    api<void>(`/users/${userId}/permissions/${permissionId}${cleanParams(q) ? `?${cleanParams(q)}` : ''}`, { method: 'DELETE' }),
+  clubPositions: (clubId: string) => api<ClubStructure>(`/clubs/${clubId}/positions`),
+  assignClubPosition: (clubId: string, body: AssignClubPositionInput) =>
+    api<UserRole>(`/clubs/${clubId}/positions`, { method: 'PUT', body: JSON.stringify(body) }),
+  revokeClubPosition: (clubId: string, assignmentId: string) =>
+    api<void>(`/clubs/${clubId}/positions/${assignmentId}`, { method: 'DELETE' }),
+  updateUserStatus: (id: string, status: 'ACTIVE' | 'INACTIVE' | 'LOCKED') => api<User>(`/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   me: () => api<User>('/auth/me'),
+  updateProfile: (body: { fullName?: string; phone?: string; avatarUrl?: string }) =>
+    api<User>('/users/me', { method: 'PATCH', body: JSON.stringify(body) }),
   effectivePermissions: () => api<EffectivePermission[]>('/users/me/effective-permissions'),
   publicClubs: (query = '', category = '', offset = 0, limit = 50) => api<Page<Club>>(`/public/clubs?${new URLSearchParams({ query, category, offset: String(offset), limit: String(limit) })}`),
   publicClub: (id: string) => api<Club>(`/public/clubs/${id}`),
@@ -213,9 +225,15 @@ export type DocumentItem = { id: string; clubId: string; ownerId: string; name: 
 export type DocumentVersion = { id: string; documentId: string; version: number; originalName: string; contentType: string; sizeBytes: number; checksumSha256: string; uploadedBy: string; createdAt: string };
 export type User = { id: string; email: string; fullName?: string; studentCode?: string; phone?: string; avatarUrl?: string; status: string; requiresPasswordChange?: boolean; createdAt?: string; updatedAt?: string };
 export type Scope = 'GLOBAL' | 'CLUB' | 'DEPARTMENT';
-export type Role = { id: string; code: string; name: string; description?: string; scope: Scope; system: boolean; active: boolean; locked: boolean; permissionKeys: string[] };
+export type Role = { id: string; code: string; name: string; description?: string; scope: Scope; system: boolean; active: boolean; locked: boolean; maxHolders?: number | null; permissionKeys: string[] };
 export type UserRole = { id: string; userId: string; roleId: string; roleCode: string; roleName: string; scope: Scope; clubId?: string; departmentId?: string; grantedAt: string };
-export type RoleAssignmentInput = { roleId: string; scope: Scope; clubId?: string; departmentId?: string };
+export type RoleAssignmentInput = { roleId: string; scope: Scope; clubId?: string; departmentId?: string; reason?: string };
+export type UserPermission = { id: string; userId: string; permissionId: string; permissionKey: string; scope: Scope; clubId?: string; departmentId?: string; grantedAt: string; revokedAt?: string | null };
+export type GrantPermissionInput = { permissionId: string; scope: Scope; clubId?: string; departmentId?: string; reason?: string };
+export type ClubPositionHolder = { assignmentId: string; userId: string; fullName: string; email: string; studentCode?: string; avatarUrl?: string; grantedAt: string };
+export type ClubPositionSlot = { roleId: string; roleCode: string; roleName: string; scope: Scope; departmentId?: string; departmentName?: string; departmentStatus?: string; maxHolders: number; holders: ClubPositionHolder[] };
+export type ClubStructure = { clubId: string; clubPositions: ClubPositionSlot[]; departmentPositions: ClubPositionSlot[] };
+export type AssignClubPositionInput = { userId: string; roleId: string; departmentId?: string; replaceHolder?: boolean; reason?: string };
 export type PermissionItem = { id: string; permissionKey: string; module: string; action: string; scope: Scope; description?: string; active: boolean };
 export type PermissionGroup = { module: string; permissions: PermissionItem[] };
 export type EffectivePermission = { permissionKey: string; scope: string; clubId?: string; departmentId?: string; source: string; roleCode?: string };

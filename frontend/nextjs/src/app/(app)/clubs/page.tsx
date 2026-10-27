@@ -15,11 +15,6 @@ import { Button } from "@/components/ui/button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/input";
 
 const LIMIT = 20;
-const PUBLIC_OVERVIEW: Club[] = [
-  { id: "preview-academic", code: "VJU-ACA", name: "Học thuật & Công nghệ", description: "Không gian dành cho sinh viên yêu thích nghiên cứu, công nghệ và cùng phát triển các dự án học thuật.", activityField: "Học thuật", status: "ACTIVE" },
-  { id: "preview-culture", code: "VJU-CUL", name: "Văn hóa & Giao lưu", description: "Kết nối sinh viên qua ngôn ngữ, giao lưu văn hóa và những trải nghiệm Việt Nam – Nhật Bản.", activityField: "Văn hóa", status: "ACTIVE" },
-  { id: "preview-community", code: "VJU-COM", name: "Cộng đồng & Tình nguyện", description: "Cùng tổ chức hoạt động vì cộng đồng, hỗ trợ sự kiện và kết nối sinh viên VJU.", activityField: "Cộng đồng", status: "ACTIVE" },
-];
 
 type PendingAttachment = {
   file: File;
@@ -73,7 +68,7 @@ export default function ClubsPage() {
   const activeForm = useQuery({
     queryKey: ["club-application-form", selected?.id],
     queryFn: () => apiModel.clubApplicationForm(selected!.id),
-    enabled: !!selected && !!session.user && !selected.id.startsWith("preview-"),
+    enabled: !!selected && !!session.user,
   });
 
   const apply = useMutation({
@@ -113,13 +108,12 @@ export default function ClubsPage() {
   });
 
   const loadedClubs = clubs.data?.items;
-  const clubsPending = clubs.isPending;
   const filteredItems = useMemo(() => {
-    const items = loadedClubs?.length ? loadedClubs : (!clubsPending && !search.trim() ? PUBLIC_OVERVIEW : []);
+    const items = loadedClubs ?? [];
     if (!search.trim()) return items;
     const q = search.toLowerCase();
     return items.filter((club) => [club.name, club.code, club.activityField, club.description, club.contactEmail].join(" ").toLowerCase().includes(q));
-  }, [loadedClubs, clubsPending, search]);
+  }, [loadedClubs, search]);
 
   const open = (club: Club) => {
     setSelected(club);

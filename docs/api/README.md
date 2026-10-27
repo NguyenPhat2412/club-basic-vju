@@ -15,7 +15,7 @@ The backend assigned to this system is `backend/springboot` (Spring Boot 3 / Jav
 
 ## Authentication & Conventions
 
-- **Authentication:** Send `Authorization: Bearer <accessToken>` or session cookie for all protected routes (`PUBLIC` routes do not require a token; `AUTHENTICATED` routes require any valid logged-in user token).
+- **Authentication:** Send the `CLUB_SESSION` HttpOnly session cookie (plus `X-XSRF-TOKEN` header matching the `XSRF-TOKEN` cookie on unsafe methods `POST/PUT/PATCH/DELETE`) for all protected routes (`PUBLIC` routes do not require a session; `AUTHENTICATED` routes require an active logged-in session).
 - **Pagination:** List endpoints use `offset` (default `0`) and `limit` (default `20`, max `100`) and return `{ items, total, offset, limit }`.
 - **Error Format:** RFC 7807 Problem Details (`application/problem+json`) with a stable `code` property.
 - **Contract verification:**

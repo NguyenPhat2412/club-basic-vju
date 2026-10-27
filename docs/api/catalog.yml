@@ -825,3 +825,24 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: null
+- method: GET
+  path: /api/v1/clubs/{clubId}/positions
+  module: role-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: department.view
+- method: PUT
+  path: /api/v1/clubs/{clubId}/positions
+  module: role-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: permission.assign
+- method: DELETE
+  path: /api/v1/clubs/{clubId}/positions/{assignmentId}
+  module: role-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: permission.revoke

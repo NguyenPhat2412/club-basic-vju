@@ -219,7 +219,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '400':
           $ref: '#/components/responses/BadRequest'
-      description: Tài khoản hiện tại theo JWT. Chỉ cần đăng nhập; không cần quyền
+      description: Tài khoản hiện tại theo phiên đăng nhập cookie CLUB_SESSION. Chỉ cần đăng nhập; không cần quyền
         quản trị user.view.
   /auth/change-password:
     post:
@@ -249,8 +249,8 @@ paths:
             example:
               currentPassword: DemoPassword123!
               newPassword: NewDemoPassword456!
-      description: Xác minh currentPassword, đổi mật khẩu và thu hồi refresh token.
-        Sau 204, frontend xóa token và yêu cầu đăng nhập lại.
+      description: Xác minh currentPassword, đổi mật khẩu và thu hồi các phiên đăng nhập khác của tài khoản.
+        Phiên hiện tại vẫn được giữ nguyên (hoặc frontend làm mới thông tin tài khoản qua GET /auth/me).
   /users/me:
     get:
       operationId: user.me
@@ -607,7 +607,8 @@ paths:
       x-permission-rules:
         ACTIVE: user.active
         INACTIVE: user.inactive
-      description: 'Quyền phụ thuộc trạng thái mới trong body: ACTIVE → user.active, INACTIVE → user.inactive. Chỉ quản trị hệ thống mới thao tác được trên tài khoản quản trị hệ thống khác (403).'
+        LOCKED: user.inactive
+      description: 'Quyền phụ thuộc trạng thái mới trong body: ACTIVE → user.active (mở khóa / kích hoạt lại), LOCKED → user.inactive (khóa tạm thời PB-05.3), INACTIVE → user.inactive (vô hiệu hóa PB-05.4). Chỉ quản trị hệ thống mới thao tác được trên tài khoản quản trị hệ thống khác (403).'
   /users/me/permissions:
     get:
       operationId: user.permissions
@@ -1920,7 +1921,7 @@ paths:
       description: permissionId là ID định nghĩa permission. Nên luôn gửi scope và
         clubId/departmentId tương ứng. Nếu bỏ scope và có nhiều grant phù hợp, trả
         400 AMBIGUOUS_PERMISSION_GRANT; không tự chọn một grant. Thu hồi có hiệu lực
-        với request tiếp theo, không cần cấp JWT mới.
+        ngay ở request tiếp theo trên phiên cookie CLUB_SESSION hiện tại.
   /users/{userId}/permissions/by-key/{permissionKey}:
     delete:
       operationId: permission.revoke_by_key
@@ -2184,6 +2185,96 @@ paths:
         hiệu lực ngay.
       parameters:
       - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: assignmentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /clubs/{clubId}/positions:
+    parameters:
+    - name: clubId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    get:
+      operationId: role.getClubStructure
+      summary: Get club organizational leadership structure (PB-14.1, PB-14.2)
+      tags:
+      - Role
+      x-permission: department.view
+      x-implementation-status: IMPLEMENTED
+      description: Trả về cơ cấu tổ chức chức danh của CLB gồm Ban điều hành CLB (Chủ nhiệm, Phó chủ nhiệm) và Trưởng các ban theo PB-14.1, PB-14.2.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubStructure'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: role.assignClubPosition
+      summary: Assign or replace club/department leadership position (PB-14.1, PB-14.2)
+      tags:
+      - Role
+      x-permission: permission.assign
+      x-implementation-status: IMPLEMENTED
+      description: Bổ nhiệm hoặc thay thế chức danh tổ chức của CLB/Ban. Kiểm tra bắt buộc người được gán phải có Membership ACTIVE trong CLB (và thuộc ban nếu là chức danh cấp DEPARTMENT), kiểm tra giới hạn số lượng người giữ chức danh (maxHolders) và tự động thay thế người đương nhiệm khi replaceHolder=true.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignClubPositionRequest'
+      responses:
+        '200':
+          description: Assigned or replaced position
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRole'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /clubs/{clubId}/positions/{assignmentId}:
+    delete:
+      operationId: role.revokeClubPosition
+      summary: Revoke club or department leadership position
+      tags:
+      - Role
+      x-permission: permission.revoke
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
         in: path
         required: true
         schema:
@@ -4086,6 +4177,7 @@ components:
           enum:
           - ACTIVE
           - INACTIVE
+          - LOCKED
         createdAt:
           type: string
           format: date-time
@@ -4147,6 +4239,7 @@ components:
           enum:
           - ACTIVE
           - INACTIVE
+          - LOCKED
       examples:
       - status: INACTIVE
     ClubRequest:
@@ -5623,6 +5716,55 @@ components:
           items: {type: string}
         model: {type: string}
         createdAt: {type: string, format: date-time}
+    AssignClubPositionRequest:
+      type: object
+      required: [userId, roleId]
+      properties:
+        userId: {type: string, format: uuid}
+        roleId: {type: string, format: uuid}
+        departmentId: {type: [string, 'null'], format: uuid}
+        replaceHolder: {type: [boolean, 'null']}
+        reason: {type: [string, 'null'], maxLength: 1000}
+    ClubPositionHolder:
+      type: object
+      required: [assignmentId, userId, fullName, email, grantedAt]
+      properties:
+        assignmentId: {type: string, format: uuid}
+        userId: {type: string, format: uuid}
+        fullName: {type: string}
+        email: {type: string, format: email}
+        studentCode: {type: [string, 'null']}
+        avatarUrl: {type: [string, 'null']}
+        grantedAt: {type: string, format: date-time}
+    ClubPositionSlot:
+      type: object
+      required: [roleId, roleCode, roleName, scope, maxHolders, holders]
+      properties:
+        roleId: {type: string, format: uuid}
+        roleCode: {type: string}
+        roleName: {type: string}
+        scope: {type: string}
+        departmentId: {type: [string, 'null'], format: uuid}
+        departmentName: {type: [string, 'null']}
+        departmentStatus: {type: [string, 'null']}
+        maxHolders: {type: integer}
+        holders:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClubPositionHolder'
+    ClubStructure:
+      type: object
+      required: [clubId, clubPositions, departmentPositions]
+      properties:
+        clubId: {type: string, format: uuid}
+        clubPositions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClubPositionSlot'
+        departmentPositions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClubPositionSlot'
 tags:
 - name: System
   description: Danh mục và trạng thái API

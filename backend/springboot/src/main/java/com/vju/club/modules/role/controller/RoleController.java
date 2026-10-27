@@ -4,8 +4,10 @@ import lombok.RequiredArgsConstructor;
 import com.vju.club.modules.role.service.RoleService;
 
 import com.vju.club.security.Actor;
+import com.vju.club.modules.role.dto.request.AssignClubPositionRequest;
 import com.vju.club.modules.role.dto.request.AssignRoleRequest;
 import com.vju.club.modules.role.dto.request.CreateRoleRequest;
+import com.vju.club.modules.role.dto.response.ClubStructureResponse;
 import com.vju.club.modules.role.dto.response.RoleResponse;
 import com.vju.club.modules.role.dto.request.UpdateRoleRequest;
 import com.vju.club.modules.role.dto.response.UserRoleResponse;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -71,6 +74,24 @@ public class RoleController {
     public ResponseEntity<Void> revoke(Actor actor, @PathVariable UUID userId,
                                        @PathVariable UUID assignmentId) {
         roleService.revoke(actor, userId, assignmentId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/clubs/{clubId}/positions")
+    public ClubStructureResponse getClubStructure(Actor actor, @PathVariable UUID clubId) {
+        return roleService.getClubStructure(actor, clubId);
+    }
+
+    @PutMapping("/clubs/{clubId}/positions")
+    public UserRoleResponse assignClubPosition(Actor actor, @PathVariable UUID clubId,
+                                               @Valid @RequestBody AssignClubPositionRequest request) {
+        return roleService.assignClubPosition(actor, clubId, request);
+    }
+
+    @DeleteMapping("/clubs/{clubId}/positions/{assignmentId}")
+    public ResponseEntity<Void> revokeClubPosition(Actor actor, @PathVariable UUID clubId,
+                                                   @PathVariable UUID assignmentId) {
+        roleService.revokeClubPosition(actor, clubId, assignmentId);
         return ResponseEntity.noContent().build();
     }
 }

@@ -62,7 +62,7 @@ class EntityMappingTest {
                 .containsExactly("GLOBAL", "CLUB", "DEPARTMENT");
         assertThat(UserStatus.values())
                 .extracting(Enum::name)
-                .containsExactly("ACTIVE", "INACTIVE");
+                .containsExactly("ACTIVE", "INACTIVE", "LOCKED");
         assertThat(MembershipStatus.values())
                 .extracting(Enum::name)
                 .containsExactly("ACTIVE", "INACTIVE", "LEFT", "SUSPENDED");

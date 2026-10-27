@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 class RoleApiTest extends ApiIntegrationTest {
     private UUID role(String code) {
@@ -271,5 +272,54 @@ class RoleApiTest extends ApiIntegrationTest {
                 .isInstanceOf(DataIntegrityViolationException.class).hasMessageContaining("ck_permission_audit_subject");
         assertThatThrownBy(() -> db.update("INSERT INTO roles(code, name, scope) VALUES ('lower_case', 'x', 'CLUB')"))
                 .isInstanceOf(DataIntegrityViolationException.class).hasMessageContaining("ck_roles_code_format");
+    }
+
+    @Test
+    void clubPositionGovernanceChecksMembershipEnforcesLimitsAndReplacesIncumbent() throws Exception {
+        UUID candidateA = user("cand_a@test.local");
+        UUID candidateB = user("cand_b@test.local");
+        UUID presidentRole = role("CLUB_PRESIDENT");
+        UUID headRole = role("DEPARTMENT_HEAD");
+
+        // 1. Cannot assign club president to a user who is not a club member
+        problem(put("/api/v1/clubs/" + clubA + "/positions"), adminToken,
+                Map.of("userId", candidateA, "roleId", presidentRole), 409, "MEMBERSHIP_REQUIRED_FOR_POSITION");
+
+        // 2. Add both candidates as active members of clubA
+        UUID memA = membership(candidateA, clubA);
+        membership(candidateB, clubA);
+
+        // 3. Assign candidateA as Club President
+        JsonNode assignedA = call(put("/api/v1/clubs/" + clubA + "/positions"), adminToken,
+                Map.of("userId", candidateA, "roleId", presidentRole, "reason", "Bổ nhiệm nhiệm kỳ 1"), 200);
+        assertThat(assignedA.path("userId").asText()).isEqualTo(candidateA.toString());
+
+        // 4. With replaceHolder=false, assigning candidateB fails because maxHolders=1
+        problem(put("/api/v1/clubs/" + clubA + "/positions"), adminToken,
+                Map.of("userId", candidateB, "roleId", presidentRole, "replaceHolder", false),
+                409, "POSITION_LIMIT_REACHED");
+
+        // 5. With replaceHolder=true (default), candidateB automatically replaces candidateA
+        JsonNode assignedB = call(put("/api/v1/clubs/" + clubA + "/positions"), adminToken,
+                Map.of("userId", candidateB, "roleId", presidentRole, "reason", "Thay thế Chủ nhiệm"), 200);
+        assertThat(assignedB.path("userId").asText()).isEqualTo(candidateB.toString());
+
+        // 6. Department Head requires active department membership
+        problem(put("/api/v1/clubs/" + clubA + "/positions"), adminToken,
+                Map.of("userId", candidateA, "roleId", headRole, "departmentId", depA1),
+                409, "DEPARTMENT_MEMBERSHIP_REQUIRED");
+        call(post("/api/v1/departments/" + depA1 + "/members"), adminToken, Map.of("membershipId", memA), 201);
+        JsonNode headAssigned = call(put("/api/v1/clubs/" + clubA + "/positions"), adminToken,
+                Map.of("userId", candidateA, "roleId", headRole, "departmentId", depA1), 200);
+        assertThat(headAssigned.path("userId").asText()).isEqualTo(candidateA.toString());
+
+        // 7. Structure endpoint returns current Club President (candidateB) and Department Head (candidateA)
+        JsonNode structure = call(get("/api/v1/clubs/" + clubA + "/positions"), adminToken, null, 200);
+        assertThat(structure.path("clubId").asText()).isEqualTo(clubA.toString());
+        assertThat(structure.path("clubPositions")).isNotEmpty();
+        assertThat(structure.path("departmentPositions")).isNotEmpty();
+
+        // 8. Revoke Department Head position
+        call(delete("/api/v1/clubs/" + clubA + "/positions/" + id(headAssigned)), adminToken, null, 204);
     }
 }

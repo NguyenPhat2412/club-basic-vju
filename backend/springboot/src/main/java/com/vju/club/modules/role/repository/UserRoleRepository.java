@@ -26,6 +26,28 @@ public interface UserRoleRepository extends JpaRepository<UserRole, UUID> {
 
     Optional<UserRole> findByIdAndUser_Id(UUID id, UUID userId);
 
+    @Query("SELECT ur FROM UserRole ur JOIN FETCH ur.role r JOIN FETCH ur.user u LEFT JOIN FETCH ur.department d "
+            + "WHERE ur.revokedAt IS NULL AND r.active = true AND r.maxHolders IS NOT NULL "
+            + "AND ((ur.scope = com.vju.club.modules.permission.enums.PermissionScope.CLUB AND ur.club.id = :clubId) "
+            + "OR (ur.scope = com.vju.club.modules.permission.enums.PermissionScope.DEPARTMENT AND d.club.id = :clubId)) "
+            + "ORDER BY ur.grantedAt ASC, ur.id ASC")
+    List<UserRole> findActiveLeadershipInClub(@Param("clubId") UUID clubId);
+
+    @Query("SELECT ur FROM UserRole ur JOIN FETCH ur.role JOIN FETCH ur.user WHERE ur.role.id = :roleId "
+            + "AND ur.scope = :scope AND ur.revokedAt IS NULL "
+            + "AND ((:clubId IS NULL AND ur.club IS NULL) OR ur.club.id = :clubId) "
+            + "AND ((:departmentId IS NULL AND ur.department IS NULL) OR ur.department.id = :departmentId) "
+            + "ORDER BY ur.grantedAt ASC, ur.id ASC")
+    List<UserRole> findActiveHoldersForTarget(@Param("roleId") UUID roleId,
+                                              @Param("scope") PermissionScope scope,
+                                              @Param("clubId") UUID clubId,
+                                              @Param("departmentId") UUID departmentId);
+
+    @Query("SELECT ur FROM UserRole ur JOIN FETCH ur.role JOIN FETCH ur.user LEFT JOIN FETCH ur.club c LEFT JOIN FETCH ur.department d "
+            + "WHERE ur.id = :assignmentId AND ur.revokedAt IS NULL "
+            + "AND (c.id = :clubId OR d.club.id = :clubId)")
+    Optional<UserRole> findActiveInClub(@Param("assignmentId") UUID assignmentId, @Param("clubId") UUID clubId);
+
     boolean existsByUser_IdAndRole_IdAndScopeAndRevokedAtIsNull(UUID userId, UUID roleId, PermissionScope scope);
 
     @Query("SELECT count(ur) > 0 FROM UserRole ur WHERE ur.user.id = :userId AND ur.role.code = :roleCode "

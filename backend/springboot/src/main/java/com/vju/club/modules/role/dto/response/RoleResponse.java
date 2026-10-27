@@ -12,5 +12,6 @@ public record RoleResponse(
         boolean system,
         boolean active,
         boolean locked,
+        Integer maxHolders,
         List<String> permissionKeys
 ) { }

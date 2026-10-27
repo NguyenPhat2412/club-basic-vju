@@ -41,6 +41,9 @@ public class Role extends TimestampedEntity {
     @Column(nullable = false)
     private boolean active = true;
 
+    @Column(name = "max_holders")
+    private Integer maxHolders;
+
     @ManyToMany
     @JoinTable(name = "role_permissions",
             joinColumns = @JoinColumn(name = "role_id"),

@@ -69,6 +69,9 @@ public class AuthServiceImpl implements AuthService {
             User user = userRepository.findByEmailIgnoreCase(email).orElse(null);
             if (user != null && user.getStatus() != UserStatus.ACTIVE
                     && passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+                if (user.getStatus() == UserStatus.LOCKED) {
+                    throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_LOCKED", "Account is locked");
+                }
                 throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_INACTIVE", "Account is inactive");
             }
             throw invalidCredentials();
@@ -102,6 +105,9 @@ public class AuthServiceImpl implements AuthService {
                     "This account is linked to a different Google account");
         }
         if (user.getStatus() != UserStatus.ACTIVE) {
+            if (user.getStatus() == UserStatus.LOCKED) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_LOCKED", "Account is locked");
+            }
             throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_INACTIVE", "Account is inactive");
         }
         user.setGoogleSubject(identity.subject());

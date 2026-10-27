@@ -23,4 +23,7 @@ public interface RoleRepository extends JpaRepository<Role, UUID> {
 
     @Query("SELECT count(r) > 0 FROM Role r WHERE lower(r.code) = lower(:code)")
     boolean existsByCodeIgnoreCase(@Param("code") String code);
+
+    @Query("SELECT r FROM Role r WHERE r.active = true AND r.maxHolders IS NOT NULL ORDER BY r.scope ASC, r.maxHolders ASC, r.code ASC")
+    List<Role> findActiveLeadershipPositions();
 }

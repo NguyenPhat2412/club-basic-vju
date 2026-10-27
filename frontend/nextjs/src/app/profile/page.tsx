@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { LockKeyhole, UserRound } from "lucide-react";
+import { LockKeyhole, Save, UserRound } from "lucide-react";
 import { apiModel } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
@@ -17,10 +17,47 @@ export default function ProfilePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const session = useSession();
+  const user = session.user;
+
+  const [fullNameDraft, setFullNameDraft] = useState<string | null>(null);
+  const [phoneDraft, setPhoneDraft] = useState<string | null>(null);
+  const [avatarUrlDraft, setAvatarUrlDraft] = useState<string | null>(null);
+  const [profileNotice, setProfileNotice] = useState("");
+
+  const fullName = fullNameDraft ?? (user?.fullName || "");
+  const phone = phoneDraft ?? (user?.phone || "");
+  const avatarUrl = avatarUrlDraft ?? (user?.avatarUrl || "");
+
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [notice, setNotice] = useState("");
+
+  const updateProfile = useMutation({
+    mutationFn: () =>
+      apiModel.updateProfile({
+        fullName: fullName.trim(),
+        phone: phone.trim() || undefined,
+        avatarUrl: avatarUrl.trim() || undefined,
+      }),
+    onSuccess: (updated) => {
+      setProfileNotice("Hồ sơ cá nhân đã được lưu thành công.");
+      setFullNameDraft(null);
+      setPhoneDraft(null);
+      setAvatarUrlDraft(null);
+      queryClient.setQueryData(["me"], updated);
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+    },
+  });
+
+  const submitProfile = (event: FormEvent) => {
+    event.preventDefault();
+    setProfileNotice("");
+    if (fullName.trim()) {
+      updateProfile.mutate();
+    }
+  };
+
   const change = useMutation({
     mutationFn: () => apiModel.changePassword(currentPassword, newPassword),
     onSuccess: () => {
@@ -31,12 +68,12 @@ export default function ProfilePage() {
       queryClient.invalidateQueries({ queryKey: ["me"] });
     },
   });
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
     setNotice("");
     if (newPassword === confirmPassword) change.mutate();
   };
-  const user = session.user;
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
@@ -58,14 +95,23 @@ export default function ProfilePage() {
             </Button>
           </section>
         ) : (
-          <div className="grid gap-6 lg:grid-cols-[1fr_1.05fr]">
+          <div className="grid gap-6 lg:grid-cols-[1.08fr_1fr]">
             <section className="rounded-xl border border-border bg-card p-5 sm:p-7">
               <div className="flex items-center gap-4 border-b border-border pb-5">
-                <span className="grid size-14 place-items-center rounded-full bg-primary text-xl font-bold text-primary-foreground">
-                  {(user.fullName || user.email).slice(0, 1).toUpperCase()}
-                </span>
+                {user.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.fullName || user.email}
+                    className="size-14 rounded-full border border-border object-cover"
+                  />
+                ) : (
+                  <span className="grid size-14 place-items-center rounded-full bg-primary text-xl font-bold text-primary-foreground">
+                    {(user.fullName || user.email).slice(0, 1).toUpperCase()}
+                  </span>
+                )}
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-primary">THÀNH VIÊN VJU</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-primary">THÀNH VIÊN VJU (PB-03)</p>
                   <h2 className="mt-1 truncate text-xl font-bold tracking-tight">{user.fullName || user.email}</h2>
                   <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                 </div>
@@ -78,14 +124,60 @@ export default function ProfilePage() {
               <div className="mt-5">
                 <DetailList
                   rows={[
-                    ["Email", <span key="email">{user.email}</span>],
-                    ["Họ và tên", user.fullName || "—"],
+                    ["Email định danh", <span key="email">{user.email}</span>],
                     ["Mã sinh viên", user.studentCode || "—"],
-                    ["Điện thoại", user.phone || "—"],
                     ["Trạng thái", <StatusBadge key="status" status={user.status} />],
                   ]}
                 />
               </div>
+
+              <form onSubmit={submitProfile} className="mt-6 grid gap-4 border-t border-border pt-5">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-primary">CẬP NHẬT HỒ SƠ</p>
+                  <h3 className="mt-0.5 text-base font-bold tracking-tight">Thông tin liên hệ & hiển thị</h3>
+                </div>
+                <FormField label="Họ và tên" required>
+                  <Input
+                    value={fullName}
+                    onChange={(e) => setFullNameDraft(e.target.value)}
+                    placeholder="Nhập họ và tên đầy đủ"
+                  />
+                </FormField>
+                <FormField label="Số điện thoại" hint="Chỉ gồm chữ số, dấu +, dấu gạch ngang hoặc khoảng trắng.">
+                  <Input
+                    value={phone}
+                    onChange={(e) => setPhoneDraft(e.target.value)}
+                    placeholder="0901234567"
+                  />
+                </FormField>
+                <FormField label="URL ảnh đại diện (Avatar)" hint="Đường dẫn ảnh http:// hoặc https:// (tùy chọn).">
+                  <Input
+                    type="url"
+                    value={avatarUrl}
+                    onChange={(e) => setAvatarUrlDraft(e.target.value)}
+                    placeholder="https://example.com/avatar.png"
+                  />
+                </FormField>
+                {profileNotice && (
+                  <p
+                    role="status"
+                    className="rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-green-700 dark:text-green-300"
+                  >
+                    {profileNotice}
+                  </p>
+                )}
+                {updateProfile.error && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {describeError(updateProfile.error)}
+                  </p>
+                )}
+                <div className="flex justify-end">
+                  <Button type="submit" disabled={updateProfile.isPending || !fullName.trim()}>
+                    <Save size={15} />
+                    {updateProfile.isPending ? "Đang lưu…" : "Lưu hồ sơ cá nhân"}
+                  </Button>
+                </div>
+              </form>
             </section>
 
             <section className="rounded-xl border border-border bg-card p-5 sm:p-7">
