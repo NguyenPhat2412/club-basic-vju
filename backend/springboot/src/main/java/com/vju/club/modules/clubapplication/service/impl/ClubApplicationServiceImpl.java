@@ -176,7 +176,7 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
             return synthesizedDefaultForm(club, departments);
         }
         return formRepository.findFirstByClub_IdAndStatusOrderByIsDefaultDescCreatedAtDesc(clubId, "OPEN")
-                .or(() -> formRepository.findFirstByClub_IdOrderByIsDefaultDescCreatedAtDesc(clubId))
+                .or(() -> formRepository.findFirstByClub_IdAndStatusOrderByIsDefaultDescCreatedAtDesc(clubId, "CLOSED"))
                 .map(form -> toFormResponse(form, club, filesForForm(form.getId()), departments))
                 .orElseGet(() -> synthesizedDefaultForm(club, departments));
     }
@@ -322,11 +322,11 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         application.setStatus(ClubApplicationStatus.PENDING);
 
         if (formRepository != null) {
-            ClubApplicationForm form = resolveFormForClub(clubId, request.formId());
+            // A manager entering an application on someone's behalf may use any form at any time.
+            ClubApplicationForm form = createdByManager
+                    ? resolveFormForClub(clubId, request.formId())
+                    : resolveAcceptingForm(clubId, request.formId());
             if (form != null) {
-                if (!createdByManager && "CLOSED".equalsIgnoreCase(form.getStatus())) {
-                    throw conflict("APPLICATION_FORM_CLOSED", "The club application form is currently closed");
-                }
                 application.setForm(form);
                 if (!createdByManager) {
                     validateRequiredCustomFields(form, request.customAnswers());
@@ -702,6 +702,10 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
                 application.getApplicant().getId(), clubId, MembershipStatus.LEFT).isPresent()) {
             throw conflict("DUPLICATE_MEMBERSHIP", "User already has a current membership in this club");
         }
+        if (application.getForm() != null && application.getForm().isRequireAttachment()
+                && fileRepository != null && fileRepository.countByApplication_Id(applicationId) == 0) {
+            throw conflict("APPLICATION_ATTACHMENT_REQUIRED", "This form requires an attachment before the application can be approved");
+        }
 
         User reviewer = findUser(actor.id());
         Membership membership = new Membership();
@@ -793,6 +797,10 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
                     "Form status must be DRAFT, OPEN, or CLOSED");
         }
         form.setStatus(status);
+        if (request.openAt() != null && request.closeAt() != null && !request.closeAt().isAfter(request.openAt())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_FORM_WINDOW",
+                    "The closing time must be after the opening time");
+        }
         form.setOpenAt(request.openAt());
         form.setCloseAt(request.closeAt());
         form.setFieldsConfig(serializeFields(request.fields()));
@@ -820,6 +828,37 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         }
         return formRepository.findFirstByClub_IdAndStatusOrderByIsDefaultDescCreatedAtDesc(clubId, "OPEN")
                 .orElse(null);
+    }
+
+    /**
+     * The form a student applies through: the requested one, else the club's open form. A club that never set up
+     * a form takes applications on the built-in default; one whose forms are all draft or closed takes none.
+     */
+    private ClubApplicationForm resolveAcceptingForm(UUID clubId, UUID requestedFormId) {
+        ClubApplicationForm form;
+        if (requestedFormId != null) {
+            form = formRepository.findByIdAndClub_Id(requestedFormId, clubId)
+                    .orElseThrow(() -> notFound("APPLICATION_FORM_NOT_FOUND", "Application form not found for this club"));
+        } else {
+            form = formRepository.findFirstByClub_IdAndStatusOrderByIsDefaultDescCreatedAtDesc(clubId, "OPEN").orElse(null);
+            if (form == null) {
+                if (formRepository.findFirstByClub_IdOrderByIsDefaultDescCreatedAtDesc(clubId).isEmpty()) {
+                    return null;
+                }
+                throw conflict("APPLICATION_FORM_CLOSED", "The club is not accepting applications");
+            }
+        }
+        if (!"OPEN".equalsIgnoreCase(form.getStatus())) {
+            throw conflict("APPLICATION_FORM_CLOSED", "The club is not accepting applications");
+        }
+        OffsetDateTime now = now();
+        if (form.getOpenAt() != null && now.isBefore(form.getOpenAt())) {
+            throw conflict("APPLICATION_NOT_OPEN_YET", "Applications open at " + form.getOpenAt());
+        }
+        if (form.getCloseAt() != null && !now.isBefore(form.getCloseAt())) {
+            throw conflict("APPLICATION_FORM_CLOSED", "Applications closed at " + form.getCloseAt());
+        }
+        return form;
     }
 
     private void validateRequiredCustomFields(ClubApplicationForm form, Map<String, Object> customAnswers) {

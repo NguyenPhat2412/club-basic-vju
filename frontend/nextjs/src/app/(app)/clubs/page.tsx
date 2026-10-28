@@ -1,8 +1,9 @@
 "use client";
 import { useMemo, useState } from "react";
+import { formatDateTime } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Compass, FileText, Mail, Paperclip, Send, Sparkles, Trash2, Upload } from "lucide-react";
+import { Building2, Compass, FileText, Mail, Paperclip, Send, Trash2, Upload } from "lucide-react";
 import { apiModel, Club } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { ApplicationFilesList, CustomFieldsInputs, formatBytes } from "@/components/shared/ApplicationFileView";
@@ -52,6 +53,7 @@ export default function ClubsPage() {
   const [customAnswers, setCustomAnswers] = useState<Record<string, unknown>>({});
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [notice, setNotice] = useState("");
+  const [now] = useState(() => Date.now());
 
   const canViewPrivateClubs = !!session.user && session.can("club.view");
   const clubs = useQuery({
@@ -146,7 +148,8 @@ export default function ClubsPage() {
 
   const formInfo = activeForm.data;
   const departments = formInfo?.departments ?? [];
-  const formClosed = formInfo?.status === "CLOSED";
+  const opensAt = formInfo?.openAt && new Date(formInfo.openAt).getTime() > now ? formInfo.openAt : undefined;
+  const formClosed = !!formInfo && (formInfo.status !== "OPEN" || (!!formInfo.closeAt && new Date(formInfo.closeAt).getTime() <= now));
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
@@ -161,28 +164,7 @@ export default function ClubsPage() {
         onRefresh={() => clubs.refetch()}
       />
       <div className="mx-auto w-full max-w-7xl space-y-5 px-4 py-5 sm:px-6">
-        {/* Khối giới thiệu sáng sủa, đồng bộ Light Theme */}
-        <section className="flex flex-col justify-between gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-2xs sm:flex-row sm:items-center">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/8 px-2.5 py-0.5 text-[11px] font-bold text-primary">
-              <Sparkles size={12} /> Mạng lưới Câu lạc bộ Sinh viên VJU
-            </div>
-            <h2 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
-              Tìm hiểu hoạt động và đăng ký gia nhập các câu lạc bộ trực thuộc Trường
-            </h2>
-            <p className="text-xs text-slate-500">
-              Tra cứu thông tin giới thiệu, lĩnh vực hoạt động, biểu mẫu tuyển thành viên và nộp hồ sơ trực tuyến.
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-3">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-right">
-              <p className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-500">Đang hiển thị</p>
-              <p className="mt-0.5 text-xl font-extrabold text-primary">
-                {filteredItems.length} <span className="text-xs font-medium text-slate-500">/ {clubs.data?.total ?? filteredItems.length} CLB</span>
-              </p>
-            </div>
-          </div>
-        </section>
+        <p className="text-sm text-slate-600">Chọn câu lạc bộ phù hợp và nộp đơn trực tuyến.</p>
 
         {notice && (
           <div className="rounded-lg border border-primary/20 bg-primary/8 px-4 py-3 text-xs font-medium text-primary">
@@ -321,9 +303,11 @@ export default function ClubsPage() {
                 </div>
               ) : selected.status !== "ACTIVE" ? (
                 <p className="text-sm text-muted-foreground">CLB hiện đang tạm ngừng nhận thành viên.</p>
-              ) : formClosed ? (
+              ) : formClosed || opensAt ? (
                 <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-                  Đợt nhận đơn đăng ký của CLB hiện đang đóng. Vui lòng quay lại vào đợt tuyển tiếp theo.
+                  {opensAt && !formClosed
+                    ? `CLB bắt đầu nhận đơn từ ${formatDateTime(opensAt)}.`
+                    : "Đợt nhận đơn đăng ký của CLB hiện đang đóng. Vui lòng quay lại vào đợt tuyển tiếp theo."}
                 </p>
               ) : (
                 <div className="grid gap-4">

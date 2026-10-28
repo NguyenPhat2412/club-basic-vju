@@ -292,4 +292,40 @@ class ClubApplicationApiTest extends ApiIntegrationTest {
         assertThat(count("SELECT count(*) FROM department_members WHERE department_id = ? AND club_id = ?", depA2, clubA))
                 .isEqualTo(1);
     }
+
+    @Test
+    void studentsApplyOnlyThroughAFormThatIsOpenNow() throws Exception {
+        String forms = "/api/v1/clubs/" + clubA + "/application-forms";
+        java.time.OffsetDateTime now = java.time.OffsetDateTime.now();
+
+        // A club that never set up a form takes applications on the built-in default.
+        JsonNode first = call(post(applications(clubB)), memberToken, Map.of("message", "hi"), 201);
+        call(patch("/api/v1/users/me/applications/" + id(first) + "/cancel"), memberToken, null, 200);
+
+        problem(post(forms), adminToken, Map.of("title", "Sai khung giờ", "openAt", now.plusDays(2).toString(),
+                "closeAt", now.plusDays(1).toString()), 400, "INVALID_FORM_WINDOW");
+
+        // Draft only: closed to students, hidden from the public form endpoint, open to a manager entering on their behalf.
+        UUID draft = id(call(post(forms), adminToken, Map.of("title", "Nháp", "status", "DRAFT"), 201));
+        problem(post(applications(clubA)), memberToken, Map.of("message", "hi"), 409, "APPLICATION_FORM_CLOSED");
+        problem(post(applications(clubA)), memberToken, Map.of("message", "hi", "formId", draft), 409, "APPLICATION_FORM_CLOSED");
+        assertThat(call(get("/api/v1/clubs/" + clubA + "/application-form"), memberToken, null, 200).path("id").asText())
+                .isNotEqualTo(draft.toString());
+        JsonNode entered = call(post(applications(clubA)), adminToken, Map.of("message", "hộ", "applicantId", member), 201);
+        call(post(applications(clubA) + "/" + id(entered) + "/reject"), adminToken, Map.of("reviewNote", "x"), 200);
+
+        UUID form = id(call(post(forms), adminToken, Map.of("title", "Đợt 1", "status", "OPEN",
+                "openAt", now.plusDays(1).toString(), "requireAttachment", true), 201));
+        problem(post(applications(clubA)), memberToken, Map.of("message", "hi"), 409, "APPLICATION_NOT_OPEN_YET");
+
+        call(put(forms + "/" + form), adminToken, Map.of("title", "Đợt 1", "status", "OPEN",
+                "openAt", now.minusDays(2).toString(), "closeAt", now.minusDays(1).toString()), 200);
+        problem(post(applications(clubA)), memberToken, Map.of("message", "hi"), 409, "APPLICATION_FORM_CLOSED");
+
+        call(put(forms + "/" + form), adminToken, Map.of("title", "Đợt 1", "status", "OPEN", "requireAttachment", true,
+                "openAt", now.minusDays(1).toString(), "closeAt", now.plusDays(1).toString()), 200);
+        JsonNode app = call(post(applications(clubA)), memberToken, Map.of("message", "hi"), 201);
+        problem(post(applications(clubA) + "/" + id(app) + "/approve"), adminToken, Map.of(), 409,
+                "APPLICATION_ATTACHMENT_REQUIRED");
+    }
 }

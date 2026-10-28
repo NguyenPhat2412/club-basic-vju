@@ -27,6 +27,14 @@ const EMPTY_FORM_DRAFT: UpsertApplicationFormInput = {
   isDefault: true,
 };
 
+// <input type="datetime-local"> works in local time without a zone; the API takes ISO instants.
+function toLocalInput(iso?: string) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+const fromLocalInput = (value: string) => (value ? new Date(value).toISOString() : undefined);
+
 export function FormsTab({
   clubId,
   clubName,
@@ -137,6 +145,8 @@ export function FormsTab({
       title: form.title,
       description: form.description || "",
       status: form.status,
+      openAt: form.openAt,
+      closeAt: form.closeAt,
       fields: form.fields ? form.fields.map((f) => ({ ...f, options: [...(f.options ?? [])] })) : [],
       allowAttachments: form.allowAttachments,
       requireAttachment: form.requireAttachment,
@@ -338,6 +348,15 @@ export function FormsTab({
                 <option value="CLOSED">CLOSED (Đã đóng đơn)</option>
                 <option value="DRAFT">DRAFT (Bản nháp)</option>
               </Select>
+            </FormField>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FormField label="Mở nhận đơn từ" hint="Để trống: nhận ngay khi trạng thái là OPEN">
+              <Input type="datetime-local" value={toLocalInput(formDraft.openAt)} onChange={(e) => setFormDraft({ ...formDraft, openAt: fromLocalInput(e.target.value) })} />
+            </FormField>
+            <FormField label="Đóng nhận đơn lúc" hint="Để trống: nhận đến khi chuyển sang CLOSED">
+              <Input type="datetime-local" value={toLocalInput(formDraft.closeAt)} onChange={(e) => setFormDraft({ ...formDraft, closeAt: fromLocalInput(e.target.value) })} />
             </FormField>
           </div>
 

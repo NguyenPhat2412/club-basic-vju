@@ -2496,6 +2496,10 @@ paths:
       description: Applicant ACTIVE gửi đơn cho CLB ACTIVE bằng ownership. Trạng thái và
         các trường xét duyệt do backend quản lý. Trả 409 APPLICATION_ALREADY_PENDING
         hoặc ALREADY_CLUB_MEMBER khi đã có đơn PENDING hoặc membership chưa kết thúc.
+        Sinh viên chỉ nộp qua form OPEN trong khung openAt–closeAt: trước openAt trả 409
+        APPLICATION_NOT_OPEN_YET; form DRAFT/CLOSED, sau closeAt, hoặc CLB có form nhưng không
+        form nào OPEN trả 409 APPLICATION_FORM_CLOSED. CLB chưa từng tạo form nhận đơn theo form
+        mặc định. Người quản lý nhập đơn hộ (applicantId) không bị giới hạn khung thời gian.
       tags: [ClubApplication]
       x-permission: null
       x-implementation-status: IMPLEMENTED
@@ -2552,7 +2556,7 @@ paths:
     post:
       operationId: clubApplication.approve
       summary: Approve a club application and create membership
-      description: 'Yêu cầu application.approve hoặc application.review tại CLUB trên URL. Chỉ xử lý PENDING; tạo Membership ACTIVE và chuyển đơn APPROVED trong cùng transaction. Trả 409 APPLICATION_ALREADY_REVIEWED hoặc DUPLICATE_MEMBERSHIP; lỗi tạo membership rollback toàn bộ thao tác. Response gồm membershipId, membershipStatus và membershipJoinedAt. Tạo membership và cấp các vai trò có granted_on_join (CLUB_MEMBER) trong CLB. 409 CLUB_INACTIVE nếu CLB tạm dừng, 409 USER_INACTIVE nếu tài khoản người nộp bị khoá.'
+      description: 'Yêu cầu application.approve hoặc application.review tại CLUB trên URL. Chỉ xử lý PENDING; tạo Membership ACTIVE và chuyển đơn APPROVED trong cùng transaction. Trả 409 APPLICATION_ALREADY_REVIEWED hoặc DUPLICATE_MEMBERSHIP; lỗi tạo membership rollback toàn bộ thao tác. Response gồm membershipId, membershipStatus và membershipJoinedAt. Tạo membership và cấp các vai trò có granted_on_join (CLUB_MEMBER) trong CLB. 409 CLUB_INACTIVE nếu CLB tạm dừng, 409 USER_INACTIVE nếu tài khoản người nộp bị khoá, 409 APPLICATION_ATTACHMENT_REQUIRED nếu form bắt buộc đính kèm mà đơn chưa có file.'
       tags: [ClubApplication]
       x-permission: application.approve | application.review
       x-scope: CLUB
