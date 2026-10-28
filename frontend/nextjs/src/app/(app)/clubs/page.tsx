@@ -1,9 +1,8 @@
 "use client";
-import Image from "next/image";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Compass, FileText, Mail, Paperclip, Search, Send, Sparkles, Trash2, Upload } from "lucide-react";
+import { Building2, Compass, FileText, Mail, Paperclip, Send, Sparkles, Trash2, Upload } from "lucide-react";
 import { apiModel, Club } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { ApplicationFilesList, CustomFieldsInputs, formatBytes } from "@/components/shared/ApplicationFileView";
@@ -157,121 +156,141 @@ export default function ClubsPage() {
           { label: "Cổng cá nhân" },
           { label: "Khám phá câu lạc bộ" },
         ]}
-        titleBadge={<CountBadge>{clubs.data?.total ?? filteredItems.length}</CountBadge>}
+        titleBadge={<CountBadge>{clubs.data?.total ?? filteredItems.length} CLB</CountBadge>}
         search={{ value: search, onChange: setSearch, placeholder: "Tìm tên, mã CLB, lĩnh vực…" }}
         onRefresh={() => clubs.refetch()}
       />
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <section className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
-          <div className="bg-[linear-gradient(135deg,rgba(142,31,50,0.96),rgba(111,25,43,0.95))] p-6 text-white sm:p-8">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-2xl">
-                <div className="inline-flex items-center gap-2.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-white/95">
-                  <Image src="/images/vju-logo.png" alt="Logo VJU" width={22} height={22} className="size-5.5 rounded-full bg-white p-0.5 object-contain" />
-                  <Sparkles size={12} /> Cổng thông tin CLB · ĐH Việt Nhật
-                </div>
-                <h2 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">Một nơi để tìm và hiểu từng câu lạc bộ rõ ràng hơn.</h2>
-              </div>
-              <div className="rounded-sm border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm">
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/70">Tổng số</p>
-                <p className="mt-1 text-2xl font-black">{clubs.data?.total ?? filteredItems.length}</p>
-              </div>
+      <div className="mx-auto w-full max-w-7xl space-y-5 px-4 py-5 sm:px-6">
+        {/* Khối giới thiệu sáng sủa, đồng bộ Light Theme */}
+        <section className="flex flex-col justify-between gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-2xs sm:flex-row sm:items-center">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/8 px-2.5 py-0.5 text-[11px] font-bold text-primary">
+              <Sparkles size={12} /> Mạng lưới Câu lạc bộ Sinh viên VJU
             </div>
+            <h2 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
+              Tìm hiểu hoạt động và đăng ký gia nhập các câu lạc bộ trực thuộc Trường
+            </h2>
+            <p className="text-xs text-slate-500">
+              Tra cứu thông tin giới thiệu, lĩnh vực hoạt động, biểu mẫu tuyển thành viên và nộp hồ sơ trực tuyến.
+            </p>
           </div>
-
-          <div className="p-5 sm:p-6">
-            <div className="flex flex-col gap-4 border-b border-border/60 pb-4 lg:flex-row lg:items-center lg:justify-between dark:border-white/10">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Tìm nhanh</p>
-                <p className="mt-2 text-sm text-muted-foreground">Tìm theo tên, mã CLB, lĩnh vực hoặc thông tin liên hệ.</p>
-              </div>
-              <div className="w-full max-w-xl">
-                <div className="relative">
-                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm CLB..." className="h-11 rounded-full pl-9" />
-                </div>
-              </div>
+          <div className="flex shrink-0 items-center gap-3">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-right">
+              <p className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-500">Đang hiển thị</p>
+              <p className="mt-0.5 text-xl font-extrabold text-primary">
+                {filteredItems.length} <span className="text-xs font-medium text-slate-500">/ {clubs.data?.total ?? filteredItems.length} CLB</span>
+              </p>
             </div>
-
-            {notice && (
-              <div className="mt-4 rounded-sm border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
-                {notice}
-              </div>
-            )}
-
-            {!session.user && <div className="mt-5 border border-[#e7d8b8] bg-[#fbf6ec] px-4 py-3 text-xs leading-5 text-[#695a46]">Bạn đang xem danh sách câu lạc bộ công khai. Đăng nhập để gửi đơn gia nhập CLB.</div>}
-
-            {clubs.isPending ? (
-              <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-52 animate-pulse rounded-sm border border-border bg-background dark:border-white/10 dark:bg-white/5" />
-                ))}
-              </div>
-            ) : clubs.isError ? (
-              <div className="mt-6 rounded-sm border border-destructive/20 bg-destructive/5 p-6 text-sm text-destructive">
-                {describeError(clubs.error)}
-              </div>
-            ) : filteredItems.length === 0 ? (
-              <div className="mt-6 rounded-sm border border-dashed border-border bg-background p-10 text-center text-sm text-muted-foreground dark:border-white/10 dark:bg-white/5">
-                Không tìm thấy CLB phù hợp với từ khoá hiện tại.
-              </div>
-            ) : (
-              <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {filteredItems.map((club) => (
-                  <article key={club.id} className="group rounded-sm border border-border bg-background p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/10 dark:border-white/10 dark:bg-white/5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <span className="flex size-11 items-center justify-center rounded-sm bg-primary/10 text-lg font-black text-primary">{club.name.slice(0, 1)}</span>
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">{club.code}</p>
-                          <h3 className="mt-1 text-lg font-black tracking-tight">{club.name}</h3>
-                        </div>
-                      </div>
-                      <StatusBadge status={club.status} />
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {club.activityField && <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">{club.activityField}</span>}
-                      {club.contactEmail && <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Liên hệ</span>}
-                    </div>
-
-                    <p className="mt-4 line-clamp-3 text-sm leading-7 text-muted-foreground">
-                      {club.description || "CLB đang cập nhật mô tả hoạt động."}
-                    </p>
-
-                    <div className="mt-5 space-y-2 border-t border-border pt-4 text-sm text-muted-foreground dark:border-white/10">
-                      <div className="flex items-center gap-2">
-                        <Building2 size={14} className="text-primary" />
-                        <span>{club.activityField || "Lĩnh vực chung"}</span>
-                      </div>
-                      {club.contactEmail && (
-                        <div className="flex items-center gap-2">
-                          <Mail size={14} className="text-primary" />
-                          <span className="truncate">{club.contactEmail}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-5 flex gap-2">
-                      <Button variant="outline" className="flex-1 rounded-full" onClick={() => open(club)}>Chi tiết</Button>
-                      <Button className="flex-1 rounded-full" onClick={() => session.user ? open(club) : router.push("/login")} disabled={club.status !== "ACTIVE"}>{session.user ? "Làm đơn đăng ký" : "Đăng nhập"}</Button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-
-            {clubs.data && (
-              <div className="mt-6 flex items-center justify-between gap-3 rounded-[1.5rem] border border-border bg-background p-3 text-sm text-muted-foreground dark:border-white/10 dark:bg-white/5">
-                <span>Hiển thị {Math.min(filteredItems.length, clubs.data.total)} / {clubs.data.total} CLB</span>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="rounded-full" onClick={() => setOffset((prev) => Math.max(0, prev - LIMIT))} disabled={offset === 0}>Trước</Button>
-                  <Button size="sm" className="rounded-full" onClick={() => setOffset((prev) => prev + LIMIT)} disabled={offset + LIMIT >= clubs.data.total}>Sau</Button>
-                </div>
-              </div>
-            )}
           </div>
         </section>
+
+        {notice && (
+          <div className="rounded-lg border border-primary/20 bg-primary/8 px-4 py-3 text-xs font-medium text-primary">
+            {notice}
+          </div>
+        )}
+
+        {!session.user && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+            Bạn đang xem danh sách câu lạc bộ công khai. Vui lòng đăng nhập để gửi đơn gia nhập CLB.
+          </div>
+        )}
+
+        {clubs.isPending ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-52 animate-pulse rounded-xl border border-slate-200 bg-white" />
+            ))}
+          </div>
+        ) : clubs.isError ? (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+            {describeError(clubs.error)}
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-200 bg-white p-10 text-center text-sm text-slate-500">
+            Không tìm thấy câu lạc bộ phù hợp với từ khoá hiện tại.
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {filteredItems.map((club) => (
+              <article
+                key={club.id}
+                className="group flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-2xs transition-all hover:border-primary/35 hover:shadow-md"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-base font-extrabold text-primary">
+                        {club.name.slice(0, 1)}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">{club.code}</p>
+                        <h3 className="mt-0.5 truncate text-base font-bold tracking-tight text-slate-900">{club.name}</h3>
+                      </div>
+                    </div>
+                    <StatusBadge status={club.status} />
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {club.activityField && (
+                      <Badge tone="primary" dot={false}>{club.activityField}</Badge>
+                    )}
+                    {club.contactEmail && (
+                      <Badge tone="neutral" dot={false}>Có email liên hệ</Badge>
+                    )}
+                  </div>
+
+                  <p className="mt-3 line-clamp-3 text-xs leading-5 text-slate-600">
+                    {club.description || "CLB đang cập nhật mô tả hoạt động."}
+                  </p>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-100">
+                  <div className="space-y-1.5 text-xs text-slate-500">
+                    <div className="flex items-center gap-2">
+                      <Building2 size={13} className="shrink-0 text-primary" />
+                      <span className="truncate">{club.activityField || "Lĩnh vực chung"}</span>
+                    </div>
+                    {club.contactEmail && (
+                      <div className="flex items-center gap-2">
+                        <Mail size={13} className="shrink-0 text-primary" />
+                        <span className="truncate">{club.contactEmail}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => open(club)}>
+                      Xem chi tiết
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => (session.user ? open(club) : router.push("/login"))}
+                      disabled={club.status !== "ACTIVE"}
+                    >
+                      {session.user ? "Đăng ký gia nhập" : "Đăng nhập"}
+                    </Button>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+
+        {clubs.data && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 shadow-2xs">
+            <span>Hiển thị {Math.min(filteredItems.length, clubs.data.total)} / {clubs.data.total} CLB</span>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setOffset((prev) => Math.max(0, prev - LIMIT))} disabled={offset === 0}>
+                Trước
+              </Button>
+              <Button size="sm" onClick={() => setOffset((prev) => prev + LIMIT)} disabled={offset + LIMIT >= clubs.data.total}>
+                Sau
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <EntityDrawer open={!!selected} onClose={() => setSelected(null)} title={selected?.name ?? ""} subtitle={selected?.code} icon={<Compass />}>

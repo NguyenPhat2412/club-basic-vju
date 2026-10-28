@@ -11,25 +11,17 @@ import {
   Building2,
   Calendar,
   CheckCheck,
-  CheckCircle2,
   ClipboardCheck,
   ClipboardList,
   Clock,
-  Compass,
-  FilePlus2,
-  FolderKanban,
-  Layers,
   MapPin,
   ScrollText,
-  ShieldCheck,
-  Sparkles,
   Users,
   UsersRound,
 } from "lucide-react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiModel, ApplicationSummary } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
-import { CLUB_WORKSPACE_KEYS } from "@/hooks/useSession";
 import { FirstLoginPassword } from "@/components/layout/FirstLoginPassword";
 import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
 import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
@@ -49,10 +41,8 @@ export default function DashboardPage() {
   const [activeFeedTab, setActiveFeedTab] = useState<"applications" | "tasks" | "clubs">("applications");
 
   const canQuery = !!session.user && !session.mustChangePassword;
-  const canManage = CLUB_WORKSPACE_KEYS.some(session.can) || session.can("club.create");
   const canReviewApps = APPLICATION_PERMISSIONS.some(session.can);
   const canAdminUsers = session.can("user.view");
-  const canAdminRoles = session.can("role.view");
   const canAudit = session.can("audit.view");
 
   // Queries - Personal & Public
@@ -239,7 +229,7 @@ export default function DashboardPage() {
       sub: `${sortedCategories.length} lĩnh vực hoạt động`,
       icon: Building2,
       href: "/clubs",
-      accent: "text-primary bg-primary/10 border-primary/20",
+      accent: "text-primary bg-primary/8 border-primary/20",
     },
     {
       label: "CLB đang tham gia",
@@ -247,7 +237,7 @@ export default function DashboardPage() {
       sub: myClubList.length ? `${myClubList.reduce((n, m) => n + (m.departments?.length || 0), 0)} ban chuyên môn` : "Khám phá & gia nhập ngay",
       icon: UsersRound,
       href: "/memberships",
-      accent: "text-emerald-600 bg-emerald-500/10 border-emerald-500/20 dark:text-emerald-400",
+      accent: "text-slate-700 bg-slate-100 border-slate-200",
     },
     {
       label: canReviewApps ? "Đơn chờ xét duyệt" : "Đơn ứng tuyển chờ duyệt",
@@ -255,7 +245,7 @@ export default function DashboardPage() {
       sub: `${approvedAppsCount} đã duyệt · ${relevantApps.length} tổng đơn`,
       icon: ClipboardList,
       href: canReviewApps ? "/management?tab=applications" : "/applications",
-      accent: "text-amber-600 bg-amber-500/10 border-amber-500/20 dark:text-amber-400",
+      accent: "text-primary bg-primary/8 border-primary/20",
     },
     {
       label: "Công việc của tôi",
@@ -263,7 +253,7 @@ export default function DashboardPage() {
       sub: `${completedTasksCount} hoàn thành · TB ${avgTaskProgress}%`,
       icon: ClipboardCheck,
       href: "/schedule",
-      accent: "text-blue-600 bg-blue-500/10 border-blue-500/20 dark:text-blue-400",
+      accent: "text-slate-700 bg-slate-100 border-slate-200",
     },
     {
       label: "Lịch & Sự kiện",
@@ -271,7 +261,7 @@ export default function DashboardPage() {
       sub: `${upcomingPublicEvents.length} sự kiện toàn trường`,
       icon: Calendar,
       href: "/schedule",
-      accent: "text-purple-600 bg-purple-500/10 border-purple-500/20 dark:text-purple-400",
+      accent: "text-primary bg-primary/8 border-primary/20",
     },
     {
       label: canAdminUsers ? "Tài khoản hệ thống" : "Thông báo chưa đọc",
@@ -285,7 +275,7 @@ export default function DashboardPage() {
       sub: canAdminUsers ? `${unreadNotifCount} thông báo chưa đọc` : `${notifList.length} thông báo gần đây`,
       icon: canAdminUsers ? Users : Bell,
       href: canAdminUsers ? "/users" : "/notifications",
-      accent: "text-rose-600 bg-rose-500/10 border-rose-500/20 dark:text-rose-400",
+      accent: "text-slate-700 bg-slate-100 border-slate-200",
     },
   ];
 
@@ -294,37 +284,19 @@ export default function DashboardPage() {
       <BreadcrumbToolbar
         crumbs={[{ label: "Trang chủ", href: "/clubs" }, { label: "Tổng quan hệ thống" }]}
         titleBadge={<CountBadge>Trực tiếp</CountBadge>}
-        extraActions={
-          <div className="flex items-center gap-1.5">
-            <Link
-              href="/clubs"
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-semibold text-foreground hover:bg-muted"
-            >
-              <Compass size={13} className="text-primary" /> Khám phá CLB
-            </Link>
-            {canManage && (
-              <Link
-                href="/management?tab=applications"
-                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-2.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
-              >
-                <FolderKanban size={13} /> Quản lý CLB
-              </Link>
-            )}
-          </div>
-        }
         onRefresh={refreshAll}
       />
 
       <div className="mx-auto w-full max-w-[1440px] space-y-5 px-4 py-5 sm:px-6">
         {/* 1. Banner chào mừng & thông tin phiên làm việc */}
-        <section className="flex flex-col justify-between gap-4 rounded-xl border border-border bg-card p-4 shadow-2xs sm:flex-row sm:items-center sm:p-5">
+        <section className="flex flex-col justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-2xs sm:flex-row sm:items-center sm:p-5">
           <div className="flex items-center gap-3.5">
             <Image
               src="/images/vju-logo.png"
               alt="Logo VJU"
               width={48}
               height={48}
-              className="size-12 shrink-0 rounded-full bg-white p-0.5 object-contain ring-1 ring-border"
+              className="size-12 shrink-0 rounded-full bg-white p-0.5 object-contain ring-1 ring-slate-200"
             />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
@@ -334,36 +306,20 @@ export default function DashboardPage() {
                 <StatusBadge status={session.user.status || "ACTIVE"} />
                 {session.user.studentCode && <Badge tone="primary">{session.user.studentCode}</Badge>}
               </div>
-              <h1 className="mt-1 truncate text-lg font-bold tracking-tight text-foreground sm:text-xl">
+              <h1 className="mt-1 truncate text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
                 Xin chào, {session.user.fullName || session.user.email}
               </h1>
-              <p className="mt-0.5 text-xs text-muted-foreground">
+              <p className="mt-0.5 text-xs text-slate-500">
                 Theo dõi số liệu câu lạc bộ, tiến độ công việc, đơn ứng tuyển và các hoạt động mới nhất trong thời gian thực.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {canManage && (
-              <Link
-                href="/management?tab=forms"
-                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-3 text-xs font-semibold text-primary hover:bg-primary/10"
-              >
-                <FilePlus2 size={14} /> Biểu mẫu tuyển thành viên
-              </Link>
-            )}
-            <Link
-              href="/applications"
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-3 text-xs font-semibold text-foreground hover:bg-muted"
-            >
-              <ClipboardList size={14} className="text-primary" /> Đơn của tôi
-            </Link>
-            <Link
-              href="/schedule"
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-3 text-xs font-semibold text-foreground hover:bg-muted"
-            >
-              <Calendar size={14} className="text-primary" /> Lịch & Việc
-            </Link>
+          <div className="flex shrink-0 items-center gap-3">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-right">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">CLB đang quản lý</p>
+              <p className="mt-0.5 text-base font-extrabold text-primary">{visibleManagedClubs.length} CLB</p>
+            </div>
           </div>
         </section>
 
@@ -922,191 +878,61 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* 5. Khu vực Quản trị Hệ thống & Nhật ký Audit (hiển thị khi có quyền quản lý/admin) */}
-        {(canManage || canAdminUsers || canAdminRoles || canAudit) && (
-          <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-            {/* Lối tắt Quản trị nhanh */}
-            <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
-              <div className="flex items-center gap-2 border-b border-border pb-3">
+        {/* 5. Nhật ký hệ thống gần đây (hiển thị khi có quyền audit) */}
+        {canAudit && (
+          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs sm:p-5">
+            <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
                 <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
-                  <Layers size={15} />
+                  <ScrollText size={15} />
                 </span>
                 <div>
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                    Phân hệ Quản trị & Điều hành CLB
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                    Nhật ký hệ thống gần đây (Audit Logs)
                   </h2>
-                  <p className="text-[11px] text-muted-foreground">
-                    Truy cập nhanh các công cụ theo quyền hạn của tài khoản
+                  <p className="text-[11px] text-slate-500">
+                    Giám sát các thao tác quan trọng theo thời gian thực
                   </p>
                 </div>
               </div>
-
-              <div className="mt-3.5 grid gap-2.5 sm:grid-cols-2">
-                {canManage && (
-                  <>
-                    <QuickCard
-                      href="/management?tab=applications"
-                      icon={<CheckCircle2 size={15} />}
-                      title="Duyệt đơn ứng tuyển (CRUD)"
-                      subtitle="Tiếp nhận, phỏng vấn & phân ban tự động"
-                    />
-                    <QuickCard
-                      href="/management?tab=forms"
-                      icon={<FilePlus2 size={15} />}
-                      title="Biểu mẫu đơn đăng ký"
-                      subtitle="Tạo câu hỏi động, tải mẫu Word/PDF & Poster"
-                    />
-                    <QuickCard
-                      href="/management?tab=members"
-                      icon={<UsersRound size={15} />}
-                      title="Thành viên & Phòng ban"
-                      subtitle="Quản lý nhân sự và cơ cấu tổ chức CLB"
-                    />
-                    <QuickCard
-                      href="/management?tab=chat"
-                      icon={<Sparkles size={15} />}
-                      title="Kênh trao đổi & Trợ lý AI"
-                      subtitle="Thảo luận nội bộ và tóm tắt bằng AI"
-                    />
-                  </>
-                )}
-                {(canAdminUsers || canAdminRoles) && (
-                  <>
-                    <QuickCard
-                      href="/users"
-                      icon={<Users size={15} />}
-                      title="Quản lý Hồ sơ Tài khoản"
-                      subtitle="Tạo mới, phân quyền, khoá hoặc xoá tài khoản"
-                    />
-                    <QuickCard
-                      href="/roles"
-                      icon={<ShieldCheck size={15} />}
-                      title="Chức vụ & Phân quyền RBAC"
-                      subtitle="Cấu hình ma trận quyền hạn toàn hệ thống"
-                    />
-                  </>
-                )}
-              </div>
+              <Link href="/audit-logs" className="text-[11px] font-semibold text-primary hover:underline">
+                Xem tất cả
+              </Link>
             </div>
 
-            {/* Nhật ký hệ thống gần đây */}
-            {canAudit ? (
-              <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
-                <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
-                      <ScrollText size={15} />
-                    </span>
-                    <div>
-                      <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                        Nhật ký hệ thống gần đây (Audit Logs)
-                      </h2>
-                      <p className="text-[11px] text-muted-foreground">
-                        Giám sát các thao tác quan trọng theo thời gian thực
-                      </p>
-                    </div>
-                  </div>
-                  <Link href="/audit-logs" className="text-[11px] font-semibold text-primary hover:underline">
-                    Xem tất cả
-                  </Link>
-                </div>
-
-                {auditLogs.isPending ? (
-                  <div className="mt-3 space-y-2">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-10 animate-pulse rounded-lg bg-muted" />
-                    ))}
-                  </div>
-                ) : !auditLogs.data?.items.length ? (
-                  <p className="py-6 text-center text-xs text-muted-foreground">Chưa có bản ghi nhật ký nào.</p>
-                ) : (
-                  <div className="mt-3 divide-y divide-border">
-                    {auditLogs.data.items.slice(0, 5).map((log) => (
-                      <div key={log.id} className="flex items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <Badge tone="primary">{log.action}</Badge>
-                            <span className="truncate text-xs font-semibold text-foreground">
-                              {log.resourceType}
-                            </span>
-                          </div>
-                          <p className="mt-0.5 truncate text-[10.5px] text-muted-foreground">
-                            ID: {log.resourceId}
-                          </p>
-                        </div>
-                        <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
-                          {formatDateTime(log.createdAt)}
+            {auditLogs.isPending ? (
+              <div className="mt-3 space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100" />
+                ))}
+              </div>
+            ) : !auditLogs.data?.items.length ? (
+              <p className="py-6 text-center text-xs text-slate-500">Chưa có bản ghi nhật ký nào.</p>
+            ) : (
+              <div className="mt-3 divide-y divide-slate-100">
+                {auditLogs.data.items.slice(0, 5).map((log) => (
+                  <div key={log.id} className="flex items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <Badge tone="primary">{log.action}</Badge>
+                        <span className="truncate text-xs font-semibold text-slate-900">
+                          {log.resourceType}
                         </span>
                       </div>
-                    ))}
+                      <p className="mt-0.5 truncate text-[10.5px] text-slate-500">
+                        ID: {log.resourceId}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-[11px] text-slate-500 tabular-nums">
+                      {formatDateTime(log.createdAt)}
+                    </span>
                   </div>
-                )}
-              </div>
-            ) : (
-              <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
-                <div className="flex items-center gap-2 border-b border-border pb-3">
-                  <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
-                    <Compass size={15} />
-                  </span>
-                  <div>
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                      Tiện ích Cá nhân & Tài liệu CLB
-                    </h2>
-                    <p className="text-[11px] text-muted-foreground">
-                      Truy cập nhanh hồ sơ, quy chế và thông báo
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-3.5 grid gap-2.5 sm:grid-cols-2">
-                  <QuickCard
-                    href="/documents"
-                    icon={<ScrollText size={15} />}
-                    title="Quy chế & Nội quy CLB"
-                    subtitle="Tra cứu văn bản, biểu mẫu và tài liệu lưu trữ"
-                  />
-                  <QuickCard
-                    href="/profile"
-                    icon={<Users size={15} />}
-                    title="Hồ sơ & Bảo mật cá nhân"
-                    subtitle="Cập nhật thông tin sinh viên và đổi mật khẩu"
-                  />
-                </div>
+                ))}
               </div>
             )}
           </section>
         )}
       </div>
     </div>
-  );
-}
-
-function QuickCard({
-  href,
-  icon,
-  title,
-  subtitle,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="group flex items-start gap-2.5 rounded-xl border border-border bg-background/60 p-3 transition-all hover:border-primary/40 hover:bg-card hover:shadow-2xs"
-    >
-      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-        {icon}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-xs font-bold text-foreground group-hover:text-primary">{title}</p>
-        <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">{subtitle}</p>
-      </div>
-      <ArrowRight
-        size={13}
-        className="mt-1 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
-      />
-    </Link>
   );
 }

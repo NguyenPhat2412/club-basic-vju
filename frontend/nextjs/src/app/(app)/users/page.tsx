@@ -418,40 +418,40 @@ export default function UsersPage() {
 
       {/* Thanh chỉ số tổng quan cân đối */}
       <div className="grid shrink-0 grid-cols-2 gap-3 px-4 pt-4 sm:px-6 lg:grid-cols-4">
-        <div className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 shadow-2xs">
+        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-2xs">
           <div>
-            <p className="text-[11px] font-semibold text-muted-foreground">Tổng số tài khoản</p>
-            <p className="mt-1 font-mono text-xl font-extrabold text-foreground">{users.data?.total ?? 0}</p>
+            <p className="text-[11px] font-semibold text-slate-500">Tổng số tài khoản</p>
+            <p className="mt-1 font-mono text-xl font-extrabold text-slate-900">{users.data?.total ?? 0}</p>
           </div>
           <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Users size={17} />
           </span>
         </div>
-        <div className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 shadow-2xs">
+        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-2xs">
           <div>
-            <p className="text-[11px] font-semibold text-muted-foreground">Đang hoạt động (trang này)</p>
-            <p className="mt-1 font-mono text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
+            <p className="text-[11px] font-semibold text-slate-500">Đang hoạt động (trang này)</p>
+            <p className="mt-1 font-mono text-xl font-extrabold text-slate-900">
               {activeCount}
             </p>
           </div>
-          <span className="flex size-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+          <span className="flex size-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
             <CheckCircle2 size={17} />
           </span>
         </div>
-        <div className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 shadow-2xs">
+        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-2xs">
           <div>
-            <p className="text-[11px] font-semibold text-muted-foreground">Tạm khoá / Ngừng HĐ</p>
-            <p className="mt-1 font-mono text-xl font-extrabold text-amber-600 dark:text-amber-400">
+            <p className="text-[11px] font-semibold text-slate-500">Tạm khoá / Ngừng HĐ</p>
+            <p className="mt-1 font-mono text-xl font-extrabold text-slate-900">
               {lockedCount}
             </p>
           </div>
-          <span className="flex size-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+          <span className="flex size-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
             <Lock size={17} />
           </span>
         </div>
-        <div className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 shadow-2xs">
+        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-2xs">
           <div>
-            <p className="text-[11px] font-semibold text-muted-foreground">Chờ đổi mật khẩu đầu</p>
+            <p className="text-[11px] font-semibold text-slate-500">Chờ đổi mật khẩu đầu</p>
             <p className="mt-1 font-mono text-xl font-extrabold text-primary">{mustChangeCount}</p>
           </div>
           <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">

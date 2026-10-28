@@ -1,12 +1,12 @@
 "use client";
-import { Suspense, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Building2, Check, ClipboardList, Eye, Plus, ShieldCheck, Trash2, UserPlus, UserRound, X } from "lucide-react";
 import { apiModel, Application, Department, Membership } from "@/lib/api";
 import { CLUB_WORKSPACE_KEYS, useSession } from "@/hooks/useSession";
 import { useUserNames } from "@/hooks/useUserNames";
-import { BreadcrumbToolbar, SegmentedTabs } from "@/components/shared/BreadcrumbToolbar";
+import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
 import { DataTable } from "@/components/shared/DataTable";
 import { DetailList, EntityDrawer, ModalShell, Section } from "@/components/shared/Overlays";
 import { EmptyState, ErrorState, LoadingRows, Notice } from "@/components/shared/States";
@@ -37,7 +37,6 @@ export default function ManagementPage() {
 }
 
 function ManagementPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const urlTab = searchParams.get("tab") as TabKey | null;
   const session = useSession();
@@ -45,8 +44,7 @@ function ManagementPageContent() {
   const canViewUsers = session.can("user.view");
   const nameOf = useUserNames(canViewUsers);
   const [clubId, setClubId] = useState("");
-  const [localTab, setLocalTab] = useState<TabKey>("applications");
-  const tab: TabKey = urlTab && ["applications", "forms", "members", "departments", "events", "tasks", "chat", "settings"].includes(urlTab) ? urlTab : localTab;
+  const tab: TabKey = urlTab && ["applications", "forms", "members", "departments", "events", "tasks", "chat", "settings"].includes(urlTab) ? urlTab : "applications";
   const [review, setReview] = useState<{ app: Application; approve: boolean } | null>(null);
   const [note, setNote] = useState("");
   const [detailApp, setDetailApp] = useState<Application | null>(null);
@@ -238,13 +236,15 @@ function ManagementPageContent() {
         crumbs={[
           { label: "Tổng quan", href: "/dashboard" },
           { label: currentClub?.name ?? "Không gian CLB" },
-          { label: visibleTabs.find((t) => t.value === activeTab)?.label ?? "Quản lý" },
+          { label: visibleTabs.find((t) => t.value === activeTab)?.label ?? "Quản lý CLB" },
         ]}
         titleBadge={
           activeTab === "applications" ? (
             <CountBadge>{pending} chờ duyệt</CountBadge>
           ) : activeTab === "members" ? (
             <CountBadge>{members.data?.total ?? 0} thành viên</CountBadge>
+          ) : currentClub ? (
+            <Badge tone="primary" dot={false}>{currentClub.code}</Badge>
           ) : undefined
         }
         extraActions={
@@ -254,22 +254,15 @@ function ManagementPageContent() {
                 aria-label="Chọn CLB"
                 value={activeClubId}
                 onChange={(e) => { setClubId(e.target.value); setNotice(""); setErrorMsg(""); }}
-                className="h-10 w-full text-xs sm:w-52"
+                className="h-9 w-full text-xs sm:w-64"
               >
                 {manageable.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}
               </Select>
             )}
-            {visibleTabs.length > 0 && (
-              <SegmentedTabs
-                value={activeTab}
-                onChange={(v) => {
-                  setLocalTab(v);
-                  router.replace(`/management?tab=${v}`, { scroll: false });
-                  setNotice("");
-                  setErrorMsg("");
-                }}
-                options={visibleTabs}
-              />
+            {activeTab === "members" && canAddMember && (
+              <Button size="sm" onClick={() => { setAddingMember(true); setNewMemberUserId(""); addMember.reset(); }}>
+                <UserPlus size={14} /> Thêm thành viên
+              </Button>
             )}
             {canCreateClub && (
               <Button size="sm" variant="outline" onClick={() => { setCreatingClub(true); createClubMutation.reset(); }}>
@@ -315,13 +308,6 @@ function ManagementPageContent() {
         />
       ) : activeTab === "members" ? (
         <div className="space-y-3">
-          {canAddMember && (
-            <div className="flex justify-end px-4 pt-2">
-              <Button size="sm" onClick={() => { setAddingMember(true); setNewMemberUserId(""); addMember.reset(); }}>
-                <UserPlus size={14} /> Thêm thành viên trực tiếp
-              </Button>
-            </div>
-          )}
           {members.isPending ? (
             <LoadingRows />
           ) : members.isError ? (

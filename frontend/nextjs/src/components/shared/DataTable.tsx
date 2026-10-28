@@ -25,12 +25,12 @@ export function DataTable<T>({
 }) {
   return (
     <div className="min-h-0 flex-1 overflow-auto px-4 py-3 sm:px-6 sm:py-4 [scrollbar-gutter:stable]">
-      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-2xs">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
         <table
           aria-label={ariaLabel}
           className={cn("w-full border-collapse whitespace-nowrap text-left text-xs", minWidth)}
         >
-          <thead className="sticky top-0 z-10 select-none border-b border-border bg-muted/75 text-[10.5px] font-bold uppercase tracking-[0.08em] text-muted-foreground backdrop-blur-xs">
+          <thead className="sticky top-0 z-10 select-none border-b border-slate-200 bg-slate-50/90 text-[10.5px] font-bold uppercase tracking-[0.08em] text-slate-500 backdrop-blur-xs">
             <tr>
               {columns.map((c) => (
                 <th key={c.key} className={cn("h-11 px-4 py-3 first:pl-5 last:pr-5", c.className)}>
@@ -39,13 +39,13 @@ export function DataTable<T>({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border/60">
+          <tbody className="divide-y divide-slate-100">
             {rows.map((row) => (
               <tr
                 key={rowKey(row)}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
                 className={cn(
-                  "h-14 text-xs transition-colors hover:bg-muted/40",
+                  "h-14 text-xs text-slate-800 transition-colors hover:bg-slate-50/80",
                   onRowClick && "cursor-pointer"
                 )}
               >

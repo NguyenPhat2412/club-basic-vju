@@ -2,10 +2,10 @@ import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const tones = {
-  primary: { box: "bg-primary/10 text-primary border-primary/20", dot: "bg-primary" },
-  pending: { box: "bg-primary/5 text-primary/80 border-primary/15", dot: "bg-primary/40" },
-  danger: { box: "bg-destructive/10 text-destructive border-destructive/20", dot: "bg-destructive" },
-  neutral: { box: "bg-muted text-muted-foreground border-border", dot: "bg-muted-foreground/60" },
+  primary: { box: "bg-primary/8 text-primary border-primary/20", dot: "bg-primary" },
+  pending: { box: "bg-amber-50 text-amber-800 border-amber-200", dot: "bg-amber-500" },
+  danger: { box: "bg-rose-50 text-rose-700 border-rose-200", dot: "bg-rose-600" },
+  neutral: { box: "bg-slate-100 text-slate-600 border-slate-200", dot: "bg-slate-400" },
 } as const;
 
 export type Tone = keyof typeof tones;

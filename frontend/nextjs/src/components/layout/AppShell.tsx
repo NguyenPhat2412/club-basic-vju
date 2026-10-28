@@ -12,12 +12,10 @@ import {
   KeyRound,
   LogOut,
   Menu,
-  Moon,
   Network,
   PanelLeftClose,
   PanelLeftOpen,
   ShieldCheck,
-  Sun,
   UserCheck,
   Users,
   UsersRound,
@@ -66,7 +64,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const session = useOptionalSession();
-  const { dark, toggleTheme } = useThemePreference();
+  useThemePreference();
 
   const publicClubRoute = pathname === "/clubs";
   const [collapsed, setCollapsed] = useState(false);
@@ -301,17 +299,26 @@ function AppShellInner({ children }: { children: ReactNode }) {
 
   const isOverviewActive = pathname === "/dashboard";
 
-  const activePageTitle = (() => {
-    if (isOverviewActive) return "Tổng quan";
+  const activeNavMeta = (() => {
+    if (isOverviewActive) {
+      return { groupLabel: "Bảng điều khiển", pageTitle: "Tổng quan hệ thống" };
+    }
     for (const sec of sections) {
       for (const grp of sec.groups) {
         for (const item of grp.items) {
-          if (isSubItemActive(item)) return item.label;
+          if (isSubItemActive(item)) {
+            return { groupLabel: grp.label, pageTitle: item.label };
+          }
         }
       }
     }
-    if (pathname === "/management") return "Không gian & Quản lý CLB";
-    return "Cổng thông tin CLB";
+    if (pathname === "/management") {
+      return { groupLabel: "Câu lạc bộ & Nhân sự", pageTitle: "Không gian quản lý CLB" };
+    }
+    if (pathname === "/profile") {
+      return { groupLabel: "Cổng cá nhân", pageTitle: "Hồ sơ cá nhân" };
+    }
+    return { groupLabel: "Cổng thông tin", pageTitle: "Hệ thống CLB sinh viên" };
   })();
 
   const sidebarContent = (isMobile = false) => {
@@ -384,8 +391,8 @@ function AppShellInner({ children }: { children: ReactNode }) {
               className={cn(
                 "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors",
                 isOverviewActive
-                  ? "bg-sidebar-accent font-semibold text-foreground shadow-2xs"
-                  : "font-medium text-foreground/90 hover:bg-sidebar-accent/60",
+                  ? "bg-primary/10 font-semibold text-primary shadow-2xs"
+                  : "font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900",
                 isCollapsed && "justify-center px-1.5"
               )}
             >
@@ -478,8 +485,8 @@ function AppShellInner({ children }: { children: ReactNode }) {
                                       className={cn(
                                         "flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors",
                                         active
-                                          ? "bg-sidebar-accent font-semibold text-foreground shadow-2xs"
-                                          : "text-foreground/80 hover:bg-sidebar-accent/55 hover:text-foreground"
+                                          ? "bg-primary/10 font-semibold text-primary"
+                                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                                       )}
                                     >
                                       <span
@@ -555,7 +562,8 @@ function AppShellInner({ children }: { children: ReactNode }) {
       {/* Cột phải: Thanh tiêu đề trên cùng (Topbar) + Nội dung chính */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Topbar
-          pageTitle={activePageTitle}
+          groupLabel={activeNavMeta.groupLabel}
+          pageTitle={activeNavMeta.pageTitle}
           onMenu={() => setMobileOpen(true)}
           authenticated={!!session.user}
           name={session.user?.fullName || session.user?.email}
@@ -563,14 +571,12 @@ function AppShellInner({ children }: { children: ReactNode }) {
           onPassword={() => setPasswordOpen(true)}
           onProfile={() => router.push("/profile")}
           onSignOut={signOut}
-          dark={dark}
-          onToggleTheme={toggleTheme}
           notificationsActive={pathname === "/notifications"}
         />
 
         <main
           data-design-system="admin-v1"
-          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto"
+          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-background"
         >
           {session.user && session.mustChangePassword ? (
             <FirstLoginPassword email={session.user.email} />
@@ -586,6 +592,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
 }
 
 function Topbar({
+  groupLabel,
   pageTitle,
   onMenu,
   authenticated,
@@ -594,10 +601,9 @@ function Topbar({
   onPassword,
   onProfile,
   onSignOut,
-  dark,
-  onToggleTheme,
   notificationsActive,
 }: {
+  groupLabel?: string;
   pageTitle: string;
   onMenu: () => void;
   authenticated: boolean;
@@ -606,8 +612,6 @@ function Topbar({
   onPassword: () => void;
   onProfile: () => void;
   onSignOut: () => void;
-  dark: boolean;
-  onToggleTheme: () => void;
   notificationsActive: boolean;
 }) {
   const [now, setNow] = useState<Date | null>(null);
@@ -624,37 +628,34 @@ function Topbar({
   }, []);
 
   return (
-    <header className="relative z-40 flex h-12 shrink-0 select-none items-center justify-between gap-2 border-b border-border bg-card px-3 sm:px-5">
-      {/* Cụm tiêu đề bên trái trên cột nội dung */}
-      <div className="flex min-w-0 items-center gap-2.5">
+    <header className="relative z-40 flex h-13 shrink-0 select-none items-center justify-between gap-3 border-b border-border bg-white px-4 sm:px-6">
+      {/* Cụm tiêu đề ngữ cảnh bên trái */}
+      <div className="flex min-w-0 items-center gap-2">
         <button
           type="button"
           aria-label="Mở menu"
           onClick={onMenu}
-          className="flex size-8 items-center justify-center rounded-md border border-border/70 hover:bg-muted lg:hidden"
+          className="flex size-8 items-center justify-center rounded-lg border border-border bg-white text-slate-700 hover:bg-slate-100 lg:hidden"
         >
-          <Menu size={17} />
+          <Menu size={16} />
         </button>
-        <span className="hidden items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1 text-[11px] font-bold text-primary sm:inline-flex">
-          <Image
-            src="/images/vju-logo.png"
-            alt="Logo VJU"
-            width={20}
-            height={20}
-            className="size-5 shrink-0 rounded-full bg-white p-0.5 object-contain shadow-2xs"
-          />
-          TRƯỜNG ĐẠI HỌC VIỆT NHẬT
-        </span>
-        <span className="hidden text-muted-foreground/50 sm:inline">/</span>
-        <h2 className="truncate text-sm font-bold text-foreground">{pageTitle}</h2>
+        {groupLabel && (
+          <>
+            <span className="hidden truncate text-xs font-medium text-slate-500 sm:inline">
+              {groupLabel}
+            </span>
+            <span className="hidden text-xs text-slate-300 sm:inline">/</span>
+          </>
+        )}
+        <h2 className="truncate text-[13.5px] font-bold text-slate-900">{pageTitle}</h2>
       </div>
 
       {/* Cụm công cụ & tài khoản bên phải */}
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2.5">
         {now && (
-          <span className="hidden items-center gap-2 rounded-lg border border-border/60 bg-secondary/40 px-2.5 py-1 text-xs md:inline-flex">
+          <span className="hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs md:inline-flex">
             <b className="font-mono font-bold text-primary">{now.toLocaleTimeString("vi-VN")}</b>
-            <span className="text-muted-foreground">
+            <span className="text-slate-500">
               {now.toLocaleDateString("vi-VN", {
                 weekday: "short",
                 day: "2-digit",
@@ -665,22 +666,6 @@ function Topbar({
           </span>
         )}
 
-        <button
-          type="button"
-          aria-label="Chuyển giao diện sáng/tối"
-          onClick={onToggleTheme}
-          className="relative h-8 w-14 rounded-full border border-border/70 bg-muted/70 p-0.5"
-        >
-          <span
-            className={cn(
-              "flex size-6 items-center justify-center rounded-full bg-background shadow-xs transition-transform",
-              dark && "translate-x-6"
-            )}
-          >
-            {dark ? <Moon size={13} className="text-primary" /> : <Sun size={13} className="text-primary" />}
-          </span>
-        </button>
-
         {authenticated ? (
           <>
             <Link
@@ -688,8 +673,8 @@ function Topbar({
               aria-label="Thông báo"
               title="Thông báo"
               className={cn(
-                "grid size-8 place-items-center rounded-lg border border-border/60 transition-colors hover:bg-muted hover:text-primary",
-                notificationsActive && "border-primary/30 bg-primary/10 text-primary"
+                "grid size-8 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 hover:text-primary",
+                notificationsActive && "border-primary/30 bg-primary/8 text-primary"
               )}
             >
               <Bell size={15} />
@@ -699,15 +684,15 @@ function Topbar({
               <button
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
-                className="flex items-center gap-2 rounded-lg border border-transparent px-2 py-1 hover:border-border/60 hover:bg-muted"
+                className="flex items-center gap-2 rounded-lg border border-transparent px-2 py-1 transition-colors hover:border-slate-200 hover:bg-slate-50"
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
               >
                 <div className="hidden text-right sm:block">
-                  <p className="max-w-36 truncate text-xs font-bold">{name ?? "Tài khoản"}</p>
-                  <p className="max-w-36 truncate text-[10px] text-muted-foreground">{subtitle}</p>
+                  <p className="max-w-36 truncate text-xs font-bold text-slate-900">{name ?? "Tài khoản"}</p>
+                  <p className="max-w-36 truncate text-[10px] text-slate-500">{subtitle}</p>
                 </div>
-                <span className="flex size-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                <span className="flex size-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-2xs">
                   {(name ?? "V").slice(0, 1).toUpperCase()}
                 </span>
               </button>
@@ -725,7 +710,7 @@ function Topbar({
                       setMenuOpen(false);
                       onProfile();
                     }}
-                    className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs font-medium hover:bg-muted"
+                    className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100"
                   >
                     <Users size={14} className="text-primary" /> Hồ sơ cá nhân
                   </button>
@@ -736,7 +721,7 @@ function Topbar({
                       setMenuOpen(false);
                       onPassword();
                     }}
-                    className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs font-medium hover:bg-muted"
+                    className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100"
                   >
                     <KeyRound size={14} className="text-primary" /> Đổi mật khẩu
                   </button>
@@ -756,7 +741,7 @@ function Topbar({
           <div className="flex items-center gap-2">
             <Link
               href="/login"
-              className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
               Đăng nhập
             </Link>
