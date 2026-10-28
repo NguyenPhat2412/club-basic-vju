@@ -301,7 +301,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
 
   const activeNavMeta = (() => {
     if (isOverviewActive) {
-      return { groupLabel: "Bảng điều khiển", pageTitle: "Tổng quan hệ thống" };
+      return { groupLabel: "Bảng điều khiển", pageTitle: "Tổng quan" };
     }
     for (const sec of sections) {
       for (const grp of sec.groups) {

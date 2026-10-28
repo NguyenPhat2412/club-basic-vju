@@ -27,6 +27,7 @@ import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
 import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, formatDay } from "@/lib/utils";
+import { StudentDashboard } from "./StudentDashboard";
 
 const APPLICATION_PERMISSIONS = [
   "application.view",
@@ -165,6 +166,10 @@ export default function DashboardPage() {
       </main>
     );
   }
+
+  // Students see their own clubs, applications and events; the statistics view is for people who manage.
+  if (!session.ready) return null;
+  if (!canReviewApps && !canAdminUsers && !canAudit) return <StudentDashboard user={session.user} />;
 
   // Aggregated Metrics
   const allClubs = publicClubs.data?.items ?? [];
