@@ -385,6 +385,20 @@ entries:
   authRequired: true
   permission: permission.assign
 - method: GET
+  path: /api/v1/system-settings
+  module: setting
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: setting.view
+- method: PUT
+  path: /api/v1/system-settings
+  module: setting
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: setting.update
+- method: GET
   path: /api/v1/audit-logs
   module: audit
   backend: backend/springboot

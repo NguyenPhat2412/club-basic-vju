@@ -34,6 +34,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   TASK: "Công việc",
   CHAT_CHANNEL: "Kênh trao đổi",
   NOTIFICATION: "Thông báo",
+  SYSTEM_SETTINGS: "Cài đặt hệ thống",
 };
 
 const ACTION_LABELS: Record<string, string> = {

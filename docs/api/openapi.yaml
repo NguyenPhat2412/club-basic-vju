@@ -2372,6 +2372,49 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /system-settings:
+    get:
+      operationId: systemSettings.get
+      summary: Read system-wide limits
+      tags: [SystemSettings]
+      x-permission: setting.view
+      x-scope: GLOBAL
+      x-implementation-status: IMPLEMENTED
+      description: Các giới hạn chung do admin đặt. Giá trị 0 nghĩa là không giới hạn (hoặc không phải chờ).
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SystemSettings'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+    put:
+      operationId: systemSettings.update
+      summary: Change system-wide limits
+      tags: [SystemSettings]
+      x-permission: setting.update
+      x-scope: GLOBAL
+      x-implementation-status: IMPLEMENTED
+      description: >-
+        Thay cả ba giới hạn, có hiệu lực ngay và ghi audit SYSTEM_SETTINGS_UPDATED. Khi sinh viên tự nộp đơn:
+        quá maxPendingApplications đơn PENDING trả 409 APPLICATION_PENDING_LIMIT; nộp lại CLB đã từ chối mình
+        trong reapplyCooldownDays ngày trả 409 APPLICATION_REAPPLY_TOO_SOON; đã thuộc maxActiveClubs CLB (membership
+        chưa LEFT) trả 409 MEMBERSHIP_LIMIT_REACHED, giới hạn này cũng áp dụng khi duyệt đơn.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateSystemSettingsRequest'}
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SystemSettings'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
   /audit-logs:
     get:
       operationId: audit.list
@@ -2500,6 +2543,8 @@ paths:
         APPLICATION_NOT_OPEN_YET; form DRAFT/CLOSED, sau closeAt, hoặc CLB có form nhưng không
         form nào OPEN trả 409 APPLICATION_FORM_CLOSED. CLB chưa từng tạo form nhận đơn theo form
         mặc định. Người quản lý nhập đơn hộ (applicantId) không bị giới hạn khung thời gian.
+        Sinh viên tự nộp còn chịu các giới hạn trong /system-settings: 409 APPLICATION_PENDING_LIMIT,
+        APPLICATION_REAPPLY_TOO_SOON, MEMBERSHIP_LIMIT_REACHED.
       tags: [ClubApplication]
       x-permission: null
       x-implementation-status: IMPLEMENTED
@@ -2556,7 +2601,7 @@ paths:
     post:
       operationId: clubApplication.approve
       summary: Approve a club application and create membership
-      description: 'Yêu cầu application.approve hoặc application.review tại CLUB trên URL. Chỉ xử lý PENDING; tạo Membership ACTIVE và chuyển đơn APPROVED trong cùng transaction. Trả 409 APPLICATION_ALREADY_REVIEWED hoặc DUPLICATE_MEMBERSHIP; lỗi tạo membership rollback toàn bộ thao tác. Response gồm membershipId, membershipStatus và membershipJoinedAt. Tạo membership và cấp các vai trò có granted_on_join (CLUB_MEMBER) trong CLB. 409 CLUB_INACTIVE nếu CLB tạm dừng, 409 USER_INACTIVE nếu tài khoản người nộp bị khoá, 409 APPLICATION_ATTACHMENT_REQUIRED nếu form bắt buộc đính kèm mà đơn chưa có file.'
+      description: 'Yêu cầu application.approve hoặc application.review tại CLUB trên URL. Chỉ xử lý PENDING; tạo Membership ACTIVE và chuyển đơn APPROVED trong cùng transaction. Trả 409 APPLICATION_ALREADY_REVIEWED hoặc DUPLICATE_MEMBERSHIP; lỗi tạo membership rollback toàn bộ thao tác. Response gồm membershipId, membershipStatus và membershipJoinedAt. Tạo membership và cấp các vai trò có granted_on_join (CLUB_MEMBER) trong CLB. 409 CLUB_INACTIVE nếu CLB tạm dừng, 409 USER_INACTIVE nếu tài khoản người nộp bị khoá, 409 APPLICATION_ATTACHMENT_REQUIRED nếu form bắt buộc đính kèm mà đơn chưa có file, 409 MEMBERSHIP_LIMIT_REACHED nếu sinh viên đã đủ số CLB tối đa trong /system-settings.'
       tags: [ClubApplication]
       x-permission: application.approve | application.review
       x-scope: CLUB
@@ -3904,6 +3949,22 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
   schemas:
+    SystemSettings:
+      type: object
+      required: [maxPendingApplications, reapplyCooldownDays, maxActiveClubs]
+      properties:
+        maxPendingApplications: {type: integer, minimum: 0, maximum: 100, description: Số đơn PENDING tối đa của một sinh viên trên mọi CLB; 0 = không giới hạn}
+        reapplyCooldownDays: {type: integer, minimum: 0, maximum: 365, description: Số ngày chờ sau khi bị từ chối mới được nộp lại cùng CLB; 0 = không chờ}
+        maxActiveClubs: {type: integer, minimum: 0, maximum: 100, description: Số CLB tối đa một sinh viên được tham gia cùng lúc; 0 = không giới hạn}
+        updatedAt: {type: string, format: date-time}
+        updatedBy: {type: string, format: uuid, nullable: true}
+    UpdateSystemSettingsRequest:
+      type: object
+      required: [maxPendingApplications, reapplyCooldownDays, maxActiveClubs]
+      properties:
+        maxPendingApplications: {type: integer, minimum: 0, maximum: 100}
+        reapplyCooldownDays: {type: integer, minimum: 0, maximum: 365}
+        maxActiveClubs: {type: integer, minimum: 0, maximum: 100}
     CreateClubApplicationRequest:
       type: object
       required: [message]
@@ -5772,6 +5833,8 @@ components:
 tags:
 - name: System
   description: Danh mục và trạng thái API
+- name: SystemSettings
+  description: Giới hạn chung do admin cấu hình
 - name: Auth
   description: Đăng ký, đăng nhập, phiên và mật khẩu
 - name: User

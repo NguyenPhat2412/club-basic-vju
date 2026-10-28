@@ -37,6 +37,7 @@ const MODULE_LABELS: Record<string, string> = {
   permission: "Bổ nhiệm & Phân quyền",
   role: "Vai trò & Ma trận quyền",
   audit: "Nhật ký hệ thống",
+  setting: "Cài đặt hệ thống",
   application: "Đơn đăng ký & Tuyển quân",
   document: "Quy chế & Kho tài liệu",
   event: "Sự kiện & Lịch sinh hoạt",

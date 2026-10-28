@@ -207,6 +207,8 @@ export const apiModel = {
   markNotificationRead: (id: string) => api<void>(`/users/me/notifications/${id}/read`, { method: 'PATCH' }),
   markAllNotificationsRead: () => api<void>('/users/me/notifications/read-all', { method: 'PATCH' }),
   broadcastNotification: (clubId: string, body: { title: string; message: string; departmentId?: string }) => api<{ clubId: string; departmentId?: string; recipientCount: number }>(`/clubs/${clubId}/notifications`, { method: 'POST', body: JSON.stringify(body) }),
+  systemSettings: () => api<SystemSettings>('/system-settings'),
+  updateSystemSettings: (body: SystemSettingsInput) => api<SystemSettings>('/system-settings', { method: 'PUT', body: JSON.stringify(body) }),
   auditLogs: (q: { resourceType?: string; clubId?: string; action?: string; offset?: number; limit?: number } = {}) => api<Page<AuditLogItem>>(`/audit-logs?${cleanParams({ resourceType: q.resourceType, clubId: q.clubId, action: q.action, offset: q.offset ?? 0, limit: q.limit ?? 20 })}`),
   documents: (clubId: string, q: { name?: string; appDetailKey?: string; deleted?: boolean; offset?: number; limit?: number } = {}) => api<Page<DocumentItem>>(`/clubs/${clubId}/documents?${new URLSearchParams({ name: q.name || '', appDetailKey: q.appDetailKey || '', deleted: String(!!q.deleted), offset: String(q.offset || 0), limit: String(q.limit || 20) })}`),
   documentCount: (clubId: string, deleted = false) => api<{ clubId: string; deleted: boolean; count: number }>(`/clubs/${clubId}/documents/count?deleted=${deleted}`),
@@ -295,6 +297,8 @@ export type ApplicationForm = {
   createdAt?: string;
   updatedAt?: string;
 };
+export type SystemSettingsInput = { maxPendingApplications: number; reapplyCooldownDays: number; maxActiveClubs: number };
+export type SystemSettings = SystemSettingsInput & { updatedAt?: string; updatedBy?: string };
 export type UpsertApplicationFormInput = {
   title: string;
   description?: string;

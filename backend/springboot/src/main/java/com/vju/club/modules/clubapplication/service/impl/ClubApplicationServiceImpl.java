@@ -62,6 +62,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.io.InputStream;
+import com.vju.club.modules.setting.entity.SystemSettings;
+import com.vju.club.modules.setting.service.SystemSettingsService;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -113,6 +115,7 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
     private final DepartmentMemberRepository departmentMemberRepository;
     private final DocumentFileInspector fileInspector;
     private final DocumentStorage documentStorage;
+    private final SystemSettingsService settingsService;
 
     public ClubApplicationServiceImpl(ClubApplicationRepository applicationRepository,
                                       ClubRepository clubRepository,
@@ -124,7 +127,7 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
                                       ClubApplicationMapper clubApplicationMapper) {
         this(applicationRepository, clubRepository, userRepository, membershipRepository,
                 authorizationService, auditService, clock, null, clubApplicationMapper,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
     }
 
     @Autowired
@@ -143,7 +146,8 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
                                       DepartmentRepository departmentRepository,
                                       DepartmentMemberRepository departmentMemberRepository,
                                       DocumentFileInspector fileInspector,
-                                      DocumentStorage documentStorage) {
+                                      DocumentStorage documentStorage,
+                                      SystemSettingsService settingsService) {
         this.applicationRepository = applicationRepository;
         this.clubRepository = clubRepository;
         this.userRepository = userRepository;
@@ -160,6 +164,7 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         this.departmentMemberRepository = departmentMemberRepository;
         this.fileInspector = fileInspector;
         this.documentStorage = documentStorage;
+        this.settingsService = settingsService;
     }
 
     // -----------------------------------------------------------------------------------------
@@ -313,6 +318,9 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         if (applicationRepository.findByApplicant_IdAndClub_IdAndStatus(
                 targetApplicantId, clubId, ClubApplicationStatus.PENDING).isPresent()) {
             throw conflict("APPLICATION_ALREADY_PENDING", "An application is already pending");
+        }
+        if (!createdByManager) {
+            enforceStudentLimits(targetApplicantId, clubId);
         }
 
         ClubApplication application = new ClubApplication();
@@ -702,6 +710,7 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
                 application.getApplicant().getId(), clubId, MembershipStatus.LEFT).isPresent()) {
             throw conflict("DUPLICATE_MEMBERSHIP", "User already has a current membership in this club");
         }
+        enforceClubLimit(application.getApplicant().getId());
         if (application.getForm() != null && application.getForm().isRequireAttachment()
                 && fileRepository != null && fileRepository.countByApplication_Id(applicationId) == 0) {
             throw conflict("APPLICATION_ATTACHMENT_REQUIRED", "This form requires an attachment before the application can be approved");
@@ -828,6 +837,36 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         }
         return formRepository.findFirstByClub_IdAndStatusOrderByIsDefaultDescCreatedAtDesc(clubId, "OPEN")
                 .orElse(null);
+    }
+
+    /** The admin-set limits from system settings; 0 turns a limit off. */
+    private void enforceStudentLimits(UUID applicantId, UUID clubId) {
+        if (settingsService == null) return;
+        SystemSettings settings = settingsService.current();
+        int maxPending = settings.getMaxPendingApplications();
+        if (maxPending > 0 && applicationRepository.countByApplicant_IdAndStatus(applicantId, ClubApplicationStatus.PENDING) >= maxPending) {
+            throw conflict("APPLICATION_PENDING_LIMIT", "At most " + maxPending + " applications may be pending at once");
+        }
+        int cooldownDays = settings.getReapplyCooldownDays();
+        if (cooldownDays > 0) {
+            applicationRepository.findFirstByApplicant_IdAndClub_IdAndStatusOrderByReviewedAtDesc(
+                            applicantId, clubId, ClubApplicationStatus.REJECTED)
+                    .map(ClubApplication::getReviewedAt)
+                    .map(reviewedAt -> reviewedAt.plusDays(cooldownDays))
+                    .filter(allowedFrom -> now().isBefore(allowedFrom))
+                    .ifPresent(allowedFrom -> {
+                        throw conflict("APPLICATION_REAPPLY_TOO_SOON", "A new application to this club is allowed from " + allowedFrom);
+                    });
+        }
+        enforceClubLimit(applicantId);
+    }
+
+    private void enforceClubLimit(UUID userId) {
+        if (settingsService == null) return;
+        int maxClubs = settingsService.current().getMaxActiveClubs();
+        if (maxClubs > 0 && membershipRepository.countByUser_IdAndStatusNot(userId, MembershipStatus.LEFT) >= maxClubs) {
+            throw conflict("MEMBERSHIP_LIMIT_REACHED", "A student may belong to at most " + maxClubs + " clubs");
+        }
     }
 
     /**

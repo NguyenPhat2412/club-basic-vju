@@ -248,6 +248,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
             { href: "/users", label: "Hồ sơ tài khoản", visible: session.can("user.view") },
             { href: "/roles", label: "Chức vụ & Phân quyền", visible: session.can("role.view") },
             { href: "/audit-logs", label: "Nhật ký hệ thống", visible: session.can("audit.view") },
+            { href: "/settings", label: "Cài đặt hệ thống", visible: session.can("setting.view") },
           ],
         },
       ],

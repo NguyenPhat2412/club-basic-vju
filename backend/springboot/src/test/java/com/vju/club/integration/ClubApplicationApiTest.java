@@ -297,6 +297,7 @@ class ClubApplicationApiTest extends ApiIntegrationTest {
     void studentsApplyOnlyThroughAFormThatIsOpenNow() throws Exception {
         String forms = "/api/v1/clubs/" + clubA + "/application-forms";
         java.time.OffsetDateTime now = java.time.OffsetDateTime.now();
+        db.update("UPDATE system_settings SET reapply_cooldown_days = 0"); // the rejection below is not under test
 
         // A club that never set up a form takes applications on the built-in default.
         JsonNode first = call(post(applications(clubB)), memberToken, Map.of("message", "hi"), 201);

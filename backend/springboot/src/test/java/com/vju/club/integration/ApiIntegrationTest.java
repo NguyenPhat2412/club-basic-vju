@@ -71,6 +71,7 @@ abstract class ApiIntegrationTest {
         db.update("UPDATE permissions SET active = true");
         db.update("DELETE FROM roles WHERE NOT system");
         db.update("UPDATE roles SET active = true");
+        db.update("UPDATE system_settings SET max_pending_applications = 3, reapply_cooldown_days = 7, max_active_clubs = 0");
         admin = user("admin@test.local");
         member = user("member@test.local");
         for (UUID permission : db.queryForList("SELECT id FROM permissions", UUID.class)) {

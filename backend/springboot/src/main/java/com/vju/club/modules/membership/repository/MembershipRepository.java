@@ -30,4 +30,6 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID>, J
 
     @Query("SELECT m.club.id FROM Membership m WHERE m.user.id = :userId AND m.status = com.vju.club.modules.membership.enums.MembershipStatus.ACTIVE")
     List<UUID> findActiveClubIdsByUserId(@Param("userId") UUID userId);
+
+    long countByUser_IdAndStatusNot(UUID userId, MembershipStatus status);
 }

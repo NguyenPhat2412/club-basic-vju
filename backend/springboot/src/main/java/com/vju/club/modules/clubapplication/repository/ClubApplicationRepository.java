@@ -36,6 +36,11 @@ public interface ClubApplicationRepository extends JpaRepository<ClubApplication
     @EntityGraph(attributePaths = {"applicant", "club", "reviewedBy", "preferredDepartment", "secondaryDepartment"})
     Optional<ClubApplication> findByIdAndClub_Id(UUID id, UUID clubId);
 
+    long countByApplicant_IdAndStatus(UUID applicantId, ClubApplicationStatus status);
+
+    Optional<ClubApplication> findFirstByApplicant_IdAndClub_IdAndStatusOrderByReviewedAtDesc(
+            UUID applicantId, UUID clubId, ClubApplicationStatus status);
+
     Optional<ClubApplication> findByApplicant_IdAndClub_IdAndStatus(
             UUID applicantId, UUID clubId, ClubApplicationStatus status);
 
