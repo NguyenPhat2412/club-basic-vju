@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowRight, Bell, BookOpen, CalendarDays, ChevronDown, LockKeyhole, Menu, UsersRound, X } from "lucide-react";
+import { ArrowDown, ArrowRight, Bell, BookOpen, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, LockKeyhole, Menu, UsersRound, X } from "lucide-react";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { useRouter } from "next/navigation";
 import { apiModel } from "@/lib/api";
@@ -25,6 +25,36 @@ const news = [
   { date: "12.10.2026", category: "SỰ KIỆN", title: "Tuần lễ trải nghiệm và kết nối các câu lạc bộ VJU", color: "#a23d4d" },
   { date: "06.10.2026", category: "HOẠT ĐỘNG", title: "Cùng sinh viên VJU tạo nên những điều đáng nhớ", color: "#737b54" },
 ];
+
+const HERO_SLIDES = [
+  { src: "/images/vju-hero-cover.jpg", position: "center 43%" },
+  { src: "/images/vju-campus-life.webp", position: "center" },
+];
+const SLIDE_INTERVAL_MS = 6000;
+
+function HeroSlides() {
+  const [active, setActive] = useState(0);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => setActive((i) => (i + 1) % HERO_SLIDES.length), SLIDE_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [active]);
+
+  return (
+    <>
+      {HERO_SLIDES.map((slide, i) => (
+        <div key={slide.src} aria-hidden className={`absolute inset-0 -z-20 bg-cover transition-opacity duration-1000 ${i === active ? "opacity-100" : "opacity-0"}`} style={{ backgroundImage: `url('${slide.src}')`, backgroundPosition: slide.position }} />
+      ))}
+      <button type="button" onClick={() => setActive((active - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)} aria-label="Ảnh trước" className="absolute left-3 top-1/2 z-10 grid size-10 -translate-y-1/2 place-items-center rounded-full text-white/60 transition-colors hover:bg-white/15 hover:text-white"><ChevronLeft size={26} /></button>
+      <button type="button" onClick={() => setActive((active + 1) % HERO_SLIDES.length)} aria-label="Ảnh tiếp theo" className="absolute right-3 top-1/2 z-10 grid size-10 -translate-y-1/2 place-items-center rounded-full text-white/60 transition-colors hover:bg-white/15 hover:text-white"><ChevronRight size={26} /></button>
+      <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 gap-2.5">
+        {HERO_SLIDES.map((slide, i) => (
+          <button key={slide.src} type="button" onClick={() => setActive(i)} aria-label={`Ảnh ${i + 1}`} aria-current={i === active} className={`size-2.5 rounded-full transition-colors ${i === active ? "bg-[#2f7de1]" : "bg-white/45 hover:bg-white/75"}`} />
+        ))}
+      </div>
+    </>
+  );
+}
 
 function formatShortDate(iso?: string) {
   if (!iso) return "";
@@ -132,46 +162,22 @@ export default function HomePage() {
         </nav>}
       </header>
 
-      {/* Hero Sáng đồng bộ Light Theme */}
-      <section className="relative overflow-hidden border-b border-slate-200 bg-white">
-        <div className="mx-auto grid max-w-[1380px] items-center gap-10 px-5 py-14 sm:px-8 lg:grid-cols-[1.08fr_.92fr] lg:px-12 lg:py-20">
-          <div>
-            <p className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/8 px-3.5 py-1 text-[11px] font-bold uppercase tracking-wider text-primary">
-              Cộng đồng sinh viên VJU · ĐHQGHN
-            </p>
-            <h1 className="mt-5 text-4xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-5xl lg:text-[54px]">
-              Mỗi hành trình bắt đầu từ <span className="text-primary">một cộng đồng.</span>
-            </h1>
-            <p className="mt-5 max-w-[540px] text-sm leading-7 text-slate-600 sm:text-[15px]">
-              Tìm câu lạc bộ phù hợp, gặp gỡ những người bạn cùng sở thích và cùng nhau tạo nên những trải nghiệm đáng nhớ tại Trường Đại học Việt Nhật.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/clubs" className="inline-flex h-11 items-center gap-3 rounded-lg bg-primary px-6 text-xs font-bold text-white shadow-xs transition-opacity hover:opacity-90">
-                KHÁM PHÁ CÂU LẠC BỘ <ArrowRight size={15} />
-              </Link>
-              <Link href={session.user ? "/dashboard" : "/register"} className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-6 text-xs font-bold text-slate-700 transition-colors hover:border-primary/40 hover:bg-slate-50 hover:text-primary">
-                {session.user ? "VÀO BẢNG ĐIỀU KHIỂN" : "TRỞ THÀNH THÀNH VIÊN"}
-              </Link>
-            </div>
-            <div className="mt-10 flex items-center gap-3 text-[11px] font-semibold text-slate-500">
-              <span className="grid size-8 place-items-center rounded-full border border-slate-200 bg-slate-50 text-primary"><ArrowDown size={13} /></span>
-              Khám phá đời sống câu lạc bộ sinh viên VJU
+      <section className="relative isolate min-h-[560px] overflow-hidden bg-[#252629] sm:min-h-[630px] lg:min-h-[670px]">
+        <HeroSlides />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(21,23,26,.87)_0%,rgba(25,25,26,.64)_48%,rgba(25,25,26,.16)_100%)]" />
+        <div className="mx-auto flex min-h-[560px] max-w-[1380px] flex-col justify-center px-6 py-20 sm:min-h-[630px] sm:px-10 lg:min-h-[670px] lg:px-16">
+          <div className="max-w-[720px]">
+            <p className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[.25em] text-[#e2c18b] sm:text-[11px]"><span className="h-px w-9 bg-[#e2c18b]" /> Cộng đồng sinh viên VJU</p>
+            <h1 className="mt-7 font-serif text-[42px] font-medium leading-[1.13] tracking-[-.025em] text-white sm:text-[58px] lg:text-[72px]">Mỗi hành trình<br />bắt đầu từ <span className="italic text-[#e5c99d]">một cộng đồng.</span></h1>
+            <p className="mt-6 max-w-[520px] text-[14px] leading-7 text-white/80 sm:text-[15px]">Tìm câu lạc bộ phù hợp, gặp những người cùng sở thích và cùng tạo nên những trải nghiệm đáng nhớ tại VJU.</p>
+            <div className="mt-9 flex flex-wrap gap-3">
+              <Link href="/clubs" className="inline-flex min-h-12 items-center gap-5 bg-[#9b273a] px-6 text-[11px] font-semibold text-white transition-colors hover:bg-[#7c1c2d]">KHÁM PHÁ CÂU LẠC BỘ <ArrowRight size={15} /></Link>
+              <Link href={session.user ? "/dashboard" : "/register"} className="inline-flex min-h-12 items-center border border-white/55 px-6 text-[11px] font-semibold text-white transition-colors hover:bg-white/10">{session.user ? "VÀO DASHBOARD" : "TRỞ THÀNH THÀNH VIÊN"}</Link>
             </div>
           </div>
-
-          <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-md">
-            <div className="aspect-[16/11] w-full bg-cover bg-center" style={{ backgroundImage: "url('/images/vju-hero-cover.jpg')" }} />
-            <div className="flex items-center justify-between gap-4 border-t border-slate-200 bg-white px-5 py-4">
-              <div>
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-primary">Vietnam Japan University</span>
-                <span className="mt-0.5 block text-sm font-bold text-slate-900">Learn · Connect · Create</span>
-              </div>
-              <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                {clubsQuery.data?.total ?? featuredClubs.length} CLB đang hoạt động
-              </span>
-            </div>
-          </div>
+          <div className="mt-14 flex items-center gap-3 text-[9px] font-medium uppercase tracking-[.2em] text-white/70"><span className="grid size-8 place-items-center rounded-full border border-white/40"><ArrowDown size={13} /></span> Khám phá đời sống câu lạc bộ</div>
         </div>
+        <div className="absolute bottom-0 right-0 hidden bg-[#8e1f32] px-8 py-5 text-white md:block"><span className="block text-[9px] font-semibold uppercase tracking-[.2em] text-white/70">Vietnam Japan University</span><span className="mt-1 block font-serif text-[18px]">Learn · Connect · Create</span></div>
       </section>
 
       <section className="border-b border-slate-200 bg-slate-50/70">
