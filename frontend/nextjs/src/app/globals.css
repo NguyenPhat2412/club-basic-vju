@@ -64,6 +64,10 @@
 }
 
 @layer base {
+  /* Even out heading lines and avoid a lone last word in paragraphs. */
+  h1, h2, h3 { text-wrap: balance; }
+  p { text-wrap: pretty; }
+
   * {
     @apply border-border outline-ring/50;
   }
