@@ -1,11 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Crown, Lock, LockOpen, Pencil, Plus, ShieldCheck, Trash2, UserCheck } from "lucide-react";
-import { apiModel, ClubPositionSlot, Department } from "@/lib/api";
+import { ArrowRightLeft, Building2, Crown, Lock, LockOpen, Pencil, Plus, ShieldCheck, Trash2, UserCheck, UserMinus, UserPlus, UsersRound } from "lucide-react";
+import { apiModel, ClubPositionSlot, Department, DepartmentMember } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
 import { DataTable } from "@/components/shared/DataTable";
-import { ModalShell } from "@/components/shared/Overlays";
+import { EntityDrawer, ModalShell, Section } from "@/components/shared/Overlays";
 import { EmptyState, ErrorState, LoadingRows } from "@/components/shared/States";
 import { RowAction, TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError } from "@/components/shared/ListPage";
@@ -35,9 +35,16 @@ export function DepartmentsTab({
   const [replaceHolder, setReplaceHolder] = useState(true);
   const [assignReason, setAssignReason] = useState("");
 
+  const [selectedDept, setSelectedDept] = useState<Department | null>(null);
+  const [newDeptMembershipId, setNewDeptMembershipId] = useState("");
+  const [movingMember, setMovingMember] = useState<{ dm: DepartmentMember; memberLabel: string } | null>(null);
+  const [targetDeptId, setTargetDeptId] = useState("");
+  const [removingMember, setRemovingMember] = useState<{ dm: DepartmentMember; memberLabel: string } | null>(null);
+
   const canCreate = session.canInClub("department.create", clubId);
   const canAssignPosition = session.canInClub("permission.assign", clubId);
   const canRevokePosition = session.canInClub("permission.revoke", clubId);
+  const canViewClubMembers = session.canInClub("member.view", clubId);
 
   const departments = useQuery({
     queryKey: ["departments", clubId],
@@ -54,7 +61,7 @@ export function DepartmentsTab({
   const activeMembers = useQuery({
     queryKey: ["memberships", clubId, "ACTIVE"],
     queryFn: () => apiModel.clubMemberships(clubId, "ACTIVE"),
-    enabled: !!clubId && !!assigningSlot,
+    enabled: !!clubId && (!!assigningSlot || (!!selectedDept && canViewClubMembers)),
   });
 
   const deptMembersForSlot = useQuery({
@@ -63,9 +70,35 @@ export function DepartmentsTab({
     enabled: !!assigningSlot?.departmentId,
   });
 
+  const canViewSelectedDeptMembers = selectedDept
+    ? session.canInDepartment("department.member.view", clubId, selectedDept.id)
+    : false;
+  const canAddSelectedDeptMember = selectedDept
+    ? selectedDept.status === "ACTIVE" && session.canInDepartment("department.member.add", clubId, selectedDept.id)
+    : false;
+  const canRemoveSelectedDeptMember = selectedDept
+    ? session.canInDepartment("department.member.remove", clubId, selectedDept.id)
+    : false;
+
+  const selectedDeptMembers = useQuery({
+    queryKey: ["department-members", selectedDept?.id],
+    queryFn: () => apiModel.departmentMembers(selectedDept!.id),
+    enabled: !!selectedDept && canViewSelectedDeptMembers,
+  });
+
+  const membershipById = useMemo(() => {
+    const map = new Map<string, { fullName?: string; studentCode?: string; userId: string }>();
+    for (const m of activeMembers.data?.items ?? []) {
+      map.set(m.id, { fullName: m.userFullName, studentCode: m.userStudentCode, userId: m.userId });
+    }
+    return map;
+  }, [activeMembers.data]);
+
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["departments", clubId] });
     queryClient.invalidateQueries({ queryKey: ["club-positions", clubId] });
+    queryClient.invalidateQueries({ queryKey: ["department-members"] });
+    queryClient.invalidateQueries({ queryKey: ["club-members", clubId] });
   };
 
   const create = useMutation({
@@ -87,6 +120,7 @@ export function DepartmentsTab({
       onNotice(`Đã cập nhật thông tin ban "${dept.name}".`);
       onError("");
       setEditing(null);
+      if (selectedDept?.id === dept.id) setSelectedDept(dept);
       refresh();
     },
     onError: (e) => onError(describeError(e)),
@@ -97,6 +131,7 @@ export function DepartmentsTab({
     onSuccess: (dept) => {
       onNotice(dept.status === "ACTIVE" ? `Đã kích hoạt ban "${dept.name}".` : `Đã ngừng hoạt động ban "${dept.name}".`);
       onError("");
+      if (selectedDept?.id === dept.id) setSelectedDept(dept);
       refresh();
     },
     onError: (e) => onError(describeError(e)),
@@ -136,6 +171,41 @@ export function DepartmentsTab({
     onError: (e) => onError(describeError(e)),
   });
 
+  const addDeptMember = useMutation({
+    mutationFn: () => apiModel.addDepartmentMember(selectedDept!.id, newDeptMembershipId),
+    onSuccess: () => {
+      onNotice(`Đã thêm thành viên vào "${selectedDept?.name}".`);
+      onError("");
+      setNewDeptMembershipId("");
+      refresh();
+    },
+    onError: (e) => onError(describeError(e)),
+  });
+
+  const moveDeptMember = useMutation({
+    mutationFn: () => apiModel.moveDepartmentMember(selectedDept!.id, movingMember!.dm.membershipId, targetDeptId),
+    onSuccess: () => {
+      const targetName = (departments.data?.items ?? []).find((d) => d.id === targetDeptId)?.name ?? "ban mới";
+      onNotice(`Đã chuyển ${movingMember?.memberLabel} từ "${selectedDept?.name}" sang "${targetName}".`);
+      onError("");
+      setMovingMember(null);
+      setTargetDeptId("");
+      refresh();
+    },
+    onError: (e) => onError(describeError(e)),
+  });
+
+  const removeDeptMember = useMutation({
+    mutationFn: () => apiModel.removeDepartmentMember(selectedDept!.id, removingMember!.dm.membershipId),
+    onSuccess: () => {
+      onNotice(`Đã gỡ ${removingMember?.memberLabel} khỏi "${selectedDept?.name}" (giữ nguyên tư cách thành viên CLB).`);
+      onError("");
+      setRemovingMember(null);
+      refresh();
+    },
+    onError: (e) => onError(describeError(e)),
+  });
+
   const openEdit = (dept: Department) => {
     setEditing(dept);
     setName(dept.name);
@@ -151,15 +221,36 @@ export function DepartmentsTab({
     assignPosition.reset();
   };
 
+  const openDeptDrawer = (dept: Department) => {
+    setSelectedDept(dept);
+    setNewDeptMembershipId("");
+    addDeptMember.reset();
+  };
+
   const deptHeadSlotFor = (departmentId: string): ClubPositionSlot | undefined =>
     (structure.data?.departmentPositions ?? []).find((s) => s.departmentId === departmentId);
 
+  const moveTargetsForSelected = useMemo(() => {
+    if (!selectedDept) return [];
+    return (departments.data?.items ?? []).filter(
+      (d) =>
+        d.id !== selectedDept.id &&
+        d.status === "ACTIVE" &&
+        session.canInDepartment("department.member.add", clubId, d.id)
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [departments.data, selectedDept, clubId, session.permissions]);
+
   const actionsFor = (dept: Department): RowAction[] => {
+    const canViewMembers = session.canInDepartment("department.member.view", clubId, dept.id);
     const canEdit = session.canInDepartment("department.update", clubId, dept.id);
     const canActivate = dept.status !== "ACTIVE" && session.canInDepartment("department.activate", clubId, dept.id);
     const canDeactivate = dept.status === "ACTIVE" && session.canInDepartment("department.inactive", clubId, dept.id);
     const headSlot = deptHeadSlotFor(dept.id);
     return [
+      ...(canViewMembers
+        ? [{ icon: <UsersRound />, label: "Thành viên ban", onClick: () => openDeptDrawer(dept) }]
+        : []),
       ...(canAssignPosition && headSlot && dept.status === "ACTIVE"
         ? [
             {
@@ -185,6 +276,19 @@ export function DepartmentsTab({
     const deptUserIds = new Set((deptMembersForSlot.data?.items ?? []).map((dm) => dm.userId));
     return allClubMembers.filter((m) => deptUserIds.has(m.userId));
   })();
+
+  const availableMembersToAdd = useMemo(() => {
+    const existingIds = new Set((selectedDeptMembers.data?.items ?? []).map((dm) => dm.membershipId));
+    return (activeMembers.data?.items ?? []).filter((m) => !existingIds.has(m.id));
+  }, [activeMembers.data, selectedDeptMembers.data]);
+
+  const labelForDeptMember = (dm: DepartmentMember) => {
+    const known = membershipById.get(dm.membershipId);
+    if (known?.fullName) {
+      return known.studentCode ? `${known.fullName} (${known.studentCode})` : known.fullName;
+    }
+    return `Thành viên #${dm.userId.slice(0, 8)}`;
+  };
 
   return (
     <div className="space-y-4">
@@ -260,6 +364,7 @@ export function DepartmentsTab({
                         {canRevokePosition && (
                           <button
                             type="button"
+                            aria-label={`Miễn nhiệm ${holder.fullName || holder.email}`}
                             title="Miễn nhiệm chức danh"
                             onClick={() => {
                               if (confirm(`Miễn nhiệm ${holder.fullName || holder.email} khỏi chức danh ${slot.roleName}?`)) {
@@ -305,7 +410,13 @@ export function DepartmentsTab({
           ariaLabel="Ban chuyên môn"
           rows={departments.data.items}
           rowKey={(d) => d.id}
-          onRowClick={(d) => session.canInDepartment("department.update", clubId, d.id) && openEdit(d)}
+          onRowClick={(d) =>
+            session.canInDepartment("department.member.view", clubId, d.id)
+              ? openDeptDrawer(d)
+              : session.canInDepartment("department.update", clubId, d.id)
+              ? openEdit(d)
+              : undefined
+          }
           columns={[
             { key: "name", header: "Tên ban chuyên môn", render: (d) => <span className="font-bold text-foreground">{d.name}</span> },
             {
@@ -328,6 +439,7 @@ export function DepartmentsTab({
                     {canRevokePosition && (
                       <button
                         type="button"
+                        aria-label={`Miễn nhiệm Trưởng ban ${holder.fullName || holder.email}`}
                         title="Miễn nhiệm Trưởng ban"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -358,6 +470,192 @@ export function DepartmentsTab({
           ]}
         />
       )}
+
+      {/* Drawer Quản lý thành viên thuộc Ban (PB-17.1, PB-17.2, PB-17.3) */}
+      <EntityDrawer
+        open={!!selectedDept}
+        onClose={() => setSelectedDept(null)}
+        title={selectedDept ? `Thành viên — ${selectedDept.name}` : "Thành viên ban"}
+        subtitle={selectedDept?.description || "Quản lý phân công, chuyển ban và gỡ thành viên khỏi ban chuyên môn"}
+        icon={<UsersRound />}
+      >
+        {selectedDept && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3.5 py-2.5 text-xs">
+              <span>Trạng thái ban:</span>
+              <StatusBadge status={selectedDept.status} />
+            </div>
+
+            {canAddSelectedDeptMember && (
+              <Section title="Thêm thành viên CLB vào ban" icon={<UserPlus />} className="mt-2 border-t-0 pt-0">
+                {canViewClubMembers ? (
+                  <div className="flex flex-wrap items-end gap-2">
+                    <div className="min-w-52 flex-1">
+                      <FormField label="Chọn thành viên đang hoạt động (ACTIVE)">
+                        <Select
+                          value={newDeptMembershipId}
+                          onChange={(e) => setNewDeptMembershipId(e.target.value)}
+                        >
+                          <option value="">-- Chọn thành viên CLB --</option>
+                          {availableMembersToAdd.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.userFullName || m.userId} {m.userStudentCode ? `(${m.userStudentCode})` : ""}
+                            </option>
+                          ))}
+                        </Select>
+                      </FormField>
+                    </div>
+                    <Button
+                      size="sm"
+                      disabled={!newDeptMembershipId || addDeptMember.isPending}
+                      onClick={() => addDeptMember.mutate()}
+                    >
+                      <UserPlus size={14} /> {addDeptMember.isPending ? "Đang thêm…" : "Thêm vào ban"}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-end gap-2">
+                    <div className="min-w-52 flex-1">
+                      <FormField label="Mã Membership (UUID)">
+                        <Input
+                          value={newDeptMembershipId}
+                          onChange={(e) => setNewDeptMembershipId(e.target.value)}
+                          placeholder="Nhập UUID membership trong CLB…"
+                        />
+                      </FormField>
+                    </div>
+                    <Button
+                      size="sm"
+                      disabled={!newDeptMembershipId.trim() || addDeptMember.isPending}
+                      onClick={() => addDeptMember.mutate()}
+                    >
+                      <UserPlus size={14} /> Thêm vào ban
+                    </Button>
+                  </div>
+                )}
+              </Section>
+            )}
+
+            <Section title={`Danh sách thành viên (${selectedDeptMembers.data?.total ?? 0})`} icon={<UsersRound />}>
+              {selectedDeptMembers.isPending ? (
+                <LoadingRows rows={3} />
+              ) : selectedDeptMembers.isError ? (
+                <ErrorState message={describeError(selectedDeptMembers.error)} onRetry={() => selectedDeptMembers.refetch()} />
+              ) : !(selectedDeptMembers.data?.items.length) ? (
+                <p className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                  Ban chuyên môn này hiện chưa có thành viên nào.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {selectedDeptMembers.data.items.map((dm) => {
+                    const memberLabel = labelForDeptMember(dm);
+                    return (
+                      <li
+                        key={dm.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card px-3.5 py-2.5 text-xs"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-bold text-foreground">{memberLabel}</p>
+                          <p className="font-mono text-[11px] text-muted-foreground">
+                            Tham gia ban: {formatDay(dm.joinedAt)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {canRemoveSelectedDeptMember && moveTargetsForSelected.length > 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                moveDeptMember.reset();
+                                setMovingMember({ dm, memberLabel });
+                                setTargetDeptId(moveTargetsForSelected[0]?.id ?? "");
+                              }}
+                            >
+                              <ArrowRightLeft size={13} /> Chuyển ban
+                            </Button>
+                          )}
+                          {canRemoveSelectedDeptMember && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                removeDeptMember.reset();
+                                setRemovingMember({ dm, memberLabel });
+                              }}
+                            >
+                              <UserMinus size={13} /> Gỡ khỏi ban
+                            </Button>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </Section>
+          </div>
+        )}
+      </EntityDrawer>
+
+      {/* Modal Chuyển thành viên sang ban khác (PB-17.2) */}
+      <ModalShell
+        open={!!movingMember}
+        onClose={() => setMovingMember(null)}
+        title="Chuyển thành viên sang ban khác"
+        icon={<ArrowRightLeft />}
+        size="sm"
+        onSubmit={() => moveDeptMember.mutate()}
+        submitLabel="Xác nhận chuyển ban"
+        submitLoading={moveDeptMember.isPending}
+        submitDisabled={!targetDeptId}
+      >
+        {movingMember && selectedDept && (
+          <div className="space-y-3 text-sm">
+            <p>
+              Chuyển <b>{movingMember.memberLabel}</b> từ <b>{selectedDept.name}</b> sang ban chuyên môn khác trong cùng CLB:
+            </p>
+            <FormField label="Ban đích (ACTIVE)" required>
+              <Select value={targetDeptId} onChange={(e) => setTargetDeptId(e.target.value)}>
+                <option value="">-- Chọn ban đích --</option>
+                {moveTargetsForSelected.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <p className="text-xs text-muted-foreground">
+              Các chức danh hoặc quyền phạm vi ban tại <b>{selectedDept.name}</b> sẽ được tự động thu hồi và ghi nhận vào nhật ký Audit.
+            </p>
+            {moveDeptMember.error && <p className="text-xs text-destructive">{describeError(moveDeptMember.error)}</p>}
+          </div>
+        )}
+      </ModalShell>
+
+      {/* Modal Xác nhận gỡ thành viên khỏi ban (PB-17.3) */}
+      <ModalShell
+        open={!!removingMember}
+        onClose={() => setRemovingMember(null)}
+        title="Xác nhận gỡ thành viên khỏi ban"
+        icon={<UserMinus />}
+        size="sm"
+        onSubmit={() => removeDeptMember.mutate()}
+        submitLabel="Gỡ khỏi ban"
+        submitDanger
+        submitLoading={removeDeptMember.isPending}
+      >
+        {removingMember && selectedDept && (
+          <div className="space-y-2 text-sm">
+            <p>
+              Xác nhận gỡ <b>{removingMember.memberLabel}</b> khỏi <b>{selectedDept.name}</b>?
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Thành viên vẫn giữ nguyên tư cách thành viên của CLB; chỉ các quyền và chức danh gắn riêng với <b>{selectedDept.name}</b> được thu hồi.
+            </p>
+            {removeDeptMember.error && <p className="text-xs text-destructive">{describeError(removeDeptMember.error)}</p>}
+          </div>
+        )}
+      </ModalShell>
 
       <ModalShell
         open={creating}
@@ -446,7 +744,7 @@ export function DepartmentsTab({
 
             {assigningSlot.departmentId && eligibleCandidates.length === 0 && (
               <p className="text-xs text-amber-600 dark:text-amber-400">
-                Ban này hiện chưa có thành viên nào. Hãy phân công thành viên vào ban tại tab &quot;Phân ban&quot; trước khi bổ nhiệm Trưởng ban.
+                Ban này hiện chưa có thành viên nào. Hãy mở mục &quot;Thành viên ban&quot; để thêm thành viên trước khi bổ nhiệm Trưởng ban.
               </p>
             )}
 

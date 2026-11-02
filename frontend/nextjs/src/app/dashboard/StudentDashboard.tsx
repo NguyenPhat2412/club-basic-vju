@@ -20,13 +20,13 @@ export function StudentDashboard({ user }: { user: User }) {
   const [now] = useState(() => Date.now());
 
   // Same keys as the manager view so both share the cache.
-  const memberships = useQuery({ queryKey: ["dashboard", "memberships"], queryFn: apiModel.myMemberships });
-  const applications = useQuery({ queryKey: ["dashboard", "my-applications"], queryFn: apiModel.myApplications });
+  const memberships = useQuery({ queryKey: ["dashboard", "memberships"], queryFn: () => apiModel.myMemberships() });
+  const applications = useQuery({ queryKey: ["dashboard", "my-applications"], queryFn: () => apiModel.myApplications() });
   const tasks = useQuery({ queryKey: ["dashboard", "my-tasks"], queryFn: () => apiModel.myTasks() });
   const calendar = useQuery({ queryKey: ["dashboard", "my-calendar"], queryFn: () => apiModel.myCalendar() });
   const publicEvents = useQuery({ queryKey: ["dashboard", "public-events"], queryFn: () => apiModel.publicEvents(0, 10) });
   const publicClubs = useQuery({ queryKey: ["dashboard", "public-clubs"], queryFn: () => apiModel.publicClubs("", "", 0, 100) });
-  const notifications = useQuery({ queryKey: ["dashboard", "notifications"], queryFn: apiModel.notifications });
+  const notifications = useQuery({ queryKey: ["dashboard", "notifications"], queryFn: () => apiModel.notifications() });
 
   const cancel = useMutation({
     mutationFn: (id: string) => apiModel.cancelApplication(id),

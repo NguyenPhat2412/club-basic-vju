@@ -1,6 +1,14 @@
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 export type Page<T> = { items: T[]; total: number; offset: number; limit: number };
-export class ApiError extends Error { constructor(message: string, public status: number, public code?: string) { super(message); } }
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
 async function apiError(response: Response) { let message = `Request failed (${response.status})`; let code: string | undefined; try { const body = await response.json(); message = body.detail || body.message || body.title || message; code = body.code; } catch {} return new ApiError(message, response.status, code); }
 
 const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -92,7 +100,8 @@ export const apiModel = {
   updateProfile: (body: { fullName?: string; phone?: string; avatarUrl?: string }) =>
     api<User>('/users/me', { method: 'PATCH', body: JSON.stringify(body) }),
   effectivePermissions: () => api<EffectivePermission[]>('/users/me/effective-permissions'),
-  publicClubs: (query = '', category = '', offset = 0, limit = 50) => api<Page<Club>>(`/public/clubs?${new URLSearchParams({ query, category, offset: String(offset), limit: String(limit) })}`),
+  publicClubs: (query = '', category = '', offset = 0, limit = 50) => api<Page<Club>>(`/public/clubs?${cleanParams({ query, category, offset, limit })}`),
+  publicClubCategories: () => api<string[]>('/public/clubs/categories'),
   publicClub: (id: string) => api<Club>(`/public/clubs/${id}`),
   publicEvents: (offset = 0, limit = 10) => api<Page<PublicEvent>>(`/public/events?${new URLSearchParams({ offset: String(offset), limit: String(limit) })}`),
   clubs: (query = '', category = '', offset = 0, limit = 50, status?: string) => api<Page<Club>>(`/clubs?${cleanParams({ query, category, status, offset, limit })}`),
@@ -105,13 +114,14 @@ export const apiModel = {
       method: 'POST',
       body: JSON.stringify(typeof body === 'string' ? { message: body } : body),
     }),
-  myApplications: () => api<Page<ApplicationSummary>>('/users/me/applications?limit=50'),
+  myApplications: (q: { status?: string; clubId?: string; sort?: string; offset?: number; limit?: number } = {}) =>
+    api<Page<ApplicationSummary>>(`/users/me/applications?${cleanParams({ status: q.status, clubId: q.clubId, sort: q.sort, offset: q.offset ?? 0, limit: q.limit ?? 50 })}`),
   application: (id: string) => api<Application>(`/users/me/applications/${id}`),
   updateMyApplication: (id: string, body: UpdateApplicationInput) =>
     api<Application>(`/users/me/applications/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
-  deleteMyApplication: (id: string) => api<void>(`/users/me/applications/${id}`, { method: 'DELETE' }),
   cancelApplication: (id: string) => api<Application>(`/users/me/applications/${id}/cancel`, { method: 'PATCH' }),
-  myMemberships: () => api<Page<Membership>>('/users/me/memberships?limit=50'),
+  myMemberships: (q: { status?: string; offset?: number; limit?: number } = {}) =>
+    api<Page<Membership>>(`/users/me/memberships?${cleanParams({ status: q.status, offset: q.offset ?? 0, limit: q.limit ?? 50 })}`),
   clubApplicationForm: (clubId: string) => api<ApplicationForm>(`/clubs/${clubId}/application-form`),
   clubApplicationForms: (clubId: string) => api<ApplicationForm[]>(`/clubs/${clubId}/application-forms`),
   createClubApplicationForm: (clubId: string, body: UpsertApplicationFormInput) =>
@@ -152,35 +162,69 @@ export const apiModel = {
     api<void>(`/applications/${applicationId}/files/${fileId}`, { method: 'DELETE' }),
   applicationFileUrl: (fileId: string, inline = false) =>
     `${API}/api/v1/application-files/${fileId}/download?inline=${inline}`,
-  clubApplications: (clubId: string, q: { status?: string; search?: string } = {}) =>
-    api<Page<Application>>(`/clubs/${clubId}/applications?${cleanParams({ status: q.status, search: q.search, limit: 50 })}`),
+  clubApplications: (
+    clubId: string,
+    q: { status?: string; search?: string; createdFrom?: string; createdTo?: string; sort?: string; offset?: number; limit?: number } = {}
+  ) =>
+    api<Page<Application>>(
+      `/clubs/${clubId}/applications?${cleanParams({
+        status: q.status,
+        search: q.search,
+        createdFrom: q.createdFrom,
+        createdTo: q.createdTo,
+        sort: q.sort,
+        offset: q.offset ?? 0,
+        limit: q.limit ?? 20,
+      })}`
+    ),
   clubApplicationDetail: (clubId: string, applicationId: string) =>
     api<Application>(`/clubs/${clubId}/applications/${applicationId}`),
   updateClubApplication: (clubId: string, applicationId: string, body: UpdateApplicationInput) =>
     api<Application>(`/clubs/${clubId}/applications/${applicationId}`, { method: 'PUT', body: JSON.stringify(body) }),
-  deleteClubApplication: (clubId: string, applicationId: string) =>
-    api<void>(`/clubs/${clubId}/applications/${applicationId}`, { method: 'DELETE' }),
-  approve: (clubId: string, applicationId: string, note: string, departmentId?: string) =>
+  approve: (clubId: string, applicationId: string, body: ReviewApplicationInput | string = {}, departmentId?: string) =>
     api<Application>(`/clubs/${clubId}/applications/${applicationId}/approve`, {
       method: 'POST',
-      body: JSON.stringify({ reviewNote: note, departmentId: departmentId || undefined }),
+      body: JSON.stringify(
+        typeof body === 'string'
+          ? { reviewNote: body || undefined, departmentId: departmentId || undefined }
+          : {
+              reviewNote: body.reviewNote || undefined,
+              internalNote: body.internalNote || undefined,
+              departmentId: body.departmentId || undefined,
+              skipDepartmentAssignment: body.skipDepartmentAssignment,
+            }
+      ),
     }),
-  reject: (clubId: string, applicationId: string, note: string) =>
+  reject: (clubId: string, applicationId: string, body: ReviewApplicationInput | string = {}) =>
     api<Application>(`/clubs/${clubId}/applications/${applicationId}/reject`, {
       method: 'POST',
-      body: JSON.stringify({ reviewNote: note }),
+      body: JSON.stringify(
+        typeof body === 'string'
+          ? { reviewNote: body || undefined }
+          : {
+              reviewNote: body.reviewNote || undefined,
+              internalNote: body.internalNote || undefined,
+            }
+      ),
     }),
   departments: (clubId: string) => api<Page<Department>>(`/clubs/${clubId}/departments?limit=50`),
   createDepartment: (clubId: string, body: { name: string; description?: string }) => api<Department>(`/clubs/${clubId}/departments`, { method: 'POST', body: JSON.stringify(body) }),
   updateDepartment: (id: string, body: { name?: string; description?: string }) => api<Department>(`/departments/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   updateDepartmentStatus: (id: string, status: 'ACTIVE' | 'INACTIVE') => api<Department>(`/departments/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
-  clubMemberships: (clubId: string, status = '') => api<Page<Membership>>(`/clubs/${clubId}/memberships?${cleanParams({ status, limit: 100 })}`),
+  clubMemberships: (clubId: string, status = '', offset = 0, limit = 100) =>
+    api<Page<Membership>>(`/clubs/${clubId}/memberships?${cleanParams({ status: status || undefined, offset, limit })}`),
   addClubMember: (clubId: string, userId: string) => api<Membership>(`/clubs/${clubId}/memberships`, { method: 'POST', body: JSON.stringify({ userId }) }),
   membership: (id: string) => api<Membership>(`/memberships/${id}`),
   updateMembership: (id: string, status: string) => api<Membership>(`/memberships/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   removeMembership: (id: string) => api<void>(`/memberships/${id}`, { method: 'DELETE' }),
-  departmentMembers: (departmentId: string) => api<Page<DepartmentMember>>(`/departments/${departmentId}/members?limit=100`),
+  departmentMembers: (departmentId: string, offset = 0, limit = 100) =>
+    api<Page<DepartmentMember>>(`/departments/${departmentId}/members?${cleanParams({ offset, limit })}`),
   addDepartmentMember: (departmentId: string, membershipId: string) => api<DepartmentMember>(`/departments/${departmentId}/members`, { method: 'POST', body: JSON.stringify({ membershipId }) }),
+  moveDepartmentMember: (departmentId: string, membershipId: string, targetDepartmentId: string) =>
+    api<DepartmentMember>(`/departments/${departmentId}/members/${membershipId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ targetDepartmentId }),
+    }),
   removeDepartmentMember: (departmentId: string, membershipId: string) => api<void>(`/departments/${departmentId}/members/${membershipId}`, { method: 'DELETE' }),
   clubEvents: (clubId: string, q: { status?: string; departmentId?: string; offset?: number; limit?: number } = {}) => api<Page<ClubEvent>>(`/clubs/${clubId}/events?${cleanParams({ status: q.status, departmentId: q.departmentId, offset: q.offset ?? 0, limit: q.limit ?? 50 })}`),
   eventDetail: (eventId: string) => api<ClubEvent>(`/events/${eventId}`),
@@ -203,7 +247,8 @@ export const apiModel = {
   sendMessage: (channelId: string, content: string) => api<ChatMessage>(`/channels/${channelId}/messages`, { method: 'POST', body: JSON.stringify({ content }) }),
   summarizeChannel: (channelId: string, body: { messageLimit?: number; postToChannel?: boolean } = { messageLimit: 50, postToChannel: true }) => api<AiSummary>(`/channels/${channelId}/summaries`, { method: 'POST', body: JSON.stringify(body) }),
   channelSummaries: (channelId: string) => api<AiSummary[]>(`/channels/${channelId}/summaries`),
-  notifications: () => api<Page<Notification>>('/users/me/notifications?limit=30'),
+  notifications: (offset = 0, limit = 30) => api<Page<Notification>>(`/users/me/notifications?${cleanParams({ offset, limit })}`),
+  notificationDetail: (id: string) => api<Notification>(`/users/me/notifications/${id}`),
   markNotificationRead: (id: string) => api<void>(`/users/me/notifications/${id}/read`, { method: 'PATCH' }),
   markAllNotificationsRead: () => api<void>('/users/me/notifications/read-all', { method: 'PATCH' }),
   broadcastNotification: (clubId: string, body: { title: string; message: string; departmentId?: string }) => api<{ clubId: string; departmentId?: string; recipientCount: number }>(`/clubs/${clubId}/notifications`, { method: 'POST', body: JSON.stringify(body) }),
@@ -327,6 +372,12 @@ export type CreateApplicationInput = {
   customAnswers?: Record<string, unknown>;
   applicantId?: string;
 };
+export type ReviewApplicationInput = {
+  reviewNote?: string;
+  internalNote?: string;
+  departmentId?: string;
+  skipDepartmentAssignment?: boolean;
+};
 export type UpdateApplicationInput = {
   preferredDepartmentId?: string;
   secondaryDepartmentId?: string;
@@ -340,8 +391,8 @@ export type UpdateApplicationInput = {
   availability?: string;
   message?: string;
   customAnswers?: Record<string, unknown>;
-  status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
   reviewNote?: string;
+  internalNote?: string;
   assignDepartmentId?: string;
 };
 export type ApplicationSummary = {
@@ -361,6 +412,7 @@ export type ApplicationSummary = {
   status: string;
   createdAt: string;
   reviewedAt?: string;
+  cancelledAt?: string;
 };
 export type Application = ApplicationSummary & {
   applicantId: string;
@@ -380,13 +432,15 @@ export type Application = ApplicationSummary & {
   attachments?: ApplicationFile[];
   reviewedBy?: string;
   reviewNote?: string;
+  internalNote?: string;
   cancelledAt?: string;
   updatedAt?: string;
   membershipId?: string;
   membershipStatus?: string;
+  membershipJoinedAt?: string;
 };
 export type Membership = { id: string; userId: string; userFullName?: string; userStudentCode?: string; clubId: string; clubCode: string; clubName: string; status: string; joinedAt?: string; leftAt?: string; departments: { id: string; name: string }[] };
 export type Department = { id: string; clubId: string; name: string; description?: string; status: string };
 export type DepartmentMember = { id: string; departmentId: string; membershipId: string; userId: string; joinedAt: string };
-export type Notification = { id: string; title: string; message: string; read: boolean; referenceId?: string; createdAt: string };
+export type Notification = { id: string; title: string; message: string; read: boolean; referenceType?: string; referenceId?: string; createdAt: string };
 export type GoogleSignInConfig = { enabled: boolean; clientId: string | null; allowedDomains: string[] };

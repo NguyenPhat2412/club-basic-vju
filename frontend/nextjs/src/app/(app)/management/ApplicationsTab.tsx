@@ -1,15 +1,17 @@
 "use client";
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Check,
   ClipboardList,
   Eye,
+  FilterX,
+  Lock,
   Paperclip,
   Pencil,
   Plus,
   Search,
-  Trash2,
+  ShieldCheck,
   Upload,
   X,
 } from "lucide-react";
@@ -24,6 +26,7 @@ import { useUserNames } from "@/hooks/useUserNames";
 import { ApplicationFilesList, CustomFieldsInputs } from "@/components/shared/ApplicationFileView";
 import { DataTable } from "@/components/shared/DataTable";
 import { DetailList, EntityDrawer, ModalShell, Section } from "@/components/shared/Overlays";
+import { Pagination } from "@/components/shared/Pagination";
 import { EmptyState, ErrorState, LoadingRows } from "@/components/shared/States";
 import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError } from "@/components/shared/ListPage";
@@ -31,6 +34,8 @@ import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/input";
 import { formatDateTime, formatDay } from "@/lib/utils";
+
+const LIMIT = 20;
 
 type AppManageDraft = {
   applicantId: string;
@@ -46,8 +51,8 @@ type AppManageDraft = {
   availability: string;
   message: string;
   customAnswers: Record<string, unknown>;
-  status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
   reviewNote: string;
+  internalNote: string;
   assignDepartmentId: string;
 };
 
@@ -65,10 +70,22 @@ const EMPTY_APP_DRAFT: AppManageDraft = {
   availability: "",
   message: "",
   customAnswers: {},
-  status: "PENDING",
   reviewNote: "",
+  internalNote: "",
   assignDepartmentId: "",
 };
+
+function startOfDayIso(dateStr: string): string | undefined {
+  if (!dateStr) return undefined;
+  return new Date(`${dateStr}T00:00:00`).toISOString();
+}
+
+function endOfDayExclusiveIso(dateStr: string): string | undefined {
+  if (!dateStr) return undefined;
+  const start = new Date(`${dateStr}T00:00:00`);
+  start.setDate(start.getDate() + 1);
+  return start.toISOString();
+}
 
 export function ApplicationsTab({
   clubId,
@@ -92,28 +109,46 @@ export function ApplicationsTab({
 
   const [statusFilter, setStatusFilter] = useState("");
   const [search, setSearch] = useState("");
-  const [detailApp, setDetailApp] = useState<Application | null>(null);
+  const [createdFrom, setCreatedFrom] = useState("");
+  const [createdTo, setCreatedTo] = useState("");
+  const [offset, setOffset] = useState(0);
+
+  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [review, setReview] = useState<{ app: Application; approve: boolean } | null>(null);
   const [reviewDeptId, setReviewDeptId] = useState("");
   const [note, setNote] = useState("");
+  const [internalNote, setInternalNote] = useState("");
   const [modalMode, setModalMode] = useState<"create" | "edit" | null>(null);
   const [editingApp, setEditingApp] = useState<Application | null>(null);
   const [draft, setDraft] = useState<AppManageDraft>(EMPTY_APP_DRAFT);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
+  const canViewList = session.canInClub("application.view", clubId);
+  const canViewDetail = canViewList || session.canInClub("application.view_detail", clubId) || session.canInClub("application.review", clubId);
+  const canCreateForClub = session.canInClub("application.create", clubId);
   const canApprove = session.canInClub("application.approve", clubId) || session.canInClub("application.review", clubId);
   const canReject = session.canInClub("application.reject", clubId) || session.canInClub("application.review", clubId);
-  const canUpdate = session.canInClub("application.update", clubId) || session.canInClub("application.review", clubId) || canApprove || canReject;
-  const canDelete = session.canInClub("application.delete", clubId) || session.canInClub("application.review", clubId) || canApprove;
+  const canUpdate = session.canInClub("application.update", clubId) || session.canInClub("application.review", clubId);
 
   const apps = useQuery({
-    queryKey: ["club-applications", clubId, statusFilter, search],
+    queryKey: ["club-applications", clubId, statusFilter, search, createdFrom, createdTo, offset],
     queryFn: () =>
       apiModel.clubApplications(clubId, {
         status: statusFilter || undefined,
         search: search.trim() || undefined,
+        createdFrom: startOfDayIso(createdFrom),
+        createdTo: endOfDayExclusiveIso(createdTo),
+        offset,
+        limit: LIMIT,
       }),
-    enabled: !!clubId,
+    placeholderData: keepPreviousData,
+    enabled: !!clubId && canViewList,
+  });
+
+  const detailQuery = useQuery({
+    queryKey: ["club-application-detail", clubId, selectedAppId],
+    queryFn: () => apiModel.clubApplicationDetail(clubId, selectedAppId!),
+    enabled: !!clubId && !!selectedAppId && canViewDetail,
   });
 
   const activeFormQuery = useQuery({
@@ -130,13 +165,24 @@ export function ApplicationsTab({
 
   const refreshApps = () => {
     queryClient.invalidateQueries({ queryKey: ["club-applications", clubId] });
+    if (selectedAppId) {
+      queryClient.invalidateQueries({ queryKey: ["club-application-detail", clubId, selectedAppId] });
+    }
   };
 
   const reviewMutation = useMutation({
     mutationFn: ({ app, approve }: { app: Application; approve: boolean }) =>
       approve
-        ? apiModel.approve(clubId, app.id, note, reviewDeptId || undefined)
-        : apiModel.reject(clubId, app.id, note),
+        ? apiModel.approve(clubId, app.id, {
+            reviewNote: note.trim() || undefined,
+            internalNote: internalNote.trim() || undefined,
+            departmentId: reviewDeptId || undefined,
+            skipDepartmentAssignment: !reviewDeptId,
+          })
+        : apiModel.reject(clubId, app.id, {
+            reviewNote: note.trim() || undefined,
+            internalNote: internalNote.trim() || undefined,
+          }),
     onSuccess: (_, { approve }) => {
       onNotice(
         approve
@@ -146,8 +192,8 @@ export function ApplicationsTab({
       onError("");
       setReview(null);
       setNote("");
+      setInternalNote("");
       setReviewDeptId("");
-      setDetailApp(null);
       refreshApps();
       onRefreshMembers();
     },
@@ -171,9 +217,9 @@ export function ApplicationsTab({
           availability: draft.availability.trim(),
           message: draft.message.trim(),
           customAnswers: draft.customAnswers,
-          status: draft.status,
           reviewNote: draft.reviewNote.trim(),
-          assignDepartmentId: draft.assignDepartmentId || undefined,
+          internalNote: draft.internalNote.trim(),
+          assignDepartmentId: editingApp.status === "APPROVED" && draft.assignDepartmentId ? draft.assignDepartmentId : undefined,
         };
         saved = await apiModel.updateClubApplication(clubId, editingApp.id, payload);
       } else {
@@ -197,32 +243,20 @@ export function ApplicationsTab({
       for (const file of pendingFiles) {
         await apiModel.uploadApplicationFile(saved.id, file, "APPLICANT_ATTACHMENT");
       }
-      return apiModel.clubApplicationDetail(clubId, saved.id);
+      return canViewDetail ? apiModel.clubApplicationDetail(clubId, saved.id) : saved;
     },
-    onSuccess: (updated) => {
+    onSuccess: () => {
       onNotice(
         modalMode === "edit"
-          ? "Đã cập nhật hồ sơ đơn đăng ký & kết quả xét duyệt."
+          ? "Đã cập nhật hồ sơ đơn đăng ký & ghi chú xét duyệt."
           : "Đã tạo hồ sơ đơn đăng ký mới."
       );
       onError("");
       setModalMode(null);
       setEditingApp(null);
       setPendingFiles([]);
-      if (detailApp?.id === updated.id) setDetailApp(updated);
       refreshApps();
       onRefreshMembers();
-    },
-    onError: (e) => onError(describeError(e)),
-  });
-
-  const deleteAppMutation = useMutation({
-    mutationFn: (appId: string) => apiModel.deleteClubApplication(clubId, appId),
-    onSuccess: () => {
-      onNotice("Đã xoá đơn đăng ký.");
-      onError("");
-      setDetailApp(null);
-      refreshApps();
     },
     onError: (e) => onError(describeError(e)),
   });
@@ -237,7 +271,6 @@ export function ApplicationsTab({
     onSuccess: (updated) => {
       onNotice("Đã tải thêm tệp đính kèm cho đơn đăng ký.");
       onError("");
-      if (detailApp?.id === updated.id) setDetailApp(updated);
       if (editingApp?.id === updated.id) setEditingApp(updated);
       refreshApps();
     },
@@ -252,7 +285,6 @@ export function ApplicationsTab({
     onSuccess: (updated) => {
       onNotice("Đã xoá tệp đính kèm khỏi đơn đăng ký.");
       onError("");
-      if (detailApp?.id === updated.id) setDetailApp(updated);
       if (editingApp?.id === updated.id) setEditingApp(updated);
       refreshApps();
     },
@@ -282,7 +314,8 @@ export function ApplicationsTab({
   const openReview = (app: Application, approve: boolean) => {
     setReview({ app, approve });
     setReviewDeptId(app.preferredDepartmentId || "");
-    setNote("");
+    setNote(app.reviewNote || "");
+    setInternalNote(app.internalNote || "");
     reviewMutation.reset();
   };
 
@@ -314,8 +347,8 @@ export function ApplicationsTab({
       availability: app.availability || "",
       message: app.message || "",
       customAnswers: { ...(app.customAnswers ?? {}) },
-      status: (app.status as AppManageDraft["status"]) || "PENDING",
       reviewNote: app.reviewNote || "",
+      internalNote: app.internalNote || "",
       assignDepartmentId: app.preferredDepartmentId || "",
     });
     setPendingFiles([]);
@@ -323,27 +356,67 @@ export function ApplicationsTab({
     setModalMode("edit");
   };
 
+  const hasFilters = search.trim() !== "" || statusFilter !== "" || createdFrom !== "" || createdTo !== "";
+  const clearFilters = () => {
+    setSearch("");
+    setStatusFilter("");
+    setCreatedFrom("");
+    setCreatedTo("");
+    setOffset(0);
+  };
+
+  const detailApp = detailQuery.data;
+
   return (
-    <div className="space-y-3">
-      {/* Thanh Tìm kiếm, Lọc trạng thái & Nút Tạo hồ sơ đơn (CRUD) */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5">
-        <div className="relative flex-1 sm:max-w-xs">
+    <div className="flex flex-1 flex-col space-y-3">
+      {/* Thanh Tìm kiếm, Lọc trạng thái, Khoảng ngày gửi & Nút Tạo hồ sơ đơn */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 pt-3 sm:px-6">
+        <div className="relative min-w-52 flex-1 sm:max-w-xs">
           <Search
             size={14}
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
           />
           <Input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setOffset(0);
+            }}
             placeholder="Tìm theo tên, email ứng viên…"
             className="pl-8 text-xs"
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Input
+            type="date"
+            aria-label="Từ ngày"
+            title="Lọc đơn gửi từ ngày"
+            value={createdFrom}
+            onChange={(e) => {
+              setCreatedFrom(e.target.value);
+              setOffset(0);
+            }}
+            className="h-9 w-36 text-xs"
+          />
+          <span className="text-xs text-muted-foreground">–</span>
+          <Input
+            type="date"
+            aria-label="Đến ngày"
+            title="Lọc đơn gửi đến ngày"
+            value={createdTo}
+            onChange={(e) => {
+              setCreatedTo(e.target.value);
+              setOffset(0);
+            }}
+            className="h-9 w-36 text-xs"
+          />
           <Select
             aria-label="Lọc trạng thái đơn"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setOffset(0);
+            }}
             className="h-9 w-48 text-xs"
           >
             <option value="">Tất cả trạng thái</option>
@@ -352,7 +425,12 @@ export function ApplicationsTab({
             <option value="REJECTED">REJECTED — Đã từ chối</option>
             <option value="CANCELLED">CANCELLED — Đã rút</option>
           </Select>
-          {canUpdate && (
+          {hasFilters && (
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              <FilterX size={14} /> Xoá bộ lọc
+            </Button>
+          )}
+          {canCreateForClub && (
             <Button size="sm" onClick={openCreateApp}>
               <Plus size={14} /> Tạo hồ sơ đơn
             </Button>
@@ -360,143 +438,148 @@ export function ApplicationsTab({
         </div>
       </div>
 
-      {apps.isPending ? (
+      {!canViewList ? (
+        <EmptyState
+          icon={<ShieldCheck />}
+          title="Bạn chưa có quyền xem hàng đợi đơn đăng ký"
+          description="Cần quyền application.view tại CLB để tra cứu danh sách đơn ứng tuyển."
+          actionLabel={canCreateForClub ? "Tạo hồ sơ đơn" : undefined}
+          onAction={canCreateForClub ? openCreateApp : undefined}
+        />
+      ) : apps.isPending ? (
         <LoadingRows />
       ) : apps.isError ? (
         <ErrorState message={describeError(apps.error)} onRetry={() => apps.refetch()} />
       ) : !apps.data.items.length ? (
         <EmptyState
           icon={<ClipboardList />}
-          title="Chưa có đơn đăng ký phù hợp"
-          description="Bạn có thể tạo hồ sơ đơn trực tiếp cho ứng viên hoặc đợi ứng viên nộp đơn."
-          actionLabel={canUpdate ? "Tạo hồ sơ đơn" : undefined}
-          onAction={canUpdate ? openCreateApp : undefined}
+          title={hasFilters ? "Không có đơn đăng ký khớp bộ lọc" : "Chưa có đơn đăng ký nào"}
+          description={
+            hasFilters
+              ? "Hãy điều chỉnh khoảng ngày, trạng thái hoặc từ khoá tìm kiếm."
+              : "Bạn có thể đợi ứng viên nộp đơn qua trang Khám phá CLB hoặc tạo hồ sơ đơn hộ ứng viên."
+          }
+          actionLabel={hasFilters ? "Xoá bộ lọc" : canCreateForClub ? "Tạo hồ sơ đơn" : undefined}
+          onAction={hasFilters ? clearFilters : canCreateForClub ? openCreateApp : undefined}
         />
       ) : (
-        <DataTable
-          ariaLabel="Đơn đăng ký"
-          rows={apps.data.items}
-          rowKey={(a) => a.id}
-          onRowClick={setDetailApp}
-          columns={[
-            {
-              key: "date",
-              header: "Ngày gửi",
-              render: (a) => <span className="font-mono font-bold text-primary">{formatDay(a.createdAt)}</span>,
-            },
-            { key: "applicant", header: "Người nộp", render: (a) => applicant(a) },
-            {
-              key: "dept",
-              header: "Ban nguyện vọng",
-              render: (a) =>
-                a.preferredDepartmentName ? (
-                  <Badge tone="primary" dot={false}>{a.preferredDepartmentName}</Badge>
-                ) : (
-                  <span className="text-muted-foreground">—</span>
+        <>
+          <DataTable
+            ariaLabel="Đơn đăng ký"
+            rows={apps.data.items}
+            rowKey={(a) => a.id}
+            onRowClick={canViewDetail ? (a) => setSelectedAppId(a.id) : undefined}
+            columns={[
+              {
+                key: "date",
+                header: "Ngày gửi",
+                render: (a) => <span className="font-mono font-bold text-primary">{formatDay(a.createdAt)}</span>,
+              },
+              { key: "applicant", header: "Người nộp", render: (a) => applicant(a) },
+              {
+                key: "dept",
+                header: "Ban nguyện vọng",
+                render: (a) =>
+                  a.preferredDepartmentName ? (
+                    <Badge tone="primary" dot={false}>{a.preferredDepartmentName}</Badge>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  ),
+              },
+              {
+                key: "major",
+                header: "Ngành / Khóa / SĐT",
+                render: (a) => (
+                  <div className="text-xs">
+                    <p className="font-semibold">
+                      {[a.facultyMajor, a.academicYear].filter(Boolean).join(" · ") || "—"}
+                    </p>
+                    {a.applicantPhone && (
+                      <p className="font-mono text-[11px] text-muted-foreground">{a.applicantPhone}</p>
+                    )}
+                  </div>
                 ),
-            },
-            {
-              key: "major",
-              header: "Ngành / Khóa / SĐT",
-              render: (a) => (
-                <div className="text-xs">
-                  <p className="font-semibold">
-                    {[a.facultyMajor, a.academicYear].filter(Boolean).join(" · ") || "—"}
-                  </p>
-                  {a.applicantPhone && (
-                    <p className="font-mono text-[11px] text-muted-foreground">{a.applicantPhone}</p>
-                  )}
-                </div>
-              ),
-            },
-            {
-              key: "files",
-              header: "Tệp đính kèm",
-              render: (a) =>
-                a.attachments && a.attachments.length > 0 ? (
-                  <Badge tone="neutral" dot={false}>
-                    <Paperclip size={11} /> {a.attachments.length} tệp
-                  </Badge>
-                ) : (
-                  <span className="text-muted-foreground">—</span>
+              },
+              {
+                key: "files",
+                header: "Tệp đính kèm",
+                render: (a) =>
+                  a.attachments && a.attachments.length > 0 ? (
+                    <Badge tone="neutral" dot={false}>
+                      <Paperclip size={11} /> {a.attachments.length} tệp
+                    </Badge>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  ),
+              },
+              {
+                key: "message",
+                header: "Lý do ứng tuyển",
+                className: "max-w-[260px]",
+                render: (a) => <p className="truncate text-muted-foreground">{a.message}</p>,
+              },
+              { key: "status", header: "Trạng thái", render: (a) => <StatusBadge status={a.status} /> },
+              {
+                key: "actions",
+                header: "Thao tác",
+                className: "text-right",
+                render: (a) => (
+                  <TableRowActions
+                    actions={[
+                      ...(canViewDetail
+                        ? [{ icon: <Eye />, label: "Xem chi tiết & tệp", onClick: () => setSelectedAppId(a.id) }]
+                        : []),
+                      ...(canUpdate
+                        ? [
+                            {
+                              icon: <Pencil />,
+                              label: "Chỉnh sửa hồ sơ & ghi chú",
+                              onClick: () => openEditApp(a),
+                            },
+                          ]
+                        : []),
+                      ...(a.status === "PENDING" && canApprove
+                        ? [{ icon: <Check />, label: "Duyệt đơn", onClick: () => openReview(a, true) }]
+                        : []),
+                      ...(a.status === "PENDING" && canReject
+                        ? [
+                            {
+                              icon: <X />,
+                              label: "Từ chối đơn",
+                              danger: true,
+                              onClick: () => openReview(a, false),
+                            },
+                          ]
+                        : []),
+                    ]}
+                  />
                 ),
-            },
-            {
-              key: "message",
-              header: "Lý do ứng tuyển",
-              className: "max-w-[260px]",
-              render: (a) => <p className="truncate text-muted-foreground">{a.message}</p>,
-            },
-            { key: "status", header: "Trạng thái", render: (a) => <StatusBadge status={a.status} /> },
-            {
-              key: "actions",
-              header: "Thao tác",
-              className: "text-right",
-              render: (a) => (
-                <TableRowActions
-                  actions={[
-                    { icon: <Eye />, label: "Xem chi tiết & tệp", onClick: () => setDetailApp(a) },
-                    ...(canUpdate
-                      ? [
-                          {
-                            icon: <Pencil />,
-                            label: "Chỉnh sửa đơn & kết quả duyệt",
-                            onClick: () => openEditApp(a),
-                          },
-                        ]
-                      : []),
-                    ...(a.status === "PENDING" && canApprove
-                      ? [{ icon: <Check />, label: "Duyệt nhanh", onClick: () => openReview(a, true) }]
-                      : []),
-                    ...(a.status === "PENDING" && canReject
-                      ? [
-                          {
-                            icon: <X />,
-                            label: "Từ chối nhanh",
-                            danger: true,
-                            onClick: () => openReview(a, false),
-                          },
-                        ]
-                      : []),
-                    ...(canDelete
-                      ? [
-                          {
-                            icon: <Trash2 />,
-                            label: "Xoá đơn",
-                            danger: true,
-                            onClick: () =>
-                              confirm(`Xoá đơn của ${a.applicantName || "ứng viên"}?`) &&
-                              deleteAppMutation.mutate(a.id),
-                            disabled: deleteAppMutation.isPending,
-                          },
-                        ]
-                      : []),
-                  ]}
-                />
-              ),
-            },
-          ]}
-        />
+              },
+            ]}
+          />
+          <Pagination offset={offset} limit={LIMIT} total={apps.data.total} onOffset={setOffset} />
+        </>
       )}
 
-      {/* Modal Duyệt / Từ chối nhanh */}
+      {/* Modal Duyệt / Từ chối đơn (tách rõ Phản hồi ứng viên và Ghi chú nội bộ BCN) */}
       <ModalShell
         open={!!review}
         onClose={() => setReview(null)}
         title={review?.approve ? "Duyệt đơn đăng ký" : "Từ chối đơn đăng ký"}
         icon={review?.approve ? <Check /> : <X />}
-        size="sm"
+        size="md"
         onSubmit={() => review && reviewMutation.mutate(review)}
-        submitLabel={review?.approve ? "Duyệt & Thêm thành viên" : "Từ chối"}
+        submitLabel={review?.approve ? "Duyệt & Thêm thành viên" : "Xác nhận từ chối"}
         submitDanger={!review?.approve}
         submitLoading={reviewMutation.isPending}
-        submitDisabled={!note.trim()}
       >
         {review && (
-          <p className="text-sm">
-            <b>{review.app.applicantName ?? nameOf(review.app.applicantId)?.fullName ?? "Người nộp"}</b> —{" "}
-            <span className="text-muted-foreground">{review.app.message}</span>
-          </p>
+          <div className="rounded-lg border border-border bg-muted/20 p-3 text-xs leading-5">
+            <p className="font-bold text-foreground">
+              {review.app.applicantName ?? nameOf(review.app.applicantId)?.fullName ?? "Người nộp"}
+            </p>
+            <p className="mt-0.5 line-clamp-3 text-muted-foreground">{review.app.message}</p>
+          </div>
         )}
         {review?.approve && activeDepartments.length > 0 && (
           <FormField label="Phân vào Ban ngay khi duyệt (tuỳ chọn)">
@@ -515,18 +598,38 @@ export function ApplicationsTab({
             </Select>
           </FormField>
         )}
-        <FormField label="Ghi chú xét duyệt" required>
+        <FormField
+          label="Phản hồi gửi ứng viên (tuỳ chọn)"
+          hint="Hiển thị trực tiếp cho sinh viên trong chi tiết đơn đăng ký."
+        >
           <Textarea
+            rows={2}
             value={note}
             maxLength={1000}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Lý do hoặc lời nhắn chào mừng gửi tới người nộp…"
+            placeholder={
+              review?.approve
+                ? "Lời chào mừng hoặc hướng dẫn bước tiếp theo cho thành viên mới…"
+                : "Lý do từ chối hoặc góp ý thân thiện gửi tới ứng viên…"
+            }
+          />
+        </FormField>
+        <FormField
+          label="Ghi chú nội bộ Ban Chủ nhiệm (ẩn với ứng viên)"
+          hint="Chỉ người có quyền xem/duyệt đơn tại CLB mới thấy ghi chú này."
+        >
+          <Textarea
+            rows={2}
+            value={internalNote}
+            maxLength={1000}
+            onChange={(e) => setInternalNote(e.target.value)}
+            placeholder="Đánh giá nội bộ của BCN về hồ sơ ứng viên…"
           />
         </FormField>
         {reviewMutation.error && <p className="text-xs text-destructive">{describeError(reviewMutation.error)}</p>}
       </ModalShell>
 
-      {/* Modal Tạo mới / Chỉnh sửa Hồ sơ đơn & Kết quả xét duyệt (CRUD) */}
+      {/* Modal Tạo mới / Chỉnh sửa Hồ sơ đơn & Ghi chú */}
       <ModalShell
         open={modalMode !== null}
         onClose={() => {
@@ -536,13 +639,13 @@ export function ApplicationsTab({
         }}
         title={
           modalMode === "edit"
-            ? "Chỉnh sửa hồ sơ đơn & Kết quả xét duyệt"
+            ? "Chỉnh sửa hồ sơ đơn & Ghi chú BCN"
             : "Tạo hồ sơ đơn đăng ký mới"
         }
         icon={<ClipboardList />}
         size="lg"
         onSubmit={() => saveAppMutation.mutate()}
-        submitLabel={modalMode === "edit" ? "Lưu thay đổi & Kết quả duyệt" : "Tạo hồ sơ đơn"}
+        submitLabel={modalMode === "edit" ? "Lưu thay đổi" : "Tạo hồ sơ đơn"}
         submitLoading={saveAppMutation.isPending}
         submitDisabled={!draft.message.trim()}
       >
@@ -573,47 +676,45 @@ export function ApplicationsTab({
             </div>
           )}
 
-          {modalMode === "edit" && (
+          {modalMode === "edit" && editingApp && (
             <div className="grid gap-3 rounded-lg border border-primary/25 bg-primary/[0.04] p-3.5">
-              <p className="text-xs font-bold uppercase tracking-wider text-primary">
-                Kết quả xét duyệt & Phân ban
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <FormField label="Trạng thái xét duyệt" required>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                  Ghi chú xét duyệt & Phân ban (không đổi trạng thái đơn tại đây)
+                </p>
+                <StatusBadge status={editingApp.status} />
+              </div>
+              {editingApp.status === "APPROVED" && activeDepartments.length > 0 && (
+                <FormField label="Bổ sung phân vào Ban (cho thành viên đang hoạt động)">
                   <Select
-                    value={draft.status}
-                    onChange={(e) =>
-                      setDraft({ ...draft, status: e.target.value as AppManageDraft["status"] })
-                    }
+                    value={draft.assignDepartmentId}
+                    onChange={(e) => setDraft({ ...draft, assignDepartmentId: e.target.value })}
                   >
-                    <option value="PENDING">PENDING — Đang chờ xét duyệt</option>
-                    <option value="APPROVED">APPROVED — Đã duyệt (Thêm làm thành viên CLB)</option>
-                    <option value="REJECTED">REJECTED — Đã từ chối</option>
-                    <option value="CANCELLED">CANCELLED — Đã huỷ / Rút đơn</option>
+                    <option value="">— Không thay đổi / Giữ nguyên —</option>
+                    {activeDepartments.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
                   </Select>
                 </FormField>
-                {draft.status === "APPROVED" && activeDepartments.length > 0 && (
-                  <FormField label="Phân vào Ban khi duyệt">
-                    <Select
-                      value={draft.assignDepartmentId}
-                      onChange={(e) => setDraft({ ...draft, assignDepartmentId: e.target.value })}
-                    >
-                      <option value="">— Không phân ban / Giữ nguyên —</option>
-                      {activeDepartments.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.name}
-                        </option>
-                      ))}
-                    </Select>
-                  </FormField>
-                )}
-              </div>
-              <FormField label="Ghi chú xét duyệt (Review Note)">
+              )}
+              <FormField label="Phản hồi gửi ứng viên (hiển thị cho sinh viên)">
                 <Textarea
                   rows={2}
+                  maxLength={1000}
                   value={draft.reviewNote}
                   onChange={(e) => setDraft({ ...draft, reviewNote: e.target.value })}
-                  placeholder="Ghi chú của Ban chủ nhiệm / Người duyệt đơn…"
+                  placeholder="Phản hồi hiển thị cho người nộp đơn…"
+                />
+              </FormField>
+              <FormField label="Ghi chú nội bộ BCN (ẩn với ứng viên)">
+                <Textarea
+                  rows={2}
+                  maxLength={1000}
+                  value={draft.internalNote}
+                  onChange={(e) => setDraft({ ...draft, internalNote: e.target.value })}
+                  placeholder="Ghi chú nội bộ chỉ BCN nhìn thấy…"
                 />
               </FormField>
             </div>
@@ -804,8 +905,8 @@ export function ApplicationsTab({
 
       {/* Drawer Chi tiết đơn đăng ký */}
       <EntityDrawer
-        open={!!detailApp}
-        onClose={() => setDetailApp(null)}
+        open={!!selectedAppId}
+        onClose={() => setSelectedAppId(null)}
         title="Chi tiết đơn đăng ký"
         subtitle={clubName}
         icon={<ClipboardList />}
@@ -814,7 +915,7 @@ export function ApplicationsTab({
             <div className="flex flex-wrap items-center gap-2">
               {canUpdate && (
                 <Button variant="outline" size="sm" onClick={() => openEditApp(detailApp)}>
-                  <Pencil size={14} /> Chỉnh sửa đơn & Kết quả duyệt
+                  <Pencil size={14} /> Chỉnh sửa hồ sơ & ghi chú
                 </Button>
               )}
               {detailApp.status === "PENDING" && (
@@ -831,123 +932,130 @@ export function ApplicationsTab({
                   )}
                 </>
               )}
-              {canDelete && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={deleteAppMutation.isPending}
-                  onClick={() =>
-                    confirm(`Xoá vĩnh viễn đơn của ${detailApp.applicantName || "ứng viên"}?`) &&
-                    deleteAppMutation.mutate(detailApp.id)
-                  }
-                >
-                  <Trash2 size={14} /> Xoá đơn
-                </Button>
-              )}
             </div>
           ) : undefined
         }
       >
-        {detailApp && (
-          <>
-            <DetailList
-              rows={[
-                ["Người nộp", applicant(detailApp)],
-                ["Trạng thái", <StatusBadge key="s" status={detailApp.status} />],
-                ["Ngày gửi", formatDateTime(detailApp.createdAt)],
-                ["Số điện thoại", detailApp.applicantPhone || "—"],
-                ["Khoa / Ngành học", detailApp.facultyMajor || "—"],
-                ["Khóa / Năm học", detailApp.academicYear || "—"],
-                ["Điểm GPA", detailApp.gpa || "—"],
-                [
-                  "Link FB / Portfolio",
-                  detailApp.socialPortfolioUrl ? (
-                    <a
-                      key="url"
-                      href={detailApp.socialPortfolioUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-primary underline"
-                    >
-                      {detailApp.socialPortfolioUrl}
-                    </a>
-                  ) : (
-                    "—"
-                  ),
-                ],
-                ["Ban nguyện vọng 1", detailApp.preferredDepartmentName || "—"],
-                ["Ban nguyện vọng 2", detailApp.secondaryDepartmentName || "—"],
-                [
-                  "Giới thiệu bản thân",
-                  <p key="intro" className="whitespace-pre-line">
-                    {detailApp.selfIntroduction || "—"}
-                  </p>,
-                ],
-                [
-                  "Kỹ năng & Kinh nghiệm",
-                  <p key="skill" className="whitespace-pre-line">
-                    {detailApp.skillsExperience || "—"}
-                  </p>,
-                ],
-                ["Thời gian tham gia", detailApp.availability || "—"],
-                [
-                  "Lý do ứng tuyển",
-                  <p key="m" className="whitespace-pre-line font-medium">
-                    {detailApp.message}
-                  </p>,
-                ],
-                ["Ngày xét duyệt", formatDateTime(detailApp.reviewedAt)],
-                ["Ghi chú xét duyệt", detailApp.reviewNote || "—"],
-              ]}
-            />
+        {detailQuery.isPending ? (
+          <LoadingRows rows={4} />
+        ) : detailQuery.isError ? (
+          <ErrorState message={describeError(detailQuery.error)} onRetry={() => detailQuery.refetch()} />
+        ) : (
+          detailApp && (
+            <>
+              <DetailList
+                rows={[
+                  ["Người nộp", applicant(detailApp)],
+                  ["Trạng thái", <StatusBadge key="s" status={detailApp.status} />],
+                  ["Ngày gửi", formatDateTime(detailApp.createdAt)],
+                  ...(detailApp.cancelledAt
+                    ? ([["Ngày rút đơn", formatDateTime(detailApp.cancelledAt)]] as [string, React.ReactNode][])
+                    : []),
+                  ["Số điện thoại", detailApp.applicantPhone || "—"],
+                  ["Khoa / Ngành học", detailApp.facultyMajor || "—"],
+                  ["Khóa / Năm học", detailApp.academicYear || "—"],
+                  ["Điểm GPA", detailApp.gpa || "—"],
+                  [
+                    "Link FB / Portfolio",
+                    detailApp.socialPortfolioUrl ? (
+                      <a
+                        key="url"
+                        href={detailApp.socialPortfolioUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary underline"
+                      >
+                        {detailApp.socialPortfolioUrl}
+                      </a>
+                    ) : (
+                      "—"
+                    ),
+                  ],
+                  ["Ban nguyện vọng 1", detailApp.preferredDepartmentName || "—"],
+                  ["Ban nguyện vọng 2", detailApp.secondaryDepartmentName || "—"],
+                  [
+                    "Giới thiệu bản thân",
+                    <p key="intro" className="whitespace-pre-line">
+                      {detailApp.selfIntroduction || "—"}
+                    </p>,
+                  ],
+                  [
+                    "Kỹ năng & Kinh nghiệm",
+                    <p key="skill" className="whitespace-pre-line">
+                      {detailApp.skillsExperience || "—"}
+                    </p>,
+                  ],
+                  ["Thời gian tham gia", detailApp.availability || "—"],
+                  [
+                    "Lý do ứng tuyển",
+                    <p key="m" className="whitespace-pre-line font-medium">
+                      {detailApp.message}
+                    </p>,
+                  ],
+                  ["Ngày xét duyệt", formatDateTime(detailApp.reviewedAt)],
+                  ["Phản hồi gửi ứng viên", detailApp.reviewNote || "—"],
+                  [
+                    "Ghi chú nội bộ BCN",
+                    detailApp.internalNote ? (
+                      <span key="inote" className="inline-flex items-start gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900">
+                        <Lock size={12} className="mt-0.5 shrink-0" />
+                        <span className="whitespace-pre-line">{detailApp.internalNote}</span>
+                      </span>
+                    ) : (
+                      "—"
+                    ),
+                  ],
+                ]}
+              />
 
-            {detailApp.customAnswers && Object.keys(detailApp.customAnswers).length > 0 && (
-              <Section title="Câu trả lời riêng của CLB" icon={<ClipboardList />}>
-                <DetailList
-                  rows={Object.entries(detailApp.customAnswers).map(([k, v]) => [
-                    k,
-                    String(v ?? "—"),
-                  ])}
+              {detailApp.customAnswers && Object.keys(detailApp.customAnswers).length > 0 && (
+                <Section title="Câu trả lời riêng của CLB" icon={<ClipboardList />}>
+                  <DetailList
+                    rows={Object.entries(detailApp.customAnswers).map(([k, v]) => {
+                      const label = activeFormQuery.data?.fields.find((f) => f.key === k)?.label || k;
+                      return [label, String(v ?? "—")];
+                    })}
+                  />
+                </Section>
+              )}
+
+              <Section title={`Tệp đính kèm (${detailApp.attachments?.length ?? 0})`} icon={<Paperclip />}>
+                {canUpdate && (
+                  <div className="mb-2.5 flex items-center justify-between gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      Quản lý tệp đính kèm (.doc, .docx, .pdf, ảnh) của hồ sơ này:
+                    </span>
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/15">
+                      <Upload size={12} /> Tải thêm tệp
+                      <input
+                        type="file"
+                        multiple
+                        accept=".doc,.docx,.pdf,.png,.jpg,.jpeg,.gif,.webp"
+                        className="hidden"
+                        disabled={uploadInlineMutation.isPending}
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files ?? []);
+                          if (files.length > 0) {
+                            uploadInlineMutation.mutate({ appId: detailApp.id, files });
+                          }
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
+                )}
+                <ApplicationFilesList
+                  files={detailApp.attachments}
+                  deleting={deleteFileMutation.isPending}
+                  onDelete={
+                    canUpdate
+                      ? (f) => deleteFileMutation.mutate({ appId: detailApp.id, fileId: f.id })
+                      : undefined
+                  }
                 />
               </Section>
-            )}
-
-            <Section title={`Tệp đính kèm (${detailApp.attachments?.length ?? 0})`} icon={<Paperclip />}>
-              {canUpdate && (
-                <div className="mb-2.5 flex items-center justify-between gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    Quản lý tệp đính kèm (.doc, .docx, .pdf, ảnh) của hồ sơ này:
-                  </span>
-                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/15">
-                    <Upload size={12} /> Tải thêm tệp
-                    <input
-                      type="file"
-                      multiple
-                      accept=".doc,.docx,.pdf,.png,.jpg,.jpeg,.gif,.webp"
-                      className="hidden"
-                      disabled={uploadInlineMutation.isPending}
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files ?? []);
-                        if (files.length > 0) {
-                          uploadInlineMutation.mutate({ appId: detailApp.id, files });
-                        }
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
-                </div>
-              )}
-              <ApplicationFilesList
-                files={detailApp.attachments}
-                deleting={deleteFileMutation.isPending}
-                onDelete={
-                  canUpdate
-                    ? (f) => deleteFileMutation.mutate({ appId: detailApp.id, fileId: f.id })
-                    : undefined
-                }
-              />
-            </Section>
-          </>
+            </>
+          )
         )}
       </EntityDrawer>
     </div>

@@ -59,12 +59,12 @@ export default function DashboardPage() {
   });
   const memberships = useQuery({
     queryKey: ["dashboard", "memberships"],
-    queryFn: apiModel.myMemberships,
+    queryFn: () => apiModel.myMemberships(),
     enabled: canQuery,
   });
   const myApplications = useQuery({
     queryKey: ["dashboard", "my-applications"],
-    queryFn: apiModel.myApplications,
+    queryFn: () => apiModel.myApplications(),
     enabled: canQuery,
   });
   const myTasks = useQuery({
@@ -79,7 +79,7 @@ export default function DashboardPage() {
   });
   const notifications = useQuery({
     queryKey: ["dashboard", "notifications"],
-    queryFn: apiModel.notifications,
+    queryFn: () => apiModel.notifications(),
     enabled: canQuery,
   });
 

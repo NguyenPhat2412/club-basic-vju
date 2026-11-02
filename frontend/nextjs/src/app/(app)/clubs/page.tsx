@@ -3,18 +3,20 @@ import { useMemo, useState } from "react";
 import { formatDateTime } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Compass, FileText, Mail, Paperclip, Send, Trash2, Upload } from "lucide-react";
-import { apiModel, Club } from "@/lib/api";
+import { Building2, CheckCircle2, Clock3, Compass, FileText, FilterX, Mail, Paperclip, Send, Trash2, Upload } from "lucide-react";
+import { apiModel, ApplicationSummary, Club, Membership } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { ApplicationFilesList, CustomFieldsInputs, formatBytes } from "@/components/shared/ApplicationFileView";
 import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
 import { DetailList, EntityDrawer, Section } from "@/components/shared/Overlays";
+import { Pagination } from "@/components/shared/Pagination";
+import { EmptyState } from "@/components/shared/States";
 import { describeError } from "@/components/shared/ListPage";
 import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/input";
 
-const LIMIT = 20;
+const LIMIT = 12;
 
 type PendingAttachment = {
   file: File;
@@ -47,6 +49,7 @@ export default function ClubsPage() {
   const session = useOptionalSession();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<Club | null>(null);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
@@ -55,16 +58,68 @@ export default function ClubsPage() {
   const [notice, setNotice] = useState("");
   const [now] = useState(() => Date.now());
 
-  const canViewPrivateClubs = !!session.user && session.can("club.view");
+  const categoriesQuery = useQuery({
+    queryKey: ["public-club-categories"],
+    queryFn: apiModel.publicClubCategories,
+    staleTime: 60_000,
+  });
+
   const clubs = useQuery({
-    queryKey: ["clubs", canViewPrivateClubs ? "private" : "public", search, offset],
-    queryFn: () =>
-      canViewPrivateClubs
-        ? apiModel.clubs(search, "", offset, LIMIT)
-        : apiModel.publicClubs(search, "", offset, LIMIT),
+    queryKey: ["clubs", "public-discovery", search, category, offset],
+    queryFn: () => apiModel.publicClubs(search.trim(), category, offset, LIMIT),
     placeholderData: keepPreviousData,
     enabled: session.settled,
   });
+
+  const myMemberships = useQuery({
+    queryKey: ["my-memberships", "discovery"],
+    queryFn: () => apiModel.myMemberships({ limit: 100 }),
+    enabled: !!session.user,
+  });
+
+  const myApplications = useQuery({
+    queryKey: ["my-applications", "discovery"],
+    queryFn: () => apiModel.myApplications({ limit: 100 }),
+    enabled: !!session.user,
+  });
+
+  const currentMembershipByClub = useMemo(() => {
+    const map = new Map<string, Membership>();
+    for (const m of myMemberships.data?.items ?? []) {
+      if (m.status === "ACTIVE" || m.status === "SUSPENDED") {
+        map.set(m.clubId, m);
+      }
+    }
+    return map;
+  }, [myMemberships.data]);
+
+  const leftClubIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of myMemberships.data?.items ?? []) {
+      if (m.status === "LEFT") set.add(m.clubId);
+    }
+    return set;
+  }, [myMemberships.data]);
+
+  const pendingAppByClub = useMemo(() => {
+    const map = new Map<string, ApplicationSummary>();
+    for (const a of myApplications.data?.items ?? []) {
+      if (a.status === "PENDING") {
+        map.set(a.clubId, a);
+      }
+    }
+    return map;
+  }, [myApplications.data]);
+
+  const pastAppClubIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const a of myApplications.data?.items ?? []) {
+      if (a.status === "REJECTED" || a.status === "CANCELLED") {
+        set.add(a.clubId);
+      }
+    }
+    return set;
+  }, [myApplications.data]);
 
   const activeForm = useQuery({
     queryKey: ["club-application-form", selected?.id],
@@ -105,16 +160,28 @@ export default function ClubsPage() {
       setAttachments([]);
       setSelected(null);
       queryClient.invalidateQueries({ queryKey: ["my-applications"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "my-applications"] });
     },
   });
 
-  const loadedClubs = clubs.data?.items;
-  const filteredItems = useMemo(() => {
-    const items = loadedClubs ?? [];
-    if (!search.trim()) return items;
-    const q = search.toLowerCase();
-    return items.filter((club) => [club.name, club.code, club.activityField, club.description, club.contactEmail].join(" ").toLowerCase().includes(q));
-  }, [loadedClubs, search]);
+  const items = clubs.data?.items ?? [];
+  const hasActiveFilter = search.trim() !== "" || category !== "";
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setOffset(0);
+  };
+
+  const handleCategoryChange = (value: string) => {
+    setCategory(value);
+    setOffset(0);
+  };
+
+  const clearFilters = () => {
+    setSearch("");
+    setCategory("");
+    setOffset(0);
+  };
 
   const open = (club: Club) => {
     setSelected(club);
@@ -151,6 +218,9 @@ export default function ClubsPage() {
   const opensAt = formInfo?.openAt && new Date(formInfo.openAt).getTime() > now ? formInfo.openAt : undefined;
   const formClosed = !!formInfo && (formInfo.status !== "OPEN" || (!!formInfo.closeAt && new Date(formInfo.closeAt).getTime() <= now));
 
+  const selectedMembership = selected ? currentMembershipByClub.get(selected.id) : undefined;
+  const selectedPendingApp = selected ? pendingAppByClub.get(selected.id) : undefined;
+
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
       <BreadcrumbToolbar
@@ -159,15 +229,44 @@ export default function ClubsPage() {
           { label: "Cổng cá nhân" },
           { label: "Khám phá câu lạc bộ" },
         ]}
-        titleBadge={<CountBadge>{clubs.data?.total ?? filteredItems.length} CLB</CountBadge>}
-        search={{ value: search, onChange: setSearch, placeholder: "Tìm tên, mã CLB, lĩnh vực…" }}
-        onRefresh={() => clubs.refetch()}
+        titleBadge={<CountBadge>{clubs.data?.total ?? items.length} CLB</CountBadge>}
+        search={{ value: search, onChange: handleSearchChange, placeholder: "Tìm tên, mã CLB, lĩnh vực…" }}
+        extraActions={
+          <>
+            <Select
+              aria-label="Lọc theo lĩnh vực hoạt động"
+              value={category}
+              onChange={(e) => handleCategoryChange(e.target.value)}
+              className="h-9 w-full text-xs sm:w-52"
+            >
+              <option value="">Tất cả lĩnh vực</option>
+              {(categoriesQuery.data ?? []).map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </Select>
+            {hasActiveFilter && (
+              <Button variant="outline" size="sm" onClick={clearFilters}>
+                <FilterX size={14} /> Xoá bộ lọc
+              </Button>
+            )}
+          </>
+        }
+        onRefresh={() => {
+          clubs.refetch();
+          categoriesQuery.refetch();
+          if (session.user) {
+            myMemberships.refetch();
+            myApplications.refetch();
+          }
+        }}
       />
-      <div className="mx-auto w-full max-w-7xl space-y-5 px-4 py-5 sm:px-6">
-        <p className="text-sm text-slate-600">Chọn câu lạc bộ phù hợp và nộp đơn trực tuyến.</p>
+      <div className="mx-auto w-full max-w-7xl flex-1 space-y-5 px-4 py-5 sm:px-6">
+        <p className="text-sm text-slate-600">Chọn câu lạc bộ đang hoạt động phù hợp với định hướng của bạn và nộp đơn trực tuyến.</p>
 
         {notice && (
-          <div className="rounded-lg border border-primary/20 bg-primary/8 px-4 py-3 text-xs font-medium text-primary">
+          <div role="status" className="rounded-lg border border-primary/20 bg-primary/8 px-4 py-3 text-xs font-medium text-primary">
             {notice}
           </div>
         )}
@@ -185,95 +284,128 @@ export default function ClubsPage() {
             ))}
           </div>
         ) : clubs.isError ? (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+          <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
             {describeError(clubs.error)}
           </div>
-        ) : filteredItems.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-white p-10 text-center text-sm text-slate-500">
-            Không tìm thấy câu lạc bộ phù hợp với từ khoá hiện tại.
+        ) : items.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-200 bg-white">
+            <EmptyState
+              icon={<Compass />}
+              title={hasActiveFilter ? "Không tìm thấy câu lạc bộ phù hợp" : "Hiện chưa có câu lạc bộ đang hoạt động"}
+              description={
+                hasActiveFilter
+                  ? "Hãy thử từ khoá khác hoặc xoá bộ lọc lĩnh vực để xem toàn bộ danh sách câu lạc bộ."
+                  : "Các câu lạc bộ đang hoạt động sẽ xuất hiện tại đây."
+              }
+              actionLabel={hasActiveFilter ? "Xoá bộ lọc" : undefined}
+              onAction={hasActiveFilter ? clearFilters : undefined}
+            />
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {filteredItems.map((club) => (
-              <article
-                key={club.id}
-                className="group flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-2xs transition-all hover:border-primary/35 hover:shadow-md"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-base font-extrabold text-primary">
-                        {club.name.slice(0, 1)}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">{club.code}</p>
-                        <h3 className="mt-0.5 truncate text-base font-bold tracking-tight text-slate-900">{club.name}</h3>
+            {items.map((club) => {
+              const memberRecord = currentMembershipByClub.get(club.id);
+              const pendingApp = pendingAppByClub.get(club.id);
+              const canReapply = leftClubIds.has(club.id) || pastAppClubIds.has(club.id);
+
+              return (
+                <article
+                  key={club.id}
+                  className="group flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-2xs transition-all hover:border-primary/35 hover:shadow-md"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-base font-extrabold text-primary">
+                          {club.name.slice(0, 1)}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">{club.code}</p>
+                          <h2 className="mt-0.5 truncate text-base font-bold tracking-tight text-slate-900">{club.name}</h2>
+                        </div>
                       </div>
+                      <StatusBadge status={club.status} />
                     </div>
-                    <StatusBadge status={club.status} />
+
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {club.activityField && (
+                        <Badge tone="primary" dot={false}>{club.activityField}</Badge>
+                      )}
+                      {memberRecord && (
+                        <Badge tone={memberRecord.status === "SUSPENDED" ? "pending" : "primary"} dot={false}>
+                          <CheckCircle2 size={11} />{" "}
+                          {memberRecord.status === "SUSPENDED" ? "Thành viên (Tạm đình chỉ)" : "Đã là thành viên"}
+                        </Badge>
+                      )}
+                      {!memberRecord && pendingApp && (
+                        <Badge tone="pending" dot={false}>
+                          <Clock3 size={11} /> Đang chờ duyệt
+                        </Badge>
+                      )}
+                    </div>
+
+                    <p className="mt-3 line-clamp-3 text-xs leading-5 text-slate-600">
+                      {club.description || "CLB đang cập nhật mô tả hoạt động."}
+                    </p>
                   </div>
 
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {club.activityField && (
-                      <Badge tone="primary" dot={false}>{club.activityField}</Badge>
-                    )}
-                    {club.contactEmail && (
-                      <Badge tone="neutral" dot={false}>Có email liên hệ</Badge>
-                    )}
-                  </div>
-
-                  <p className="mt-3 line-clamp-3 text-xs leading-5 text-slate-600">
-                    {club.description || "CLB đang cập nhật mô tả hoạt động."}
-                  </p>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-slate-100">
-                  <div className="space-y-1.5 text-xs text-slate-500">
-                    <div className="flex items-center gap-2">
-                      <Building2 size={13} className="shrink-0 text-primary" />
-                      <span className="truncate">{club.activityField || "Lĩnh vực chung"}</span>
-                    </div>
-                    {club.contactEmail && (
+                  <div className="mt-4 border-t border-slate-100 pt-3">
+                    <div className="space-y-1.5 text-xs text-slate-500">
                       <div className="flex items-center gap-2">
-                        <Mail size={13} className="shrink-0 text-primary" />
-                        <span className="truncate">{club.contactEmail}</span>
+                        <Building2 size={13} className="shrink-0 text-primary" />
+                        <span className="truncate">{club.activityField || "Lĩnh vực chung"}</span>
                       </div>
-                    )}
-                  </div>
+                      {club.contactEmail && (
+                        <div className="flex items-center gap-2">
+                          <Mail size={13} className="shrink-0 text-primary" />
+                          <span className="truncate">{club.contactEmail}</span>
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="mt-4 flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1" onClick={() => open(club)}>
-                      Xem chi tiết
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => (session.user ? open(club) : router.push("/login"))}
-                      disabled={club.status !== "ACTIVE"}
-                    >
-                      {session.user ? "Đăng ký gia nhập" : "Đăng nhập"}
-                    </Button>
+                    <div className="mt-4 flex gap-2">
+                      <Button variant="outline" size="sm" className="flex-1" onClick={() => open(club)}>
+                        Xem chi tiết
+                      </Button>
+                      {!session.user ? (
+                        <Button size="sm" className="flex-1" onClick={() => router.push("/login")}>
+                          Đăng nhập
+                        </Button>
+                      ) : memberRecord ? (
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => router.push("/memberships")}>
+                          Đã là thành viên
+                        </Button>
+                      ) : pendingApp ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => router.push(`/applications?applicationId=${pendingApp.id}`)}
+                        >
+                          Xem đơn chờ duyệt
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => open(club)}
+                          disabled={club.status !== "ACTIVE"}
+                        >
+                          {canReapply ? "Nộp lại đơn" : "Đăng ký gia nhập"}
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-
-        {clubs.data && (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 shadow-2xs">
-            <span>Hiển thị {Math.min(filteredItems.length, clubs.data.total)} / {clubs.data.total} CLB</span>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setOffset((prev) => Math.max(0, prev - LIMIT))} disabled={offset === 0}>
-                Trước
-              </Button>
-              <Button size="sm" onClick={() => setOffset((prev) => prev + LIMIT)} disabled={offset + LIMIT >= clubs.data.total}>
-                Sau
-              </Button>
-            </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </div>
+
+      {clubs.data && clubs.data.total > 0 && (
+        <Pagination offset={offset} limit={LIMIT} total={clubs.data.total} onOffset={setOffset} />
+      )}
 
       <EntityDrawer open={!!selected} onClose={() => setSelected(null)} title={selected?.name ?? ""} subtitle={selected?.code} icon={<Compass />}>
         {selected && (
@@ -300,6 +432,31 @@ export default function ClubsPage() {
                 <div className="grid gap-3">
                   <p className="text-sm text-muted-foreground">Đăng nhập để điền biểu mẫu và gửi đơn tham gia câu lạc bộ này.</p>
                   <Button onClick={() => router.push("/login")}>Đăng nhập để tiếp tục</Button>
+                </div>
+              ) : selectedMembership ? (
+                <div className="grid gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm">
+                  <p className="font-semibold text-foreground">
+                    {selectedMembership.status === "SUSPENDED"
+                      ? "Tư cách thành viên của bạn tại CLB này đang ở trạng thái tạm đình chỉ."
+                      : "Bạn đã là thành viên chính thức của câu lạc bộ này."}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={() => router.push("/memberships")}>
+                      Xem tại CLB đã tham gia
+                    </Button>
+                  </div>
+                </div>
+              ) : selectedPendingApp ? (
+                <div className="grid gap-3 rounded-lg border border-amber-300/60 bg-amber-50 p-4 text-sm text-amber-900">
+                  <p className="font-semibold">Bạn đang có một đơn đăng ký chờ xét duyệt tại câu lạc bộ này.</p>
+                  <p className="text-xs text-amber-800">
+                    Ngày gửi: {formatDateTime(selectedPendingApp.createdAt)}. Bạn có thể xem chi tiết, bổ sung tệp hoặc rút đơn trước khi CLB xét duyệt.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={() => router.push(`/applications?applicationId=${selectedPendingApp.id}`)}>
+                      Xem & theo dõi đơn đăng ký
+                    </Button>
+                  </div>
                 </div>
               ) : selected.status !== "ACTIVE" ? (
                 <p className="text-sm text-muted-foreground">CLB hiện đang tạm ngừng nhận thành viên.</p>
@@ -434,6 +591,7 @@ export default function ClubsPage() {
                                 <p className="text-[11px] text-muted-foreground">{formatBytes(item.file.size)}</p>
                               </div>
                               <Select
+                                aria-label="Loại tệp đính kèm"
                                 value={item.category}
                                 onChange={(e) =>
                                   setAttachments((prev) =>
@@ -449,6 +607,7 @@ export default function ClubsPage() {
                               </Select>
                               <button
                                 type="button"
+                                aria-label={`Gỡ tệp ${item.file.name}`}
                                 onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
                                 className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                               >

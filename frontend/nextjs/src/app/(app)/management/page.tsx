@@ -1,14 +1,15 @@
 "use client";
-import { useMemo, useState, Suspense } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Check, ClipboardList, Eye, Plus, ShieldCheck, Trash2, UserPlus, UserRound, X } from "lucide-react";
-import { apiModel, Application, Department, Membership } from "@/lib/api";
+import { keepPreviousData, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Building2, Eye, FilterX, PauseCircle, PlayCircle, Plus, ShieldCheck, UserMinus, UserPlus, UserRound, X } from "lucide-react";
+import { apiModel, Department, Membership } from "@/lib/api";
 import { CLUB_WORKSPACE_KEYS, useSession } from "@/hooks/useSession";
 import { useUserNames } from "@/hooks/useUserNames";
 import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
 import { DataTable } from "@/components/shared/DataTable";
 import { DetailList, EntityDrawer, ModalShell, Section } from "@/components/shared/Overlays";
+import { Pagination } from "@/components/shared/Pagination";
 import { EmptyState, ErrorState, LoadingRows, Notice } from "@/components/shared/States";
 import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError, ListPage } from "@/components/shared/ListPage";
@@ -26,6 +27,7 @@ import { FormsTab } from "./FormsTab";
 
 type TabKey = "applications" | "forms" | "members" | "departments" | "events" | "tasks" | "chat" | "settings";
 
+const MEMBER_LIMIT = 20;
 const EMPTY_NEW_CLUB = { code: "", name: "", activityField: "", contactEmail: "", description: "" };
 
 export default function ManagementPage() {
@@ -43,12 +45,14 @@ function ManagementPageContent() {
   const queryClient = useQueryClient();
   const canViewUsers = session.can("user.view");
   const nameOf = useUserNames(canViewUsers);
+
   const [clubId, setClubId] = useState("");
   const tab: TabKey = urlTab && ["applications", "forms", "members", "departments", "events", "tasks", "chat", "settings"].includes(urlTab) ? urlTab : "applications";
-  const [review, setReview] = useState<{ app: Application; approve: boolean } | null>(null);
-  const [note, setNote] = useState("");
-  const [detailApp, setDetailApp] = useState<Application | null>(null);
+
+  const [memberStatusFilter, setMemberStatusFilter] = useState("");
+  const [memberOffset, setMemberOffset] = useState(0);
   const [memberId, setMemberId] = useState<string | null>(null);
+  const [confirmingLeave, setConfirmingLeave] = useState<Membership | null>(null);
   const [addingMember, setAddingMember] = useState(false);
   const [newMemberUserId, setNewMemberUserId] = useState("");
   const [userSearch, setUserSearch] = useState("");
@@ -67,16 +71,16 @@ function ManagementPageContent() {
 
   const visibleTabs = useMemo(() => {
     const list: { value: TabKey; label: string }[] = [];
-    if (hasAny(["application.view", "application.view_detail", "application.review", "application.approve", "application.reject", "application.update", "application.delete"])) {
+    if (hasAny(["application.create", "application.view", "application.view_detail", "application.review", "application.approve", "application.reject", "application.update"])) {
       list.push({ value: "applications", label: "Đơn đăng ký" });
     }
     if (hasAny(["application.manage_form", "application.review", "application.approve", "application.view"])) {
       list.push({ value: "forms", label: "Biểu mẫu đơn" });
     }
-    if (hasAny(["member.view", "member.view_detail", "member.add", "member.update", "member.remove", "department.member.view", "department.member.add", "department.member.remove"])) {
+    if (hasAny(["member.view", "member.view_detail", "member.add", "member.update", "member.remove"])) {
       list.push({ value: "members", label: "Thành viên" });
     }
-    if (hasAny(["department.view", "department.create", "department.update", "department.activate", "department.inactive"])) {
+    if (hasAny(["department.view", "department.create", "department.update", "department.activate", "department.inactive", "department.member.view", "department.member.add", "department.member.remove"])) {
       list.push({ value: "departments", label: "Ban chuyên môn" });
     }
     if (hasAny(["event.view", "event.create", "event.update", "event.attendance"])) {
@@ -97,24 +101,33 @@ function ManagementPageContent() {
 
   const activeTab: TabKey = visibleTabs.some((t) => t.value === tab) ? tab : (visibleTabs[0]?.value ?? "applications");
 
-  const canApprove = session.canInClub("application.approve", activeClubId);
-  const canReject = session.canInClub("application.reject", activeClubId);
+  const canViewApplications = session.canInClub("application.view", activeClubId);
+  const canViewMembers = session.canInClub("member.view", activeClubId);
   const canAddMember = session.canInClub("member.add", activeClubId);
   const canUpdateMember = session.canInClub("member.update", activeClubId);
   const canRemoveMember = session.canInClub("member.remove", activeClubId);
   const canViewMemberDetail = session.canInClub("member.view_detail", activeClubId) || canUpdateMember || canRemoveMember;
   const canCreateClub = session.can("club.create");
 
-  const apps = useQuery({
-    queryKey: ["club-applications", activeClubId],
-    queryFn: () => apiModel.clubApplications(activeClubId),
-    enabled: !!activeClubId && activeTab === "applications",
+  const pendingApps = useQuery({
+    queryKey: ["club-applications", activeClubId, "pending-count"],
+    queryFn: () => apiModel.clubApplications(activeClubId, { status: "PENDING", limit: 1 }),
+    enabled: !!activeClubId && activeTab === "applications" && canViewApplications,
   });
+
   const members = useQuery({
-    queryKey: ["club-members", activeClubId],
-    queryFn: () => apiModel.clubMemberships(activeClubId, "ACTIVE"),
-    enabled: !!activeClubId && (activeTab === "members" || activeTab === "tasks"),
+    queryKey: ["club-members", activeClubId, memberStatusFilter, memberOffset],
+    queryFn: () => apiModel.clubMemberships(activeClubId, memberStatusFilter, memberOffset, MEMBER_LIMIT),
+    placeholderData: keepPreviousData,
+    enabled: !!activeClubId && activeTab === "members" && canViewMembers,
   });
+
+  const activeMembersForTasks = useQuery({
+    queryKey: ["club-members", activeClubId, "ACTIVE-tasks"],
+    queryFn: () => apiModel.clubMemberships(activeClubId, "ACTIVE", 0, 100),
+    enabled: !!activeClubId && activeTab === "tasks" && canViewMembers,
+  });
+
   const departments = useQuery({
     queryKey: ["departments", activeClubId],
     queryFn: () => apiModel.departments(activeClubId),
@@ -147,20 +160,10 @@ function ManagementPageContent() {
 
   const refreshMembers = () => {
     queryClient.invalidateQueries({ queryKey: ["club-members", activeClubId] });
+    queryClient.invalidateQueries({ queryKey: ["memberships", activeClubId] });
     queryClient.invalidateQueries({ queryKey: ["department-members"] });
+    queryClient.invalidateQueries({ queryKey: ["club-positions", activeClubId] });
   };
-
-  const reviewMutation = useMutation({
-    mutationFn: ({ app, approve }: { app: Application; approve: boolean }) =>
-      approve ? apiModel.approve(activeClubId, app.id, note) : apiModel.reject(activeClubId, app.id, note),
-    onSuccess: (_, { approve }) => {
-      setNotice(approve ? "Đã duyệt đơn và tạo thành viên CLB." : "Đã từ chối đơn.");
-      setErrorMsg("");
-      setReview(null); setNote(""); setDetailApp(null);
-      queryClient.invalidateQueries({ queryKey: ["club-applications", activeClubId] });
-      refreshMembers();
-    },
-  });
 
   const addMember = useMutation({
     mutationFn: () => apiModel.addClubMember(activeClubId, newMemberUserId.trim()),
@@ -195,23 +198,38 @@ function ManagementPageContent() {
   const assign = useMutation({
     mutationFn: ({ departmentId, membershipId }: { departmentId: string; membershipId: string }) =>
       apiModel.addDepartmentMember(departmentId, membershipId),
-    onSuccess: () => { setNotice("Đã phân thành viên vào ban."); refreshMembers(); },
+    onSuccess: () => { setNotice("Đã phân thành viên vào ban."); setErrorMsg(""); refreshMembers(); },
   });
   const unassign = useMutation({
     mutationFn: ({ departmentId, membershipId }: { departmentId: string; membershipId: string }) =>
       apiModel.removeDepartmentMember(departmentId, membershipId),
-    onSuccess: () => { setNotice("Đã gỡ thành viên khỏi ban."); refreshMembers(); },
+    onSuccess: () => { setNotice("Đã gỡ thành viên khỏi ban."); setErrorMsg(""); refreshMembers(); },
   });
   const status = useMutation({
     mutationFn: ({ id, value }: { id: string; value: string }) => apiModel.updateMembership(id, value),
-    onSuccess: () => { setNotice("Đã cập nhật trạng thái thành viên."); refreshMembers(); queryClient.invalidateQueries({ queryKey: ["membership", memberId] }); },
+    onSuccess: (updated) => {
+      setNotice(
+        updated.status === "SUSPENDED"
+          ? "Đã tạm đình chỉ thành viên (tạm thời ẩn quyền phạm vi CLB & Ban)."
+          : "Đã kích hoạt lại tư cách thành viên CLB."
+      );
+      setErrorMsg("");
+      refreshMembers();
+      queryClient.invalidateQueries({ queryKey: ["membership", memberId] });
+    },
   });
   const removeMember = useMutation({
     mutationFn: (id: string) => apiModel.removeMembership(id),
-    onSuccess: () => { setNotice("Đã xoá thành viên khỏi câu lạc bộ."); setMemberId(null); refreshMembers(); },
+    onSuccess: () => {
+      setNotice("Đã cho thành viên rời CLB (lưu lịch sử trạng thái LEFT và thu hồi quyền tại CLB/Ban).");
+      setErrorMsg("");
+      setConfirmingLeave(null);
+      setMemberId(null);
+      refreshMembers();
+    },
   });
 
-  const mutationError = reviewMutation.error || assign.error || unassign.error || status.error || removeMember.error || addMember.error;
+  const mutationError = assign.error || unassign.error || status.error || removeMember.error || addMember.error;
 
   const who = (userId: string, known?: { name?: string; email?: string; studentCode?: string }) => {
     const user = nameOf(userId);
@@ -224,11 +242,9 @@ function ManagementPageContent() {
       </div>
     );
   };
-  const applicant = (a: Application) => who(a.applicantId, { name: a.applicantName, email: a.applicantEmail, studentCode: a.applicantStudentCode });
   const memberOf = (m: Membership) => who(m.userId, { name: m.userFullName, studentCode: m.userStudentCode });
 
-  const openReview = (app: Application, approve: boolean) => { setReview({ app, approve }); setNote(""); reviewMutation.reset(); };
-  const pending = apps.data?.items.filter((a) => a.status === "PENDING").length ?? 0;
+  const pending = pendingApps.data?.total ?? 0;
 
   return (
     <ListPage title="Không gian & Quản lý CLB">
@@ -239,7 +255,7 @@ function ManagementPageContent() {
           { label: visibleTabs.find((t) => t.value === activeTab)?.label ?? "Quản lý CLB" },
         ]}
         titleBadge={
-          activeTab === "applications" ? (
+          activeTab === "applications" && canViewApplications ? (
             <CountBadge>{pending} chờ duyệt</CountBadge>
           ) : activeTab === "members" ? (
             <CountBadge>{members.data?.total ?? 0} thành viên</CountBadge>
@@ -253,7 +269,12 @@ function ManagementPageContent() {
               <Select
                 aria-label="Chọn CLB"
                 value={activeClubId}
-                onChange={(e) => { setClubId(e.target.value); setNotice(""); setErrorMsg(""); }}
+                onChange={(e) => {
+                  setClubId(e.target.value);
+                  setMemberOffset(0);
+                  setNotice("");
+                  setErrorMsg("");
+                }}
                 className="h-9 w-full text-xs sm:w-64"
               >
                 {manageable.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}
@@ -273,7 +294,9 @@ function ManagementPageContent() {
         }
         onRefresh={() => {
           clubs.refetch();
-          if (activeTab === "applications") apps.refetch();
+          if (activeTab === "applications") {
+            queryClient.invalidateQueries({ queryKey: ["club-applications", activeClubId] });
+          }
           if (activeTab === "members") refreshMembers();
         }}
       />
@@ -307,78 +330,179 @@ function ManagementPageContent() {
           onError={setErrorMsg}
         />
       ) : activeTab === "members" ? (
-        <div className="space-y-3">
-          {members.isPending ? (
+        <div className="flex flex-1 flex-col space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-3 sm:px-6">
+            <p className="text-xs text-muted-foreground">
+              Quản lý vòng đời thành viên (Đang hoạt động · Tạm đình chỉ · Đã rời CLB) và phân công vào các ban chuyên môn.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                aria-label="Lọc trạng thái thành viên"
+                value={memberStatusFilter}
+                onChange={(e) => {
+                  setMemberStatusFilter(e.target.value);
+                  setMemberOffset(0);
+                }}
+                className="h-9 w-52 text-xs"
+              >
+                <option value="">Tất cả trạng thái</option>
+                <option value="ACTIVE">ACTIVE — Đang hoạt động</option>
+                <option value="SUSPENDED">SUSPENDED — Tạm đình chỉ</option>
+                <option value="LEFT">LEFT — Đã rời CLB</option>
+              </Select>
+              {memberStatusFilter !== "" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setMemberStatusFilter("");
+                    setMemberOffset(0);
+                  }}
+                >
+                  <FilterX size={14} /> Xoá bộ lọc
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {!canViewMembers ? (
+            <EmptyState
+              icon={<ShieldCheck />}
+              title="Bạn chưa có quyền xem danh sách thành viên CLB"
+              description="Nếu bạn phụ trách Ban chuyên môn, vui lòng chuyển sang tab Ban chuyên môn để quản lý thành viên trong ban."
+            />
+          ) : members.isPending ? (
             <LoadingRows />
           ) : members.isError ? (
             <ErrorState message={describeError(members.error)} onRetry={() => members.refetch()} />
           ) : !members.data.items.length ? (
             <EmptyState
               icon={<UserRound />}
-              title="CLB chưa có thành viên"
-              actionLabel={canAddMember ? "Thêm thành viên" : undefined}
-              onAction={canAddMember ? () => setAddingMember(true) : undefined}
+              title={memberStatusFilter ? "Không có thành viên khớp bộ lọc" : "CLB chưa có thành viên"}
+              actionLabel={
+                memberStatusFilter
+                  ? "Xoá bộ lọc"
+                  : canAddMember
+                  ? "Thêm thành viên"
+                  : undefined
+              }
+              onAction={
+                memberStatusFilter
+                  ? () => {
+                      setMemberStatusFilter("");
+                      setMemberOffset(0);
+                    }
+                  : canAddMember
+                  ? () => setAddingMember(true)
+                  : undefined
+              }
             />
           ) : (
-            <DataTable
-              ariaLabel="Thành viên"
-              rows={members.data.items}
-              rowKey={(m) => m.id}
-              onRowClick={canViewMemberDetail ? (m) => setMemberId(m.id) : undefined}
-              columns={[
-                { key: "member", header: "Thành viên", render: (m) => memberOf(m) },
-                { key: "joined", header: "Ngày tham gia", render: (m) => <span className="font-mono font-bold text-primary">{formatDay(m.joinedAt)}</span> },
-                {
-                  key: "departments",
-                  header: "Ban",
-                  render: (m) => (
-                    <DepartmentChips
-                      departments={departmentsByMember[m.id] ?? []}
-                      canRemove={(d) => session.canInDepartment("department.member.remove", activeClubId, d.id)}
-                      onRemove={(d) => unassign.mutate({ departmentId: d.id, membershipId: m.id })}
-                    />
-                  ),
-                },
-                {
-                  key: "assign",
-                  header: "Phân ban",
-                  render: (m) => {
-                    const assignableDepts = activeDepartments.filter(
-                      (d) =>
-                        session.canInDepartment("department.member.add", activeClubId, d.id) &&
-                        !(departmentsByMember[m.id] ?? []).some((x) => x.id === d.id)
-                    );
-                    if (!assignableDepts.length) return <span className="text-xs text-muted-foreground">—</span>;
-                    return (
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <Select
-                          aria-label="Phân vào ban"
-                          value=""
-                          className="h-8 w-44 text-xs"
-                          disabled={assign.isPending}
-                          onChange={(e) => e.target.value && assign.mutate({ departmentId: e.target.value, membershipId: m.id })}
-                        >
-                          <option value="">+ Thêm vào ban…</option>
-                          {assignableDepts.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                        </Select>
-                      </div>
-                    );
-                  },
-                },
-                { key: "status", header: "Trạng thái", render: (m) => <StatusBadge status={m.status} /> },
-                {
-                  key: "actions",
-                  header: "Thao tác",
-                  className: "text-right",
-                  render: (m) =>
-                    canViewMemberDetail ? (
-                      <TableRowActions actions={[{ icon: <Eye />, label: "Xem chi tiết", onClick: () => setMemberId(m.id) }]} />
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
+            <>
+              <DataTable
+                ariaLabel="Thành viên"
+                rows={members.data.items}
+                rowKey={(m) => m.id}
+                onRowClick={canViewMemberDetail ? (m) => setMemberId(m.id) : undefined}
+                columns={[
+                  { key: "member", header: "Thành viên", render: (m) => memberOf(m) },
+                  { key: "joined", header: "Ngày tham gia", render: (m) => <span className="font-mono font-bold text-primary">{formatDay(m.joinedAt)}</span> },
+                  {
+                    key: "departments",
+                    header: "Ban",
+                    render: (m) => (
+                      <DepartmentChips
+                        departments={departmentsByMember[m.id] ?? []}
+                        canRemove={(d) => m.status !== "LEFT" && session.canInDepartment("department.member.remove", activeClubId, d.id)}
+                        onRemove={(d) => unassign.mutate({ departmentId: d.id, membershipId: m.id })}
+                      />
                     ),
-                },
-              ]}
-            />
+                  },
+                  {
+                    key: "assign",
+                    header: "Phân ban",
+                    render: (m) => {
+                      if (m.status !== "ACTIVE") {
+                        return <span className="text-xs text-muted-foreground">—</span>;
+                      }
+                      const assignableDepts = activeDepartments.filter(
+                        (d) =>
+                          session.canInDepartment("department.member.add", activeClubId, d.id) &&
+                          !(departmentsByMember[m.id] ?? []).some((x) => x.id === d.id)
+                      );
+                      if (!assignableDepts.length) return <span className="text-xs text-muted-foreground">—</span>;
+                      return (
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <Select
+                            aria-label="Phân vào ban"
+                            value=""
+                            className="h-8 w-44 text-xs"
+                            disabled={assign.isPending}
+                            onChange={(e) => e.target.value && assign.mutate({ departmentId: e.target.value, membershipId: m.id })}
+                          >
+                            <option value="">+ Thêm vào ban…</option>
+                            {assignableDepts.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                          </Select>
+                        </div>
+                      );
+                    },
+                  },
+                  { key: "status", header: "Trạng thái", render: (m) => <StatusBadge status={m.status} /> },
+                  {
+                    key: "actions",
+                    header: "Thao tác",
+                    className: "text-right",
+                    render: (m) => {
+                      const actions = [
+                        ...(canViewMemberDetail
+                          ? [{ icon: <Eye />, label: "Xem chi tiết", onClick: () => setMemberId(m.id) }]
+                          : []),
+                        ...(canUpdateMember && m.status === "ACTIVE"
+                          ? [
+                              {
+                                icon: <PauseCircle />,
+                                label: "Tạm đình chỉ",
+                                onClick: () => status.mutate({ id: m.id, value: "SUSPENDED" }),
+                                disabled: status.isPending,
+                              },
+                            ]
+                          : []),
+                        ...(canUpdateMember && m.status === "SUSPENDED"
+                          ? [
+                              {
+                                icon: <PlayCircle />,
+                                label: "Kích hoạt lại",
+                                onClick: () => status.mutate({ id: m.id, value: "ACTIVE" }),
+                                disabled: status.isPending,
+                              },
+                            ]
+                          : []),
+                        ...(canRemoveMember && m.status !== "LEFT"
+                          ? [
+                              {
+                                icon: <UserMinus />,
+                                label: "Cho rời CLB",
+                                danger: true,
+                                onClick: () => {
+                                  removeMember.reset();
+                                  setConfirmingLeave(m);
+                                },
+                                disabled: removeMember.isPending,
+                              },
+                            ]
+                          : []),
+                      ];
+                      return actions.length ? (
+                        <TableRowActions actions={actions} />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      );
+                    },
+                  },
+                ]}
+              />
+              <Pagination offset={memberOffset} limit={MEMBER_LIMIT} total={members.data.total} onOffset={setMemberOffset} />
+            </>
           )}
         </div>
       ) : activeTab === "departments" ? (
@@ -386,29 +510,12 @@ function ManagementPageContent() {
       ) : activeTab === "events" ? (
         <EventsTab clubId={activeClubId} departments={activeDepartments} onNotice={setNotice} onError={setErrorMsg} />
       ) : activeTab === "tasks" ? (
-        <TasksTab clubId={activeClubId} departments={activeDepartments} members={members.data?.items ?? []} onNotice={setNotice} onError={setErrorMsg} />
+        <TasksTab clubId={activeClubId} departments={activeDepartments} members={activeMembersForTasks.data?.items ?? []} onNotice={setNotice} onError={setErrorMsg} />
       ) : activeTab === "chat" ? (
         <ChatTab clubId={activeClubId} departments={activeDepartments} onNotice={setNotice} onError={setErrorMsg} />
       ) : currentClub ? (
         <ClubSettingsTab key={currentClub.id} club={currentClub} departments={activeDepartments} onNotice={setNotice} onError={setErrorMsg} />
       ) : null}
-
-      <ModalShell
-        open={!!review}
-        onClose={() => setReview(null)}
-        title={review?.approve ? "Duyệt đơn đăng ký" : "Từ chối đơn đăng ký"}
-        icon={review?.approve ? <Check /> : <X />}
-        size="sm"
-        onSubmit={() => review && reviewMutation.mutate(review)}
-        submitLabel={review?.approve ? "Duyệt" : "Từ chối"}
-        submitDanger={!review?.approve}
-        submitLoading={reviewMutation.isPending}
-        submitDisabled={!note.trim()}
-      >
-        {review && <p className="text-sm">{review.app.applicantName ?? nameOf(review.app.applicantId)?.fullName ?? "Người nộp"} — <span className="text-muted-foreground">{review.app.message}</span></p>}
-        <FormField label="Ghi chú xét duyệt" required><Textarea value={note} maxLength={1000} onChange={(e) => setNote(e.target.value)} placeholder="Lý do hoặc lời nhắn cho người nộp…" /></FormField>
-        {reviewMutation.error && <p className="text-xs text-destructive">{describeError(reviewMutation.error)}</p>}
-      </ModalShell>
 
       <ModalShell
         open={addingMember}
@@ -477,38 +584,11 @@ function ManagementPageContent() {
         {createClubMutation.error && <p className="text-xs text-destructive">{describeError(createClubMutation.error)}</p>}
       </ModalShell>
 
-      <EntityDrawer
-        open={!!detailApp}
-        onClose={() => setDetailApp(null)}
-        title="Chi tiết đơn đăng ký"
-        subtitle={currentClub?.name}
-        icon={<ClipboardList />}
-        footer={
-          detailApp?.status === "PENDING" && (canApprove || canReject) ? (
-            <>
-              {canReject && <Button variant="destructive" size="sm" onClick={() => openReview(detailApp, false)}><X size={14} /> Từ chối</Button>}
-              {canApprove && <Button size="sm" onClick={() => openReview(detailApp, true)}><Check size={14} /> Duyệt</Button>}
-            </>
-          ) : undefined
-        }
-      >
-        {detailApp && (
-          <DetailList
-            rows={[
-              ["Người nộp", applicant(detailApp)],
-              ["Trạng thái", <StatusBadge key="s" status={detailApp.status} />],
-              ["Ngày gửi", formatDateTime(detailApp.createdAt)],
-              ["Lời nhắn", <p key="m" className="whitespace-pre-line">{detailApp.message}</p>],
-              ["Ngày xét duyệt", formatDateTime(detailApp.reviewedAt)],
-              ["Ghi chú", detailApp.reviewNote || "—"],
-            ]}
-          />
-        )}
-      </EntityDrawer>
-
       <EntityDrawer open={!!memberId} onClose={() => setMemberId(null)} title="Chi tiết thành viên" subtitle={currentClub?.name} icon={<UserRound />}>
         {memberDetail.isPending ? (
           <LoadingRows rows={3} />
+        ) : memberDetail.isError ? (
+          <ErrorState message={describeError(memberDetail.error)} onRetry={() => memberDetail.refetch()} />
         ) : (
           memberDetail.data && (
             <MemberDetail
@@ -519,11 +599,38 @@ function ManagementPageContent() {
               canUpdate={canUpdateMember}
               canRemove={canRemoveMember}
               onStatus={(value) => status.mutate({ id: memberDetail.data!.id, value })}
-              onRemove={() => confirm("Xác nhận xoá hồ sơ thành viên này khỏi CLB?") && removeMember.mutate(memberDetail.data!.id)}
+              onLeave={() => {
+                removeMember.reset();
+                setConfirmingLeave(memberDetail.data!);
+              }}
             />
           )
         )}
       </EntityDrawer>
+
+      <ModalShell
+        open={!!confirmingLeave}
+        onClose={() => setConfirmingLeave(null)}
+        title="Xác nhận cho thành viên rời CLB"
+        icon={<UserMinus />}
+        size="sm"
+        onSubmit={() => confirmingLeave && removeMember.mutate(confirmingLeave.id)}
+        submitLabel="Xác nhận rời CLB"
+        submitDanger
+        submitLoading={removeMember.isPending}
+      >
+        {confirmingLeave && (
+          <div className="space-y-2 text-sm">
+            <p>
+              Xác nhận chuyển thành viên <b>{confirmingLeave.userFullName || confirmingLeave.userId}</b> sang trạng thái <b>Đã rời CLB (LEFT)</b>?
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Hệ thống sẽ lưu lại lịch sử tham gia (không xoá cứng dữ liệu), đồng thời tự động gỡ tư cách thành viên các Ban chuyên môn và thu hồi mọi vai trò/quyền thuộc phạm vi CLB này.
+            </p>
+            {removeMember.error && <p className="text-xs text-destructive">{describeError(removeMember.error)}</p>}
+          </div>
+        )}
+      </ModalShell>
     </ListPage>
   );
 }
@@ -544,7 +651,7 @@ function DepartmentChips({
         <Badge key={d.id} tone="primary" dot={false} className={canRemove(d) ? "pr-1" : undefined}>
           {d.name}
           {canRemove(d) && (
-            <button aria-label={`Gỡ khỏi ${d.name}`} onClick={() => onRemove(d)} className="rounded-full p-0.5 hover:bg-primary/15">
+            <button type="button" aria-label={`Gỡ khỏi ${d.name}`} onClick={() => onRemove(d)} className="rounded-full p-0.5 hover:bg-primary/15">
               <X size={10} />
             </button>
           )}
@@ -562,7 +669,7 @@ function MemberDetail({
   canUpdate,
   canRemove,
   onStatus,
-  onRemove,
+  onLeave,
 }: {
   membership: Membership;
   memberOf: (m: Membership) => React.ReactNode;
@@ -571,7 +678,7 @@ function MemberDetail({
   canUpdate: boolean;
   canRemove: boolean;
   onStatus: (value: string) => void;
-  onRemove: () => void;
+  onLeave: () => void;
 }) {
   return (
     <>
@@ -580,30 +687,34 @@ function MemberDetail({
           ["Thành viên", memberOf(membership)],
           ["Trạng thái", <StatusBadge key="s" status={membership.status} />],
           ["Ngày tham gia", formatDateTime(membership.joinedAt)],
-          ["Ngày rời", formatDateTime(membership.leftAt)],
-          ["Ban", departments.length ? departments.map((d) => d.name).join(", ") : "—"],
+          ["Ngày rời CLB", formatDateTime(membership.leftAt)],
+          ["Ban chuyên môn", departments.length ? departments.map((d) => d.name).join(", ") : "—"],
         ]}
       />
-      {(canUpdate || canRemove) && (
+      {((canUpdate && membership.status !== "LEFT") || (canRemove && membership.status !== "LEFT")) && (
         <Section title="Quản lý trạng thái thành viên" icon={<ShieldCheck />}>
           <div className="flex flex-wrap gap-2">
-            {canUpdate && membership.status !== "ACTIVE" && (
-              <Button size="sm" disabled={busy} onClick={() => onStatus("ACTIVE")}>Kích hoạt lại</Button>
-            )}
-            {canUpdate && membership.status !== "SUSPENDED" && membership.status !== "LEFT" && (
-              <Button size="sm" variant="outline" disabled={busy} onClick={() => onStatus("SUSPENDED")}>Tạm đình chỉ</Button>
-            )}
-            {canUpdate && membership.status !== "LEFT" && (
-              <Button size="sm" variant="destructive" disabled={busy} onClick={() => confirm("Xác nhận cho thành viên rời CLB?") && onStatus("LEFT")}>
-                Cho rời CLB
+            {canUpdate && membership.status === "SUSPENDED" && (
+              <Button size="sm" disabled={busy} onClick={() => onStatus("ACTIVE")}>
+                <PlayCircle size={14} /> Kích hoạt lại
               </Button>
             )}
-            {canRemove && (
-              <Button size="sm" variant="destructive" disabled={busy} onClick={onRemove}>
-                <Trash2 size={14} /> Xoá khỏi CLB
+            {canUpdate && membership.status === "ACTIVE" && (
+              <Button size="sm" variant="outline" disabled={busy} onClick={() => onStatus("SUSPENDED")}>
+                <PauseCircle size={14} /> Tạm đình chỉ
+              </Button>
+            )}
+            {canRemove && membership.status !== "LEFT" && (
+              <Button size="sm" variant="destructive" disabled={busy} onClick={onLeave}>
+                <UserMinus size={14} /> Cho rời CLB
               </Button>
             )}
           </div>
+          {membership.status === "SUSPENDED" && (
+            <p className="text-xs text-muted-foreground">
+              Khi đang tạm đình chỉ, mọi quyền thuộc phạm vi CLB và Ban của thành viên này được tạm dừng hiệu lực cho tới khi kích hoạt lại.
+            </p>
+          )}
         </Section>
       )}
     </>

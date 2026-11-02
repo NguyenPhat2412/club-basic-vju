@@ -4,8 +4,8 @@ import { apiModel, EffectivePermission } from "@/lib/api";
 
 export const CLUB_WORKSPACE_KEYS = [
   "club.update", "club.active", "club.inactive",
-  "application.view", "application.view_detail", "application.review", "application.approve", "application.reject",
-  "application.manage_form", "application.update", "application.delete",
+  "application.create", "application.view", "application.view_detail", "application.review", "application.approve", "application.reject",
+  "application.manage_form", "application.update",
   "member.view", "member.view_detail", "member.add", "member.update", "member.remove",
   "department.view", "department.create", "department.update", "department.activate", "department.inactive",
   "department.member.view", "department.member.add", "department.member.remove",
@@ -26,13 +26,31 @@ export function useSession() {
     permissions: list,
     ready: me.isSuccess && (mustChangePassword || permissions.isSuccess),
     can: (key: string) => list.some((p) => p.permissionKey === key),
-    canInClub: (key: string, clubId: string) => list.some((p) => p.permissionKey === key && (p.scope === "GLOBAL" || p.clubId === clubId)),
-    canClubWide: (key: string, clubId: string) => list.some((p) => p.permissionKey === key && (p.scope === "GLOBAL" || (p.scope === "CLUB" && p.clubId === clubId))),
+    canInClub: (key: string, clubId: string) => hasClubPermission(list, key, clubId),
+    canClubWide: (key: string, clubId: string) => hasClubWidePermission(list, key, clubId),
     canInDepartment: (key: string, clubId: string, departmentId?: string) =>
-      list.some((p) => p.permissionKey === key && (p.scope === "GLOBAL" || (p.scope === "CLUB" && p.clubId === clubId) || (departmentId ? p.departmentId === departmentId : p.clubId === clubId))),
+      hasDepartmentPermission(list, key, clubId, departmentId),
     clubsWith: (keys: string[]) => clubIdsWith(list, keys),
     departmentsWith: (keys: string[], clubId: string) => departmentIdsWith(list, keys, clubId),
   };
+}
+
+export function hasClubPermission(list: EffectivePermission[], key: string, clubId: string) {
+  return list.some((p) => p.permissionKey === key && (p.scope === "GLOBAL" || p.clubId === clubId));
+}
+
+export function hasClubWidePermission(list: EffectivePermission[], key: string, clubId: string) {
+  return list.some((p) => p.permissionKey === key && (p.scope === "GLOBAL" || (p.scope === "CLUB" && p.clubId === clubId)));
+}
+
+export function hasDepartmentPermission(list: EffectivePermission[], key: string, clubId: string, departmentId?: string) {
+  return list.some(
+    (p) =>
+      p.permissionKey === key &&
+      (p.scope === "GLOBAL" ||
+        (p.scope === "CLUB" && p.clubId === clubId) ||
+        (departmentId ? p.clubId === clubId && p.departmentId === departmentId : p.clubId === clubId))
+  );
 }
 
 export function clubIdsWith(list: EffectivePermission[], keys: string[]) {
