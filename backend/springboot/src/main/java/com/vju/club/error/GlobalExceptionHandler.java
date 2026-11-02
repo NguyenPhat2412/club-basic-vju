@@ -1,6 +1,6 @@
 package com.vju.club.error;
 
-import com.vju.club.modules.permission.entity.Permission;
+import com.vju.club.entity.Permission;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +44,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         CONSTRAINT_CODES.put("uq_user_roles_active_", "ROLE_ALREADY_ASSIGNED");
         CONSTRAINT_CODES.put("uq_roles_code_ci", "ROLE_CODE_ALREADY_EXISTS");
         CONSTRAINT_CODES.put("uq_club_applications_pending", "APPLICATION_ALREADY_PENDING");
+        CONSTRAINT_CODES.put("uq_notifications_user_event_key", "DUPLICATE_NOTIFICATION_EVENT");
         CONSTRAINT_CODES.put("uq_documents_club_name_live", "DOCUMENT_NAME_ALREADY_EXISTS");
         CONSTRAINT_CODES.put("uq_document_versions_number", "DOCUMENT_VERSION_CONFLICT");
         CONSTRAINT_CODES.put("ck_document_versions_sequence", "DOCUMENT_VERSION_CONFLICT");

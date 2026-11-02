@@ -68,20 +68,23 @@ class RateLimitServiceTest {
         int limit = 10;
         RateLimitService service = service(limit, Duration.ofMinutes(1), Clock.systemUTC());
         var pool = Executors.newFixedThreadPool(32);
-        var start = new CountDownLatch(1);
         try {
-            List<Callable<RateLimitDecision>> tasks = java.util.stream.IntStream.range(0, 100)
-                    .<Callable<RateLimitDecision>>mapToObj(index -> () -> {
-                        start.await();
-                        return service.check("login:127.0.0.1");
-                    }).toList();
-            var futures = tasks.stream().map(pool::submit).toList();
-            start.countDown();
-            long allowed = 0;
-            for (var future : futures) {
-                if (future.get().allowed()) allowed++;
+            for (int round = 0; round < 20; round++) {
+                String key = "login:127.0.0." + round;
+                var start = new CountDownLatch(1);
+                List<Callable<RateLimitDecision>> tasks = java.util.stream.IntStream.range(0, 100)
+                        .<Callable<RateLimitDecision>>mapToObj(index -> () -> {
+                            start.await();
+                            return service.check(key);
+                        }).toList();
+                var futures = tasks.stream().map(pool::submit).toList();
+                start.countDown();
+                long allowed = 0;
+                for (var future : futures) {
+                    if (future.get().allowed()) allowed++;
+                }
+                assertThat(allowed).isEqualTo(limit);
             }
-            assertThat(allowed).isEqualTo(limit);
         } finally {
             pool.shutdownNow();
         }

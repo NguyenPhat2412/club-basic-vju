@@ -2,7 +2,8 @@ package com.vju.club.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import com.vju.club.modules.auth.annotation.PublicEndpoint;
+import com.vju.club.annotation.PublicEndpoint;
+import com.vju.club.common.ApiPaths;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -47,7 +48,7 @@ public class SecurityConfig {
                 .securityContext(context -> context.securityContextRepository(securityContextRepository))
                 .requestCache(cache -> cache.requestCache(new NullRequestCache()))
                 .logout(logout -> logout
-                        .logoutUrl("/api/v1/auth/logout")
+                        .logoutUrl(ApiPaths.FULL_AUTH_LOGOUT)
                         .logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT)))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(authenticationEntryPoint())
@@ -55,7 +56,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> {
                     publicRoutes(handlerMapping).forEach(route ->
                             authorize.requestMatchers(route.method(), route.pattern()).permitAll());
-                    authorize.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll();
+                    authorize.requestMatchers(
+                            ApiPaths.SWAGGER_UI_HTML,
+                            ApiPaths.SWAGGER_UI_WILDCARD,
+                            ApiPaths.API_DOCS_V3_WILDCARD).permitAll();
                     authorize.anyRequest().authenticated();
                 });
         http.addFilterBefore(rateLimitFilter, CsrfFilter.class);

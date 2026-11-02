@@ -1,6 +1,6 @@
 package com.vju.club.integration;
 
-import com.vju.club.modules.club.entity.Club;
+import com.vju.club.entity.Club;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

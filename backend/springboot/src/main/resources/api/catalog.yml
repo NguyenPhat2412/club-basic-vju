@@ -105,6 +105,13 @@ entries:
   authRequired: false
   permission: null
 - method: GET
+  path: /api/v1/public/clubs/categories
+  module: club
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: GET
   path: /api/v1/public/clubs/{clubId}
   module: club
   backend: backend/springboot
@@ -475,6 +482,13 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: null
+- method: GET
+  path: /api/v1/users/me/notifications/{notificationId}
+  module: notification
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
 - method: PATCH
   path: /api/v1/users/me/notifications/{notificationId}/read
   module: notification
@@ -797,13 +811,6 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: null
-- method: DELETE
-  path: /api/v1/users/me/applications/{applicationId}
-  module: club-application
-  backend: backend/springboot
-  status: IMPLEMENTED
-  authRequired: true
-  permission: null
 - method: PUT
   path: /api/v1/clubs/{clubId}/applications/{applicationId}
   module: club-application
@@ -811,13 +818,6 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: application.update | application.review
-- method: DELETE
-  path: /api/v1/clubs/{clubId}/applications/{applicationId}
-  module: club-application
-  backend: backend/springboot
-  status: IMPLEMENTED
-  authRequired: true
-  permission: application.delete | application.review
 - method: POST
   path: /api/v1/applications/{applicationId}/files
   module: club-application

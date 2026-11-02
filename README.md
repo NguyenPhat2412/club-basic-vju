@@ -51,58 +51,42 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 .
 ├── backend/springboot/          # Backend Spring Boot (dịch vụ duy nhất)
 │   ├── src/main/java/com/vju/club/
-│   │   ├── modules/             # Mỗi tính năng một module (xem cấu trúc module bên dưới)
-│   │   │   ├── auth/            # Đăng ký, đăng nhập, JWT, refresh token
-│   │   │   ├── user/            # Hồ sơ và quản trị người dùng
-│   │   │   ├── club/            # Câu lạc bộ
-│   │   │   ├── clubapplication/ # Đơn xin vào CLB, duyệt/từ chối
-│   │   │   ├── department/      # Ban
-│   │   │   ├── membership/      # Thành viên CLB
-│   │   │   ├── departmentmember/# Thành viên ban
-│   │   │   ├── permission/      # Cấp/thu hồi quyền, quyền hiệu lực
-│   │   │   ├── role/            # Vai trò và gán vai trò
-│   │   │   ├── notification/    # Thông báo
-│   │   │   └── audit/           # Ghi và tra cứu audit log
-│   │   ├── security/            # Kiểm tra quyền, rate limit, filter trạng thái tài khoản
-│   │   ├── config/              # Cấu hình ứng dụng: security, JWT, CORS, OpenAPI (không chứa DTO)
-│   │   ├── error/               # Xử lý lỗi chung (ProblemDetail)
-│   │   ├── common/              # Phân trang (PageResponse, OffsetLimitRequest)
+│   │   ├── annotation/          # Annotation phân quyền, public route và Bean Validation
 │   │   ├── bootstrap/           # Admin ban đầu và dữ liệu demo (chỉ profile local)
-│   │   └── rest/                # API catalog, phục vụ file OpenAPI
+│   │   ├── common/              # Hằng số đường dẫn tập trung (ApiPaths), hằng số nghiệp vụ và phân trang
+│   │   ├── config/              # Cấu hình ứng dụng: security, session, cache, CORS, OpenAPI, storage
+│   │   ├── controller/          # Toàn bộ REST controller (kèm API catalog & OpenAPI docs): chỉ nhận và trả DTO
+│   │   ├── dto/
+│   │   │   ├── record/          # Record trung gian nội bộ / kết quả chiếu
+│   │   │   ├── request/         # Java record cho request body, kèm Bean Validation
+│   │   │   └── response/        # Java record cho response (kèm PageResponse, ApiCatalogEntry), bất biến
+│   │   ├── entity/              # Base entity + JPA entity, chỉ dùng bên trong service/repository
+│   │   ├── enums/               # Enum dùng chung cho entity, DTO và controller
+│   │   ├── error/               # Xử lý lỗi chung (ApiException, GlobalExceptionHandler, ProblemDetail)
+│   │   ├── exception/           # Exception theo nghiệp vụ (kế thừa ApiException)
+│   │   ├── mapper/              # MapStruct: entity → DTO, code sinh lúc compile
+│   │   ├── repository/          # Spring Data JPA repository
+│   │   ├── security/            # Kiểm tra quyền, rate limit, filter trạng thái tài khoản
+│   │   ├── service/             # Interface service: chỉ nhận và trả DTO
+│   │   │   └── impl/            # XxxServiceImpl (@Service, @RequiredArgsConstructor): nghiệp vụ, quyền, audit
+│   │   ├── specification/       # JPA Specification cho tìm kiếm động
+│   │   └── storage/             # Interface DocumentStorage
+│   │       └── impl/            # Lưu trữ tài liệu (Local & Cloudflare R2, kèm Redis cache)
 │   ├── src/main/resources/
-│   │   ├── db/migration/        # Flyway: V1–V6 nền tảng, V7 club applications, V8 notifications, V9 created_by/updated_by
+│   │   ├── db/migration/        # Flyway migrations
 │   │   └── api/                 # Bản copy runtime của OpenAPI và catalog
 │   ├── src/test/                # Unit test + integration test
 │   └── Dockerfile
 ├── frontend/nextjs/             # Frontend Next.js: discovery, applications, memberships, management, notifications
 ├── docs/
-│   ├── api/                     # OpenAPI contract (nguồn gốc), catalog, test contract
-│   ├── database/                # Hướng dẫn database
+│   ├── api/                     # OpenAPI 3.1 contract (123 endpoints), catalog, test contract
+│   ├── baseline/                # Quyết định PO, ma trận truy vết và hồ sơ nghiệm thu Sprint 2
+│   ├── database/                # Hướng dẫn database & Flyway V1..V20
 │   └── superpowers/             # Spec và kế hoạch thiết kế
 ├── inf/                         # Chỗ dành cho cấu hình docker/nginx/postgres (chưa dùng)
 ├── docker-compose.yml           # PostgreSQL cho phát triển (cổng 5432)
 ├── docker-compose.test.yml      # PostgreSQL cho kiểm thử (cổng 55432, dữ liệu trên tmpfs)
 └── .github/workflows/backend.yml
-```
-
-Mỗi module trong `modules/` theo cùng một khuôn:
-
-```text
-modules/<module>/
-├── controller/          # REST controller: chỉ nhận và trả DTO, không bao giờ để lộ entity
-├── service/             # Interface service (API của module)
-│   └── impl/            # XxxServiceImpl: nghiệp vụ, kiểm tra quyền, audit
-├── dto/
-│   ├── request/         # Java record cho request body, kèm Bean Validation
-│   └── response/        # Java record cho response, bất biến và không phụ thuộc entity
-├── mapper/              # MapStruct: entity → DTO, code sinh lúc compile
-├── entity/              # JPA entity, chỉ dùng bên trong service/repository
-├── enums/               # Enum dùng chung cho entity, DTO và controller
-├── repository/          # Spring Data repository
-├── specification/       # JPA Specification cho tìm kiếm động (nếu có)
-├── annotation/          # Annotation validation riêng của module
-├── exception/           # Exception riêng của module (nếu có), kế thừa ApiException
-└── common/              # Hằng số của module
 ```
 
 Quy ước:
@@ -354,11 +338,14 @@ Khi chạy, Hibernate chỉ `validate` schema chứ không tự sửa. Mọi tha
 ## Kiểm thử
 
 ```bash
-# 494 test backend: unit + integration (cần Docker đang chạy)
+# 574 test backend: unit + migration + concurrency + integration (cần Docker đang chạy)
 cd backend/springboot && ./mvnw test
 
-# Kiểm tra OpenAPI contract (từ thư mục gốc)
-python3 -m unittest discover -s docs/api/tests
+# Kiểm tra OpenAPI 3.1 & API catalog contract (15 test từ thư mục gốc)
+python3 -m unittest discover -s docs/api/tests -v
+
+# Kiểm tra Frontend Next.js: lint + typecheck + unit test + production build
+cd frontend/nextjs && pnpm run lint && pnpm run typecheck && pnpm test && pnpm run build
 ```
 
 - **Unit test:** kiểm tra logic auth, JWT, cấu hình secret/issuer, kiểm tra quyền, rate limit, bootstrap admin, và báo lỗi khi bản copy OpenAPI trong code lệch với bản trong `docs/`.
@@ -403,21 +390,23 @@ Phase 2 bổ sung luồng:
 
 Endpoint chính:
 
-- `POST /api/v1/clubs/{clubId}/applications` tạo đơn `PENDING`.
-- `GET /api/v1/users/me/applications` và `GET /api/v1/users/me/applications/{applicationId}` xem đơn của mình.
-- `PATCH /api/v1/users/me/applications/{applicationId}/cancel` hủy đơn đang `PENDING`.
-- `GET /api/v1/clubs/{clubId}/applications` xem đơn theo scope CLB.
-- `POST /api/v1/clubs/{clubId}/applications/{applicationId}/approve` hoặc `/reject` xử lý đơn. Approve tạo Membership trong cùng transaction với cập nhật application.
-- `GET /api/v1/users/me/memberships` xem lịch sử membership cá nhân.
+- `GET /api/v1/public/clubs` và `GET /api/v1/public/clubs/categories` khám phá CLB đang hoạt động và lĩnh vực hoạt động từ PostgreSQL.
+- `POST /api/v1/clubs/{clubId}/applications` tạo đơn `PENDING` (tuân thủ giới hạn `/api/v1/system-settings`).
+- `GET /api/v1/users/me/applications`, `GET /api/v1/users/me/applications/{applicationId}` và `PUT /api/v1/users/me/applications/{applicationId}` xem/cập nhật đơn cá nhân (ẩn tuyệt đối `internalNote` và `reviewedBy`).
+- `PATCH /api/v1/users/me/applications/{applicationId}/cancel` hủy đơn đang `PENDING` (không xóa cứng để bảo toàn lịch sử & chống lách cooldown).
+- `GET /api/v1/clubs/{clubId}/applications`, `GET /api/v1/clubs/{clubId}/applications/{applicationId}` và `PUT /api/v1/clubs/{clubId}/applications/{applicationId}` xem/cập nhật hồ sơ & ghi chú nội bộ theo scope CLB.
+- `POST /api/v1/clubs/{clubId}/applications/{applicationId}/approve` hoặc `/reject` xử lý đơn (hỗ trợ `reviewNote`, `internalNote`, `departmentId` và `skipDepartmentAssignment`). Approve tạo Membership trong cùng transaction với cập nhật application và thông báo idempotent.
+- `GET /api/v1/users/me/memberships` xem lịch sử membership cá nhân; `GET /api/v1/users/me/notifications` và `GET /api/v1/users/me/notifications/{notificationId}` xem chi tiết thông báo.
 
-Quyền mới gồm `application.view`, `application.view_detail`, `application.create`, `application.cancel`, `application.review`, `application.approve`, và `application.reject`; quyền quản lý đơn dùng scope `CLUB`. Applicant dùng ownership cho các thao tác cá nhân. Approval/rejection tạo thông báo in-app trong cùng transaction; người dùng đọc qua `/api/v1/users/me/notifications` và đánh dấu đã đọc qua `PATCH /api/v1/users/me/notifications/{notificationId}/read`.
-
-Migration `V7__club_applications.sql` tạo bảng application, partial unique index ngăn hai đơn `PENDING` trùng user/CLB, seed permission, và mở rộng audit resource type `APPLICATION`. Migration `V8__notifications.sql` tạo bảng thông báo, index theo user/thời gian và trigger `updated_at`.
+Quyền mới gồm `application.view`, `application.view_detail`, `application.create`, `application.cancel`, `application.update`, `application.manage_form`, `application.review`, `application.approve`, và `application.reject`; quyền quản lý đơn dùng scope `CLUB`. Applicant dùng ownership cho các thao tác cá nhân. Các migration `V7`, `V8`, `V17`, `V19` và `V20` hoàn thiện toàn bộ ràng buộc tuyển thành viên, tạm đình chỉ quyền CLB/ban khi membership `SUSPENDED`, và khử trùng lặp thông báo theo `event_key`.
 
 ## Tài liệu liên quan
 
 - [Backend README](backend/springboot/README.md): chi tiết chạy và kiểm thử backend
-- [API inventory và Swagger contract](docs/api/README.md)
+- [API inventory và Swagger contract (123 endpoints)](docs/api/README.md)
 - [OpenAPI 3.1 contract](docs/api/openapi.yaml)
-- [Hướng dẫn database](docs/database/README.md)
+- [Hướng dẫn database (`V1..V20`)](docs/database/README.md)
+- [Quyết định PO Sprint 2 (`PB-55`, `PB-56`)](docs/baseline/phase2-po-decisions.md)
+- [Ma trận truy vết Sprint 2](docs/baseline/phase2-traceability-matrix.md)
+- [Hồ sơ nghiệm thu Baseline Sprint 2](docs/baseline/phase2-baseline.md)
 - [Thiết kế và kế hoạch giai đoạn 1](docs/superpowers/specs/)

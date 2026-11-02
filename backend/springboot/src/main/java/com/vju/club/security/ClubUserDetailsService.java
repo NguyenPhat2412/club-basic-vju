@@ -1,9 +1,9 @@
 package com.vju.club.security;
 
 import lombok.RequiredArgsConstructor;
-import com.vju.club.modules.user.enums.UserStatus;
+import com.vju.club.enums.UserStatus;
 
-import com.vju.club.modules.user.repository.UserRepository;
+import com.vju.club.repository.UserRepository;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;

@@ -1,9 +1,9 @@
 package com.vju.club.config;
 
-import com.vju.club.modules.document.storage.DocumentStorage;
-import com.vju.club.modules.document.storage.LocalDocumentStorage;
-import com.vju.club.modules.document.storage.R2DocumentStorage;
-import com.vju.club.modules.document.storage.RedisCachedDocumentStorage;
+import com.vju.club.storage.DocumentStorage;
+import com.vju.club.storage.impl.LocalDocumentStorage;
+import com.vju.club.storage.impl.R2DocumentStorage;
+import com.vju.club.storage.impl.RedisCachedDocumentStorage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;

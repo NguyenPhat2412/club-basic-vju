@@ -1,5 +1,6 @@
 package com.vju.club.security;
 
+import com.vju.club.common.ApiPaths;
 import com.vju.club.error.ProblemResponses;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -42,7 +43,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private boolean isRateLimitedEndpoint(HttpServletRequest request) {
         return "POST".equalsIgnoreCase(request.getMethod()) && (
-                "/api/v1/auth/login".equals(request.getRequestURI())
-                        || "/api/v1/auth/google".equals(request.getRequestURI()));
+                ApiPaths.FULL_AUTH_LOGIN.equals(request.getRequestURI())
+                        || ApiPaths.FULL_AUTH_GOOGLE.equals(request.getRequestURI()));
     }
 }

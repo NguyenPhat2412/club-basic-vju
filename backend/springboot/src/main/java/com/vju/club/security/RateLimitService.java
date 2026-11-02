@@ -22,22 +22,25 @@ public class RateLimitService {
             return new RateLimitDecision(true, limit, 0);
         }
 
-        long now = clock.millis();
         long windowMillis = Math.max(1, properties.getWindow().toMillis());
-        sweepExpired(now, windowMillis);
-        Window window = windows.computeIfAbsent(key, ignored -> new Window(now));
-        synchronized (window) {
-            if (now < window.startedAt || now - window.startedAt >= windowMillis) {
-                window.startedAt = now;
-                window.count = 0;
+        sweepExpired(clock.millis(), windowMillis);
+        RateLimitDecision[] decisionHolder = new RateLimitDecision[1];
+        windows.compute(key, (ignored, existing) -> {
+            long now = clock.millis();
+            Window window = existing;
+            if (window == null || now < window.startedAt || now - window.startedAt >= windowMillis) {
+                window = new Window(now);
             }
             if (window.count >= limit) {
                 long retryAfter = Math.max(1, (window.startedAt + windowMillis - now + 999) / 1000);
-                return new RateLimitDecision(false, 0, retryAfter);
+                decisionHolder[0] = new RateLimitDecision(false, 0, retryAfter);
+                return window;
             }
             window.count++;
-            return new RateLimitDecision(true, limit - window.count, 0);
-        }
+            decisionHolder[0] = new RateLimitDecision(true, limit - window.count, 0);
+            return window;
+        });
+        return decisionHolder[0];
     }
 
     private void sweepExpired(long now, long windowMillis) {
@@ -45,11 +48,7 @@ public class RateLimitService {
         if (now - last < windowMillis || !lastSweepAt.compareAndSet(last, now)) {
             return;
         }
-        windows.entrySet().removeIf(entry -> {
-            synchronized (entry.getValue()) {
-                return now - entry.getValue().startedAt >= windowMillis;
-            }
-        });
+        windows.entrySet().removeIf(entry -> now - entry.getValue().startedAt >= windowMillis);
     }
 
     int trackedKeys() {
@@ -61,7 +60,7 @@ public class RateLimitService {
     }
 
     private static final class Window {
-        private long startedAt;
+        private final long startedAt;
         private int count;
 
         private Window(long startedAt) {

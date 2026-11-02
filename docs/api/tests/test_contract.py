@@ -91,15 +91,39 @@ class ContractTest(unittest.TestCase):
         contract_paths = {(method, path) for path, method, _ in self.operations()}
         self.assertEqual(catalog_paths, contract_paths)
 
+    def _load_api_paths(self):
+        src = (ROOT / 'backend/springboot/src/main/java/com/vju/club/common/ApiPaths.java').read_text()
+        constants = {}
+        for name, expr in re.findall(r'public\s+static\s+final\s+String\s+(\w+)\s*=\s*([^;]+);', src):
+            parts = [part.strip() for part in expr.split('+')]
+            resolved = []
+            for part in parts:
+                if part.startswith('"') and part.endswith('"'):
+                    resolved.append(part[1:-1])
+                elif part in constants:
+                    resolved.append(constants[part])
+                else:
+                    raise AssertionError(f'Unresolved ApiPaths token {part!r} in {name}')
+            constants[name] = ''.join(resolved)
+        return constants
+
+    def test_controllers_do_not_hardcode_route_strings(self):
+        hardcoded = re.compile(r'@(?:Get|Post|Put|Patch|Delete|Request)Mapping\b\((?:value\s*=\s*)?"')
+        for src in (ROOT / 'backend/springboot/src/main/java').rglob('*Controller.java'):
+            with self.subTest(controller=src.name):
+                self.assertIsNone(hardcoded.search(src.read_text()), f'{src.name} hardcodes a route string instead of ApiPaths')
+
     def test_contract_paths_match_spring_controllers(self):
         def normalize(path):
             return re.sub(r'\{[^}]+\}', '{}', path.rstrip('/') or '/')
 
-        mapping = re.compile(r'@(Get|Post|Put|Patch|Delete|Request)Mapping\b(?:\((?:value\s*=\s*)?"([^"]*)")?')
+        api_paths = self._load_api_paths()
+        mapping = re.compile(r'@(Get|Post|Put|Patch|Delete|Request)Mapping\b(?:\((?:value\s*=\s*)?(?:"([^"]*)"|ApiPaths\.(\w+)))?')
         code_paths = set()
         for src in (ROOT / 'backend/springboot/src/main/java').rglob('*Controller.java'):
             prefix = ''
-            for kind, path in mapping.findall(src.read_text()):
+            for kind, literal_path, const_name in mapping.findall(src.read_text()):
+                path = api_paths[const_name] if const_name else literal_path
                 if kind == 'Request':
                     prefix = path
                 elif (prefix + path).startswith('/api/v1/'):
@@ -143,21 +167,26 @@ class ContractTest(unittest.TestCase):
 
     def test_response_fields_match_java_records(self):
         mapping = {
-            'User': 'modules/user/dto/response/UserResponse.java',
-            'Club': 'modules/club/dto/response/ClubResponse.java',
-            'Department': 'modules/department/dto/response/DepartmentResponse.java',
-            'Membership': 'modules/membership/dto/response/MembershipResponse.java',
-            'DepartmentMember': 'modules/departmentmember/dto/response/DepartmentMemberResponse.java',
-            'Permission': 'modules/permission/dto/response/PermissionResponse.java',
-            'UserPermission': 'modules/permission/dto/response/UserPermissionResponse.java',
-            'Role': 'modules/role/dto/response/RoleResponse.java',
-            'UserRole': 'modules/role/dto/response/UserRoleResponse.java',
-            'EffectivePermission': 'modules/permission/dto/response/EffectivePermissionResponse.java',
-            'AuditLog': 'modules/audit/dto/response/AuditLogResponse.java',
+            'ApiCatalogEntry': 'dto/response/ApiCatalogEntry.java',
+            'User': 'dto/response/UserResponse.java',
+            'Club': 'dto/response/ClubResponse.java',
+            'Department': 'dto/response/DepartmentResponse.java',
+            'Membership': 'dto/response/MembershipResponse.java',
+            'DepartmentMember': 'dto/response/DepartmentMemberResponse.java',
+            'Permission': 'dto/response/PermissionResponse.java',
+            'UserPermission': 'dto/response/UserPermissionResponse.java',
+            'Role': 'dto/response/RoleResponse.java',
+            'UserRole': 'dto/response/UserRoleResponse.java',
+            'EffectivePermission': 'dto/response/EffectivePermissionResponse.java',
+            'AuditLog': 'dto/response/AuditLogResponse.java',
+            'ClubApplication': 'dto/response/ClubApplicationResponse.java',
+            'MyClubApplicationSummary': 'dto/response/ClubApplicationSummaryResponse.java',
+            'ClubApplicationFile': 'dto/response/ClubApplicationFileResponse.java',
+            'Notification': 'dto/response/NotificationResponse.java',
         }
         for schema_name, java_path in mapping.items():
             src = (ROOT / 'backend/springboot/src/main/java/com/vju/club' / java_path).read_text()
-            fields = set(re.findall(r'(?:UUID|String|boolean|Instant|OffsetDateTime|PermissionScope|List<String>|Map<String, Object>)\s+(\w+)', src.split('public record', 1)[1].split('{', 1)[0]))
+            fields = set(re.findall(r'(?:UUID|String|Integer|int|long|boolean|Instant|OffsetDateTime|PermissionScope|List<[^>]+>|Map<String, Object>)\s+(\w+)', src.split('public record', 1)[1].split('{', 1)[0]))
             with self.subTest(schema=schema_name):
                 self.assertEqual(set(self.doc['components']['schemas'][schema_name]['properties']), fields)
 

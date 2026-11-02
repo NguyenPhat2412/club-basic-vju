@@ -142,4 +142,44 @@ class DepartmentMemberApiTest extends ApiIntegrationTest {
         problem(get(members(depA2)), memberToken, null, 403, "PERMISSION_DENIED");
         call(get(members(depA1)), memberToken, null, 200);
     }
+
+    @Test
+    void moveAndRemoveRevokeDepartmentScopedPermissionsAndRejectSuspendedMembership() throws Exception {
+        UUID targetUser = user("dept-lifecycle@test.local");
+        String targetToken = token(targetUser);
+        UUID mid = membership(targetUser, clubA);
+        assign(depA1, mid);
+        grant(targetUser, "department.update", "DEPARTMENT", null, depA1);
+        call(patch("/api/v1/departments/" + depA1), targetToken, Map.of("description", "depA1 head"), 200);
+
+        // Moving a SUSPENDED membership is rejected and keeps source link intact
+        call(patch("/api/v1/memberships/" + mid), adminToken, Map.of("status", "SUSPENDED"), 200);
+        problem(patch(members(depA1) + "/" + mid), adminToken, Map.of("targetDepartmentId", depA2),
+                409, "MEMBERSHIP_NOT_ACTIVE");
+        assertThat(count("SELECT count(*) FROM department_members WHERE department_id = ? AND membership_id = ?",
+                depA1, mid)).isEqualTo(1);
+        call(patch("/api/v1/memberships/" + mid), adminToken, Map.of("status", "ACTIVE"), 200);
+
+        // Moving to depA2 revokes depA1 department-scoped permissions and records audit
+        call(patch(members(depA1) + "/" + mid), adminToken, Map.of("targetDepartmentId", depA2), 200);
+        problem(patch("/api/v1/departments/" + depA1), targetToken, Map.of("description", "old dept"),
+                403, "PERMISSION_DENIED");
+        assertThat(count("SELECT count(*) FROM audit_logs WHERE action = 'DEPARTMENT_MEMBER_MOVED' AND club_id = ?", clubA))
+                .isEqualTo(1);
+
+        // Grant permission on depA2, also add to depA1, then remove from depA2 -> only depA2 permission & link removed
+        grant(targetUser, "department.update", "DEPARTMENT", null, depA2);
+        assign(depA1, mid);
+        call(patch("/api/v1/departments/" + depA2), targetToken, Map.of("description", "depA2 head"), 200);
+        call(delete(members(depA2) + "/" + mid), adminToken, null, 204);
+
+        problem(patch("/api/v1/departments/" + depA2), targetToken, Map.of("description", "removed dept"),
+                403, "PERMISSION_DENIED");
+        assertThat(count("SELECT count(*) FROM department_members WHERE department_id = ? AND membership_id = ?",
+                depA1, mid)).isEqualTo(1);
+        assertThat(db.queryForObject("SELECT status FROM memberships WHERE id = ?", String.class, mid))
+                .isEqualTo("ACTIVE");
+        assertThat(count("SELECT count(*) FROM audit_logs WHERE action = 'DEPARTMENT_MEMBER_REMOVED' AND club_id = ?", clubA))
+                .isEqualTo(1);
+    }
 }

@@ -1,6 +1,6 @@
 package com.vju.club.security;
 
-import com.vju.club.modules.permission.annotation.RequirePermission;
+import com.vju.club.annotation.RequirePermission;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AnnotationTypeFilter;

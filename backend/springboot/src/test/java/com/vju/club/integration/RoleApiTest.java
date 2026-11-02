@@ -1,6 +1,6 @@
 package com.vju.club.integration;
 
-import com.vju.club.modules.role.entity.Role;
+import com.vju.club.entity.Role;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;

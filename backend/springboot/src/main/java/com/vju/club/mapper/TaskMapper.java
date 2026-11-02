@@ -1,0 +1,32 @@
+package com.vju.club.mapper;
+
+import com.vju.club.dto.record.TaskRecord;
+import com.vju.club.dto.response.TaskResponse;
+import com.vju.club.entity.Task;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
+@Mapper
+public interface TaskMapper {
+    @Mapping(target = "clubId", source = "club.id")
+    @Mapping(target = "clubCode", source = "club.code")
+    @Mapping(target = "clubName", source = "club.name")
+    @Mapping(target = "departmentId", source = "department.id")
+    @Mapping(target = "departmentName", source = "department.name")
+    @Mapping(target = "eventId", source = "event.id")
+    @Mapping(target = "eventTitle", source = "event.title")
+    @Mapping(target = "assigneeId", source = "assignee.id")
+    @Mapping(target = "assigneeFullName", source = "assignee.fullName")
+    @Mapping(target = "assignerId", source = "assigner.id")
+    @Mapping(target = "assignerFullName", source = "assigner.fullName")
+    @Mapping(target = "verifiedBy", source = "verifiedBy.id")
+    TaskResponse toResponse(Task task);
+
+    @Mapping(target = "clubId", source = "club.id")
+    @Mapping(target = "departmentId", source = "department.id")
+    @Mapping(target = "eventId", source = "event.id")
+    @Mapping(target = "assigneeId", source = "assignee.id")
+    @Mapping(target = "assignerId", source = "assigner.id")
+    @Mapping(target = "verifiedBy", source = "verifiedBy.id")
+    TaskRecord toRecord(Task task);
+}

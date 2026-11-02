@@ -1,6 +1,6 @@
 package com.vju.club.integration;
 
-import com.vju.club.modules.club.entity.Club;
+import com.vju.club.entity.Club;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
@@ -133,5 +133,34 @@ class ClubApiTest extends ApiIntegrationTest {
         assertThat(managedPage.path("total").asInt()).isEqualTo(2);
         assertThat(managedPage.toString()).contains(clubA.toString(), clubB.toString());
         call(get("/api/v1/public/clubs/" + clubB), memberToken, null, 200);
+    }
+
+    @Test
+    void publicCategoriesAndCombinedQueryCategoryFilterDoNotLeakInactiveClubs() throws Exception {
+        call(patch("/api/v1/clubs/" + clubA), adminToken,
+                Map.of("name", "VJU Coding Club", "activityField", "Công nghệ"), 200);
+        call(patch("/api/v1/clubs/" + clubB), adminToken,
+                Map.of("name", "VJU Music Club", "activityField", "Nghệ thuật"), 200);
+        UUID hidden = club("HIDDEN", "INACTIVE");
+        db.update("UPDATE clubs SET name = 'Hidden Coding', activity_field = 'Nội bộ' WHERE id = ?", hidden);
+
+        JsonNode categories = call(get("/api/v1/public/clubs/categories"), null, null, 200);
+        assertThat(categories.toString()).contains("Công nghệ", "Nghệ thuật").doesNotContain("Nội bộ");
+
+        JsonNode combined = call(get("/api/v1/public/clubs")
+                .param("query", "coding")
+                .param("category", "Công nghệ"), null, null, 200);
+        assertThat(combined.path("total").asInt()).isEqualTo(1);
+        assertThat(combined.at("/items/0/id").asText()).isEqualTo(clubA.toString());
+
+        JsonNode emptyCombo = call(get("/api/v1/public/clubs")
+                .param("query", "coding")
+                .param("category", "Nghệ thuật"), null, null, 200);
+        assertThat(emptyCombo.path("total").asInt()).isZero();
+
+        // Student without club.view querying status=INACTIVE receives 0 results (never leaks hidden or active clubs)
+        JsonNode studentInactive = call(get("/api/v1/clubs").param("status", "INACTIVE"), memberToken, null, 200);
+        assertThat(studentInactive.path("total").asInt()).isZero();
+        assertThat(studentInactive.path("items").size()).isZero();
     }
 }

@@ -1,0 +1,20 @@
+package com.vju.club.dto.response;
+
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+public record ClubApplicationSummaryResponse(
+        UUID id,
+        UUID clubId,
+        String clubCode,
+        String clubName,
+        UUID preferredDepartmentId,
+        String preferredDepartmentName,
+        String facultyMajor,
+        String academicYear,
+        String status,
+        int attachmentCount,
+        OffsetDateTime createdAt,
+        OffsetDateTime reviewedAt,
+        OffsetDateTime cancelledAt
+) { }

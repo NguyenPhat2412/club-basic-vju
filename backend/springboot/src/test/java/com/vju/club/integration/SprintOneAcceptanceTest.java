@@ -1,6 +1,6 @@
 package com.vju.club.integration;
 
-import com.vju.club.modules.permission.entity.Permission;
+import com.vju.club.entity.Permission;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.DisplayName;

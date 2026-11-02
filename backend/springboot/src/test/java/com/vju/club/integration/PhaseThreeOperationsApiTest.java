@@ -1,7 +1,7 @@
 package com.vju.club.integration;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.vju.club.modules.task.service.TaskService;
+import com.vju.club.service.TaskService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 

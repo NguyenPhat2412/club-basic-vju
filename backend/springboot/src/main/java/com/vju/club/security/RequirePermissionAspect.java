@@ -1,6 +1,6 @@
 package com.vju.club.security;
 
-import com.vju.club.modules.permission.annotation.RequirePermission;
+import com.vju.club.annotation.RequirePermission;
 import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;

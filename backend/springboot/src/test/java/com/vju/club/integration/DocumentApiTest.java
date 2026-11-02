@@ -2,7 +2,7 @@ package com.vju.club.integration;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.vju.club.config.StorageProperties;
-import com.vju.club.modules.document.common.DocumentConstants;
+import com.vju.club.common.DocumentConstants;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletResponse;

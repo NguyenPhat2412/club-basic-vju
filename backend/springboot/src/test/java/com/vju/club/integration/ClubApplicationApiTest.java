@@ -194,6 +194,12 @@ class ClubApplicationApiTest extends ApiIntegrationTest {
                 .isEqualTo("PENDING");
         assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ?", applicant, clubA))
                 .isZero();
+        assertThat(count("SELECT count(*) FROM user_roles WHERE user_id = ? AND club_id = ?", applicant, clubA))
+                .isZero();
+        assertThat(count("SELECT count(*) FROM audit_logs WHERE action IN ('CLUB_APPLICATION_APPROVED', 'MEMBERSHIP_CREATED') AND club_id = ?", clubA))
+                .isZero();
+        assertThat(count("SELECT count(*) FROM notifications WHERE user_id = ?", applicant))
+                .isZero();
     }
 
     @Test
@@ -328,5 +334,218 @@ class ClubApplicationApiTest extends ApiIntegrationTest {
         JsonNode app = call(post(applications(clubA)), memberToken, Map.of("message", "hi"), 201);
         problem(post(applications(clubA) + "/" + id(app) + "/approve"), adminToken, Map.of(), 409,
                 "APPLICATION_ATTACHMENT_REQUIRED");
+    }
+
+    @Test
+    void internalNoteIsVisibleToReviewersAndRedactedFromApplicantsOnApproveAndReject() throws Exception {
+        UUID applicant1 = user("privacy-approve@test.local");
+        String token1 = token(applicant1);
+        JsonNode app1 = call(post(applications(clubA)), token1, Map.of("message", "Apply A"), 201);
+        call(post(applications(clubA) + "/" + id(app1) + "/approve"), adminToken, Map.of(
+                "reviewNote", "Chào mừng em đến với CLB!",
+                "internalNote", "Điểm đánh giá BCN: 9/10 - ưu tiên Ban Chuyên môn"
+        ), 200);
+
+        JsonNode reviewerView1 = call(get(applications(clubA) + "/" + id(app1)), adminToken, null, 200);
+        assertThat(reviewerView1.path("reviewNote").asText()).isEqualTo("Chào mừng em đến với CLB!");
+        assertThat(reviewerView1.path("internalNote").asText()).isEqualTo("Điểm đánh giá BCN: 9/10 - ưu tiên Ban Chuyên môn");
+        assertThat(reviewerView1.path("reviewedBy").asText()).isEqualTo(admin.toString());
+
+        JsonNode applicantView1 = call(get("/api/v1/users/me/applications/" + id(app1)), token1, null, 200);
+        assertThat(applicantView1.path("reviewNote").asText()).isEqualTo("Chào mừng em đến với CLB!");
+        assertThat(applicantView1.path("internalNote").isNull()).isTrue();
+        assertThat(applicantView1.path("reviewedBy").isNull()).isTrue();
+
+        UUID applicant2 = user("privacy-reject@test.local");
+        String token2 = token(applicant2);
+        JsonNode app2 = call(post(applications(clubB)), token2, Map.of("message", "Apply B"), 201);
+        call(post(applications(clubB) + "/" + id(app2) + "/reject"), adminToken, Map.of(
+                "reviewNote", "Đợt này ban đã đủ chỉ tiêu, hẹn bạn đợt sau.",
+                "internalNote", "Ứng viên trùng lịch tối T3/T5 không thể tham gia họp định kỳ"
+        ), 200);
+
+        JsonNode reviewerView2 = call(get(applications(clubB) + "/" + id(app2)), adminToken, null, 200);
+        assertThat(reviewerView2.path("internalNote").asText()).contains("trùng lịch");
+
+        JsonNode applicantView2 = call(get("/api/v1/users/me/applications/" + id(app2)), token2, null, 200);
+        assertThat(applicantView2.path("reviewNote").asText()).contains("đủ chỉ tiêu");
+        assertThat(applicantView2.path("internalNote").isNull()).isTrue();
+        assertThat(applicantView2.path("reviewedBy").isNull()).isTrue();
+    }
+
+    @Test
+    void forgedApplicantIdIsRejectedCancelPreservesHistoryAndHardDeleteIsDisabled() throws Exception {
+        UUID victim = user("victim@test.local");
+        problem(post(applications(clubA)), memberToken, Map.of(
+                "applicantId", victim,
+                "message", "forged"
+        ), 403, "PERMISSION_DENIED");
+
+        JsonNode app = call(post(applications(clubA)), memberToken, Map.of("message", "genuine"), 201);
+        UUID appId = id(app);
+
+        // Hard-delete endpoints do not exist (405 Method Not Allowed)
+        assertThat(send(delete("/api/v1/users/me/applications/" + appId), memberToken, null).getStatus())
+                .isEqualTo(405);
+        assertThat(send(delete(applications(clubA) + "/" + appId), adminToken, null).getStatus())
+                .isEqualTo(405);
+
+        // Cancel transitions to CANCELLED, sets cancelledAt, records audit, preserves row, and allows immediate reapply
+        JsonNode cancelled = call(patch("/api/v1/users/me/applications/" + appId + "/cancel"), memberToken, null, 200);
+        assertThat(cancelled.path("status").asText()).isEqualTo("CANCELLED");
+        assertThat(cancelled.path("cancelledAt").isTextual()).isTrue();
+        assertThat(count("SELECT count(*) FROM club_applications WHERE id = ? AND status = 'CANCELLED'", appId))
+                .isEqualTo(1);
+        assertThat(count("SELECT count(*) FROM audit_logs WHERE action = 'CLUB_APPLICATION_CANCELLED' AND resource_id = ?", appId))
+                .isEqualTo(1);
+
+        // Even with reapply_cooldown_days = 7, CANCELLED allows immediate re-submission (cooldown applies only to REJECTED)
+        JsonNode reapplied = call(post(applications(clubA)), memberToken, Map.of("message", "reapply after cancel"), 201);
+        assertThat(reapplied.path("status").asText()).isEqualTo("PENDING");
+
+        // Owner filters by clubId and status
+        JsonNode cancelledFilter = call(get("/api/v1/users/me/applications")
+                .param("clubId", clubA.toString())
+                .param("status", "CANCELLED"), memberToken, null, 200);
+        assertThat(cancelledFilter.path("total").asInt()).isEqualTo(1);
+        assertThat(cancelledFilter.at("/items/0/cancelledAt").isTextual()).isTrue();
+    }
+
+    @Test
+    void reviewerQueueFiltersAndSeparateApproveRejectPermissionsBlockPutStatusBypass() throws Exception {
+        UUID stu1 = user("alpha-student@test.local");
+        db.update("UPDATE users SET full_name = 'Nguyễn Văn An', student_code = '22110001' WHERE id = ?", stu1);
+        UUID stu2 = user("beta-student@test.local");
+        db.update("UPDATE users SET full_name = 'Trần Thị Bình', student_code = '22110002' WHERE id = ?", stu2);
+
+        JsonNode app1 = call(post(applications(clubA)), token(stu1), Map.of("message", "An xin vào"), 201);
+        JsonNode app2 = call(post(applications(clubA)), token(stu2), Map.of("message", "Bình xin vào"), 201);
+        db.update("UPDATE club_applications SET created_at = now() - interval '5 days' WHERE id = ?", id(app1));
+
+        // Search by studentCode / fullName and filter by createdFrom/createdTo
+        JsonNode byCode = call(get(applications(clubA)).param("search", "22110001"), adminToken, null, 200);
+        assertThat(byCode.path("total").asInt()).isEqualTo(1);
+        assertThat(byCode.at("/items/0/id").asText()).isEqualTo(id(app1).toString());
+
+        JsonNode recentOnly = call(get(applications(clubA))
+                .param("createdFrom", java.time.OffsetDateTime.now().minusDays(2).toString()), adminToken, null, 200);
+        assertThat(recentOnly.path("total").asInt()).isEqualTo(1);
+        assertThat(recentOnly.at("/items/0/id").asText()).isEqualTo(id(app2).toString());
+
+        // Cross-club URL mismatch on approve and reject returns 404
+        problem(post(applications(clubB) + "/" + id(app1) + "/approve"), adminToken, Map.of(),
+                404, "CLUB_APPLICATION_NOT_FOUND");
+        problem(post(applications(clubB) + "/" + id(app1) + "/reject"), adminToken, Map.of(),
+                404, "CLUB_APPLICATION_NOT_FOUND");
+
+        // Separate approve-only vs reject-only permissions + block PUT status transition bypass
+        UUID rejectOnlyReviewer = user("reject-only@test.local");
+        String rejectOnlyToken = token(rejectOnlyReviewer);
+        grant(rejectOnlyReviewer, "application.reject", "CLUB", clubA, null);
+
+        problem(post(applications(clubA) + "/" + id(app1) + "/approve"), rejectOnlyToken, Map.of(),
+                403, "PERMISSION_DENIED");
+        problem(put(applications(clubA) + "/" + id(app1)), rejectOnlyToken, Map.of("status", "APPROVED"),
+                403, "PERMISSION_DENIED");
+        problem(put(applications(clubA) + "/" + id(app1)), adminToken, Map.of("status", "APPROVED"),
+                409, "APPLICATION_STATUS_TRANSITION_NOT_ALLOWED");
+
+        call(post(applications(clubA) + "/" + id(app1) + "/reject"), rejectOnlyToken,
+                Map.of("reviewNote", "Hẹn đợt sau"), 200);
+        assertThat(count("SELECT count(*) FROM audit_logs WHERE action = 'CLUB_APPLICATION_REJECTED' AND resource_id = ?",
+                id(app1))).isEqualTo(1);
+    }
+
+    @Test
+    void skipDepartmentAssignmentOverridesPreferredDepartmentAndConcurrentRejectRacesAreDeterministic() throws Exception {
+        UUID stu = user("skip-dept@test.local");
+        JsonNode app = call(post(applications(clubA)), token(stu), Map.of(
+                "preferredDepartmentId", depA1,
+                "message", "Chọn Ban A1 nhưng BCN chưa phân ban"
+        ), 201);
+        call(post(applications(clubA) + "/" + id(app) + "/approve"), adminToken, Map.of(
+                "skipDepartmentAssignment", true
+        ), 200);
+        assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ? AND status = 'ACTIVE'",
+                stu, clubA)).isEqualTo(1);
+        assertThat(count("SELECT count(*) FROM department_members WHERE club_id = ?", clubA)).isZero();
+
+        // Concurrent approve vs reject -> 1 winner (200), 1 conflict (409)
+        UUID raceUser1 = user("approve-vs-reject@test.local");
+        JsonNode raceApp1 = call(post(applications(clubA)), token(raceUser1), Map.of("message", "race"), 201);
+        AtomicInteger turn1 = new AtomicInteger();
+        List<Integer> statuses1 = concurrently(2, () -> () -> {
+            if (turn1.getAndIncrement() == 0) {
+                return send(post(applications(clubA) + "/" + id(raceApp1) + "/approve"), adminToken, Map.of()).getStatus();
+            }
+            return send(post(applications(clubA) + "/" + id(raceApp1) + "/reject"), adminToken, Map.of()).getStatus();
+        });
+        assertThat(statuses1).containsOnly(200, 409);
+        assertThat(statuses1).filteredOn(s -> s == 200).hasSize(1);
+        String finalStatus1 = db.queryForObject("SELECT status FROM club_applications WHERE id = ?", String.class, id(raceApp1));
+        assertThat(finalStatus1).isIn("APPROVED", "REJECTED");
+        assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ? AND status = 'ACTIVE'",
+                raceUser1, clubA)).isEqualTo(finalStatus1.equals("APPROVED") ? 1 : 0);
+
+        // Concurrent cancel vs reject -> 1 winner (200), 1 conflict (409), 0 memberships
+        UUID raceUser2 = user("cancel-vs-reject@test.local");
+        String raceToken2 = token(raceUser2);
+        JsonNode raceApp2 = call(post(applications(clubA)), raceToken2, Map.of("message", "race2"), 201);
+        AtomicInteger turn2 = new AtomicInteger();
+        List<Integer> statuses2 = concurrently(2, () -> () -> {
+            if (turn2.getAndIncrement() == 0) {
+                return send(patch("/api/v1/users/me/applications/" + id(raceApp2) + "/cancel"), raceToken2, null).getStatus();
+            }
+            return send(post(applications(clubA) + "/" + id(raceApp2) + "/reject"), adminToken, Map.of()).getStatus();
+        });
+        assertThat(statuses2).containsOnly(200, 409);
+        assertThat(statuses2).filteredOn(s -> s == 200).hasSize(1);
+        assertThat(db.queryForObject("SELECT status FROM club_applications WHERE id = ?", String.class, id(raceApp2)))
+                .isIn("CANCELLED", "REJECTED");
+        assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ?", raceUser2, clubA)).isZero();
+    }
+
+    @Test
+    void approvedHistoryPersistsAfterMemberLeavesAllowsRejoiningAndLockedUserIsBlocked() throws Exception {
+        UUID stu = user("rejoin-history@test.local");
+        String stuToken = token(stu);
+
+        // 1. Apply -> Approve -> Active membership
+        JsonNode firstApp = call(post(applications(clubA)), stuToken, Map.of("message", "Lần 1"), 201);
+        JsonNode firstApproved = call(post(applications(clubA) + "/" + id(firstApp) + "/approve"), adminToken,
+                Map.of("reviewNote", "Duyệt lần 1"), 200);
+        UUID firstMembershipId = UUID.fromString(firstApproved.path("membershipId").asText());
+
+        // Suspended member still holds current membership -> cannot submit duplicate application
+        call(patch("/api/v1/memberships/" + firstMembershipId), adminToken, Map.of("status", "SUSPENDED"), 200);
+        problem(post(applications(clubA)), stuToken, Map.of("message", "Đang suspended"), 409, "ALREADY_CLUB_MEMBER");
+
+        // 2. Leave club -> first application MUST remain APPROVED in history
+        call(delete("/api/v1/memberships/" + firstMembershipId), adminToken, null, 204);
+        assertThat(db.queryForObject("SELECT status FROM club_applications WHERE id = ?", String.class, id(firstApp)))
+                .isEqualTo("APPROVED");
+
+        // 3. Reapply -> Approve -> New ACTIVE membership alongside historical LEFT membership & both APPROVED applications
+        JsonNode secondApp = call(post(applications(clubA)), stuToken, Map.of("message", "Xin gia nhập lại"), 201);
+        JsonNode secondApproved = call(post(applications(clubA) + "/" + id(secondApp) + "/approve"), adminToken,
+                Map.of("reviewNote", "Chào mừng quay lại"), 200);
+        UUID secondMembershipId = UUID.fromString(secondApproved.path("membershipId").asText());
+        assertThat(secondMembershipId).isNotEqualTo(firstMembershipId);
+
+        assign(depA1, secondMembershipId);
+        assign(depA2, secondMembershipId);
+
+        // Student history endpoints return 2 applications and 2 memberships (no row duplication when joined to 2 departments!)
+        JsonNode myApps = call(get("/api/v1/users/me/applications"), stuToken, null, 200);
+        assertThat(myApps.path("total").asInt()).isEqualTo(2);
+        JsonNode myMemberships = call(get("/api/v1/users/me/memberships"), stuToken, null, 200);
+        assertThat(myMemberships.path("total").asInt()).isEqualTo(2);
+        assertThat(myMemberships.path("items").size()).isEqualTo(2);
+
+        // Locked account cannot access protected APIs (403 ACCOUNT_LOCKED) and pending application cannot be approved (409 USER_INACTIVE)
+        JsonNode appInB = call(post(applications(clubB)), stuToken, Map.of("message", "Sang CLB B"), 201);
+        db.update("UPDATE users SET status = 'LOCKED' WHERE id = ?", stu);
+        problem(get("/api/v1/users/me/applications"), stuToken, null, 403, "ACCOUNT_LOCKED");
+        problem(post(applications(clubB) + "/" + id(appInB) + "/approve"), adminToken, Map.of(), 409, "USER_INACTIVE");
     }
 }

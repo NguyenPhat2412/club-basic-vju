@@ -1,9 +1,10 @@
 package com.vju.club.security;
 
 import lombok.RequiredArgsConstructor;
-import com.vju.club.modules.user.enums.UserStatus;
+import com.vju.club.common.ApiPaths;
+import com.vju.club.enums.UserStatus;
 import com.vju.club.error.ProblemResponses;
-import com.vju.club.modules.user.repository.UserRepository;
+import com.vju.club.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,10 +23,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AccountStatusFilter extends OncePerRequestFilter {
     private static final Set<String> ALLOWED_BEFORE_PASSWORD_CHANGE = Set.of(
-            "GET /api/v1/auth/me",
-            "GET /api/v1/auth/csrf",
-            "POST /api/v1/auth/change-password",
-            "GET /api/v1/users/me");
+            "GET " + ApiPaths.FULL_AUTH_ME,
+            "GET " + ApiPaths.FULL_AUTH_CSRF,
+            "POST " + ApiPaths.FULL_AUTH_CHANGE_PASSWORD,
+            "GET " + ApiPaths.FULL_USERS_ME);
 
     private final UserRepository userRepository;
 
@@ -41,7 +42,11 @@ public class AccountStatusFilter extends OncePerRequestFilter {
                 if (session != null) {
                     session.invalidate();
                 }
-                ProblemResponses.write(response, HttpServletResponse.SC_FORBIDDEN, "ACCOUNT_INACTIVE", "Account is inactive");
+                if (state.isPresent() && state.get().getStatus() == UserStatus.LOCKED) {
+                    ProblemResponses.write(response, HttpServletResponse.SC_FORBIDDEN, "ACCOUNT_LOCKED", "Account is locked");
+                } else {
+                    ProblemResponses.write(response, HttpServletResponse.SC_FORBIDDEN, "ACCOUNT_INACTIVE", "Account is inactive");
+                }
                 return;
             }
             if (state.get().getRequiresPasswordChange()

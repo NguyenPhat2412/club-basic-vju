@@ -211,4 +211,73 @@ class MembershipApiTest extends ApiIntegrationTest {
         grant(member, "member.view_detail", "CLUB", clubA, null);
         problem(get("/api/v1/memberships/" + ghost), memberToken, null, 403, "PERMISSION_DENIED");
     }
+
+    @Test
+    void transitionMatrixSuppressesClubAndDepartmentPermissionsWhileSuspendedAndEnforcesRestorePreconditions() throws Exception {
+        UUID mid = id(join(clubA, member));
+        assign(depA1, mid);
+        grant(member, "club.update", "CLUB", clubA, null);
+        grant(member, "department.update", "DEPARTMENT", null, depA1);
+
+        // Unsupported INACTIVE transition is rejected without changing state or recording audit
+        long auditsBefore = count("SELECT count(*) FROM audit_logs WHERE resource_id = ?", mid);
+        problem(patch("/api/v1/memberships/" + mid), adminToken, Map.of("status", "INACTIVE"),
+                409, "INVALID_MEMBERSHIP_STATUS_TRANSITION");
+        assertThat(status(mid)).isEqualTo("ACTIVE");
+        assertThat(count("SELECT count(*) FROM audit_logs WHERE resource_id = ?", mid)).isEqualTo(auditsBefore);
+
+        // Suspend suppresses both CLUB and DEPARTMENT permissions and blocks new grants
+        call(patch("/api/v1/memberships/" + mid), adminToken, Map.of("status", "SUSPENDED"), 200);
+        problem(patch("/api/v1/clubs/" + clubA), memberToken, Map.of("description", "blocked"), 403, "PERMISSION_DENIED");
+        problem(patch("/api/v1/departments/" + depA1), memberToken, Map.of("description", "blocked"), 403, "PERMISSION_DENIED");
+        problem(post("/api/v1/users/" + member + "/permissions"), adminToken,
+                Map.of("permissionId", permission("member.add"), "scope", "CLUB", "clubId", clubA),
+                409, "MEMBERSHIP_NOT_ACTIVE");
+
+        // Restore requires both Club and User to be ACTIVE
+        db.update("UPDATE clubs SET status = 'INACTIVE' WHERE id = ?", clubA);
+        problem(patch("/api/v1/memberships/" + mid), adminToken, Map.of("status", "ACTIVE"), 409, "CLUB_INACTIVE");
+        db.update("UPDATE clubs SET status = 'ACTIVE' WHERE id = ?", clubA);
+
+        db.update("UPDATE users SET status = 'INACTIVE' WHERE id = ?", member);
+        problem(patch("/api/v1/memberships/" + mid), adminToken, Map.of("status", "ACTIVE"), 409, "USER_INACTIVE");
+        db.update("UPDATE users SET status = 'ACTIVE' WHERE id = ?", member);
+
+        // Restore succeeds and re-enables retained permissions
+        call(patch("/api/v1/memberships/" + mid), adminToken, Map.of("status", "ACTIVE"), 200);
+        call(patch("/api/v1/clubs/" + clubA), memberToken, Map.of("description", "restored"), 200);
+        call(patch("/api/v1/departments/" + depA1), memberToken, Map.of("description", "restored"), 200);
+
+        // SUSPENDED -> LEFT permanently revokes roles/permissions and clears department memberships
+        call(patch("/api/v1/memberships/" + mid), adminToken, Map.of("status", "SUSPENDED"), 200);
+        call(patch("/api/v1/memberships/" + mid), adminToken, Map.of("status", "LEFT"), 200);
+        assertThat(status(mid)).isEqualTo("LEFT");
+        assertThat(count("SELECT count(*) FROM department_members WHERE membership_id = ?", mid)).isZero();
+        assertThat(count("SELECT count(*) FROM user_permissions WHERE user_id = ? AND revoked_at IS NULL", member)).isZero();
+    }
+
+    @Test
+    void directAddRespectsClubLimitAndRacesCleanlyWithApplicationApproval() throws Exception {
+        join(clubB, member);
+        db.update("UPDATE system_settings SET max_active_clubs = 1");
+        problem(post("/api/v1/clubs/" + clubA + "/memberships"), adminToken, Map.of("userId", member),
+                409, "MEMBERSHIP_LIMIT_REACHED");
+        db.update("UPDATE system_settings SET max_active_clubs = 0");
+
+        UUID applicant = user("direct-vs-approve@test.local");
+        JsonNode app = call(post("/api/v1/clubs/" + clubA + "/applications"), token(applicant),
+                Map.of("message", "race direct add"), 201);
+        java.util.concurrent.atomic.AtomicInteger turn = new java.util.concurrent.atomic.AtomicInteger();
+        List<Integer> statuses = concurrently(2, () -> () -> {
+            if (turn.getAndIncrement() == 0) {
+                return send(post("/api/v1/clubs/" + clubA + "/memberships"), adminToken, Map.of("userId", applicant)).getStatus();
+            }
+            return send(post("/api/v1/clubs/" + clubA + "/applications/" + id(app) + "/approve"), adminToken, Map.of()).getStatus();
+        });
+        assertThat(statuses).filteredOn(s -> s == 200 || s == 201).hasSize(1);
+        assertThat(statuses).filteredOn(s -> s == 409).hasSize(1);
+        assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ? AND status = 'ACTIVE'",
+                applicant, clubA)).isEqualTo(1);
+        assertThat(count("SELECT count(*) FROM club_applications WHERE id = ? AND status = 'PENDING'", id(app))).isZero();
+    }
 }

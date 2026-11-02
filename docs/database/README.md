@@ -20,6 +20,18 @@ The Spring Boot backend connects to `jdbc:postgresql://localhost:5432/club` by d
 | `V6__audit_log_and_membership_timestamps.sql` | General `audit_logs`, membership `created_at`/`updated_at`, the `audit.view` permission |
 | `V7__club_applications.sql` | `club_applications`, pending-application uniqueness, application permissions, and `APPLICATION` audit resource support |
 | `V8__notifications.sql` | `notifications`, user/time index, and automatic `updated_at` maintenance |
+| `V9__created_by_updated_by.sql` | Adds `created_by` and `updated_by` audit columns across domain tables |
+| `V10__documents.sql` | Club documents (`documents`, `document_versions`) and `document.*` permissions |
+| `V11__admin_creates_accounts.sql` | Admin-provisioned account workflow (`user.create`, `user.reset_password`) |
+| `V12__http_sessions.sql` | Spring Session JDBC tables (`spring_session`, `spring_session_attributes`) replacing refresh tokens |
+| `V13__password_change_required.sql` | `users.requires_password_change` enforcement flag |
+| `V14__events_tasks_chat_and_ai.sql` | Events, event registrations/attendances, tasks, chat channels/messages, and AI summaries |
+| `V15__google_sign_in.sql` | Google OAuth account linking (`google_subject`) for VJU student emails |
+| `V16__club_member_role_for_members.sql` | Automatic `granted_on_join` (`CLUB_MEMBER`) role synchronization with active memberships |
+| `V17__user_delete_and_application_forms.sql` | Dynamic club application forms (`club_application_forms`), attachments (`club_application_files`), and `user.delete` |
+| `V18__locked_status_and_club_positions.sql` | Account `LOCKED` status and club/department position `max_holders` rules |
+| `V19__system_settings.sql` | Global `system_settings` (`max_pending_applications`, `reapply_cooldown_days`, `max_active_clubs`) |
+| `V20__sprint2_membership_application_notification_hardening.sql` | Reviewer-only `club_applications.internal_note`, notification `reference_type` & idempotent `event_key` (`uq_notifications_user_event_key`), and `effective_user_permissions` suppression of `CLUB`/`DEPARTMENT` grants when membership is `SUSPENDED` |
 
 Tables: `users`, `clubs`, `departments`, `memberships`, `department_members`, `permissions`, `user_permissions`, `roles`, `role_permissions`, `user_roles`, `permission_audit_logs`, `audit_logs`, `refresh_tokens`, `club_applications`, `notifications`; view `effective_user_permissions` (active direct grants plus active role assignments, used by every authorization check). Flyway records applied migrations in `flyway_schema_history`. Migrations seed the permission catalog only; no sample users, clubs, or memberships are created.
 
@@ -32,7 +44,9 @@ Tables: `users`, `clubs`, `departments`, `memberships`, `department_members`, `p
 | `left_at` is set exactly when a membership is `LEFT` | `ck_memberships_left_at` |
 | A user has at most one current membership per club; `LEFT` rows are history | partial unique index `uq_memberships_user_club_current` |
 | A user has at most one pending application per club | partial unique index `uq_club_applications_pending`; `club_applications` also checks status/reviewer/cancellation consistency |
-| Application message and review note stay within API bounds | `VARCHAR(2000)` and `VARCHAR(1000)` columns |
+| Application message, review note, and internal note stay within API bounds | `VARCHAR(2000)` (`message`) and `VARCHAR(1000)` (`review_note`, `internal_note`) columns |
+| Suspended club members temporarily lose club and department privileges | `effective_user_permissions` view excludes `CLUB` and `DEPARTMENT` role/direct grants in any club where the user has a `SUSPENDED` membership |
+| Notifications are user-owned, deduplicated per event, and indexed by recency | `notifications.user_id` FK with `idx_notifications_user_created` and partial unique index `uq_notifications_user_event_key (user_id, event_key)` |
 | Grant scope matches its target, and an active grant is never duplicated | `ck_user_permissions_scope`, partial unique indexes `uq_user_permissions_active_*` |
 | `revoked_by` only exists on revoked grants | `ck_user_permissions_revoked_by`, `ck_user_roles_revoked_by` |
 | Grants and role assignments are made at the item's scope or broader | triggers `trg_user_permissions_grant_scope`, `trg_user_roles_grant_scope` (`ck_*_grant_scope`) |

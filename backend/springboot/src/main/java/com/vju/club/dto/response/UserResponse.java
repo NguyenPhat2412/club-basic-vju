@@ -1,0 +1,20 @@
+package com.vju.club.dto.response;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+@JsonInclude(JsonInclude.Include.ALWAYS)
+public record UserResponse(
+        UUID id,
+        String email,
+        String fullName,
+        String studentCode,
+        String phone,
+        String avatarUrl,
+        String status,
+        boolean requiresPasswordChange,
+        OffsetDateTime createdAt,
+        OffsetDateTime updatedAt
+) { }

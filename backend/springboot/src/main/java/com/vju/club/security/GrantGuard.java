@@ -1,11 +1,11 @@
 package com.vju.club.security;
 
 import com.vju.club.error.ApiException;
-import com.vju.club.modules.department.entity.Department;
-import com.vju.club.modules.permission.entity.Permission;
-import com.vju.club.modules.permission.enums.PermissionScope;
-import com.vju.club.modules.role.entity.Role;
-import com.vju.club.modules.role.repository.UserRoleRepository;
+import com.vju.club.entity.Department;
+import com.vju.club.entity.Permission;
+import com.vju.club.enums.PermissionScope;
+import com.vju.club.entity.Role;
+import com.vju.club.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
