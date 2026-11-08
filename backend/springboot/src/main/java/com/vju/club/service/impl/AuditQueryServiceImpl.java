@@ -1,5 +1,6 @@
 package com.vju.club.service.impl;
 
+import com.vju.club.common.AuditConstants;
 import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.dto.response.PageResponse;
 import com.vju.club.error.ApiException;
@@ -31,7 +32,7 @@ public class AuditQueryServiceImpl implements AuditQueryService {
 
     @Override
     @Transactional(readOnly = true)
-    @RequirePermission("audit.view")
+    @RequirePermission(AuditConstants.PERMISSION_VIEW)
     public PageResponse<AuditLogResponse> search(Actor actor, String resourceType, UUID resourceId, UUID actorUserId,
                                                  UUID clubId, String action, int offset, int limit) {
         requireKnown(resourceType, AuditAction.ResourceType.values(), "resourceType");

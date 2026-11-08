@@ -1,19 +1,23 @@
 package com.vju.club.controller;
 
-import com.vju.club.common.ApiPaths;
-import com.vju.club.dto.response.PageResponse;
 import com.vju.club.annotation.PublicEndpoint;
+import com.vju.club.common.ApiPaths;
 import com.vju.club.dto.request.CreateEventRequest;
 import com.vju.club.dto.request.EventRegistrationRequest;
 import com.vju.club.dto.request.RecordAttendanceRequest;
+import com.vju.club.dto.request.UpdateEventRegistrationRequest;
 import com.vju.club.dto.request.UpdateEventRequest;
 import com.vju.club.dto.response.CalendarItemResponse;
 import com.vju.club.dto.response.EventAttendanceResponse;
 import com.vju.club.dto.response.EventRegistrationResponse;
 import com.vju.club.dto.response.EventResponse;
+import com.vju.club.dto.response.MyEventParticipationResponse;
+import com.vju.club.dto.response.PageResponse;
+import com.vju.club.enums.EventParticipantType;
+import com.vju.club.enums.EventRegistrationStatus;
 import com.vju.club.enums.EventStatus;
-import com.vju.club.service.EventService;
 import com.vju.club.security.Actor;
+import com.vju.club.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -103,6 +107,27 @@ public class EventController {
         return eventService.cancelRegistration(actor, eventId);
     }
 
+    @PatchMapping(ApiPaths.EVENT_REGISTRATION_BY_ID)
+    @Operation(summary = "Cập nhật vai trò sự kiện và trạng thái tham gia nhân sự (PB-25.2)",
+            description = "Quyền: event.update tại CLB/Ban. Vai trò trong sự kiện không tự biến CTV thành thành viên CLB.")
+    public EventRegistrationResponse updateRegistration(Actor actor,
+                                                        @PathVariable UUID eventId,
+                                                        @PathVariable UUID registrationId,
+                                                        @Valid @RequestBody UpdateEventRegistrationRequest request) {
+        return eventService.updateRegistration(actor, eventId, registrationId, request);
+    }
+
+    @GetMapping(ApiPaths.MY_EVENT_REGISTRATIONS)
+    @Operation(summary = "Danh sách sự kiện đã đăng ký, vai trò và kết quả điểm danh của tôi (PB-24.2, PB-32, PB-35.2)")
+    public PageResponse<MyEventParticipationResponse> listMyRegistrations(
+            Actor actor,
+            @RequestParam(required = false) EventRegistrationStatus status,
+            @RequestParam(required = false) EventParticipantType participantType,
+            @RequestParam(defaultValue = "0") @Min(0) int offset,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
+        return eventService.listMyRegistrations(actor, status, participantType, offset, limit);
+    }
+
     @GetMapping(ApiPaths.EVENT_REGISTRATIONS)
     @Operation(summary = "Danh sách người đã đăng ký sự kiện")
     public PageResponse<EventRegistrationResponse> listRegistrations(Actor actor,
@@ -113,8 +138,8 @@ public class EventController {
     }
 
     @PutMapping(ApiPaths.EVENT_ATTENDANCES)
-    @Operation(summary = "Điểm danh sự kiện hàng loạt (TC07)",
-            description = "Quyền: event.attendance tại CLB hoặc Ban tổ chức sự kiện. Trạng thái: PRESENT, ABSENT, LATE.")
+    @Operation(summary = "Điểm danh sự kiện hàng loạt hoặc điều chỉnh có lý do (TC07, PB-31)",
+            description = "Quyền: event.attendance (ghi nhận ban đầu) hoặc event.attendance_edit (sửa bản ghi / điều chỉnh sau COMPLETED trong cửa sổ cho phép).")
     public List<EventAttendanceResponse> recordAttendance(Actor actor,
                                                           @PathVariable UUID eventId,
                                                           @Valid @RequestBody RecordAttendanceRequest request) {

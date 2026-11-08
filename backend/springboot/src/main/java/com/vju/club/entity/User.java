@@ -10,6 +10,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 
+import java.time.OffsetDateTime;
+
 @Entity
 @Table(name = "users")
 @Getter
@@ -42,4 +44,7 @@ public class User extends TimestampedEntity {
 
     @Column(name = "google_subject")
     private String googleSubject;
+
+    @Column(name = "anonymized_at")
+    private OffsetDateTime anonymizedAt;
 }

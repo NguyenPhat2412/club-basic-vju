@@ -8,6 +8,7 @@ import com.vju.club.dto.record.SignedIn;
 import com.vju.club.dto.request.ChangePasswordRequest;
 import com.vju.club.dto.request.GoogleLoginRequest;
 import com.vju.club.dto.request.LoginRequest;
+import com.vju.club.dto.request.RegisterRequest;
 import com.vju.club.dto.response.AuthResponse;
 import com.vju.club.dto.response.GoogleSignInConfigResponse;
 import com.vju.club.service.AuthService;
@@ -43,6 +44,7 @@ import java.util.regex.Pattern;
 public class AuthServiceImpl implements AuthService {
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final Pattern STUDENT_CODE = Pattern.compile("\\d{6,12}");
+    private static final String SELF_REGISTERED_MARKER = "SELF_REGISTERED";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -58,8 +60,11 @@ public class AuthServiceImpl implements AuthService {
     public SignedIn login(LoginRequest request) {
         String email = normalizeEmail(request.email());
         if (googleSignIn.isGoogleEmail(email)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_SIGN_IN_REQUIRED",
-                    "Accounts on this email domain sign in with Google");
+            User existing = userRepository.findByEmailIgnoreCase(email).orElse(null);
+            if (existing == null || !SELF_REGISTERED_MARKER.equals(existing.getGoogleSubject())) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_SIGN_IN_REQUIRED",
+                        "Accounts on this email domain sign in with Google");
+            }
         }
         Authentication authentication;
         try {
@@ -87,6 +92,35 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
+    public SignedIn register(RegisterRequest request) {
+        String email = normalizeEmail(request.email());
+        String studentCode = blankToNull(request.studentCode());
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new ApiException(HttpStatus.CONFLICT, "EMAIL_ALREADY_EXISTS", "Email is already registered");
+        }
+        if (studentCode != null && userRepository.existsByStudentCodeIgnoreCase(studentCode)) {
+            throw new ApiException(HttpStatus.CONFLICT, "STUDENT_CODE_ALREADY_EXISTS", "Student code is already registered");
+        }
+        User user = new User();
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setFullName(request.fullName().trim());
+        user.setStudentCode(studentCode);
+        user.setPhone(blankToNull(request.phone()));
+        user.setStatus(UserStatus.ACTIVE);
+        user.setRequiresPasswordChange(false);
+        user.setGoogleSubject(SELF_REGISTERED_MARKER);
+        User saved = userRepository.saveAndFlush(user);
+        auditService.record(saved.getId(), AuditAction.USER_CREATED, saved.getId(), null, null,
+                Map.of("email", saved.getEmail(), "source", "self-register"));
+        auditService.record(saved.getId(), AuditAction.USER_LOGGED_IN, saved.getId(), null, null,
+                Map.of("email", saved.getEmail(), "method", "register"));
+        ClubPrincipal principal = new ClubPrincipal(saved.getId(), saved.getEmail(), null, true);
+        return new SignedIn(principal, new AuthResponse(userMapper.toResponse(saved)));
+    }
+
+    @Override
+    @Transactional
     public SignedIn loginWithGoogle(GoogleLoginRequest request) {
         if (!googleSignIn.isEnabled()) {
             throw new ApiException(HttpStatus.NOT_FOUND, "GOOGLE_SIGN_IN_DISABLED", "Google sign-in is not enabled");
@@ -100,7 +134,9 @@ public class AuthServiceImpl implements AuthService {
         }
         boolean register = Boolean.TRUE.equals(request.register());
         User user = userRepository.findByEmailIgnoreCase(email).orElseGet(() -> createStudent(identity, email, register));
-        if (user.getGoogleSubject() != null && !user.getGoogleSubject().equals(identity.subject())) {
+        if (user.getGoogleSubject() != null
+                && !SELF_REGISTERED_MARKER.equals(user.getGoogleSubject())
+                && !user.getGoogleSubject().equals(identity.subject())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_ACCOUNT_MISMATCH",
                     "This account is linked to a different Google account");
         }
@@ -186,5 +222,9 @@ public class AuthServiceImpl implements AuthService {
 
     private String normalizeEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

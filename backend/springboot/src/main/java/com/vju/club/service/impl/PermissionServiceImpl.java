@@ -11,6 +11,7 @@ import com.vju.club.repository.ClubRepository;
 import com.vju.club.entity.Department;
 import com.vju.club.repository.DepartmentRepository;
 import com.vju.club.annotation.RequirePermission;
+import com.vju.club.common.PermissionConstants;
 import com.vju.club.dto.request.GrantPermissionRequest;
 import com.vju.club.dto.request.ReplacePermissionsRequest;
 import com.vju.club.dto.response.EffectivePermissionResponse;
@@ -70,7 +71,7 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional(readOnly = true)
-    @RequirePermission("permission.view")
+    @RequirePermission(PermissionConstants.PERMISSION_VIEW)
     public List<PermissionResponse> list(Actor actor) {
         return permissionRepository.findAllByActiveTrueOrderByModuleAscActionAsc().stream()
                 .map(permissionMapper::toResponse)
@@ -79,7 +80,7 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional(readOnly = true)
-    @RequirePermission("permission.view")
+    @RequirePermission(PermissionConstants.PERMISSION_VIEW)
     public List<PermissionGroupResponse> listGroups(Actor actor) {
         Map<String, List<PermissionResponse>> byModule = new TreeMap<>();
         permissionRepository.findAllByActiveTrueOrderByModuleAscActionAsc().forEach(permission ->
@@ -113,7 +114,7 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional
-    @RequirePermission("permission.assign")
+    @RequirePermission(PermissionConstants.PERMISSION_ASSIGN)
     public UserPermissionResponse grant(Actor actor, UUID targetUserId, GrantPermissionRequest request) {
         User actorUser = findUser(actor.id());
         User target = findUser(targetUserId);
@@ -141,7 +142,7 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional
-    @RequirePermission("permission.assign")
+    @RequirePermission(PermissionConstants.PERMISSION_ASSIGN)
     public List<UserPermissionResponse> replace(Actor actor, UUID targetUserId, ReplacePermissionsRequest request) {
         if (!ScopeRules.targetMatches(request.scope(), request.clubId(), request.departmentId())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PERMISSION_SCOPE", "Scope target is invalid");
@@ -204,7 +205,7 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional
-    @RequirePermission("permission.revoke")
+    @RequirePermission(PermissionConstants.PERMISSION_REVOKE)
     public void revoke(Actor actor, UUID targetUserId, UUID permissionId,
                        PermissionScope scope, UUID clubId, UUID departmentId) {
         User actorUser = findUser(actor.id());
@@ -230,7 +231,7 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional
-    @RequirePermission("permission.revoke")
+    @RequirePermission(PermissionConstants.PERMISSION_REVOKE)
     public void revokeByKey(Actor actor, UUID targetUserId, String permissionKey,
                             PermissionScope scope, UUID clubId, UUID departmentId) {
         Permission permission = permissionRepository.findByPermissionKey(permissionKey)

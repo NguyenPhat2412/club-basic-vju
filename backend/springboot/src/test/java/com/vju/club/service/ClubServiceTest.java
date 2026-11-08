@@ -223,4 +223,33 @@ class ClubServiceTest {
         assertApiError(() -> service.getPublic(inactiveId), HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND");
         verify(authorization, never()).hasAnyPermission(any(), anyString());
     }
+
+    @Test
+    void uploadLogoAndCoverStoreBinaryInCloudAndMetadataInDatabase() {
+        var storage = org.mockito.Mockito.mock(com.vju.club.storage.DocumentStorage.class);
+        ClubService mediaService = withPermissionChecks(new ClubServiceImpl(
+                clubRepository,
+                authorization,
+                audit,
+                new ClubMapperImpl(),
+                org.mockito.Mockito.mock(com.vju.club.repository.ClubApplicationRepository.class),
+                java.time.Clock.systemUTC(),
+                org.mockito.Mockito.mock(com.vju.club.service.NotificationService.class),
+                storage,
+                "http://localhost:8082"), authorization);
+
+        Club club = club("VJUA");
+        when(clubRepository.findById(club.getId())).thenReturn(Optional.of(club));
+
+        byte[] pngBytes = new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x01};
+        var logoFile = new com.vju.club.dto.record.UploadedFile("VJUA.png", () -> new java.io.ByteArrayInputStream(pngBytes));
+
+        var updated = mediaService.uploadLogo(actor, club.getId(), logoFile);
+        verify(authorization).require(actor, "club.update", club.getId(), null);
+        verify(storage).put(anyString(), any(), eq((long) pngBytes.length), eq("image/png"));
+        assertThat(club.getLogoStorageKey()).startsWith("clubs/vjua/logo-").endsWith(".png");
+        assertThat(club.getLogoContentType()).isEqualTo("image/png");
+        assertThat(club.getLogoSizeBytes()).isEqualTo((long) pngBytes.length);
+        assertThat(updated.logoUrl()).startsWith("http://localhost:8082/api/v1/public/clubs/" + club.getId() + "/logo?v=");
+    }
 }

@@ -32,6 +32,10 @@ public class Task extends TimestampedEntity {
     @JoinColumn(name = "event_id")
     private Event event;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_task_id")
+    private Task parentTask;
+
     @Column(nullable = false, length = 200)
     private String title;
 
@@ -72,4 +76,7 @@ public class Task extends TimestampedEntity {
 
     @Column(name = "verified_at")
     private OffsetDateTime verifiedAt;
+
+    @Column(name = "overdue_notified_at")
+    private OffsetDateTime overdueNotifiedAt;
 }

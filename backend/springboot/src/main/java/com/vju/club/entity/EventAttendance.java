@@ -9,6 +9,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -34,10 +35,17 @@ public class EventAttendance extends TimestampedEntity {
     @Column(length = 500)
     private String note;
 
+    @Column(name = "edit_reason", length = 500)
+    private String editReason;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "checked_by", nullable = false)
     private User checkedBy;
 
     @Column(name = "checked_at", nullable = false)
     private OffsetDateTime checkedAt;
+
+    @Version
+    @Column(nullable = false)
+    private long version;
 }

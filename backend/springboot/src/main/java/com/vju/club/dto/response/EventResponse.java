@@ -21,6 +21,7 @@ public record EventResponse(
         boolean allowCtv,
         Integer maxParticipants,
         String status,
+        OffsetDateTime completedAt,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) implements Serializable {

@@ -1,5 +1,6 @@
 package com.vju.club.config;
 
+import com.vju.club.repository.UserRepository;
 import com.vju.club.security.AccountStatusFilter;
 import com.vju.club.security.ClubUserDetailsService;
 import com.vju.club.security.RateLimitFilter;
@@ -44,6 +45,11 @@ public class SecurityBeansConfig {
         FilterRegistrationBean<RateLimitFilter> registration = new FilterRegistrationBean<>(filter);
         registration.setEnabled(false);
         return registration;
+    }
+
+    @Bean
+    AccountStatusFilter accountStatusFilter(UserRepository userRepository) {
+        return new AccountStatusFilter(userRepository);
     }
 
     @Bean

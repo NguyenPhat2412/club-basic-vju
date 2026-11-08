@@ -1,11 +1,11 @@
 package com.vju.club.service;
 
-import com.vju.club.dto.response.PageResponse;
 import com.vju.club.dto.request.AdminUpdateUserRequest;
 import com.vju.club.dto.request.CreateUserRequest;
 import com.vju.club.dto.request.ResetPasswordRequest;
 import com.vju.club.dto.request.UpdateProfileRequest;
 import com.vju.club.dto.request.UpdateUserStatusRequest;
+import com.vju.club.dto.response.PageResponse;
 import com.vju.club.dto.response.UserResponse;
 import com.vju.club.security.Actor;
 
@@ -28,5 +28,9 @@ public interface UserService {
 
     UserResponse updateStatus(Actor actor, UUID userId, UpdateUserStatusRequest request);
 
-    void deleteUser(Actor actor, UUID userId);
+    default void deleteUser(Actor actor, UUID userId) {
+        deleteUser(actor, userId, null);
+    }
+
+    void deleteUser(Actor actor, UUID userId, Boolean anonymize);
 }

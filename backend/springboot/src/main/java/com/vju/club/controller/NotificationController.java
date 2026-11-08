@@ -1,12 +1,14 @@
 package com.vju.club.controller;
 
 import com.vju.club.common.ApiPaths;
-import com.vju.club.dto.response.PageResponse;
 import com.vju.club.dto.request.BroadcastNotificationRequest;
+import com.vju.club.dto.request.ResourceNotificationRequest;
 import com.vju.club.dto.response.NotificationBroadcastResponse;
 import com.vju.club.dto.response.NotificationResponse;
-import com.vju.club.service.NotificationService;
+import com.vju.club.dto.response.PageResponse;
+import com.vju.club.dto.response.ResourceNotificationResponse;
 import com.vju.club.security.Actor;
+import com.vju.club.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,7 +32,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping(ApiPaths.API_V1)
 @RequiredArgsConstructor
-@Tag(name = "Notifications", description = "Thông báo trong ứng dụng cá nhân và gửi broadcast thông báo theo CLB/Ban")
+@Tag(name = "Notifications", description = "Thông báo trong ứng dụng cá nhân và gửi thông báo theo CLB/Ban/Sự kiện/Nhiệm vụ")
 public class NotificationController {
     private final NotificationService service;
 
@@ -74,5 +76,27 @@ public class NotificationController {
                                                                    @PathVariable UUID clubId,
                                                                    @Valid @RequestBody BroadcastNotificationRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.broadcast(actor, clubId, request));
+    }
+
+    @PostMapping(ApiPaths.EVENT_NOTIFICATIONS)
+    @Operation(summary = "Gửi thông báo cho toàn bộ Member + CTV đã đăng ký của sự kiện (PB-33.3)",
+            description = "Quyền: notification.send hoặc event.update tại CLB/Ban tổ chức. Hỗ trợ idempotencyKey chống gửi trùng.")
+    @ApiResponse(responseCode = "201", description = "Số lượng người tham gia nhận được thông báo")
+    public ResponseEntity<ResourceNotificationResponse> notifyEventParticipants(
+            Actor actor,
+            @PathVariable UUID eventId,
+            @Valid @RequestBody ResourceNotificationRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.notifyEventParticipants(actor, eventId, request));
+    }
+
+    @PostMapping(ApiPaths.TASK_NOTIFICATIONS)
+    @Operation(summary = "Gửi thông báo trao đổi công việc tới người phụ trách nhiệm vụ (PB-33.4)",
+            description = "Quyền: người giao task hoặc có task.update / task.create / notification.send tại phạm vi task.")
+    @ApiResponse(responseCode = "201", description = "Số lượng người phụ trách nhận được thông báo")
+    public ResponseEntity<ResourceNotificationResponse> notifyTaskAssignees(
+            Actor actor,
+            @PathVariable UUID taskId,
+            @Valid @RequestBody ResourceNotificationRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.notifyTaskAssignees(actor, taskId, request));
     }
 }

@@ -1,9 +1,11 @@
 package com.vju.club.service;
 
-import com.vju.club.dto.response.PageResponse;
 import com.vju.club.dto.request.BroadcastNotificationRequest;
+import com.vju.club.dto.request.ResourceNotificationRequest;
 import com.vju.club.dto.response.NotificationBroadcastResponse;
 import com.vju.club.dto.response.NotificationResponse;
+import com.vju.club.dto.response.PageResponse;
+import com.vju.club.dto.response.ResourceNotificationResponse;
 import com.vju.club.security.Actor;
 
 import java.util.UUID;
@@ -24,4 +26,8 @@ public interface NotificationService {
     void markAllRead(Actor actor);
 
     NotificationBroadcastResponse broadcast(Actor actor, UUID clubId, BroadcastNotificationRequest request);
+
+    ResourceNotificationResponse notifyEventParticipants(Actor actor, UUID eventId, ResourceNotificationRequest request);
+
+    ResourceNotificationResponse notifyTaskAssignees(Actor actor, UUID taskId, ResourceNotificationRequest request);
 }

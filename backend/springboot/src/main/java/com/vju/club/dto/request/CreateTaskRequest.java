@@ -15,6 +15,17 @@ public record CreateTaskRequest(
         @Size(max = 4000) String description,
         TaskPriority priority,
         @NotNull OffsetDateTime deadline,
-        @NotNull UUID assigneeId
+        @NotNull UUID assigneeId,
+        UUID parentTaskId
 ) {
+    public CreateTaskRequest(
+            UUID departmentId,
+            UUID eventId,
+            String title,
+            String description,
+            TaskPriority priority,
+            OffsetDateTime deadline,
+            UUID assigneeId) {
+        this(departmentId, eventId, title, description, priority, deadline, assigneeId, null);
+    }
 }

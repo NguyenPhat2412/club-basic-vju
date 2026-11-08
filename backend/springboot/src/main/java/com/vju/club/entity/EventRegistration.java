@@ -36,6 +36,9 @@ public class EventRegistration extends TimestampedEntity {
     @Column(nullable = false, length = 16)
     private EventRegistrationStatus status = EventRegistrationStatus.REGISTERED;
 
+    @Column(name = "event_role", length = 100)
+    private String eventRole;
+
     @Column(length = 500)
     private String note;
 

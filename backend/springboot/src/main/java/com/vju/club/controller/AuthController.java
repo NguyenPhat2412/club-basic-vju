@@ -10,6 +10,7 @@ import com.vju.club.security.SessionSignIn;
 import com.vju.club.dto.record.SignedIn;
 import com.vju.club.dto.response.AuthResponse;
 import com.vju.club.dto.request.LoginRequest;
+import com.vju.club.dto.request.RegisterRequest;
 import com.vju.club.dto.request.GoogleLoginRequest;
 import com.vju.club.dto.response.GoogleSignInConfigResponse;
 import com.vju.club.dto.response.UserResponse;
@@ -18,12 +19,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -45,6 +48,16 @@ public class AuthController {
     public AuthResponse login(@Valid @RequestBody LoginRequest body,
                               HttpServletRequest request, HttpServletResponse response) {
         SignedIn signedIn = authService.login(body);
+        sessionSignIn.signIn(signedIn.principal(), request, response);
+        return signedIn.response();
+    }
+
+    @PublicEndpoint(reason = "Self-registering a student or member account and starting a session")
+    @PostMapping(ApiPaths.AUTH_REGISTER)
+    @ResponseStatus(HttpStatus.CREATED)
+    public AuthResponse register(@Valid @RequestBody RegisterRequest body,
+                                 HttpServletRequest request, HttpServletResponse response) {
+        SignedIn signedIn = authService.register(body);
         sessionSignIn.signIn(signedIn.principal(), request, response);
         return signedIn.response();
     }

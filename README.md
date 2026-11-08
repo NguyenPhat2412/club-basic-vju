@@ -52,6 +52,7 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 ├── backend/springboot/          # Backend Spring Boot (dịch vụ duy nhất)
 │   ├── src/main/java/com/vju/club/
 │   │   ├── annotation/          # Annotation phân quyền, public route và Bean Validation
+│   │   │   └── validator/       # Các ConstraintValidator thực thi kiểm tra định dạng/độ dài
 │   │   ├── bootstrap/           # Admin ban đầu và dữ liệu demo (chỉ profile local)
 │   │   ├── common/              # Hằng số đường dẫn tập trung (ApiPaths), hằng số nghiệp vụ và phân trang
 │   │   ├── config/              # Cấu hình ứng dụng: security, session, cache, CORS, OpenAPI, storage
@@ -77,7 +78,7 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 │   │   └── api/                 # Bản copy runtime của OpenAPI và catalog
 │   ├── src/test/                # Unit test + integration test
 │   └── Dockerfile
-├── frontend/nextjs/             # Frontend Next.js: discovery, applications, memberships, management, notifications
+├── frontend/                    # Frontend Next.js: discovery, applications, memberships, management, notifications
 ├── docs/
 │   ├── api/                     # OpenAPI 3.1 contract (123 endpoints), catalog, test contract
 │   ├── baseline/                # Quyết định PO, ma trận truy vết và hồ sơ nghiệm thu Sprint 2
@@ -178,7 +179,7 @@ Kiểm thử toàn bộ API bằng Postman CLI: `docs/api/postman/run.sh auth` v
 ### 6. Chạy frontend (tuỳ chọn)
 
 ```bash
-cd frontend/nextjs
+cd frontend
 pnpm install
 pnpm dev
 ```
@@ -345,7 +346,7 @@ cd backend/springboot && ./mvnw test
 python3 -m unittest discover -s docs/api/tests -v
 
 # Kiểm tra Frontend Next.js: lint + typecheck + unit test + production build
-cd frontend/nextjs && pnpm run lint && pnpm run typecheck && pnpm test && pnpm run build
+cd frontend && pnpm run lint && pnpm run typecheck && pnpm test && pnpm run build
 ```
 
 - **Unit test:** kiểm tra logic auth, JWT, cấu hình secret/issuer, kiểm tra quyền, rate limit, bootstrap admin, và báo lỗi khi bản copy OpenAPI trong code lệch với bản trong `docs/`.

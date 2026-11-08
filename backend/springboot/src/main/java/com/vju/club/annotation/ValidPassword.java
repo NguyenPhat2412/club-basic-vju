@@ -1,5 +1,6 @@
 package com.vju.club.annotation;
 
+import com.vju.club.annotation.validator.PasswordValidator;
 import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
 

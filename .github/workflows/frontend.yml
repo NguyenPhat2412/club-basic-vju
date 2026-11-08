@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'frontend/nextjs/**'
+      - 'frontend/**'
       - '.github/workflows/frontend.yml'
   pull_request:
     paths:
-      - 'frontend/nextjs/**'
+      - 'frontend/**'
       - '.github/workflows/frontend.yml'
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend/nextjs
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3
@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: 22
           cache: 'pnpm'
-          cache-dependency-path: frontend/nextjs/pnpm-lock.yaml
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Lint

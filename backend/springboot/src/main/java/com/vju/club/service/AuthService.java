@@ -4,6 +4,7 @@ import com.vju.club.dto.record.SignedIn;
 import com.vju.club.dto.request.ChangePasswordRequest;
 import com.vju.club.dto.request.GoogleLoginRequest;
 import com.vju.club.dto.request.LoginRequest;
+import com.vju.club.dto.request.RegisterRequest;
 import com.vju.club.dto.response.GoogleSignInConfigResponse;
 import com.vju.club.dto.response.UserResponse;
 
@@ -11,6 +12,8 @@ import java.util.UUID;
 
 public interface AuthService {
     SignedIn login(LoginRequest request);
+
+    SignedIn register(RegisterRequest request);
 
     SignedIn loginWithGoogle(GoogleLoginRequest request);
 

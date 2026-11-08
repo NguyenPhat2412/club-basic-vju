@@ -1,14 +1,18 @@
 package com.vju.club.service;
 
-import com.vju.club.dto.response.PageResponse;
 import com.vju.club.dto.request.CreateEventRequest;
 import com.vju.club.dto.request.EventRegistrationRequest;
 import com.vju.club.dto.request.RecordAttendanceRequest;
+import com.vju.club.dto.request.UpdateEventRegistrationRequest;
 import com.vju.club.dto.request.UpdateEventRequest;
 import com.vju.club.dto.response.CalendarItemResponse;
 import com.vju.club.dto.response.EventAttendanceResponse;
 import com.vju.club.dto.response.EventRegistrationResponse;
 import com.vju.club.dto.response.EventResponse;
+import com.vju.club.dto.response.MyEventParticipationResponse;
+import com.vju.club.dto.response.PageResponse;
+import com.vju.club.enums.EventParticipantType;
+import com.vju.club.enums.EventRegistrationStatus;
 import com.vju.club.enums.EventStatus;
 import com.vju.club.security.Actor;
 
@@ -30,6 +34,11 @@ public interface EventService {
     EventRegistrationResponse register(Actor actor, UUID eventId, EventRegistrationRequest request);
 
     EventRegistrationResponse cancelRegistration(Actor actor, UUID eventId);
+
+    EventRegistrationResponse updateRegistration(Actor actor, UUID eventId, UUID registrationId, UpdateEventRegistrationRequest request);
+
+    PageResponse<MyEventParticipationResponse> listMyRegistrations(Actor actor, EventRegistrationStatus status,
+                                                                   EventParticipantType participantType, int offset, int limit);
 
     PageResponse<EventRegistrationResponse> listRegistrations(Actor actor, UUID eventId, int offset, int limit);
 

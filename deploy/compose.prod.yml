@@ -74,7 +74,7 @@ services:
 
   frontend:
     build:
-      context: ../frontend/nextjs
+      context: ../frontend
       args:
         NEXT_PUBLIC_API_URL: https://${API_HOST}
     restart: unless-stopped

@@ -24,8 +24,26 @@ public class Club extends TimestampedEntity {
     @Column(name = "logo_url")
     private String logoUrl;
 
+    @Column(name = "logo_storage_key", length = 500)
+    private String logoStorageKey;
+
+    @Column(name = "logo_content_type", length = 100)
+    private String logoContentType;
+
+    @Column(name = "logo_size_bytes")
+    private Long logoSizeBytes;
+
     @Column(name = "cover_url")
     private String coverUrl;
+
+    @Column(name = "cover_storage_key", length = 500)
+    private String coverStorageKey;
+
+    @Column(name = "cover_content_type", length = 100)
+    private String coverContentType;
+
+    @Column(name = "cover_size_bytes")
+    private Long coverSizeBytes;
 
     private String description;
 

@@ -20,4 +20,7 @@ public class SystemSettings extends TimestampedEntity {
 
     @Column(name = "max_active_clubs", nullable = false)
     private int maxActiveClubs;
+
+    @Column(name = "attendance_edit_window_hours", nullable = false)
+    private int attendanceEditWindowHours = 48;
 }

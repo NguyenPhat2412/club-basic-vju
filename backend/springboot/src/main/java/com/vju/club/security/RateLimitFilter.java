@@ -6,16 +6,14 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+@RequiredArgsConstructor
 public class RateLimitFilter extends OncePerRequestFilter {
     private final RateLimitService rateLimitService;
-
-    public RateLimitFilter(RateLimitService rateLimitService) {
-        this.rateLimitService = rateLimitService;
-    }
 
     @Override
     protected void doFilterInternal(
@@ -44,6 +42,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private boolean isRateLimitedEndpoint(HttpServletRequest request) {
         return "POST".equalsIgnoreCase(request.getMethod()) && (
                 ApiPaths.FULL_AUTH_LOGIN.equals(request.getRequestURI())
+                        || ApiPaths.FULL_AUTH_REGISTER.equals(request.getRequestURI())
                         || ApiPaths.FULL_AUTH_GOOGLE.equals(request.getRequestURI()));
     }
 }

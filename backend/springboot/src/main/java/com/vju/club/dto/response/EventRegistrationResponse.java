@@ -11,6 +11,7 @@ public record EventRegistrationResponse(
         String userFullName,
         String studentCode,
         String participantType,
+        String eventRole,
         String status,
         String note,
         OffsetDateTime registeredAt,

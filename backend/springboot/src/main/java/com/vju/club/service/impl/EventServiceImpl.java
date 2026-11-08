@@ -1,52 +1,57 @@
 package com.vju.club.service.impl;
 
-import com.vju.club.common.OffsetLimitRequest;
-import com.vju.club.dto.response.PageResponse;
-import com.vju.club.config.CacheConfig;
-import com.vju.club.error.ApiException;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import com.vju.club.enums.AuditAction;
-import com.vju.club.service.AuditService;
-import com.vju.club.entity.Club;
-import com.vju.club.enums.ClubStatus;
-import com.vju.club.repository.ClubRepository;
-import com.vju.club.entity.Department;
-import com.vju.club.repository.DepartmentRepository;
-import com.vju.club.repository.DepartmentMemberRepository;
+import com.vju.club.annotation.RequirePermission;
 import com.vju.club.common.EventConstants;
+import com.vju.club.common.OffsetLimitRequest;
+import com.vju.club.config.CacheConfig;
 import com.vju.club.dto.request.AttendanceItemRequest;
 import com.vju.club.dto.request.CreateEventRequest;
 import com.vju.club.dto.request.EventRegistrationRequest;
 import com.vju.club.dto.request.RecordAttendanceRequest;
+import com.vju.club.dto.request.UpdateEventRegistrationRequest;
 import com.vju.club.dto.request.UpdateEventRequest;
 import com.vju.club.dto.response.CalendarItemResponse;
 import com.vju.club.dto.response.EventAttendanceResponse;
 import com.vju.club.dto.response.EventRegistrationResponse;
 import com.vju.club.dto.response.EventResponse;
+import com.vju.club.dto.response.MyEventParticipationResponse;
+import com.vju.club.dto.response.PageResponse;
+import com.vju.club.entity.Club;
+import com.vju.club.entity.Department;
 import com.vju.club.entity.Event;
 import com.vju.club.entity.EventAttendance;
 import com.vju.club.entity.EventRegistration;
+import com.vju.club.entity.Task;
+import com.vju.club.entity.User;
+import com.vju.club.enums.AttendanceStatus;
+import com.vju.club.enums.AuditAction;
+import com.vju.club.enums.ClubStatus;
 import com.vju.club.enums.EventParticipantType;
 import com.vju.club.enums.EventRegistrationStatus;
 import com.vju.club.enums.EventStatus;
 import com.vju.club.enums.EventType;
+import com.vju.club.enums.MembershipStatus;
+import com.vju.club.enums.TaskStatus;
+import com.vju.club.error.ApiException;
 import com.vju.club.mapper.EventMapper;
+import com.vju.club.repository.ClubRepository;
+import com.vju.club.repository.DepartmentMemberRepository;
+import com.vju.club.repository.DepartmentRepository;
 import com.vju.club.repository.EventAttendanceRepository;
 import com.vju.club.repository.EventRegistrationRepository;
 import com.vju.club.repository.EventRepository;
-import com.vju.club.service.EventService;
-import com.vju.club.enums.MembershipStatus;
 import com.vju.club.repository.MembershipRepository;
-import com.vju.club.service.NotificationService;
-import com.vju.club.annotation.RequirePermission;
-import com.vju.club.entity.Task;
 import com.vju.club.repository.TaskRepository;
-import com.vju.club.entity.User;
 import com.vju.club.repository.UserRepository;
 import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
+import com.vju.club.service.AuditService;
+import com.vju.club.service.EventService;
+import com.vju.club.service.NotificationService;
+import com.vju.club.service.SystemSettingsService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -61,21 +66,29 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class EventServiceImpl implements EventService {
     private static final Sort EVENT_SORT = Sort.by(Sort.Order.desc("startTime"), Sort.Order.asc("id"));
     private static final Sort REGISTRATION_SORT = Sort.by(Sort.Order.asc("registeredAt"), Sort.Order.asc("id"));
+    private static final Sort MY_REGISTRATION_SORT = Sort.by(Sort.Order.desc("registeredAt"), Sort.Order.asc("id"));
 
-    private static final Set<EventStatus> PUBLIC_STATUSES = Set.of(EventStatus.OPEN_REGISTRATION,
-            EventStatus.CLOSED_REGISTRATION, EventStatus.COMPLETED);
+    private static final Set<EventStatus> DETAIL_VISIBLE_STATUSES = Set.of(
+            EventStatus.OPEN_REGISTRATION,
+            EventStatus.CLOSED_REGISTRATION,
+            EventStatus.COMPLETED,
+            EventStatus.CANCELLED);
     private static final Map<EventStatus, Set<EventStatus>> ALLOWED_TRANSITIONS = Map.of(
             EventStatus.DRAFT, Set.of(EventStatus.OPEN_REGISTRATION, EventStatus.CANCELLED),
             EventStatus.OPEN_REGISTRATION, Set.of(EventStatus.CLOSED_REGISTRATION, EventStatus.COMPLETED, EventStatus.CANCELLED),
             EventStatus.CLOSED_REGISTRATION, Set.of(EventStatus.OPEN_REGISTRATION, EventStatus.COMPLETED, EventStatus.CANCELLED));
+    private static final Set<TaskStatus> OPEN_TASK_STATUSES = Set.of(TaskStatus.TODO, TaskStatus.IN_PROGRESS);
     private static final Duration ATTENDANCE_OPENS_BEFORE_START = Duration.ofHours(2);
     private static final Duration MAX_CALENDAR_RANGE = Duration.ofDays(366);
 
@@ -90,6 +103,7 @@ public class EventServiceImpl implements EventService {
     private final UserRepository userRepository;
     private final PermissionAuthorizationService authorizationService;
     private final NotificationService notificationService;
+    private final SystemSettingsService systemSettingsService;
     private final AuditService auditService;
     private final Clock clock;
     private final EventMapper eventMapper;
@@ -169,6 +183,7 @@ public class EventServiceImpl implements EventService {
 
         Map<String, Object> before = snapshot(event);
         EventStatus previousStatus = event.getStatus();
+        OffsetDateTime now = OffsetDateTime.now(clock);
 
         if (request.departmentId() != null) {
             Department department = departmentRepository.findById(request.departmentId())
@@ -217,6 +232,9 @@ public class EventServiceImpl implements EventService {
                         "An event cannot move from " + previousStatus + " to " + request.status());
             }
             event.setStatus(request.status());
+            if (request.status() == EventStatus.COMPLETED) {
+                event.setCompletedAt(now);
+            }
         }
 
         Event saved = eventRepository.save(event);
@@ -225,10 +243,14 @@ public class EventServiceImpl implements EventService {
         }
         if (previousStatus != EventStatus.CANCELLED && saved.getStatus() == EventStatus.CANCELLED) {
             for (UUID userId : registrationRepository.findRegisteredUserIds(saved.getId())) {
-                notificationService.create(userId, "Sự kiện đã huỷ: " + saved.getTitle(),
+                notificationService.create(userId,
+                        "Sự kiện đã huỷ: " + saved.getTitle(),
                         "Sự kiện \"" + saved.getTitle() + "\" của CLB " + saved.getClub().getName() + " đã bị huỷ.",
-                        saved.getId());
+                        "EVENT",
+                        saved.getId(),
+                        "EVENT_CANCELLED:" + saved.getId());
             }
+            cancelOpenTasksForCancelledEvent(saved, actor.id());
         }
         auditService.recordChange(actor.id(), AuditAction.EVENT_UPDATED, saved.getId(), clubId, before, snapshot(saved));
         return eventMapper.toResponse(saved);
@@ -257,8 +279,9 @@ public class EventServiceImpl implements EventService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
         UUID clubId = event.getClub().getId();
         boolean publiclyVisible = event.getClub().getStatus() == ClubStatus.ACTIVE
-                && PUBLIC_STATUSES.contains(event.getStatus());
+                && DETAIL_VISIBLE_STATUSES.contains(event.getStatus());
         boolean canView = publiclyVisible
+                || registrationRepository.existsByEvent_IdAndUser_Id(eventId, actor.id())
                 || authorizationService.hasPermission(actor, EventConstants.PERMISSION_VIEW, clubId, null)
                 || authorizationService.hasPermission(actor, "club.view", clubId, null)
                 || membershipRepository.existsByUser_IdAndClub_IdAndStatus(actor.id(), clubId, MembershipStatus.ACTIVE);
@@ -316,7 +339,9 @@ public class EventServiceImpl implements EventService {
         notificationService.create(user.getId(),
                 "Đăng ký sự kiện thành công",
                 "Bạn đã đăng ký tham gia sự kiện \"" + event.getTitle() + "\".",
-                event.getId());
+                "EVENT",
+                event.getId(),
+                null);
         auditService.record(actor.id(), AuditAction.EVENT_REGISTERED, event.getId(), event.getClub().getId(),
                 null, Map.of("userId", user.getId(), "participantType", saved.getParticipantType()));
         return eventMapper.toRegistrationResponse(saved);
@@ -340,9 +365,122 @@ public class EventServiceImpl implements EventService {
         registration.setStatus(EventRegistrationStatus.CANCELLED);
         registration.setCancelledAt(now);
         EventRegistration saved = registrationRepository.save(registration);
+        returnOpenEventTasksToAssigner(event, registration.getUser(), actor.id());
         auditService.record(actor.id(), AuditAction.EVENT_REGISTRATION_CANCELLED, event.getId(), event.getClub().getId(),
-                Map.of("status", EventRegistrationStatus.REGISTERED), Map.of("status", EventRegistrationStatus.CANCELLED));
+                Map.of("status", EventRegistrationStatus.REGISTERED),
+                Map.of("status", EventRegistrationStatus.CANCELLED, "userId", actor.id()));
         return eventMapper.toRegistrationResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public EventRegistrationResponse updateRegistration(Actor actor, UUID eventId, UUID registrationId,
+                                                        UpdateEventRegistrationRequest request) {
+        Event event = eventRepository.findWithRelationsById(eventId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
+        UUID clubId = event.getClub().getId();
+        UUID deptId = event.getDepartment() == null ? null : event.getDepartment().getId();
+        authorizationService.require(actor, EventConstants.PERMISSION_UPDATE, clubId, deptId);
+
+        if (event.getStatus() == EventStatus.CANCELLED) {
+            throw new ApiException(HttpStatus.CONFLICT, "EVENT_CANCELLED", "Cannot modify participant registrations of a cancelled event");
+        }
+
+        EventRegistration registration = registrationRepository.findWithRelationsByIdAndEvent_Id(registrationId, eventId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "REGISTRATION_NOT_FOUND", "Registration not found for this event"));
+
+        Map<String, Object> before = registrationSnapshot(registration);
+        OffsetDateTime now = OffsetDateTime.now(clock);
+
+        if (request.eventRole() != null) {
+            String strippedRole = request.eventRole().strip();
+            registration.setEventRole(strippedRole.isEmpty() ? null : strippedRole);
+        }
+        if (request.note() != null) {
+            String strippedNote = request.note().strip();
+            registration.setNote(strippedNote.isEmpty() ? null : strippedNote);
+        }
+        if (request.status() != null && request.status() != registration.getStatus()) {
+            if (request.status() == EventRegistrationStatus.CANCELLED) {
+                registration.setStatus(EventRegistrationStatus.CANCELLED);
+                registration.setCancelledAt(now);
+                returnOpenEventTasksToAssigner(event, registration.getUser(), actor.id());
+            } else if (request.status() == EventRegistrationStatus.REGISTERED) {
+                if (event.getStatus() == EventStatus.COMPLETED) {
+                    throw new ApiException(HttpStatus.CONFLICT, "EVENT_ALREADY_COMPLETED", "Cannot reinstate registration on a completed event");
+                }
+                if (registrationRepository.findByEvent_IdAndUser_IdAndStatus(
+                        eventId, registration.getUser().getId(), EventRegistrationStatus.REGISTERED).isPresent()) {
+                    throw new ApiException(HttpStatus.CONFLICT, "ALREADY_REGISTERED", "Participant already has an active registration");
+                }
+                if (event.getMaxParticipants() != null) {
+                    long currentCount = registrationRepository.countByEvent_IdAndStatus(eventId, EventRegistrationStatus.REGISTERED);
+                    if (currentCount >= event.getMaxParticipants()) {
+                        throw new ApiException(HttpStatus.CONFLICT, "EVENT_FULL", "Event has reached maximum participants");
+                    }
+                }
+                registration.setStatus(EventRegistrationStatus.REGISTERED);
+                registration.setCancelledAt(null);
+            }
+        }
+
+        EventRegistration saved = registrationRepository.save(registration);
+        auditService.recordChange(actor.id(), AuditAction.EVENT_REGISTRATION_UPDATED, event.getId(), clubId,
+                before, registrationSnapshot(saved));
+        return eventMapper.toRegistrationResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<MyEventParticipationResponse> listMyRegistrations(Actor actor, EventRegistrationStatus status,
+                                                                          EventParticipantType participantType,
+                                                                          int offset, int limit) {
+        var page = registrationRepository.findByUser(actor.id(), status, participantType,
+                new OffsetLimitRequest(offset, limit, MY_REGISTRATION_SORT));
+        List<EventRegistration> registrations = page.getContent();
+        if (registrations.isEmpty()) {
+            return new PageResponse<>(List.of(), page.getTotalElements(), offset, limit);
+        }
+
+        Set<UUID> eventIds = registrations.stream().map(r -> r.getEvent().getId()).collect(Collectors.toSet());
+        Map<UUID, EventAttendance> attendancesByEventId = attendanceRepository.findByUser_IdAndEvent_IdIn(actor.id(), eventIds)
+                .stream()
+                .collect(Collectors.toMap(a -> a.getEvent().getId(), Function.identity(), (a, b) -> b));
+
+        List<MyEventParticipationResponse> items = new ArrayList<>(registrations.size());
+        for (EventRegistration reg : registrations) {
+            Event event = reg.getEvent();
+            EventAttendance attendance = attendancesByEventId.get(event.getId());
+            boolean countedAsAttended = event.getStatus() != EventStatus.CANCELLED
+                    && reg.getStatus() == EventRegistrationStatus.REGISTERED
+                    && attendance != null
+                    && (attendance.getStatus() == AttendanceStatus.PRESENT || attendance.getStatus() == AttendanceStatus.LATE);
+            items.add(new MyEventParticipationResponse(
+                    reg.getId(),
+                    event.getId(),
+                    event.getClub().getId(),
+                    event.getClub().getCode(),
+                    event.getClub().getName(),
+                    event.getTitle(),
+                    event.getEventType().name(),
+                    event.getStatus().name(),
+                    event.getLocation(),
+                    event.getStartTime(),
+                    event.getEndTime(),
+                    event.getRegistrationDeadline(),
+                    reg.getParticipantType().name(),
+                    reg.getEventRole(),
+                    reg.getStatus().name(),
+                    reg.getRegisteredAt(),
+                    reg.getCancelledAt(),
+                    attendance == null ? null : attendance.getStatus().name(),
+                    attendance == null ? null : attendance.getNote(),
+                    attendance == null ? null : attendance.getEditReason(),
+                    attendance == null ? null : attendance.getCheckedAt(),
+                    countedAsAttended
+            ));
+        }
+        return new PageResponse<>(items, page.getTotalElements(), offset, limit);
     }
 
     @Override
@@ -353,7 +491,8 @@ public class EventServiceImpl implements EventService {
         UUID clubId = event.getClub().getId();
         UUID deptId = event.getDepartment() == null ? null : event.getDepartment().getId();
         boolean allowed = authorizationService.hasPermission(actor, EventConstants.PERMISSION_VIEW, clubId, deptId)
-                || authorizationService.hasPermission(actor, EventConstants.PERMISSION_ATTENDANCE, clubId, deptId);
+                || authorizationService.hasPermission(actor, EventConstants.PERMISSION_ATTENDANCE, clubId, deptId)
+                || authorizationService.hasPermission(actor, EventConstants.PERMISSION_ATTENDANCE_EDIT, clubId, deptId);
         if (!allowed) {
             throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
         }
@@ -370,7 +509,11 @@ public class EventServiceImpl implements EventService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
         UUID clubId = event.getClub().getId();
         UUID deptId = event.getDepartment() == null ? null : event.getDepartment().getId();
-        authorizationService.require(actor, EventConstants.PERMISSION_ATTENDANCE, clubId, deptId);
+        boolean hasBaseAttendance = authorizationService.hasPermission(actor, EventConstants.PERMISSION_ATTENDANCE, clubId, deptId);
+        boolean hasAttendanceEdit = authorizationService.hasPermission(actor, EventConstants.PERMISSION_ATTENDANCE_EDIT, clubId, deptId);
+        if (!hasBaseAttendance && !hasAttendanceEdit) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
+        }
 
         User checker = userRepository.findById(actor.id())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User not found"));
@@ -382,7 +525,28 @@ public class EventServiceImpl implements EventService {
             throw new ApiException(HttpStatus.CONFLICT, "EVENT_NOT_STARTED",
                     "Attendance opens " + ATTENDANCE_OPENS_BEFORE_START.toHours() + " hours before the event starts");
         }
+
+        String strippedReason = request.reason() == null ? null : request.reason().strip();
+        boolean postCompletion = event.getStatus() == EventStatus.COMPLETED;
+        if (postCompletion) {
+            if (!hasAttendanceEdit) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED",
+                        "Post-completion attendance adjustment requires event.attendance_edit permission");
+            }
+            OffsetDateTime completedRef = event.getCompletedAt() != null ? event.getCompletedAt() : event.getEndTime();
+            int windowHours = systemSettingsService.current().attendanceEditWindowHours();
+            if (now.isAfter(completedRef.plusHours(windowHours))) {
+                throw new ApiException(HttpStatus.CONFLICT, "ATTENDANCE_EDIT_WINDOW_EXPIRED",
+                        "Attendance edit window (" + windowHours + " hours after completion) has expired");
+            }
+            if (strippedReason == null || strippedReason.isEmpty()) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "ATTENDANCE_EDIT_REASON_REQUIRED",
+                        "A non-blank reason is required when adjusting attendance on a completed event");
+            }
+        }
+
         List<EventAttendanceResponse> results = new ArrayList<>();
+        int newlyRecordedCount = 0;
 
         for (AttendanceItemRequest item : request.items()) {
             User participant = userRepository.findById(item.userId())
@@ -395,22 +559,59 @@ public class EventServiceImpl implements EventService {
                 throw new ApiException(HttpStatus.CONFLICT, "PARTICIPANT_NOT_REGISTERED",
                         "Attendance can only be recorded for people registered for this event");
             }
-            EventAttendance attendance = attendanceRepository.findByEvent_IdAndUser_Id(eventId, participant.getId())
-                    .orElseGet(() -> {
-                        EventAttendance created = new EventAttendance();
-                        created.setEvent(event);
-                        created.setUser(participant);
-                        return created;
-                    });
-            attendance.setStatus(item.status());
-            attendance.setNote(item.note() == null ? null : item.note().strip());
-            attendance.setCheckedBy(checker);
-            attendance.setCheckedAt(now);
-            results.add(eventMapper.toAttendanceResponse(attendanceRepository.save(attendance)));
+
+            Optional<EventAttendance> existingOpt = attendanceRepository.findByEvent_IdAndUser_Id(eventId, participant.getId());
+            if (existingOpt.isPresent()) {
+                if (!hasAttendanceEdit) {
+                    throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED",
+                            "Modifying an existing attendance record requires event.attendance_edit permission");
+                }
+                if (strippedReason == null || strippedReason.isEmpty()) {
+                    throw new ApiException(HttpStatus.BAD_REQUEST, "ATTENDANCE_EDIT_REASON_REQUIRED",
+                            "A non-blank reason is required when modifying an existing attendance record");
+                }
+                EventAttendance existing = existingOpt.get();
+                if (item.expectedVersion() != null && !item.expectedVersion().equals(existing.getVersion())) {
+                    throw new ApiException(HttpStatus.CONFLICT, "ATTENDANCE_VERSION_CONFLICT",
+                            "Attendance record was modified concurrently; expected version "
+                                    + item.expectedVersion() + " but found " + existing.getVersion());
+                }
+                Map<String, Object> before = attendanceSnapshot(existing);
+                existing.setStatus(item.status());
+                existing.setNote(item.note() == null ? null : item.note().strip());
+                existing.setEditReason(strippedReason);
+                existing.setCheckedBy(checker);
+                existing.setCheckedAt(now);
+                EventAttendance saved = attendanceRepository.saveAndFlush(existing);
+                auditService.record(actor.id(), AuditAction.EVENT_ATTENDANCE_UPDATED, event.getId(), clubId,
+                        before, attendanceSnapshot(saved));
+                results.add(eventMapper.toAttendanceResponse(saved));
+            } else {
+                EventAttendance created = new EventAttendance();
+                created.setEvent(event);
+                created.setUser(participant);
+                created.setStatus(item.status());
+                created.setNote(item.note() == null ? null : item.note().strip());
+                if (postCompletion) {
+                    created.setEditReason(strippedReason);
+                }
+                created.setCheckedBy(checker);
+                created.setCheckedAt(now);
+                EventAttendance saved = attendanceRepository.saveAndFlush(created);
+                if (postCompletion) {
+                    auditService.record(actor.id(), AuditAction.EVENT_ATTENDANCE_UPDATED, event.getId(), clubId,
+                            null, attendanceSnapshot(saved));
+                } else {
+                    newlyRecordedCount++;
+                }
+                results.add(eventMapper.toAttendanceResponse(saved));
+            }
         }
 
-        auditService.record(actor.id(), AuditAction.EVENT_ATTENDANCE_RECORDED, event.getId(), clubId,
-                null, Map.of("count", results.size()));
+        if (newlyRecordedCount > 0) {
+            auditService.record(actor.id(), AuditAction.EVENT_ATTENDANCE_RECORDED, event.getId(), clubId,
+                    null, Map.of("count", newlyRecordedCount));
+        }
         return results;
     }
 
@@ -422,6 +623,7 @@ public class EventServiceImpl implements EventService {
         UUID clubId = event.getClub().getId();
         UUID deptId = event.getDepartment() == null ? null : event.getDepartment().getId();
         boolean allowed = authorizationService.hasPermission(actor, EventConstants.PERMISSION_ATTENDANCE, clubId, deptId)
+                || authorizationService.hasPermission(actor, EventConstants.PERMISSION_ATTENDANCE_EDIT, clubId, deptId)
                 || authorizationService.hasPermission(actor, EventConstants.PERMISSION_VIEW, clubId, deptId);
         if (!allowed) {
             throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
@@ -470,6 +672,9 @@ public class EventServiceImpl implements EventService {
             ));
         }
         for (Task task : taskRepository.findCalendarTasks(actor.id(), start, end)) {
+            if (task.getStatus() == TaskStatus.CANCELLED) {
+                continue;
+            }
             items.add(new CalendarItemResponse(
                     task.getId(),
                     "TASK_DEADLINE",
@@ -487,6 +692,47 @@ public class EventServiceImpl implements EventService {
         return items;
     }
 
+    private void cancelOpenTasksForCancelledEvent(Event event, UUID actorId) {
+        List<Task> openTasks = taskRepository.findByEvent_IdAndStatusIn(event.getId(), OPEN_TASK_STATUSES);
+        for (Task task : openTasks) {
+            Map<String, Object> before = Map.of("status", task.getStatus(), "assigneeId", task.getAssignee().getId());
+            task.setStatus(TaskStatus.CANCELLED);
+            Task savedTask = taskRepository.save(task);
+            notificationService.create(
+                    savedTask.getAssignee().getId(),
+                    "Nhiệm vụ đóng do huỷ sự kiện: " + savedTask.getTitle(),
+                    "Nhiệm vụ \"" + savedTask.getTitle() + "\" đã tự động đóng do sự kiện \"" + event.getTitle() + "\" bị huỷ.",
+                    "TASK",
+                    savedTask.getId(),
+                    "EVENT_TASK_CANCELLED:" + savedTask.getId());
+            auditService.record(actorId, AuditAction.TASK_CANCELLED, savedTask.getId(), event.getClub().getId(),
+                    before, Map.of("status", TaskStatus.CANCELLED, "reason", "EVENT_CANCELLED"));
+        }
+    }
+
+    private void returnOpenEventTasksToAssigner(Event event, User participant, UUID actorId) {
+        List<Task> openTasks = taskRepository.findByEvent_IdAndAssignee_IdAndStatusIn(
+                event.getId(), participant.getId(), OPEN_TASK_STATUSES);
+        for (Task task : openTasks) {
+            Map<String, Object> before = Map.of("status", task.getStatus(), "assigneeId", participant.getId());
+            task.setAssignee(task.getAssigner());
+            task.setStatus(TaskStatus.TODO);
+            task.setProgressPercent(0);
+            Task savedTask = taskRepository.save(task);
+            notificationService.create(
+                    savedTask.getAssigner().getId(),
+                    "Hoàn trả nhiệm vụ sự kiện: " + savedTask.getTitle(),
+                    "Người tham gia \"" + participant.getFullName() + "\" đã huỷ đăng ký sự kiện \"" + event.getTitle()
+                            + "\". Nhiệm vụ \"" + savedTask.getTitle() + "\" được hoàn trả để phân công lại.",
+                    "TASK",
+                    savedTask.getId(),
+                    null);
+            auditService.record(actorId, AuditAction.TASK_UPDATED, savedTask.getId(), event.getClub().getId(),
+                    before, Map.of("status", TaskStatus.TODO, "assigneeId", savedTask.getAssigner().getId(),
+                            "reason", "EVENT_REGISTRATION_CANCELLED"));
+        }
+    }
+
     private static void validateTimes(OffsetDateTime startTime, OffsetDateTime endTime, OffsetDateTime registrationDeadline) {
         if (!startTime.isBefore(endTime) || registrationDeadline.isAfter(startTime)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_EVENT_TIME",
@@ -501,7 +747,7 @@ public class EventServiceImpl implements EventService {
         String title = "Sự kiện mới: " + event.getTitle();
         String message = "CLB " + club.getName() + " vừa mở đăng ký sự kiện \"" + event.getTitle() + "\".";
         for (UUID recipientId : recipientIds) {
-            notificationService.create(recipientId, title, message, event.getId());
+            notificationService.create(recipientId, title, message, "EVENT", event.getId(), "EVENT_OPENED:" + event.getId());
         }
     }
 
@@ -514,6 +760,28 @@ public class EventServiceImpl implements EventService {
         values.put("endTime", event.getEndTime());
         values.put("registrationDeadline", event.getRegistrationDeadline());
         values.put("allowCtv", event.isAllowCtv());
+        values.put("completedAt", event.getCompletedAt());
+        return values;
+    }
+
+    private static Map<String, Object> registrationSnapshot(EventRegistration registration) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("registrationId", registration.getId());
+        values.put("userId", registration.getUser().getId());
+        values.put("participantType", registration.getParticipantType());
+        values.put("eventRole", registration.getEventRole());
+        values.put("status", registration.getStatus());
+        values.put("note", registration.getNote());
+        return values;
+    }
+
+    private static Map<String, Object> attendanceSnapshot(EventAttendance attendance) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("userId", attendance.getUser().getId());
+        values.put("status", attendance.getStatus());
+        values.put("note", attendance.getNote());
+        values.put("editReason", attendance.getEditReason());
+        values.put("version", attendance.getVersion());
         return values;
     }
 }

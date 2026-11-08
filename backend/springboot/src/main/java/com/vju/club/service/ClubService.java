@@ -1,5 +1,7 @@
 package com.vju.club.service;
 
+import com.vju.club.dto.record.ClubMediaContent;
+import com.vju.club.dto.record.UploadedFile;
 import com.vju.club.dto.response.PageResponse;
 import com.vju.club.dto.request.ClubPatchRequest;
 import com.vju.club.dto.request.ClubRequest;
@@ -18,6 +20,10 @@ public interface ClubService {
 
     ClubResponse getPublic(UUID clubId);
 
+    ClubMediaContent getLogoContent(UUID clubId);
+
+    ClubMediaContent getCoverContent(UUID clubId);
+
     PageResponse<ClubResponse> list(Actor actor, String query, int offset, int limit);
 
     PageResponse<ClubResponse> list(Actor actor, String query, String category, ClubStatus status, int offset, int limit);
@@ -29,4 +35,8 @@ public interface ClubService {
     ClubResponse update(Actor actor, UUID clubId, ClubPatchRequest request);
 
     ClubResponse updateStatus(Actor actor, UUID clubId, ClubStatusRequest request);
+
+    ClubResponse uploadLogo(Actor actor, UUID clubId, UploadedFile file);
+
+    ClubResponse uploadCover(Actor actor, UUID clubId, UploadedFile file);
 }

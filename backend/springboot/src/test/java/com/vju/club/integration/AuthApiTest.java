@@ -33,11 +33,24 @@ class AuthApiTest extends ApiIntegrationTest {
     }
 
     @Test
-    void selfRegistrationNoLongerExists() throws Exception {
-        Map<String, Object> body = registration("self@test.local", null);
-        problem(post("/api/v1/auth/register"), null, body, 401, "UNAUTHORIZED");
-        problem(post("/api/v1/auth/register"), memberToken, body, 404, "NOT_FOUND");
-        assertThat(count("SELECT count(*) FROM users WHERE email = 'self@test.local'")).isZero();
+    void selfRegistrationCreatesAnActiveSessionAndRejectsDuplicates() throws Exception {
+        Map<String, Object> body = registration("Self.New@Test.Local", "SV-999");
+        MockHttpServletResponse response = send(post("/api/v1/auth/register"), null, body);
+        assertThat(response.getStatus()).isEqualTo(201);
+        JsonNode created = json.readTree(response.getContentAsString()).path("user");
+        assertThat(created.path("email").asText()).isEqualTo("self.new@test.local");
+        assertThat(created.path("studentCode").asText()).isEqualTo("SV-999");
+        assertThat(created.path("status").asText()).isEqualTo("ACTIVE");
+        assertThat(created.path("requiresPasswordChange").asBoolean()).isFalse();
+
+        String session = TestSessions.fromResponse(response);
+        assertThat(call(get("/api/v1/auth/me"), session, null, 200).path("email").asText())
+                .isEqualTo("self.new@test.local");
+
+        problem(post("/api/v1/auth/register"), null, registration("self.new@test.local", "SV-888"),
+                409, "EMAIL_ALREADY_EXISTS");
+        problem(post("/api/v1/auth/register"), null, registration("other@test.local", "sv-999"),
+                409, "STUDENT_CODE_ALREADY_EXISTS");
     }
 
     @Test

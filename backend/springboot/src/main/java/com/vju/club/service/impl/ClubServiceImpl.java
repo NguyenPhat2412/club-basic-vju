@@ -1,10 +1,15 @@
 package com.vju.club.service.impl;
 
+import com.vju.club.common.ApiPaths;
 import com.vju.club.common.OffsetLimitRequest;
+import com.vju.club.dto.record.ClubMediaContent;
+import com.vju.club.dto.record.UploadedFile;
 import com.vju.club.dto.response.PageResponse;
 import com.vju.club.config.CacheConfig;
 import com.vju.club.error.ApiException;
-import lombok.RequiredArgsConstructor;
+import com.vju.club.storage.DocumentStorage;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import com.vju.club.enums.AuditAction;
@@ -34,16 +39,22 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class ClubServiceImpl implements ClubService {
+    private static final long MAX_CLUB_IMAGE_BYTES = 10L * 1024 * 1024;
+
     private final ClubRepository clubRepository;
     private final PermissionAuthorizationService authorizationService;
     private final AuditService auditService;
@@ -51,6 +62,44 @@ public class ClubServiceImpl implements ClubService {
     private final ClubApplicationRepository applicationRepository;
     private final Clock clock;
     private final NotificationService notificationService;
+    private final DocumentStorage documentStorage;
+    private final String publicApiBaseUrl;
+
+    public ClubServiceImpl(
+            ClubRepository clubRepository,
+            PermissionAuthorizationService authorizationService,
+            AuditService auditService,
+            ClubMapper clubMapper,
+            ClubApplicationRepository applicationRepository,
+            Clock clock,
+            NotificationService notificationService) {
+        this(clubRepository, authorizationService, auditService, clubMapper,
+                applicationRepository, clock, notificationService, null, "http://localhost:8080");
+    }
+
+    @Autowired
+    public ClubServiceImpl(
+            ClubRepository clubRepository,
+            PermissionAuthorizationService authorizationService,
+            AuditService auditService,
+            ClubMapper clubMapper,
+            ClubApplicationRepository applicationRepository,
+            Clock clock,
+            NotificationService notificationService,
+            DocumentStorage documentStorage,
+            @Value("${app.public-api-base-url:http://localhost:${server.port:8080}}") String publicApiBaseUrl) {
+        this.clubRepository = clubRepository;
+        this.authorizationService = authorizationService;
+        this.auditService = auditService;
+        this.clubMapper = clubMapper;
+        this.applicationRepository = applicationRepository;
+        this.clock = clock;
+        this.notificationService = notificationService;
+        this.documentStorage = documentStorage;
+        this.publicApiBaseUrl = publicApiBaseUrl != null && publicApiBaseUrl.endsWith("/")
+                ? publicApiBaseUrl.substring(0, publicApiBaseUrl.length() - 1)
+                : (publicApiBaseUrl != null ? publicApiBaseUrl : "http://localhost:8080");
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -199,6 +248,201 @@ public class ClubServiceImpl implements ClubService {
         return clubMapper.toResponse(saved);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public ClubMediaContent getLogoContent(UUID clubId) {
+        Club club = findClub(clubId);
+        if (club.getLogoStorageKey() == null || club.getLogoStorageKey().isBlank() || documentStorage == null) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "CLUB_LOGO_NOT_FOUND", "Club logo is not stored in cloud storage");
+        }
+        String contentType = club.getLogoContentType() != null ? club.getLogoContentType() : "image/jpeg";
+        String ext = extensionForContentType(contentType);
+        DocumentStorage.StoredObject stored = documentStorage.open(club.getLogoStorageKey());
+        return new ClubMediaContent(
+                club.getCode().toLowerCase(Locale.ROOT) + "-logo" + ext,
+                contentType,
+                stored.size() > 0 ? stored.size() : club.getLogoSizeBytes(),
+                stored.content()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ClubMediaContent getCoverContent(UUID clubId) {
+        Club club = findClub(clubId);
+        if (club.getCoverStorageKey() == null || club.getCoverStorageKey().isBlank() || documentStorage == null) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "CLUB_COVER_NOT_FOUND", "Club cover is not stored in cloud storage");
+        }
+        String contentType = club.getCoverContentType() != null ? club.getCoverContentType() : "image/jpeg";
+        String ext = extensionForContentType(contentType);
+        DocumentStorage.StoredObject stored = documentStorage.open(club.getCoverStorageKey());
+        return new ClubMediaContent(
+                club.getCode().toLowerCase(Locale.ROOT) + "-cover" + ext,
+                contentType,
+                stored.size() > 0 ? stored.size() : club.getCoverSizeBytes(),
+                stored.content()
+        );
+    }
+
+    @Override
+    @Transactional
+    @RequirePermission(value = ClubConstants.PERMISSION_UPDATE, clubId = "clubId")
+    @CacheEvict(cacheNames = {CacheConfig.CACHE_PUBLIC_CLUBS, CacheConfig.CACHE_PUBLIC_CLUB_DETAIL}, allEntries = true)
+    public ClubResponse uploadLogo(Actor actor, UUID clubId, UploadedFile file) {
+        if (documentStorage == null) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "DOCUMENT_STORAGE_ERROR", "Cloud storage is not configured");
+        }
+        Club club = findClub(clubId);
+        Map<String, Object> before = snapshot(club);
+        ValidatedImage image = validateAndReadImage(file);
+        String oldKey = club.getLogoStorageKey();
+        String storageKey = "clubs/" + club.getCode().toLowerCase(Locale.ROOT) + "/logo-" + UUID.randomUUID() + image.extension();
+
+        documentStorage.put(storageKey, new ByteArrayInputStream(image.bytes()), image.bytes().length, image.contentType());
+        if (oldKey != null && !oldKey.isBlank() && !oldKey.equals(storageKey)) {
+            try {
+                documentStorage.delete(oldKey);
+            } catch (Exception ignored) {
+                // Non-fatal cleanup of superseded logo object in R2
+            }
+        }
+
+        long version = clock != null ? clock.millis() : System.currentTimeMillis();
+        club.setLogoStorageKey(storageKey);
+        club.setLogoContentType(image.contentType());
+        club.setLogoSizeBytes((long) image.bytes().length);
+        club.setLogoUrl(publicApiBaseUrl + ApiPaths.publicClubLogoPath(clubId) + "?v=" + version);
+
+        Club saved = clubRepository.saveAndFlush(club);
+        auditService.recordChange(actor.id(), AuditAction.CLUB_UPDATED, clubId, clubId, before, snapshot(saved));
+        return clubMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    @RequirePermission(value = ClubConstants.PERMISSION_UPDATE, clubId = "clubId")
+    @CacheEvict(cacheNames = {CacheConfig.CACHE_PUBLIC_CLUBS, CacheConfig.CACHE_PUBLIC_CLUB_DETAIL}, allEntries = true)
+    public ClubResponse uploadCover(Actor actor, UUID clubId, UploadedFile file) {
+        if (documentStorage == null) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "DOCUMENT_STORAGE_ERROR", "Cloud storage is not configured");
+        }
+        Club club = findClub(clubId);
+        Map<String, Object> before = snapshot(club);
+        ValidatedImage image = validateAndReadImage(file);
+        String oldKey = club.getCoverStorageKey();
+        String storageKey = "clubs/" + club.getCode().toLowerCase(Locale.ROOT) + "/cover-" + UUID.randomUUID() + image.extension();
+
+        documentStorage.put(storageKey, new ByteArrayInputStream(image.bytes()), image.bytes().length, image.contentType());
+        if (oldKey != null && !oldKey.isBlank() && !oldKey.equals(storageKey)) {
+            try {
+                documentStorage.delete(oldKey);
+            } catch (Exception ignored) {
+                // Non-fatal cleanup of superseded cover object in R2
+            }
+        }
+
+        long version = clock != null ? clock.millis() : System.currentTimeMillis();
+        club.setCoverStorageKey(storageKey);
+        club.setCoverContentType(image.contentType());
+        club.setCoverSizeBytes((long) image.bytes().length);
+        club.setCoverUrl(publicApiBaseUrl + ApiPaths.publicClubCoverPath(clubId) + "?v=" + version);
+
+        Club saved = clubRepository.saveAndFlush(club);
+        auditService.recordChange(actor.id(), AuditAction.CLUB_UPDATED, clubId, clubId, before, snapshot(saved));
+        return clubMapper.toResponse(saved);
+    }
+
+    private record ValidatedImage(byte[] bytes, String contentType, String extension) { }
+
+    private static ValidatedImage validateAndReadImage(UploadedFile file) {
+        if (file == null || file.originalName() == null || file.originalName().isBlank() || file.content() == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "EMPTY_IMAGE", "Vui lòng chọn file ảnh để tải lên");
+        }
+        byte[] bytes;
+        try (InputStream in = file.content().open();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            byte[] buf = new byte[8192];
+            long total = 0;
+            int read;
+            while ((read = in.read(buf)) != -1) {
+                total += read;
+                if (total > MAX_CLUB_IMAGE_BYTES) {
+                    throw new ApiException(HttpStatus.PAYLOAD_TOO_LARGE, "IMAGE_TOO_LARGE",
+                            "Kích thước ảnh vượt quá giới hạn 10 MB");
+                }
+                out.write(buf, 0, read);
+            }
+            bytes = out.toByteArray();
+        } catch (IOException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_IMAGE_STREAM", "Không thể đọc dữ liệu file ảnh");
+        }
+        if (bytes.length < 8) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "EMPTY_IMAGE", "File ảnh rỗng hoặc không hợp lệ");
+        }
+        if (isPng(bytes)) {
+            return new ValidatedImage(bytes, "image/png", ".png");
+        }
+        if (isJpeg(bytes)) {
+            return new ValidatedImage(bytes, "image/jpeg", ".jpg");
+        }
+        if (isGif(bytes)) {
+            return new ValidatedImage(bytes, "image/gif", ".gif");
+        }
+        if (isWebp(bytes)) {
+            return new ValidatedImage(bytes, "image/webp", ".webp");
+        }
+        throw new ApiException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_IMAGE_TYPE",
+                "Chỉ hỗ trợ định dạng ảnh PNG, JPG/JPEG, WEBP hoặc GIF");
+    }
+
+    private static boolean isPng(byte[] b) {
+        return b.length >= 8
+                && (b[0] & 0xFF) == 0x89
+                && b[1] == 0x50
+                && b[2] == 0x4E
+                && b[3] == 0x47
+                && b[4] == 0x0D
+                && b[5] == 0x0A
+                && b[6] == 0x1A
+                && b[7] == 0x0A;
+    }
+
+    private static boolean isJpeg(byte[] b) {
+        return b.length >= 3
+                && (b[0] & 0xFF) == 0xFF
+                && (b[1] & 0xFF) == 0xD8
+                && (b[2] & 0xFF) == 0xFF;
+    }
+
+    private static boolean isGif(byte[] b) {
+        return b.length >= 6
+                && b[0] == 'G'
+                && b[1] == 'I'
+                && b[2] == 'F'
+                && b[3] == '8'
+                && (b[4] == '7' || b[4] == '9')
+                && b[5] == 'a';
+    }
+
+    private static boolean isWebp(byte[] b) {
+        return b.length >= 12
+                && b[0] == 'R'
+                && b[1] == 'I'
+                && b[2] == 'F'
+                && b[3] == 'F'
+                && b[8] == 'W'
+                && b[9] == 'E'
+                && b[10] == 'B'
+                && b[11] == 'P';
+    }
+
+    private static String extensionForContentType(String contentType) {
+        if ("image/png".equalsIgnoreCase(contentType)) return ".png";
+        if ("image/webp".equalsIgnoreCase(contentType)) return ".webp";
+        if ("image/gif".equalsIgnoreCase(contentType)) return ".gif";
+        return ".jpg";
+    }
+
     private static Map<String, Object> snapshot(Club club) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("code", club.getCode());
@@ -207,7 +451,13 @@ public class ClubServiceImpl implements ClubService {
         values.put("activityField", club.getActivityField());
         values.put("contactEmail", club.getContactEmail());
         values.put("logoUrl", club.getLogoUrl());
+        if (club.getLogoStorageKey() != null) {
+            values.put("logoStorageKey", club.getLogoStorageKey());
+        }
         values.put("coverUrl", club.getCoverUrl());
+        if (club.getCoverStorageKey() != null) {
+            values.put("coverStorageKey", club.getCoverStorageKey());
+        }
         values.put("status", club.getStatus());
         return values;
     }

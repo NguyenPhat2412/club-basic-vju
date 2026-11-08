@@ -10,6 +10,7 @@ public enum AuditAction {
     USER_LOCKED(ResourceType.USER),
     USER_UNLOCKED(ResourceType.USER),
     USER_DELETED(ResourceType.USER),
+    USER_ANONYMIZED(ResourceType.USER),
 
     CLUB_CREATED(ResourceType.CLUB),
     CLUB_UPDATED(ResourceType.CLUB),
@@ -58,13 +59,17 @@ public enum AuditAction {
     EVENT_CREATED(ResourceType.EVENT),
     EVENT_UPDATED(ResourceType.EVENT),
     EVENT_REGISTERED(ResourceType.EVENT),
+    EVENT_REGISTRATION_UPDATED(ResourceType.EVENT),
     EVENT_REGISTRATION_CANCELLED(ResourceType.EVENT),
     EVENT_ATTENDANCE_RECORDED(ResourceType.EVENT),
+    EVENT_ATTENDANCE_UPDATED(ResourceType.EVENT),
 
     TASK_CREATED(ResourceType.TASK),
+    TASK_UPDATED(ResourceType.TASK),
     TASK_PROGRESS_UPDATED(ResourceType.TASK),
     TASK_VERIFIED(ResourceType.TASK),
     TASK_OVERDUE_MARKED(ResourceType.TASK),
+    TASK_CANCELLED(ResourceType.TASK),
 
     CHAT_CHANNEL_CREATED(ResourceType.CHAT_CHANNEL),
     CHAT_SUMMARIZED(ResourceType.CHAT_CHANNEL),

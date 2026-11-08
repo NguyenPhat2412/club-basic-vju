@@ -2,9 +2,11 @@ package com.vju.club.error;
 
 import com.vju.club.entity.Permission;
 
+import jakarta.persistence.OptimisticLockException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -53,6 +55,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ApiException.class)
     ResponseEntity<ProblemDetail> handleApiException(ApiException exception) {
         return problem(exception.getStatus(), exception.getCode(), exception.getMessage());
+    }
+
+    @ExceptionHandler({ObjectOptimisticLockingFailureException.class, OptimisticLockException.class})
+    ResponseEntity<ProblemDetail> handleOptimisticLock(Exception exception) {
+        return problem(HttpStatus.CONFLICT, "OPTIMISTIC_LOCK_CONFLICT",
+                "The record was modified concurrently by another user; please reload and try again");
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

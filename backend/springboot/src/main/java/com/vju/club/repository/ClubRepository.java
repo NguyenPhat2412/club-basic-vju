@@ -15,6 +15,9 @@ public interface ClubRepository extends JpaRepository<Club, UUID>, JpaSpecificat
     @Query("SELECT count(c) > 0 FROM Club c WHERE lower(c.code) = lower(:code)")
     boolean existsByCodeIgnoreCase(@Param("code") String code);
 
+    @Query("SELECT c FROM Club c WHERE lower(c.code) = lower(:code)")
+    Optional<Club> findByCodeIgnoreCase(@Param("code") String code);
+
     Optional<Club> findByIdAndStatus(UUID id, ClubStatus status);
 
     @Query("SELECT DISTINCT trim(c.activityField) FROM Club c "

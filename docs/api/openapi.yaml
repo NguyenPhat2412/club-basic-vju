@@ -100,9 +100,44 @@ paths:
               password: DemoPassword123!
       description: 'Trả user và đặt cookie phiên CLUB_SESSION (HttpOnly, SameSite=Lax). Không có token trong body.
         Gửi kèm header X-XSRF-TOKEN lấy từ cookie XSRF-TOKEN (GET /auth/csrf). Tài khoản INACTIVE bị từ chối (403).
-        Tài khoản do admin cấp (POST /users); quên mật khẩu liên hệ admin. Khi bật đăng nhập Google, email thuộc
-        tên miền trường (mặc định st.vju.ac.vn) bị từ chối ở đây với 403 GOOGLE_SIGN_IN_REQUIRED, kể cả khi
-        email chưa có tài khoản; dùng POST /auth/google.'
+        Tài khoản do admin cấp (POST /users) hoặc tự đăng ký (POST /auth/register); quên mật khẩu liên hệ admin. Khi bật đăng nhập Google, email thuộc
+        tên miền trường (mặc định st.vju.ac.vn) chưa tự đăng ký mật khẩu bị từ chối ở đây với 403 GOOGLE_SIGN_IN_REQUIRED; dùng POST /auth/google.'
+  /auth/register:
+    post:
+      operationId: auth.register
+      summary: Self-register a student or member account
+      tags:
+      - Auth
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      security: []
+      description: 'Tạo tài khoản mới ở trạng thái ACTIVE (requiresPasswordChange=false) và đăng nhập ngay (đặt cookie CLUB_SESSION HttpOnly).
+        Kiểm tra trùng email (409 EMAIL_ALREADY_EXISTS) và trùng mã sinh viên (409 STUDENT_CODE_ALREADY_EXISTS).'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              email: phat.nguyen@st.vju.ac.vn
+              password: DemoPassword123!
+              fullName: Nguyễn Xuân Phát
+              studentCode: '23110209'
+              phone: 0900000000
+      responses:
+        '201':
+          description: Created and signed in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /auth/google:
     post:
       operationId: auth.google
@@ -514,12 +549,19 @@ paths:
           $ref: '#/components/responses/Conflict'
     delete:
       operationId: user.delete
-      summary: Delete a user account (admin)
+      summary: Delete or anonymize a user account (admin)
       tags:
       - User
       x-permission: user.delete
       x-implementation-status: IMPLEMENTED
-      description: 'Xoá tài khoản người dùng; không cho phép xoá chính mình hoặc quản trị hệ thống cuối cùng.'
+      description: 'Xoá sạch tài khoản chưa phát sinh dữ liệu nghiệp vụ hoặc tự động ẩn danh PII khi đã có lịch sử (đơn tuyển, sự kiện, điểm danh, nhiệm vụ, tài liệu, audit); không cho phép xoá chính mình hoặc quản trị hệ thống cuối cùng.'
+      parameters:
+      - name: anonymize
+        in: query
+        required: false
+        description: 'Khi đặt true, buộc ẩn danh PII thay vì xoá vật lý ngay cả khi tài khoản chưa phát sinh lịch sử.'
+        schema:
+          type: boolean
       responses:
         '204':
           description: User deleted
@@ -3893,6 +3935,39 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+  /events/{eventId}/registrations/{registrationId}:
+    patch:
+      operationId: event.updateRegistration
+      summary: Update participant event role or registration status
+      tags: [Event]
+      x-permission: event.update
+      x-implementation-status: IMPLEMENTED
+      description: 'Cập nhật vai trò trong sự kiện (eventRole) hoặc trạng thái tham gia; không cấp membership hay quyền quản trị CLB.'
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: registrationId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateEventRegistrationRequest'}
+      responses:
+        '200':
+          description: Registration updated
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EventRegistration'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
   /events/{eventId}/registrations/me/cancel:
     patch:
       operationId: event.cancelRegistration
@@ -3900,7 +3975,7 @@ paths:
       tags: [Event]
       x-permission: null
       x-implementation-status: IMPLEMENTED
-      description: '400 REGISTRATION_CLOSED khi đã qua hạn hoặc không còn mở đăng ký.'
+      description: '400 REGISTRATION_CLOSED khi đã qua hạn hoặc không còn mở đăng ký. Các nhiệm vụ sự kiện đang mở của người hủy được hoàn trả về người giao.'
       parameters:
       - name: eventId
         in: path
@@ -3916,14 +3991,71 @@ paths:
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
+  /users/me/event-registrations:
+    get:
+      operationId: event.listMyRegistrations
+      summary: List my event registrations, roles, and attendance results
+      tags: [Event]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: status
+        in: query
+        schema: {type: string, enum: [REGISTERED, CANCELLED]}
+      - name: participantType
+        in: query
+        schema: {type: string, enum: [MEMBER, CTV]}
+      - name: offset
+        in: query
+        schema: {type: integer, minimum: 0, default: 0}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: Personal event participation history
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MyEventParticipationListResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /events/{eventId}/notifications:
+    post:
+      operationId: notification.notifyEventParticipants
+      summary: Send notification to all registered Member and CTV participants of an event
+      tags: [Notification]
+      x-permission: notification.send | event.update
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ResourceNotificationRequest'}
+      responses:
+        '201':
+          description: Notification sent to event participants
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ResourceNotificationResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
   /events/{eventId}/attendances:
     put:
       operationId: event.recordAttendance
-      summary: Record event attendance
+      summary: Record or adjust event attendance
       tags: [Event]
-      x-permission: event.attendance
+      x-permission: event.attendance | event.attendance_edit
       x-implementation-status: IMPLEMENTED
-      description: 'Chỉ cho sự kiện không ở DRAFT/CANCELLED (409 EVENT_NOT_HELD), từ 2 giờ trước giờ bắt đầu (409 EVENT_NOT_STARTED), và chỉ cho người đã đăng ký (với MEETING: cả thành viên CLB), ngược lại 409 PARTICIPANT_NOT_REGISTERED.'
+      description: 'Ghi nhận lần đầu cần event.attendance; sửa bản ghi hiện có hoặc điều chỉnh sau COMPLETED cần event.attendance_edit, lý do không rỗng và còn trong cửa sổ attendanceEditWindowHours.'
       parameters:
       - name: eventId
         in: path
@@ -4045,7 +4177,10 @@ paths:
         schema: {type: string, format: uuid}
       - name: status
         in: query
-        schema: {type: string, enum: [TODO, IN_PROGRESS, DONE, COMPLETED, OVERDUE]}
+        schema: {type: string, enum: [TODO, IN_PROGRESS, DONE, COMPLETED, OVERDUE, CANCELLED]}
+      - name: overdue
+        in: query
+        schema: {type: boolean}
       - name: offset
         in: query
         schema: {type: integer, minimum: 0, default: 0}
@@ -4062,6 +4197,41 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+  /clubs/{clubId}/tasks/summary:
+    get:
+      operationId: task.summarize
+      summary: Summarize club task counts matching active filters
+      tags: [Task]
+      x-permission: task.view
+      x-scope: CLUB
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: departmentId
+        in: query
+        schema: {type: string, format: uuid}
+      - name: assigneeId
+        in: query
+        schema: {type: string, format: uuid}
+      - name: status
+        in: query
+        schema: {type: string, enum: [TODO, IN_PROGRESS, DONE, COMPLETED, OVERDUE, CANCELLED]}
+      - name: overdue
+        in: query
+        schema: {type: boolean}
+      responses:
+        '200':
+          description: Task summary matching filters
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TaskSummary'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
   /users/me/tasks:
     get:
       operationId: task.listMine
@@ -4072,7 +4242,10 @@ paths:
       parameters:
       - name: status
         in: query
-        schema: {type: string, enum: [TODO, IN_PROGRESS, DONE, COMPLETED, OVERDUE]}
+        schema: {type: string, enum: [TODO, IN_PROGRESS, DONE, COMPLETED, OVERDUE, CANCELLED]}
+      - name: overdue
+        in: query
+        schema: {type: boolean}
       - name: offset
         in: query
         schema: {type: integer, minimum: 0, default: 0}
@@ -4088,6 +4261,127 @@ paths:
         '400': {$ref: '#/components/responses/BadRequest'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
+  /tasks/{taskId}:
+    get:
+      operationId: task.get
+      summary: Get task detail
+      tags: [Task]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Task detail
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Task'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      operationId: task.update
+      summary: Reassign task, adjust deadline/priority, or reopen task
+      tags: [Task]
+      x-permission: task.update | task.create
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateTaskRequest'}
+      responses:
+        '200':
+          description: Updated task
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Task'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /tasks/{taskId}/notifications:
+    post:
+      operationId: notification.notifyTaskAssignees
+      summary: Send notification to task assignee (and optional open subtask assignees)
+      tags: [Notification]
+      x-permission: notification.send | task.update | task.create
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: taskId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ResourceNotificationRequest'}
+      responses:
+        '201':
+          description: Notification sent to task assignee(s)
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ResourceNotificationResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /statistics/system:
+    get:
+      operationId: statistics.system
+      summary: System-wide account, club, and active role statistics
+      tags: [Statistics]
+      x-permission: user.view
+      x-scope: GLOBAL
+      x-implementation-status: IMPLEMENTED
+      responses:
+        '200':
+          description: System overview statistics
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SystemStatistics'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /clubs/{clubId}/statistics:
+    get:
+      operationId: statistics.club
+      summary: Club operational statistics with time-range filtering
+      tags: [Statistics]
+      x-permission: club.view | member.view
+      x-scope: CLUB
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: from
+        in: query
+        schema: {type: string, format: date-time}
+      - name: to
+        in: query
+        schema: {type: string, format: date-time}
+      responses:
+        '200':
+          description: Club operational statistics
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClubStatistics'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
   /tasks/{taskId}/progress:
     patch:
       operationId: task.updateProgress
@@ -4348,11 +4642,12 @@ components:
   schemas:
     SystemSettings:
       type: object
-      required: [maxPendingApplications, reapplyCooldownDays, maxActiveClubs]
+      required: [maxPendingApplications, reapplyCooldownDays, maxActiveClubs, attendanceEditWindowHours]
       properties:
         maxPendingApplications: {type: integer, minimum: 0, maximum: 100, description: Số đơn PENDING tối đa của một sinh viên trên mọi CLB; 0 = không giới hạn}
         reapplyCooldownDays: {type: integer, minimum: 0, maximum: 365, description: Số ngày chờ sau khi bị từ chối mới được nộp lại cùng CLB; 0 = không chờ}
         maxActiveClubs: {type: integer, minimum: 0, maximum: 100, description: Số CLB tối đa một sinh viên được tham gia cùng lúc; 0 = không giới hạn}
+        attendanceEditWindowHours: {type: integer, minimum: 0, maximum: 720, description: Số giờ cho phép hiệu chỉnh điểm danh sau khi sự kiện chuyển COMPLETED}
         updatedAt: {type: string, format: date-time}
         updatedBy: {type: [string, 'null'], format: uuid}
     UpdateSystemSettingsRequest:
@@ -4362,6 +4657,7 @@ components:
         maxPendingApplications: {type: integer, minimum: 0, maximum: 100}
         reapplyCooldownDays: {type: integer, minimum: 0, maximum: 365}
         maxActiveClubs: {type: integer, minimum: 0, maximum: 100}
+        attendanceEditWindowHours: {type: [integer, 'null'], minimum: 0, maximum: 720}
     FormFieldDefinition:
       type: object
       required: [key, label, type, required]
@@ -4735,6 +5031,42 @@ components:
       examples:
       - email: phat@example.test
         password: DemoPassword123!
+    RegisterRequest:
+      type: object
+      required:
+      - email
+      - password
+      - fullName
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+        fullName:
+          type: string
+          maxLength: 200
+        studentCode:
+          type:
+          - string
+          - 'null'
+          maxLength: 50
+        phone:
+          type:
+          - string
+          - 'null'
+          maxLength: 32
+          pattern: '^[0-9+().\- ]*$'
+      examples:
+      - email: phat.nguyen@st.vju.ac.vn
+        password: DemoPassword123!
+        fullName: Nguyễn Xuân Phát
+        studentCode: '23110209'
+        phone: 0900000000
     ChangePasswordRequest:
       type: object
       required:
@@ -6128,13 +6460,32 @@ components:
       type: object
       properties:
         note: {type: [string, 'null'], maxLength: 1000}
+    ResourceNotificationRequest:
+      type: object
+      required: [title, message]
+      properties:
+        title: {type: string, maxLength: 160}
+        message: {type: string, maxLength: 2000}
+        idempotencyKey: {type: [string, 'null'], maxLength: 80}
+        includeSubtasks: {type: [boolean, 'null']}
+    ResourceNotificationResponse:
+      type: object
+      required: [referenceType, referenceId, clubId, recipientCount]
+      properties:
+        referenceType: {type: string, enum: [EVENT, TASK]}
+        referenceId: {type: string, format: uuid}
+        clubId: {type: string, format: uuid}
+        recipientCount: {type: integer}
     Event:
       type: object
-      required: [id, clubId, title, eventType, startTime, endTime, registrationDeadline, allowCtv, status, registeredCount, createdBy, createdAt, updatedAt]
+      required: [id, clubId, title, eventType, startTime, endTime, registrationDeadline, allowCtv, status, createdAt, updatedAt]
       properties:
         id: {type: string, format: uuid}
         clubId: {type: string, format: uuid}
+        clubCode: {type: [string, 'null']}
+        clubName: {type: [string, 'null']}
         departmentId: {type: [string, 'null'], format: uuid}
+        departmentName: {type: [string, 'null']}
         title: {type: string}
         description: {type: [string, 'null']}
         eventType: {type: string, enum: [CLUB_EVENT, MEETING, WORKSHOP, RECRUITMENT]}
@@ -6145,8 +6496,7 @@ components:
         allowCtv: {type: boolean}
         maxParticipants: {type: [integer, 'null']}
         status: {type: string, enum: [DRAFT, OPEN_REGISTRATION, CLOSED_REGISTRATION, COMPLETED, CANCELLED]}
-        registeredCount: {type: integer, format: int64}
-        createdBy: {type: string, format: uuid}
+        completedAt: {type: [string, 'null'], format: date-time}
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}
     EventListResponse:
@@ -6159,23 +6509,69 @@ components:
         total: {type: integer, format: int64}
         offset: {type: integer}
         limit: {type: integer}
+    UpdateEventRegistrationRequest:
+      type: object
+      properties:
+        eventRole: {type: [string, 'null'], maxLength: 100}
+        status: {type: [string, 'null'], enum: [REGISTERED, CANCELLED, null]}
+        note: {type: [string, 'null'], maxLength: 500}
     EventRegistration:
       type: object
-      required: [id, eventId, userId, status, registeredAt]
+      required: [id, eventId, userId, participantType, status, registeredAt]
       properties:
         id: {type: string, format: uuid}
         eventId: {type: string, format: uuid}
         userId: {type: string, format: uuid}
-        userFullName: {type: [string, 'null']}
         userEmail: {type: [string, 'null']}
-        status: {type: string, enum: [REGISTERED, WAITLISTED, CANCELLED]}
+        userFullName: {type: [string, 'null']}
+        studentCode: {type: [string, 'null']}
+        participantType: {type: string, enum: [MEMBER, CTV]}
+        eventRole: {type: [string, 'null']}
+        status: {type: string, enum: [REGISTERED, CANCELLED]}
         note: {type: [string, 'null']}
         registeredAt: {type: string, format: date-time}
         cancelledAt: {type: [string, 'null'], format: date-time}
+    MyEventParticipation:
+      type: object
+      required: [registrationId, eventId, clubId, clubCode, clubName, eventTitle, eventType, eventStatus, startTime, endTime, registrationDeadline, participantType, registrationStatus, registeredAt, countedAsAttended]
+      properties:
+        registrationId: {type: string, format: uuid}
+        eventId: {type: string, format: uuid}
+        clubId: {type: string, format: uuid}
+        clubCode: {type: string}
+        clubName: {type: string}
+        eventTitle: {type: string}
+        eventType: {type: string}
+        eventStatus: {type: string}
+        location: {type: [string, 'null']}
+        startTime: {type: string, format: date-time}
+        endTime: {type: string, format: date-time}
+        registrationDeadline: {type: string, format: date-time}
+        participantType: {type: string, enum: [MEMBER, CTV]}
+        eventRole: {type: [string, 'null']}
+        registrationStatus: {type: string, enum: [REGISTERED, CANCELLED]}
+        registeredAt: {type: string, format: date-time}
+        cancelledAt: {type: [string, 'null'], format: date-time}
+        attendanceStatus: {type: [string, 'null'], enum: [PRESENT, LATE, EXCUSED, ABSENT, null]}
+        attendanceNote: {type: [string, 'null']}
+        attendanceEditReason: {type: [string, 'null']}
+        checkedAt: {type: [string, 'null'], format: date-time}
+        countedAsAttended: {type: boolean}
+    MyEventParticipationListResponse:
+      type: object
+      required: [items, total, offset, limit]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/MyEventParticipation'}
+        total: {type: integer, format: int64}
+        offset: {type: integer}
+        limit: {type: integer}
     RecordAttendanceRequest:
       type: object
       required: [items]
       properties:
+        reason: {type: [string, 'null'], maxLength: 500}
         items:
           type: array
           minItems: 1
@@ -6186,30 +6582,44 @@ components:
               userId: {type: string, format: uuid}
               status: {type: string, enum: [PRESENT, LATE, EXCUSED, ABSENT]}
               note: {type: [string, 'null'], maxLength: 500}
+              expectedVersion: {type: [integer, 'null'], format: int64}
     EventAttendance:
       type: object
-      required: [id, eventId, userId, status, recordedBy, recordedAt]
+      required: [id, eventId, userId, status, checkedBy, checkedAt, version]
       properties:
         id: {type: string, format: uuid}
         eventId: {type: string, format: uuid}
         userId: {type: string, format: uuid}
-        userFullName: {type: [string, 'null']}
         userEmail: {type: [string, 'null']}
+        userFullName: {type: [string, 'null']}
+        studentCode: {type: [string, 'null']}
         status: {type: string, enum: [PRESENT, LATE, EXCUSED, ABSENT]}
         note: {type: [string, 'null']}
-        recordedBy: {type: string, format: uuid}
-        recordedAt: {type: string, format: date-time}
+        editReason: {type: [string, 'null']}
+        checkedBy: {type: string, format: uuid}
+        checkedAt: {type: string, format: date-time}
+        version: {type: integer, format: int64}
     CreateTaskRequest:
       type: object
       required: [assigneeId, title, deadline]
       properties:
         departmentId: {type: [string, 'null'], format: uuid}
         eventId: {type: [string, 'null'], format: uuid}
+        parentTaskId: {type: [string, 'null'], format: uuid}
         assigneeId: {type: string, format: uuid}
         title: {type: string, maxLength: 200}
         description: {type: [string, 'null'], maxLength: 4000}
         priority: {type: [string, 'null'], enum: [LOW, MEDIUM, HIGH, null]}
         deadline: {type: string, format: date-time}
+    UpdateTaskRequest:
+      type: object
+      properties:
+        title: {type: [string, 'null'], maxLength: 200}
+        description: {type: [string, 'null'], maxLength: 4000}
+        priority: {type: [string, 'null'], enum: [LOW, MEDIUM, HIGH, null]}
+        deadline: {type: [string, 'null'], format: date-time}
+        assigneeId: {type: [string, 'null'], format: uuid}
+        status: {type: [string, 'null'], enum: [TODO, IN_PROGRESS, CANCELLED, null]}
     UpdateTaskProgressRequest:
       type: object
       properties:
@@ -6222,19 +6632,27 @@ components:
       properties: {}
     Task:
       type: object
-      required: [id, clubId, assigneeId, assignerId, title, priority, status, progressPercent, deadline, createdAt, updatedAt]
+      required: [id, clubId, assigneeId, assignerId, title, priority, status, overdue, progressPercent, deadline, createdAt, updatedAt]
       properties:
         id: {type: string, format: uuid}
         clubId: {type: string, format: uuid}
+        clubCode: {type: [string, 'null']}
+        clubName: {type: [string, 'null']}
         departmentId: {type: [string, 'null'], format: uuid}
+        departmentName: {type: [string, 'null']}
         eventId: {type: [string, 'null'], format: uuid}
+        eventTitle: {type: [string, 'null']}
+        parentTaskId: {type: [string, 'null'], format: uuid}
+        parentTaskTitle: {type: [string, 'null']}
         assigneeId: {type: string, format: uuid}
         assigneeFullName: {type: [string, 'null']}
         assignerId: {type: string, format: uuid}
+        assignerFullName: {type: [string, 'null']}
         title: {type: string}
         description: {type: [string, 'null']}
         priority: {type: string, enum: [LOW, MEDIUM, HIGH]}
-        status: {type: string, enum: [TODO, IN_PROGRESS, DONE, COMPLETED, OVERDUE]}
+        status: {type: string, enum: [TODO, IN_PROGRESS, DONE, COMPLETED, OVERDUE, CANCELLED]}
+        overdue: {type: boolean}
         progressPercent: {type: integer}
         progressNote: {type: [string, 'null']}
         reportLink: {type: [string, 'null']}
@@ -6243,6 +6661,67 @@ components:
         verifiedAt: {type: [string, 'null'], format: date-time}
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}
+    TaskSummary:
+      type: object
+      required: [total, todoCount, inProgressCount, doneCount, completedCount, cancelledCount, overdueCount, evaluatedAt]
+      properties:
+        total: {type: integer, format: int64}
+        todoCount: {type: integer, format: int64}
+        inProgressCount: {type: integer, format: int64}
+        doneCount: {type: integer, format: int64}
+        completedCount: {type: integer, format: int64}
+        cancelledCount: {type: integer, format: int64}
+        overdueCount: {type: integer, format: int64}
+        evaluatedAt: {type: string, format: date-time}
+    SystemStatistics:
+      type: object
+      required: [totalUsers, activeUsers, lockedUsers, inactiveUsers, anonymizedUsers, totalClubs, activeClubs, inactiveClubs, roleBreakdown, generatedAt]
+      properties:
+        totalUsers: {type: integer, format: int64}
+        activeUsers: {type: integer, format: int64}
+        lockedUsers: {type: integer, format: int64}
+        inactiveUsers: {type: integer, format: int64}
+        anonymizedUsers: {type: integer, format: int64}
+        totalClubs: {type: integer, format: int64}
+        activeClubs: {type: integer, format: int64}
+        inactiveClubs: {type: integer, format: int64}
+        roleBreakdown:
+          type: array
+          items:
+            type: object
+            required: [roleCode, roleName, scope, activeAssignmentCount, distinctUserCount]
+            properties:
+              roleCode: {type: string}
+              roleName: {type: string}
+              scope: {type: string}
+              activeAssignmentCount: {type: integer, format: int64}
+              distinctUserCount: {type: integer, format: int64}
+        generatedAt: {type: string, format: date-time}
+    ClubStatistics:
+      type: object
+      required: [clubId, clubCode, clubName, activeMembers, activeDepartments, pendingApplications, totalEvents, openEvents, completedEvents, cancelledEvents, uniqueParticipants, activeRegistrations, cancelledRegistrations, attendedCount, absentOrExcusedCount, openTasks, overdueTasks, completedTasks, generatedAt]
+      properties:
+        clubId: {type: string, format: uuid}
+        clubCode: {type: string}
+        clubName: {type: string}
+        from: {type: [string, 'null'], format: date-time}
+        to: {type: [string, 'null'], format: date-time}
+        activeMembers: {type: integer, format: int64}
+        activeDepartments: {type: integer, format: int64}
+        pendingApplications: {type: integer, format: int64}
+        totalEvents: {type: integer, format: int64}
+        openEvents: {type: integer, format: int64}
+        completedEvents: {type: integer, format: int64}
+        cancelledEvents: {type: integer, format: int64}
+        uniqueParticipants: {type: integer, format: int64}
+        activeRegistrations: {type: integer, format: int64}
+        cancelledRegistrations: {type: integer, format: int64}
+        attendedCount: {type: integer, format: int64}
+        absentOrExcusedCount: {type: integer, format: int64}
+        openTasks: {type: integer, format: int64}
+        overdueTasks: {type: integer, format: int64}
+        completedTasks: {type: integer, format: int64}
+        generatedAt: {type: string, format: date-time}
     TaskListResponse:
       type: object
       required: [items, total, offset, limit]
@@ -6419,3 +6898,5 @@ tags:
   description: Giao việc, cập nhật tiến độ và nghiệm thu công việc CLB
 - name: Chat
   description: Kênh trao đổi nội bộ và AI Bot tóm tắt cuộc họp CLB
+- name: Statistics
+  description: Thống kê tổng quan quản trị hệ thống và thống kê hoạt động CLB

@@ -1,14 +1,13 @@
 package com.vju.club.config;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "app.demo-data")
+@Getter
+@Setter
 public class DemoDataProperties {
     private boolean enabled = true;
     private String password;
-
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
 }

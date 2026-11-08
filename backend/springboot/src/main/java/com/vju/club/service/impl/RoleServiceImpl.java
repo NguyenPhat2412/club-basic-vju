@@ -16,6 +16,9 @@ import com.vju.club.repository.DepartmentMemberRepository;
 import com.vju.club.enums.MembershipStatus;
 import com.vju.club.repository.MembershipRepository;
 import com.vju.club.annotation.RequirePermission;
+import com.vju.club.common.DepartmentConstants;
+import com.vju.club.common.PermissionConstants;
+import com.vju.club.common.RoleConstants;
 import com.vju.club.entity.Permission;
 import com.vju.club.enums.PermissionScope;
 import com.vju.club.repository.PermissionRepository;
@@ -77,21 +80,21 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     @Transactional(readOnly = true)
-    @RequirePermission("role.view")
+    @RequirePermission(RoleConstants.PERMISSION_VIEW)
     public List<RoleResponse> list(Actor actor) {
         return roleRepository.findAllWithPermissions().stream().map(roleMapper::toResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    @RequirePermission("role.view")
+    @RequirePermission(RoleConstants.PERMISSION_VIEW)
     public RoleResponse get(Actor actor, UUID roleId) {
         return roleMapper.toResponse(findRole(roleId));
     }
 
     @Override
     @Transactional
-    @RequirePermission("role.manage")
+    @RequirePermission(RoleConstants.PERMISSION_MANAGE)
     public RoleResponse create(Actor actor, CreateRoleRequest request) {
         String code = request.code().trim().toUpperCase(Locale.ROOT);
         if (roleRepository.existsByCodeIgnoreCase(code)) {
@@ -111,7 +114,7 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     @Transactional
-    @RequirePermission("role.manage")
+    @RequirePermission(RoleConstants.PERMISSION_MANAGE)
     public RoleResponse update(Actor actor, UUID roleId, UpdateRoleRequest request) {
         Role role = findRole(roleId);
         if (GrantGuard.SYSTEM_ADMIN.equals(role.getCode())
@@ -171,7 +174,7 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     @Transactional
-    @RequirePermission("permission.assign")
+    @RequirePermission(PermissionConstants.PERMISSION_ASSIGN)
     public UserRoleResponse assign(Actor actor, UUID userId, AssignRoleRequest request) {
         User actorUser = findUser(actor.id());
         User target = findUser(userId);
@@ -218,7 +221,7 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     @Transactional
-    @RequirePermission("permission.revoke")
+    @RequirePermission(PermissionConstants.PERMISSION_REVOKE)
     public void revoke(Actor actor, UUID userId, UUID assignmentId) {
         User actorUser = findUser(actor.id());
         UserRole assignment = userRoleRepository.findByIdAndUser_Id(assignmentId, userId)
@@ -242,7 +245,7 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     @Transactional(readOnly = true)
-    @RequirePermission(value = "department.view", clubId = "clubId")
+    @RequirePermission(value = DepartmentConstants.PERMISSION_VIEW, clubId = "clubId")
     public ClubStructureResponse getClubStructure(Actor actor, UUID clubId) {
         if (!clubRepository.existsById(clubId)) {
             throw notFound("CLUB_NOT_FOUND", "Club not found");
@@ -301,7 +304,7 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     @Transactional
-    @RequirePermission(value = "permission.assign", clubId = "clubId")
+    @RequirePermission(value = PermissionConstants.PERMISSION_ASSIGN, clubId = "clubId")
     public UserRoleResponse assignClubPosition(Actor actor, UUID clubId, AssignClubPositionRequest request) {
         User actorUser = findUser(actor.id());
         Club club = clubRepository.findById(clubId).orElseThrow(() -> notFound("CLUB_NOT_FOUND", "Club not found"));
@@ -404,7 +407,7 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     @Transactional
-    @RequirePermission(value = "permission.revoke", clubId = "clubId")
+    @RequirePermission(value = PermissionConstants.PERMISSION_REVOKE, clubId = "clubId")
     public void revokeClubPosition(Actor actor, UUID clubId, UUID assignmentId) {
         if (!clubRepository.existsById(clubId)) {
             throw notFound("CLUB_NOT_FOUND", "Club not found");

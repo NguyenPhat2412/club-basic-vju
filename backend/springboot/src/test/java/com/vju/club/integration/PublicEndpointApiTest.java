@@ -18,7 +18,7 @@ class PublicEndpointApiTest extends ApiIntegrationTest {
     @Test
     void exactlyTheAnnotatedHandlersArePublic() {
         assertThat(SecurityConfigAccess.publicRoutes(handlerMapping)).containsExactlyInAnyOrder(
-                "POST /api/v1/auth/login", "GET /api/v1/auth/csrf",
+                "POST /api/v1/auth/login", "POST /api/v1/auth/register", "GET /api/v1/auth/csrf",
                 "POST /api/v1/auth/google", "GET /api/v1/auth/google/config",
                 "GET /api/v1/api-catalog", "GET /api-docs/phase1.yaml",
                 "GET /api/v1/public/clubs", "GET /api/v1/public/clubs/categories", "GET /api/v1/public/clubs/{clubId}",

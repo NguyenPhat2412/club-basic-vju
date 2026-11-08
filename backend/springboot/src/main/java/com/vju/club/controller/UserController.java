@@ -92,8 +92,11 @@ public class UserController {
     }
 
     @DeleteMapping(ApiPaths.USER_BY_ID)
-    public ResponseEntity<Void> deleteUser(Actor actor, @PathVariable UUID userId) {
-        userService.deleteUser(actor, userId);
+    public ResponseEntity<Void> deleteUser(
+            Actor actor,
+            @PathVariable UUID userId,
+            @RequestParam(required = false) Boolean anonymize) {
+        userService.deleteUser(actor, userId, anonymize);
         return ResponseEntity.noContent().build();
     }
 }

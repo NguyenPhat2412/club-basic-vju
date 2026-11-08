@@ -12,7 +12,9 @@ public record EventAttendanceResponse(
         String studentCode,
         String status,
         String note,
+        String editReason,
         UUID checkedBy,
-        OffsetDateTime checkedAt
+        OffsetDateTime checkedAt,
+        long version
 ) {
 }

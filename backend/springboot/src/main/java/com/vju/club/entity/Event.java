@@ -59,4 +59,7 @@ public class Event extends TimestampedEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private EventStatus status = EventStatus.DRAFT;
+
+    @Column(name = "completed_at")
+    private OffsetDateTime completedAt;
 }

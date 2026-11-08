@@ -14,6 +14,13 @@ entries:
   authRequired: false
   permission: null
 - method: POST
+  path: /api/v1/auth/register
+  module: authentication
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: POST
   path: /api/v1/auth/google
   module: authentication
   backend: backend/springboot
@@ -644,19 +651,40 @@ entries:
   authRequired: true
   permission: event.view | event.attendance
 - method: PATCH
+  path: /api/v1/events/{eventId}/registrations/{registrationId}
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.update
+- method: PATCH
   path: /api/v1/events/{eventId}/registrations/me/cancel
   module: event
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
   permission: null
+- method: GET
+  path: /api/v1/users/me/event-registrations
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: POST
+  path: /api/v1/events/{eventId}/notifications
+  module: notification
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: notification.send | event.update
 - method: PUT
   path: /api/v1/events/{eventId}/attendances
   module: event
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: event.attendance
+  permission: event.attendance | event.attendance_edit
 - method: GET
   path: /api/v1/events/{eventId}/attendances
   module: event
@@ -686,12 +714,40 @@ entries:
   authRequired: true
   permission: task.view
 - method: GET
+  path: /api/v1/clubs/{clubId}/tasks/summary
+  module: task
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: task.view
+- method: GET
   path: /api/v1/users/me/tasks
   module: task
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
   permission: null
+- method: GET
+  path: /api/v1/tasks/{taskId}
+  module: task
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: PATCH
+  path: /api/v1/tasks/{taskId}
+  module: task
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: task.update | task.create
+- method: POST
+  path: /api/v1/tasks/{taskId}/notifications
+  module: notification
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: notification.send | task.update | task.create
 - method: PATCH
   path: /api/v1/tasks/{taskId}/progress
   module: task
@@ -860,3 +916,17 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: permission.revoke
+- method: GET
+  path: /api/v1/statistics/system
+  module: statistics
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: user.view
+- method: GET
+  path: /api/v1/clubs/{clubId}/statistics
+  module: statistics
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: club.view | member.view

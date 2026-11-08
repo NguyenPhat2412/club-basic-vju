@@ -96,7 +96,17 @@ class SystemSettingsServiceTest {
                 AuditAction.SYSTEM_SETTINGS_UPDATED,
                 row.getId(),
                 null,
-                Map.of("maxPendingApplications", 3, "reapplyCooldownDays", 7, "maxActiveClubs", 2),
-                Map.of("maxPendingApplications", 6, "reapplyCooldownDays", 30, "maxActiveClubs", 4));
+                Map.of("maxPendingApplications", 3, "reapplyCooldownDays", 7, "maxActiveClubs", 2, "attendanceEditWindowHours", 48),
+                Map.of("maxPendingApplications", 6, "reapplyCooldownDays", 30, "maxActiveClubs", 4, "attendanceEditWindowHours", 48));
+    }
+
+    @Test
+    void updateSupportsAttendanceEditWindowHours() {
+        SystemSettings row = singleton(3, 7, 2);
+        when(repository.findSingleton()).thenReturn(Optional.of(row));
+        when(repository.saveAndFlush(any(SystemSettings.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        SystemSettingsResponse updated = service.update(actor, new UpdateSystemSettingsRequest(3, 7, 2, 72));
+        assertThat(updated.attendanceEditWindowHours()).isEqualTo(72);
     }
 }

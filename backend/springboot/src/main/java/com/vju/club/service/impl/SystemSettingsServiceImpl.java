@@ -48,6 +48,9 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
         settings.setMaxPendingApplications(request.maxPendingApplications());
         settings.setReapplyCooldownDays(request.reapplyCooldownDays());
         settings.setMaxActiveClubs(request.maxActiveClubs());
+        if (request.attendanceEditWindowHours() != null) {
+            settings.setAttendanceEditWindowHours(request.attendanceEditWindowHours());
+        }
         SystemSettings saved = repository.saveAndFlush(settings);
         auditService.record(actor.id(), AuditAction.SYSTEM_SETTINGS_UPDATED, saved.getId(), null, before, values(saved));
         return settingsMapper.toResponse(saved);
@@ -62,7 +65,8 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
         return Map.of(
                 "maxPendingApplications", s.getMaxPendingApplications(),
                 "reapplyCooldownDays", s.getReapplyCooldownDays(),
-                "maxActiveClubs", s.getMaxActiveClubs());
+                "maxActiveClubs", s.getMaxActiveClubs(),
+                "attendanceEditWindowHours", s.getAttendanceEditWindowHours());
     }
 }
 

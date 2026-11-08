@@ -4,10 +4,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 @Component
 @Profile({"local", "prod"})
+@Order(10)
 @RequiredArgsConstructor
 public class BootstrapAdminRunner implements CommandLineRunner {
     private final BootstrapAdminService bootstrapAdminService;

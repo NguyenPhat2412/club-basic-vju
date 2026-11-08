@@ -32,8 +32,9 @@ The Spring Boot backend connects to `jdbc:postgresql://localhost:5432/club` by d
 | `V18__locked_status_and_club_positions.sql` | Account `LOCKED` status and club/department position `max_holders` rules |
 | `V19__system_settings.sql` | Global `system_settings` (`max_pending_applications`, `reapply_cooldown_days`, `max_active_clubs`) |
 | `V20__sprint2_membership_application_notification_hardening.sql` | Reviewer-only `club_applications.internal_note`, notification `reference_type` & idempotent `event_key` (`uq_notifications_user_event_key`), and `effective_user_permissions` suppression of `CLUB`/`DEPARTMENT` grants when membership is `SUSPENDED` |
+| `V21__sprint3_sprint4_operations_completion.sql` | Sprint 3 & 4 operations completion: `events.completed_at`, `event_registrations.event_role`, `event_attendances` (`EXCUSED`, `edit_reason`, `@Version` optimistic locking), `tasks` (`parent_task_id` 1-level hierarchy, `overdue_notified_at`, `CANCELLED`), `users.anonymized_at` PII anonymization support, `system_settings.attendance_edit_window_hours` (`0..720`, default `48`), `ON DELETE RESTRICT` historical FKs, and permissions `event.attendance_edit` & `task.update` |
 
-Tables: `users`, `clubs`, `departments`, `memberships`, `department_members`, `permissions`, `user_permissions`, `roles`, `role_permissions`, `user_roles`, `permission_audit_logs`, `audit_logs`, `refresh_tokens`, `club_applications`, `notifications`; view `effective_user_permissions` (active direct grants plus active role assignments, used by every authorization check). Flyway records applied migrations in `flyway_schema_history`. Migrations seed the permission catalog only; no sample users, clubs, or memberships are created.
+Tables: `users`, `clubs`, `departments`, `memberships`, `department_members`, `permissions`, `user_permissions`, `roles`, `role_permissions`, `user_roles`, `permission_audit_logs`, `audit_logs`, `spring_session`, `spring_session_attributes`, `club_applications`, `club_application_forms`, `club_application_files`, `notifications`, `documents`, `document_versions`, `events`, `event_registrations`, `event_attendances`, `tasks`, `chat_channels`, `chat_messages`, `ai_summaries`, `system_settings`; view `effective_user_permissions` (active direct grants plus active role assignments, used by every authorization check). Flyway records applied migrations in `flyway_schema_history`. Migrations seed the permission catalog and system roles only; no sample users, clubs, or memberships are created.
 
 ### Integrity rules enforced by PostgreSQL
 
@@ -56,6 +57,9 @@ Tables: `users`, `clubs`, `departments`, `memberships`, `department_members`, `p
 | `audit_logs` is append-only and its values are valid JSON | trigger `trg_audit_logs_append_only` (`ck_audit_logs_append_only`), `ck_audit_logs_old_value_json`, `ck_audit_logs_new_value_json` |
 | `permission_key` is `module.action` | `ck_permissions_key_matches_module_action` |
 | Audit history is immutable | `permission_audit_logs` FKs are `ON DELETE RESTRICT`; clubs and departments are deactivated, never deleted |
+| User deletion preserves club operational history | Historical FKs on `club_applications`, `event_registrations`, `event_attendances`, `tasks`, `documents`, `chat_messages`, and `ai_summaries` use `ON DELETE RESTRICT`; accounts with operational/audit history are anonymized in-place (`users.anonymized_at`, `USER_ANONYMIZED`) rather than hard-deleted |
+| Subtasks stay 1-level and within club bounds | `tasks.parent_task_id` self-FK (`ON DELETE RESTRICT`) indexed by `idx_tasks_parent`, enforced to 1 level (`parent.parentTaskId == null`) and `deadline <= parent.deadline` |
+| Post-completion attendance edits are conflict-safe | `event_attendances.version` optimistic lock + `edit_reason` + configurable `system_settings.attendance_edit_window_hours` (`0..720`) |
 | `updated_at` follows every update | `set_updated_at()` trigger on `users`, `clubs`, `departments` (keeps a value the statement sets itself) |
 | Notifications are user-owned and indexed by recency | `notifications.user_id` foreign key with `idx_notifications_user_created` |
 
@@ -65,7 +69,7 @@ V3 checks existing data first and aborts with a readable message if values colli
 
 ### Maintenance
 
-`RefreshTokenCleanupJob` deletes refresh tokens that expired or were revoked more than `REFRESH_TOKEN_CLEANUP_RETENTION` (default `7d`) ago, on `REFRESH_TOKEN_CLEANUP_CRON` (default daily at 03:30).
+Spring Session JDBC automatically cleans up expired HTTP sessions in `spring_session`, and `TaskOverdueScheduler` runs periodically (`markOverdueTasks()`) to flag overdue tasks and send idempotent `TASK_OVERDUE` notifications (`overdue_notified_at`) without overwriting `TODO`/`IN_PROGRESS` task statuses.
 
 Check the local database with:
 

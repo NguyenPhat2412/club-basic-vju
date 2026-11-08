@@ -1,31 +1,31 @@
 package com.vju.club.service.impl;
 
-import com.vju.club.common.OffsetLimitRequest;
-import com.vju.club.dto.response.PageResponse;
-import com.vju.club.config.GoogleSignInProperties;
-import com.vju.club.error.ApiException;
-import com.vju.club.enums.AuditAction;
-import com.vju.club.service.AuditService;
-import com.vju.club.service.UserSessionService;
 import com.vju.club.annotation.RequirePermission;
-import com.vju.club.service.RoleService;
+import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.common.UserConstants;
+import com.vju.club.config.GoogleSignInProperties;
 import com.vju.club.dto.request.AdminUpdateUserRequest;
 import com.vju.club.dto.request.CreateUserRequest;
 import com.vju.club.dto.request.ResetPasswordRequest;
 import com.vju.club.dto.request.UpdateProfileRequest;
 import com.vju.club.dto.request.UpdateUserStatusRequest;
+import com.vju.club.dto.response.PageResponse;
 import com.vju.club.dto.response.UserResponse;
 import com.vju.club.entity.User;
+import com.vju.club.enums.AuditAction;
 import com.vju.club.enums.UserStatus;
+import com.vju.club.error.ApiException;
 import com.vju.club.mapper.UserMapper;
 import com.vju.club.repository.UserRepository;
-import com.vju.club.service.UserService;
-import com.vju.club.specification.UserSpecifications;
 import com.vju.club.security.Actor;
 import com.vju.club.security.GrantGuard;
 import com.vju.club.security.PermissionAuthorizationService;
-import lombok.RequiredArgsConstructor;
+import com.vju.club.service.AuditService;
+import com.vju.club.service.RoleService;
+import com.vju.club.service.UserService;
+import com.vju.club.service.UserSessionService;
+import com.vju.club.specification.UserSpecifications;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -35,6 +35,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.OffsetDateTime;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -43,10 +44,10 @@ import java.util.Set;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final Set<String> SORTABLE = Set.of("email", "fullName", "createdAt", "status");
+    private static final String ANONYMIZED_DISPLAY_NAME = "Tài khoản đã ẩn danh";
 
     private final UserRepository userRepository;
     private final PermissionAuthorizationService authorizationService;
@@ -57,6 +58,43 @@ public class UserServiceImpl implements UserService {
     private final RoleService roleService;
     private final GrantGuard grantGuard;
     private final GoogleSignInProperties googleSignIn;
+    private final UserAccountPurgeSupport purgeSupport;
+
+    @Autowired
+    public UserServiceImpl(UserRepository userRepository,
+                           PermissionAuthorizationService authorizationService,
+                           AuditService auditService,
+                           UserMapper userMapper,
+                           PasswordEncoder passwordEncoder,
+                           UserSessionService userSessionService,
+                           RoleService roleService,
+                           GrantGuard grantGuard,
+                           GoogleSignInProperties googleSignIn,
+                           UserAccountPurgeSupport purgeSupport) {
+        this.userRepository = userRepository;
+        this.authorizationService = authorizationService;
+        this.auditService = auditService;
+        this.userMapper = userMapper;
+        this.passwordEncoder = passwordEncoder;
+        this.userSessionService = userSessionService;
+        this.roleService = roleService;
+        this.grantGuard = grantGuard;
+        this.googleSignIn = googleSignIn;
+        this.purgeSupport = purgeSupport;
+    }
+
+    public UserServiceImpl(UserRepository userRepository,
+                           PermissionAuthorizationService authorizationService,
+                           AuditService auditService,
+                           UserMapper userMapper,
+                           PasswordEncoder passwordEncoder,
+                           UserSessionService userSessionService,
+                           RoleService roleService,
+                           GrantGuard grantGuard,
+                           GoogleSignInProperties googleSignIn) {
+        this(userRepository, authorizationService, auditService, userMapper, passwordEncoder,
+                userSessionService, roleService, grantGuard, googleSignIn, null);
+    }
 
     @Override
     @Transactional
@@ -196,6 +234,10 @@ public class UserServiceImpl implements UserService {
                 request.status() == UserStatus.ACTIVE ? "user.active" : "user.inactive", null, null);
         User user = findUser(userId);
         requireAdminToManageAdmin(actor, userId);
+        if (user.getAnonymizedAt() != null && request.status() == UserStatus.ACTIVE) {
+            throw new ApiException(HttpStatus.CONFLICT, "ACCOUNT_ANONYMIZED",
+                    "An anonymized account cannot be reactivated");
+        }
         if (request.status() != UserStatus.ACTIVE) {
             if (userId.equals(actor.id())) {
                 throw new ApiException(HttpStatus.CONFLICT, "CANNOT_DEACTIVATE_SELF", "You cannot deactivate your own account");
@@ -209,7 +251,7 @@ public class UserServiceImpl implements UserService {
             userSessionService.endAllSessions(userId);
         }
         auditService.recordChange(actor.id(), request.status() == UserStatus.ACTIVE
-                ? AuditAction.USER_UNLOCKED : AuditAction.USER_LOCKED, userId, null, before,
+                        ? AuditAction.USER_UNLOCKED : AuditAction.USER_LOCKED, userId, null, before,
                 Map.of("status", saved.getStatus()));
         return userMapper.toResponse(saved);
     }
@@ -217,19 +259,54 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @RequirePermission(UserConstants.PERMISSION_DELETE)
-    public void deleteUser(Actor actor, UUID userId) {
+    public void deleteUser(Actor actor, UUID userId, Boolean anonymize) {
         User user = findUser(userId);
         if (userId.equals(actor.id())) {
             throw new ApiException(HttpStatus.CONFLICT, "CANNOT_DELETE_SELF", "You cannot delete your own account");
         }
         requireAdminToManageAdmin(actor, userId);
         grantGuard.requireNotLastSystemAdmin(userId);
+
+        boolean shouldAnonymize = Boolean.TRUE.equals(anonymize)
+                || (purgeSupport != null && purgeSupport.hasOperationalOrAuditHistory(userId));
+
+        userSessionService.endAllSessions(userId);
+
+        if (shouldAnonymize) {
+            OffsetDateTime timestamp = purgeSupport != null ? purgeSupport.now() : OffsetDateTime.now();
+            Map<String, Object> before = new LinkedHashMap<>();
+            before.put("previousStatus", user.getStatus());
+            before.put("alreadyAnonymized", user.getAnonymizedAt() != null);
+
+            if (purgeSupport != null) {
+                purgeSupport.cleanupCommitmentsForAnonymizedUser(userId, actor.id(), timestamp);
+            }
+
+            user.setEmail("deleted+" + userId + "@anonymized.vju.local");
+            user.setFullName(ANONYMIZED_DISPLAY_NAME);
+            user.setStudentCode(null);
+            user.setPhone(null);
+            user.setAvatarUrl(null);
+            user.setGoogleSubject(null);
+            user.setPasswordHash(passwordEncoder.encode(unusablePassword()));
+            user.setRequiresPasswordChange(false);
+            user.setStatus(UserStatus.INACTIVE);
+            user.setAnonymizedAt(timestamp);
+            User saved = userRepository.saveAndFlush(user);
+
+            Map<String, Object> after = new LinkedHashMap<>();
+            after.put("status", saved.getStatus());
+            after.put("anonymizedAt", saved.getAnonymizedAt());
+            after.put("email", saved.getEmail());
+            auditService.record(actor.id(), AuditAction.USER_ANONYMIZED, userId, null, before, after);
+            return;
+        }
+
         Map<String, Object> before = new LinkedHashMap<>();
         before.put("email", user.getEmail());
         before.put("fullName", user.getFullName());
         before.put("studentCode", user.getStudentCode());
         before.put("status", user.getStatus());
-        userSessionService.endAllSessions(userId);
         userRepository.delete(user);
         userRepository.flush();
         auditService.record(actor.id(), AuditAction.USER_DELETED, userId, null, before, null);
