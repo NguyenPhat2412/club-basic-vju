@@ -840,7 +840,7 @@ paths:
         '200':
           description: Binary image stream
           content:
-            image/*:
+            application/octet-stream:
               schema:
                 type: string
                 format: binary
@@ -867,7 +867,7 @@ paths:
         '200':
           description: Binary image stream
           content:
-            image/*:
+            application/octet-stream:
               schema:
                 type: string
                 format: binary
@@ -1160,8 +1160,8 @@ paths:
       x-permission: club.update
       x-implementation-status: IMPLEMENTED
       responses:
-        '200':
-          description: Success
+        '201':
+          description: Created
           content:
             application/json:
               schema:
@@ -1202,8 +1202,8 @@ paths:
       x-permission: club.update
       x-implementation-status: IMPLEMENTED
       responses:
-        '200':
-          description: Success
+        '201':
+          description: Created
           content:
             application/json:
               schema:
