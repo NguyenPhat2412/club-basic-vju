@@ -126,6 +126,20 @@ entries:
   authRequired: false
   permission: null
 - method: GET
+  path: /api/v1/public/clubs/{clubId}/logo
+  module: club
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: GET
+  path: /api/v1/public/clubs/{clubId}/cover
+  module: club
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: GET
   path: /api/v1/clubs
   module: club
   backend: backend/springboot
@@ -160,6 +174,20 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: club.active | club.inactive
+- method: POST
+  path: /api/v1/clubs/{clubId}/logo
+  module: club
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: club.update
+- method: POST
+  path: /api/v1/clubs/{clubId}/cover
+  module: club
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: club.update
 - method: GET
   path: /api/v1/clubs/{clubId}/departments
   module: department
