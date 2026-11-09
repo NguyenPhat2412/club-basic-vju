@@ -12,6 +12,8 @@ import com.vju.club.entity.ClubApplication;
 import com.vju.club.entity.ClubApplicationForm;
 import com.vju.club.entity.Department;
 import com.vju.club.entity.DepartmentMember;
+import com.vju.club.entity.Document;
+import com.vju.club.entity.DocumentVersion;
 import com.vju.club.entity.Event;
 import com.vju.club.entity.EventRegistration;
 import com.vju.club.entity.Membership;
@@ -41,6 +43,8 @@ import com.vju.club.repository.ClubApplicationRepository;
 import com.vju.club.repository.ClubRepository;
 import com.vju.club.repository.DepartmentMemberRepository;
 import com.vju.club.repository.DepartmentRepository;
+import com.vju.club.repository.DocumentRepository;
+import com.vju.club.repository.DocumentVersionRepository;
 import com.vju.club.repository.EventRegistrationRepository;
 import com.vju.club.repository.EventRepository;
 import com.vju.club.repository.MembershipRepository;
@@ -113,6 +117,12 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
 
     @Autowired(required = false)
     private EventRegistrationRepository eventRegistrationRepository;
+
+    @Autowired(required = false)
+    private DocumentRepository documentRepository;
+
+    @Autowired(required = false)
+    private DocumentVersionRepository documentVersionRepository;
 
     public LocalVjuClubCatalogSeeder(
             DemoDataProperties demoDataProperties,
@@ -379,6 +389,38 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
                         summary.setModel("gemini-2.5-flash");
                         aiSummaryRepository.save(summary);
                     }
+
+                    List<Department> depts = departmentRepository.findByClub_IdOrderByNameAscIdAsc(club.getId());
+                    if (!depts.isEmpty()) {
+                        ChatChannel deptChannel = new ChatChannel();
+                        deptChannel.setClub(club);
+                        deptChannel.setDepartment(depts.getFirst());
+                        deptChannel.setName("ban-chuyen-mon-noi-bo");
+                        deptChannel.setChannelType(ChatChannelType.DEPARTMENT);
+                        deptChannel = chatChannelRepository.save(deptChannel);
+
+                        ChatMessage deptMsg = new ChatMessage();
+                        deptMsg.setChannel(deptChannel);
+                        deptMsg.setSender(userA);
+                        deptMsg.setSenderType(ChatSenderType.USER);
+                        deptMsg.setContent("Kênh trao đổi nội bộ ban chuyên môn của " + club.getCode()
+                                + ". Các thành viên cập nhật tài liệu và phân công ca trực tại đây nhé.");
+                        chatMessageRepository.save(deptMsg);
+                    }
+                }
+            }
+        }
+        if (documentRepository != null && documentVersionRepository != null && userA != null) {
+            for (Club club : clubsByCode.values()) {
+                if (documentRepository.findNames(club.getId(), false).isEmpty()) {
+                    seedClubDocument(club, userA,
+                            "Quy-che-Hoat-dong-" + club.getCode() + "-2026.pdf",
+                            "club_charter",
+                            "1111111111111111111111111111111111111111111111111111111111111111");
+                    seedClubDocument(club, userA,
+                            "Ke-hoach-Hoat-dong-Hoc-ky-" + club.getCode() + "-2026.pdf",
+                            "semester_plan",
+                            "2222222222222222222222222222222222222222222222222222222222222222");
                 }
             }
         }
@@ -408,7 +450,49 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
                     null,
                     "welcome-vju-student-2026"
             );
+            notificationRepository.insertIdempotent(
+                    student.getId(),
+                    "Công việc mới: Chuẩn bị gian hàng Yukata & Origami lễ hội Aki Matsuri",
+                    "Ban Chủ nhiệm CLB Văn hoá Việt Nam - Nhật Bản (NEB) vừa phân công nhiệm vụ chuẩn bị gian hàng văn hoá cho bạn.",
+                    "TASK",
+                    null,
+                    "task-assigned-neb-student-2026"
+            );
+            notificationRepository.insertIdempotent(
+                    student.getId(),
+                    "Tài liệu mới: Quy chế Tổ chức & Kế hoạch hoạt động CLB học kỳ 2026",
+                    "Ban Chủ nhiệm các câu lạc bộ vừa cập nhật bộ Quy chế hoạt động và Kế hoạch học kỳ 2026. Xem tại mục Quy chế & Tài liệu.",
+                    "DOCUMENT",
+                    null,
+                    "doc-published-student-2026"
+            );
         }
+    }
+
+    private void seedClubDocument(Club club, User owner, String fileName, String appDetailKey, String sha256) {
+        String storagePath = "2026/11/09/" + java.util.UUID.randomUUID() + ".pdf";
+        Document doc = new Document();
+        doc.setClub(club);
+        doc.setOwner(owner);
+        doc.setName(fileName);
+        doc.setPath(storagePath);
+        doc.setVersion(1);
+        doc.setContentType("application/pdf");
+        doc.setSizeBytes(676L);
+        doc.setChecksumSha256(sha256);
+        doc.setAppDetailKey(appDetailKey);
+        Document saved = documentRepository.saveAndFlush(doc);
+
+        DocumentVersion ver = new DocumentVersion();
+        ver.setDocument(saved);
+        ver.setVersion(1);
+        ver.setPath(storagePath);
+        ver.setOriginalName(fileName);
+        ver.setContentType("application/pdf");
+        ver.setSizeBytes(676L);
+        ver.setChecksumSha256(sha256);
+        ver.setUploadedBy(owner.getId());
+        documentVersionRepository.saveAndFlush(ver);
     }
 
     private User ensureUser(String email, String fullName, String studentCode) {
