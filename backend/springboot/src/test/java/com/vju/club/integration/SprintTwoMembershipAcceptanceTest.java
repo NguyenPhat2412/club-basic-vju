@@ -137,8 +137,8 @@ class SprintTwoMembershipAcceptanceTest extends ApiIntegrationTest {
 
         // Member has department-scoped role in depA1
         UUID roleHead = role("DEPARTMENT_HEAD");
-        db.update("INSERT INTO user_roles(user_id, role_id, scope, club_id, department_id, granted_by) VALUES (?, ?, 'DEPARTMENT', ?, ?, ?)",
-                student, roleHead, clubA, depA1, admin);
+        db.update("INSERT INTO user_roles(user_id, role_id, scope, club_id, department_id, granted_by) VALUES (?, ?, 'DEPARTMENT', NULL, ?, ?)",
+                student, roleHead, depA1, admin);
 
         // Manager requires both department.member.remove (depA1) and department.member.add (depA2)
         grant(member, "department.member.remove", "DEPARTMENT", null, depA1);

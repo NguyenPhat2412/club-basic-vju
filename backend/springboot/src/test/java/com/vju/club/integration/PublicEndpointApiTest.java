@@ -22,7 +22,7 @@ class PublicEndpointApiTest extends ApiIntegrationTest {
                 "POST /api/v1/auth/google", "GET /api/v1/auth/google/config",
                 "GET /api/v1/api-catalog", "GET /api-docs/phase1.yaml",
                 "GET /api/v1/public/clubs", "GET /api/v1/public/clubs/categories", "GET /api/v1/public/clubs/{clubId}",
-                "GET /api/v1/public/events");
+                "GET /api/v1/public/clubs/{clubId}/logo", "GET /api/v1/public/clubs/{clubId}/cover", "GET /api/v1/public/events");
     }
 
     @Test
