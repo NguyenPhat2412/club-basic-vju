@@ -111,21 +111,6 @@ function AuthModalDialog({
     }
   };
 
-  const quickLogin = async (presetEmail: string, presetPassword: string) => {
-    setEmail(presetEmail);
-    setPassword(presetPassword);
-    setError("");
-    setLoading(true);
-    try {
-      const envelope = await apiModel.login(presetEmail, presetPassword);
-      await handleAuthSuccess(envelope);
-    } catch (err) {
-      setError(describeError(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const submitRegister = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
@@ -247,19 +232,6 @@ function AuthModalDialog({
                 {loading ? "ĐANG ĐĂNG NHẬP…" : "ĐĂNG NHẬP VÀO CỘNG ĐỒNG"}
                 <ArrowRight size={15} />
               </button>
-              <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-2.5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-600">Đăng nhập nhanh (Localhost Demo)</p>
-                <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                  <button type="button" disabled={loading} onClick={() => void quickLogin("demo.a@vju.local", "Demo-4df1f32b2b8986d2")} className="rounded-lg border border-primary/25 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-slate-800 shadow-2xs transition-colors hover:border-primary hover:bg-primary/5">
-                    <span className="block font-bold text-primary">Admin & Chủ nhiệm CLB</span>
-                    <span className="block truncate text-[10px] text-slate-500">demo.a@vju.local</span>
-                  </button>
-                  <button type="button" disabled={loading} onClick={() => void quickLogin("demo.student@vju.local", "Demo-4df1f32b2b8986d2")} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-left text-xs font-semibold text-slate-800 shadow-2xs transition-colors hover:border-primary hover:bg-primary/5">
-                    <span className="block font-bold text-slate-900">Sinh viên (12 CLB)</span>
-                    <span className="block truncate text-[10px] text-slate-500">demo.student@vju.local</span>
-                  </button>
-                </div>
-              </div>
               <p className="border-t border-slate-100 pt-3 text-center text-xs text-slate-600">
                 Bạn chưa có tài khoản?{" "}
                 <button type="button" onClick={() => switchMode("register")} className="font-bold text-primary hover:underline">

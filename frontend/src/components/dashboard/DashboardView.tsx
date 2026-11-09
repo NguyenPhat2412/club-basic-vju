@@ -4,13 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import {
-  Bell,
-  Building2,
-  Calendar,
-  ClipboardCheck,
-  ClipboardList,
-  Users,
-  UsersRound,
+  Bell, Building2, Calendar, ClipboardCheck, ClipboardList, Users, UsersRound,
 } from "lucide-react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiModel, ApplicationSummary } from "@/lib/api";
@@ -27,12 +21,7 @@ import { DashboardAnalyticsCards } from "@/components/dashboard/DashboardAnalyti
 import { DashboardActivitySection } from "@/components/dashboard/DashboardActivitySection";
 import { DashboardSystemAuditSection } from "@/components/dashboard/DashboardSystemAuditSection";
 
-const APPLICATION_PERMISSIONS = [
-  "application.view",
-  "application.review",
-  "application.approve",
-  "application.reject",
-];
+const APPLICATION_PERMISSIONS = ["application.view", "application.review", "application.approve", "application.reject"];
 
 export function DashboardView() {
   const queryClient = useQueryClient();
