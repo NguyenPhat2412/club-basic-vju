@@ -208,12 +208,9 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
                 "chat.summarize"
         ));
         enrichRoleWithPermissions("DEPARTMENT_HEAD", List.of(
-                "department.view",
                 "department.member.view",
                 "department.member.add",
                 "department.member.remove",
-                "event.view",
-                "event.create",
                 "event.attendance",
                 "event.attendance_edit",
                 "task.view",
@@ -224,11 +221,28 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
 
     private void enrichRoleWithPermissions(String roleCode, List<String> permissionKeys) {
         roleRepository.findByCode(roleCode).ifPresent(role -> {
-            List<Permission> matching = permissionRepository.findByPermissionKeyIn(permissionKeys);
-            if (role.getPermissions().addAll(matching)) {
+            java.util.Set<java.util.UUID> existingIds = role.getPermissions().stream()
+                    .map(Permission::getId)
+                    .collect(java.util.stream.Collectors.toSet());
+            List<Permission> toAdd = permissionRepository.findByPermissionKeyIn(permissionKeys).stream()
+                    .filter(p -> !existingIds.contains(p.getId()))
+                    .filter(p -> isScopeCompatible(role.getScope(), p.getScope()))
+                    .toList();
+            if (!toAdd.isEmpty()) {
+                role.getPermissions().addAll(toAdd);
                 roleRepository.save(role);
             }
         });
+    }
+
+    private boolean isScopeCompatible(PermissionScope roleScope, PermissionScope permScope) {
+        if (roleScope == PermissionScope.GLOBAL) {
+            return true;
+        }
+        if (roleScope == PermissionScope.CLUB) {
+            return permScope == PermissionScope.CLUB || permScope == PermissionScope.DEPARTMENT;
+        }
+        return permScope == PermissionScope.DEPARTMENT;
     }
 
     private void seedMembershipsAndOperations(Map<String, Club> clubsByCode, OffsetDateTime now) {
