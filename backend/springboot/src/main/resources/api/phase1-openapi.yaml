@@ -827,6 +827,60 @@ paths:
           type: string
           format: uuid
       description: Xem chi tiết một CLB đang ACTIVE trên trang Landing Page công khai (không cần đăng nhập). CLB INACTIVE hoặc không tồn tại trả về 404.
+  /public/clubs/{clubId}/logo:
+    get:
+      operationId: club.getPublicLogo
+      summary: Stream public club logo
+      tags:
+      - Club
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      security: []
+      responses:
+        '200':
+          description: Binary image stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      description: Tải ảnh đại diện (logo) của CLB công khai từ Cloudflare R2 / Storage.
+  /public/clubs/{clubId}/cover:
+    get:
+      operationId: club.getPublicCover
+      summary: Stream public club cover image
+      tags:
+      - Club
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      security: []
+      responses:
+        '200':
+          description: Binary image stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      description: Tải ảnh bìa (cover) của CLB công khai từ Cloudflare R2 / Storage.
   /clubs:
     get:
       operationId: club.list
@@ -1097,6 +1151,90 @@ paths:
         ACTIVE: club.active
         INACTIVE: club.inactive
       description: 'Quyền phụ thuộc trạng thái mới trong body: ACTIVE → club.active, INACTIVE → club.inactive. Tạm dừng CLB tự động từ chối mọi đơn đang chờ (ghi chú: CLB tạm dừng hoạt động).'
+  /clubs/{clubId}/logo:
+    post:
+      operationId: club.uploadLogo
+      summary: Upload club logo image
+      tags:
+      - Club
+      x-permission: club.update
+      x-implementation-status: IMPLEMENTED
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Club'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      description: Tải lên và cập nhật ảnh đại diện (logo) của CLB lên Cloudflare R2 / Storage.
+  /clubs/{clubId}/cover:
+    post:
+      operationId: club.uploadCover
+      summary: Upload club cover image
+      tags:
+      - Club
+      x-permission: club.update
+      x-implementation-status: IMPLEMENTED
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Club'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      description: Tải lên và cập nhật ảnh bìa (cover) của CLB lên Cloudflare R2 / Storage.
   /clubs/{clubId}/departments:
     get:
       operationId: department.list
