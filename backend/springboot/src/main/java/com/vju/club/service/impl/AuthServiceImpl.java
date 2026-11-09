@@ -61,7 +61,7 @@ public class AuthServiceImpl implements AuthService {
         String email = normalizeEmail(request.email());
         if (googleSignIn.isGoogleEmail(email)) {
             User existing = userRepository.findByEmailIgnoreCase(email).orElse(null);
-            if (existing == null || !SELF_REGISTERED_MARKER.equals(existing.getGoogleSubject())) {
+            if (existing == null || !isSelfRegistered(existing.getGoogleSubject())) {
                 throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_SIGN_IN_REQUIRED",
                         "Accounts on this email domain sign in with Google");
             }
@@ -109,7 +109,7 @@ public class AuthServiceImpl implements AuthService {
         user.setPhone(blankToNull(request.phone()));
         user.setStatus(UserStatus.ACTIVE);
         user.setRequiresPasswordChange(false);
-        user.setGoogleSubject(SELF_REGISTERED_MARKER);
+        user.setGoogleSubject(SELF_REGISTERED_MARKER + ":" + UUID.randomUUID());
         User saved = userRepository.saveAndFlush(user);
         auditService.record(saved.getId(), AuditAction.USER_CREATED, saved.getId(), null, null,
                 Map.of("email", saved.getEmail(), "source", "self-register"));
@@ -135,7 +135,7 @@ public class AuthServiceImpl implements AuthService {
         boolean register = Boolean.TRUE.equals(request.register());
         User user = userRepository.findByEmailIgnoreCase(email).orElseGet(() -> createStudent(identity, email, register));
         if (user.getGoogleSubject() != null
-                && !SELF_REGISTERED_MARKER.equals(user.getGoogleSubject())
+                && !isSelfRegistered(user.getGoogleSubject())
                 && !user.getGoogleSubject().equals(identity.subject())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_ACCOUNT_MISMATCH",
                     "This account is linked to a different Google account");
@@ -226,5 +226,11 @@ public class AuthServiceImpl implements AuthService {
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private boolean isSelfRegistered(String googleSubject) {
+        return googleSubject != null
+                && (SELF_REGISTERED_MARKER.equals(googleSubject)
+                || googleSubject.startsWith(SELF_REGISTERED_MARKER + ":"));
     }
 }

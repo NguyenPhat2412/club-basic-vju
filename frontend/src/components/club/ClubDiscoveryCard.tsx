@@ -38,7 +38,7 @@ export function ClubDiscoveryCard({
 }: ClubDiscoveryCardProps) {
   return (
     <article className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs transition-all hover:border-primary/40 hover:shadow-md">
-      <div>
+      <div className="cursor-pointer" onClick={() => onOpenDetail(club)}>
         <ClubCoverBanner
           name={club.name}
           code={club.code}
