@@ -90,10 +90,10 @@ export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFoot
               <div className="mt-6 grid grid-cols-2 gap-3.5 sm:grid-cols-3">
                 {[
                   { src: "/images/clubs/bigheart/gallery-1.jpg", label: "CLB Thiện nguyện BigHeart" },
-                  { src: "/images/clubs/vjua/gallery-1.jpg", label: "CLB Đại sứ Sinh viên VJUA" },
+                  { src: "/images/clubs/vjua/gallery-1.jpg", label: "CLB Nghệ thuật VJU (VJUA)" },
                   { src: "/images/clubs/monozukuri/gallery-1.jpg", label: "CLB Sáng tạo Monozukuri" },
-                  { src: "/images/clubs/sunpinkey/gallery-1.jpg", label: "CLB Âm nhạc SunPinKey" },
-                  { src: "/images/clubs/neb/gallery-1.jpg", label: "CLB Kinh tế NEB" },
+                  { src: "/images/clubs/sunpinkey/gallery-1.jpg", label: "CLB Bóng chuyền Sun Pinkey" },
+                  { src: "/images/clubs/neb/gallery-1.jpg", label: "CLB Văn hoá Việt - Nhật NEB" },
                   { src: "/images/clubs/vjub/gallery-1.jpg", label: "CLB Bóng rổ VJUB" },
                 ].map((photo) => (
                   <Link

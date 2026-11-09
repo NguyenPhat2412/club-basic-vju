@@ -1318,7 +1318,8 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
         if (club.getContactEmail() == null || club.getContactEmail().isBlank()) {
             club.setContactEmail(spec.contactEmail());
         }
-        if (club.getLogoUrl() == null || club.getLogoUrl().isBlank()) {
+        if (club.getLogoUrl() == null || club.getLogoUrl().isBlank()
+                || club.getLogoUrl().contains("/images/clubs/")) {
             club.setLogoUrl(logoUrl);
         }
         if (club.getCoverUrl() == null || club.getCoverUrl().isBlank()) {
@@ -1428,7 +1429,7 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
                         6, true, 180
                 ),
                 new ClubCatalogEntry(
-                        "ARC", "arc", "logo.jpg",
+                        "ARC", "arc", "logo.png",
                         "CLB Học thuật và Nghiên cứu Khoa học VJU (ARC)",
                         "Học thuật & Nghiên cứu",
                         "arc@vju.local",

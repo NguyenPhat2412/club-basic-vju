@@ -60,10 +60,10 @@ export const PHRASES_JA_CORE: Record<string, string> = {
   'Hình ảnh thực tế từ các chương trình tình nguyện, giao lưu văn hóa Việt - Nhật, chế tạo kỹ thuật và giải đấu thể thao của sinh viên Trường Đại học Việt Nhật.':
     '日越大学の学生によるボランティア活動、日越文化交流、ものづくり技術制作、スポーツ大会の実際の様子です。',
   'CLB Thiện nguyện BigHeart': 'BigHeart ボランティアクラブ',
-  'CLB Đại sứ Sinh viên VJUA': 'VJUA 学生アンバサダークラブ',
+  'CLB Nghệ thuật VJU (VJUA)': 'VJU アーティストクラブ (VJUA)',
   'CLB Sáng tạo Monozukuri': 'Monozukuri ものづくり創造クラブ',
-  'CLB Âm nhạc SunPinKey': 'SunPinKey 軽音楽クラブ',
-  'CLB Kinh tế NEB': 'NEB 経済・ビジネスクラブ',
+  'CLB Bóng chuyền Sun Pinkey': 'Sun Pinkey バレーボールクラブ',
+  'CLB Văn hoá Việt - Nhật NEB': 'NEB 日越文化クラブ',
   'CLB Bóng rổ VJUB': 'VJUB バスケットボールクラブ',
   'GIẢI ĐÁP NHANH CHO SINH VIÊN': '学生向けクイックFAQ',
   'Câu hỏi thường gặp': 'よくある質問（FAQ）',
