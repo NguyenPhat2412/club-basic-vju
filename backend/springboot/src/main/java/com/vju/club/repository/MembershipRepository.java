@@ -23,6 +23,9 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID>, J
 
     Optional<Membership> findFirstByUser_IdAndClub_IdAndStatusNot(UUID userId, UUID clubId, MembershipStatus status);
 
+    @EntityGraph(attributePaths = {"user", "club"})
+    List<Membership> findByClub_IdAndStatusOrderByJoinedAtAsc(UUID clubId, MembershipStatus status);
+
     boolean existsByUser_IdAndClub_IdAndStatus(UUID userId, UUID clubId, MembershipStatus status);
 
     @Query("SELECT m.user.id FROM Membership m WHERE m.club.id = :clubId AND m.status = com.vju.club.enums.MembershipStatus.ACTIVE")

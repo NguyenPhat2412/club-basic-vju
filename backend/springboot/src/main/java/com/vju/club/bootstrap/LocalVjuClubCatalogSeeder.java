@@ -5,23 +5,28 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vju.club.config.DemoDataProperties;
 import com.vju.club.dto.request.FormFieldDefinition;
 import com.vju.club.entity.AiSummary;
+import com.vju.club.entity.AuditLog;
 import com.vju.club.entity.ChatChannel;
 import com.vju.club.entity.ChatMessage;
 import com.vju.club.entity.Club;
 import com.vju.club.entity.ClubApplication;
+import com.vju.club.entity.ClubApplicationFile;
 import com.vju.club.entity.ClubApplicationForm;
 import com.vju.club.entity.Department;
 import com.vju.club.entity.DepartmentMember;
 import com.vju.club.entity.Document;
 import com.vju.club.entity.DocumentVersion;
 import com.vju.club.entity.Event;
+import com.vju.club.entity.EventAttendance;
 import com.vju.club.entity.EventRegistration;
 import com.vju.club.entity.Membership;
 import com.vju.club.entity.Permission;
+import com.vju.club.entity.PermissionAuditLog;
 import com.vju.club.entity.Role;
 import com.vju.club.entity.Task;
 import com.vju.club.entity.User;
 import com.vju.club.entity.UserRole;
+import com.vju.club.enums.AttendanceStatus;
 import com.vju.club.enums.ChatChannelType;
 import com.vju.club.enums.ChatSenderType;
 import com.vju.club.enums.ClubApplicationStatus;
@@ -31,13 +36,16 @@ import com.vju.club.enums.EventRegistrationStatus;
 import com.vju.club.enums.EventStatus;
 import com.vju.club.enums.EventType;
 import com.vju.club.enums.MembershipStatus;
+import com.vju.club.enums.PermissionAuditAction;
 import com.vju.club.enums.PermissionScope;
 import com.vju.club.enums.TaskPriority;
 import com.vju.club.enums.TaskStatus;
 import com.vju.club.enums.UserStatus;
 import com.vju.club.repository.AiSummaryRepository;
+import com.vju.club.repository.AuditLogRepository;
 import com.vju.club.repository.ChatChannelRepository;
 import com.vju.club.repository.ChatMessageRepository;
+import com.vju.club.repository.ClubApplicationFileRepository;
 import com.vju.club.repository.ClubApplicationFormRepository;
 import com.vju.club.repository.ClubApplicationRepository;
 import com.vju.club.repository.ClubRepository;
@@ -45,15 +53,18 @@ import com.vju.club.repository.DepartmentMemberRepository;
 import com.vju.club.repository.DepartmentRepository;
 import com.vju.club.repository.DocumentRepository;
 import com.vju.club.repository.DocumentVersionRepository;
+import com.vju.club.repository.EventAttendanceRepository;
 import com.vju.club.repository.EventRegistrationRepository;
 import com.vju.club.repository.EventRepository;
 import com.vju.club.repository.MembershipRepository;
 import com.vju.club.repository.NotificationRepository;
+import com.vju.club.repository.PermissionAuditLogRepository;
 import com.vju.club.repository.PermissionRepository;
 import com.vju.club.repository.RoleRepository;
 import com.vju.club.repository.TaskRepository;
 import com.vju.club.repository.UserRepository;
 import com.vju.club.repository.UserRoleRepository;
+import com.vju.club.storage.DocumentStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,11 +77,17 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Seeds and enriches the 12 real VJU student clubs, recruitment forms, showcase events,
@@ -119,10 +136,25 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
     private EventRegistrationRepository eventRegistrationRepository;
 
     @Autowired(required = false)
+    private EventAttendanceRepository eventAttendanceRepository;
+
+    @Autowired(required = false)
     private DocumentRepository documentRepository;
 
     @Autowired(required = false)
     private DocumentVersionRepository documentVersionRepository;
+
+    @Autowired(required = false)
+    private ClubApplicationFileRepository clubApplicationFileRepository;
+
+    @Autowired(required = false)
+    private DocumentStorage documentStorage;
+
+    @Autowired(required = false)
+    private AuditLogRepository auditLogRepository;
+
+    @Autowired(required = false)
+    private PermissionAuditLogRepository permissionAuditLogRepository;
 
     public LocalVjuClubCatalogSeeder(
             DemoDataProperties demoDataProperties,
@@ -267,35 +299,61 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
         User svTrang = ensureUser("trang.dh@vju.local", "Đỗ Huyền Trang", "23110056");
         User svKhanh = ensureUser("khanh.nv@vju.local", "Nguyễn Vũ Khánh", "22110081");
         User svVy = ensureUser("vy.lt@vju.local", "Lê Thảo Vy", "23110064");
+        User svNam = ensureUser("nam.tr@vju.local", "Trương Hoài Nam", "23110088");
+        User svMai = ensureUser("mai.np@vju.local", "Nguyễn Phương Mai", "23110095");
 
-        // Enroll demo.a as CLUB_PRESIDENT and demo.student as CLUB_MEMBER across all 12 real VJU clubs first
+        User adminUser = userRepository.findByEmailIgnoreCase("admin123@gmail.com")
+                .or(() -> userRepository.findByEmailIgnoreCase("admin@vju.local"))
+                .orElse(userA);
+
+        // Enroll demo.a as CLUB_PRESIDENT across all 12 real VJU clubs
         int clubIdx = 0;
         for (Club club : clubsByCode.values()) {
             ensureClubMembership(userA, club, clubIdx, "CLUB_PRESIDENT", userA, now.minusDays(45 - clubIdx));
-            ensureClubMembership(student, club, clubIdx + 1, "CLUB_MEMBER", userA, now.minusDays(30 - clubIdx));
             clubIdx++;
         }
 
-        // demo.b@vju.local: joins >= 3 clubs (VJUA, BIGHEART, NEB, HASUKO)
+        // Enroll admin accounts (admin123@gmail.com, admin@vju.local, 23110209@st.vju.ac.vn) across all 12 clubs
+        // Do NOT enroll every student into all 12 clubs so each club has non-member students for applications & adding members
+        for (User existingUser : userRepository.findAll()) {
+            if (existingUser.getStatus() != UserStatus.ACTIVE) {
+                continue;
+            }
+            String emailLower = existingUser.getEmail().toLowerCase(Locale.ROOT);
+            if (emailLower.startsWith("admin") || emailLower.startsWith("23110209")) {
+                int idx = 0;
+                for (Club club : clubsByCode.values()) {
+                    ensureClubMembership(existingUser, club, idx + 1, "CLUB_MEMBER", userA, now.minusDays(40 - idx));
+                    idx++;
+                }
+            }
+        }
+
+        // demo.student@vju.local: active member in 3 clubs (VJUA, NEB, BIGHEART) so they can apply to the other 9 clubs
+        ensureClubMembership(student, clubsByCode.get("VJUA"), 1, "CLUB_MEMBER", userA, now.minusDays(30));
+        ensureClubMembership(student, clubsByCode.get("NEB"), 2, "CLUB_MEMBER", userA, now.minusDays(28));
+        ensureClubMembership(student, clubsByCode.get("BIGHEART"), 1, "CLUB_MEMBER", userA, now.minusDays(26));
+
+        // demo.b@vju.local: joins 4 clubs (VJUA, BIGHEART, NEB, HASUKO)
         ensureClubMembership(userB, clubsByCode.get("VJUA"), 0, "DEPARTMENT_HEAD", userA, now.minusDays(42));
         ensureClubMembership(userB, clubsByCode.get("BIGHEART"), 0, "CLUB_VICE_PRESIDENT", userA, now.minusDays(38));
         ensureClubMembership(userB, clubsByCode.get("NEB"), 0, "CLUB_VICE_PRESIDENT", userA, now.minusDays(30));
         ensureClubMembership(userB, clubsByCode.get("HASUKO"), 0, "CLUB_VICE_PRESIDENT", userA, now.minusDays(25));
 
-        // demo.c@vju.local: joins >= 3 clubs (VJUA, SUNPINKEY, VJUP, VAC)
-        ensureClubMembership(userC, clubsByCode.get("VJUA"), 0, "CLUB_MEMBER", userA, now.minusDays(36));
+        // demo.c@vju.local: joins 4 clubs (VJUA, SUNPINKEY, VJUP, VAC)
+        ensureClubMembership(userC, clubsByCode.get("VJUA"), 3, "CLUB_MEMBER", userA, now.minusDays(36));
         ensureClubMembership(userC, clubsByCode.get("SUNPINKEY"), 0, "CLUB_VICE_PRESIDENT", userA, now.minusDays(34));
         ensureClubMembership(userC, clubsByCode.get("VJUP"), 0, "CLUB_VICE_PRESIDENT", userA, now.minusDays(27));
         ensureClubMembership(userC, clubsByCode.get("VAC"), 0, "CLUB_VICE_PRESIDENT", userA, now.minusDays(22));
 
-        // Ensure every single one of the 12 VJU clubs has 3-4 active members and leadership across departments
+        // Ensure every single one of the 12 VJU clubs has active members across all 4 departments and leadership roles
         ensureClubMembership(svLinh, clubsByCode.get("VJUA"), 2, "CLUB_VICE_PRESIDENT", userA, now.minusDays(24));
         ensureClubMembership(svLinh, clubsByCode.get("ARC"), 1, "DEPARTMENT_HEAD", userA, now.minusDays(21));
-        ensureClubMembership(svLinh, clubsByCode.get("HASUKO"), 1, "CLUB_MEMBER", userB, now.minusDays(19));
+        ensureClubMembership(svLinh, clubsByCode.get("HASUKO"), 1, "DEPARTMENT_HEAD", userB, now.minusDays(19));
         ensureClubMembership(svLinh, clubsByCode.get("VAC"), 1, "DEPARTMENT_HEAD", userC, now.minusDays(16));
 
         ensureClubMembership(svMinh, clubsByCode.get("MONOZUKURI"), 0, "CLUB_VICE_PRESIDENT", userA, now.minusDays(35));
-        ensureClubMembership(svMinh, clubsByCode.get("ARC"), 2, "CLUB_MEMBER", userA, now.minusDays(22));
+        ensureClubMembership(svMinh, clubsByCode.get("ARC"), 0, "CLUB_VICE_PRESIDENT", userA, now.minusDays(22));
         ensureClubMembership(svMinh, clubsByCode.get("VJUB"), 0, "CLUB_VICE_PRESIDENT", userA, now.minusDays(30));
         ensureClubMembership(svMinh, clubsByCode.get("VJUS"), 0, "CLUB_VICE_PRESIDENT", userA, now.minusDays(29));
 
@@ -304,49 +362,261 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
         ensureClubMembership(svAnh, clubsByCode.get("VJUB"), 1, "DEPARTMENT_HEAD", svMinh, now.minusDays(19));
         ensureClubMembership(svAnh, clubsByCode.get("VJUS"), 1, "DEPARTMENT_HEAD", svMinh, now.minusDays(17));
 
-        ensureClubMembership(svTrang, clubsByCode.get("BIGHEART"), 2, "CLUB_VICE_PRESIDENT", userB, now.minusDays(26));
+        ensureClubMembership(svTrang, clubsByCode.get("BIGHEART"), 2, "DEPARTMENT_HEAD", userB, now.minusDays(26));
         ensureClubMembership(svTrang, clubsByCode.get("HASUKO"), 2, "DEPARTMENT_HEAD", userB, now.minusDays(20));
-        ensureClubMembership(svTrang, clubsByCode.get("OUVEVJU"), 2, "CLUB_MEMBER", svAnh, now.minusDays(15));
+        ensureClubMembership(svTrang, clubsByCode.get("OUVEVJU"), 1, "DEPARTMENT_HEAD", svAnh, now.minusDays(15));
         ensureClubMembership(svTrang, clubsByCode.get("VAC"), 2, "CLUB_MEMBER", userC, now.minusDays(14));
 
         ensureClubMembership(svKhanh, clubsByCode.get("SUNPINKEY"), 2, "CLUB_MEMBER", userC, now.minusDays(18));
         ensureClubMembership(svKhanh, clubsByCode.get("VJUB"), 2, "CLUB_MEMBER", svMinh, now.minusDays(16));
         ensureClubMembership(svKhanh, clubsByCode.get("VJUS"), 2, "CLUB_MEMBER", svMinh, now.minusDays(14));
-        ensureClubMembership(svKhanh, clubsByCode.get("MONOZUKURI"), 2, "DEPARTMENT_HEAD", svMinh, now.minusDays(13));
+        ensureClubMembership(svKhanh, clubsByCode.get("MONOZUKURI"), 1, "DEPARTMENT_HEAD", svMinh, now.minusDays(13));
 
-        ensureClubMembership(svVy, clubsByCode.get("NEB"), 1, "CLUB_VICE_PRESIDENT", userB, now.minusDays(25));
-        ensureClubMembership(svVy, clubsByCode.get("VJUP"), 2, "DEPARTMENT_HEAD", userC, now.minusDays(21));
-        ensureClubMembership(svVy, clubsByCode.get("OUVEVJU"), 3, "CLUB_MEMBER", svAnh, now.minusDays(16));
-        ensureClubMembership(svVy, clubsByCode.get("ARC"), 3, "CLUB_MEMBER", userA, now.minusDays(12));
+        ensureClubMembership(svVy, clubsByCode.get("NEB"), 1, "DEPARTMENT_HEAD", userB, now.minusDays(25));
+        ensureClubMembership(svVy, clubsByCode.get("VJUP"), 1, "DEPARTMENT_HEAD", userC, now.minusDays(21));
+        ensureClubMembership(svVy, clubsByCode.get("OUVEVJU"), 2, "CLUB_MEMBER", svAnh, now.minusDays(16));
+        ensureClubMembership(svVy, clubsByCode.get("ARC"), 2, "CLUB_MEMBER", userA, now.minusDays(12));
 
-        // Enroll all existing active accounts (admin123@gmail.com, admin@vju.local, 23110209@st.vju.ac.vn, etc.)
-        // into all 12 real VJU clubs so /memberships ("CLB đang tham gia"), /dashboard, and /management display all 12 clubs
-        for (User existingUser : userRepository.findAll()) {
-            if (existingUser.getStatus() != UserStatus.ACTIVE) {
-                continue;
-            }
-            List<java.util.UUID> activeClubIds = membershipRepository.findActiveClubIdsByUserId(existingUser.getId());
-            if (activeClubIds.size() < clubsByCode.size()) {
-                int idx = 0;
-                for (Club club : clubsByCode.values()) {
-                    ensureClubMembership(existingUser, club, idx, "CLUB_MEMBER", userA, now.minusDays(25 - idx));
-                    idx++;
+        // Ensure every department of every club has at least 2 active department members so Admin can assign DEPARTMENT_HEAD in any department
+        for (Club club : clubsByCode.values()) {
+            List<Department> depts = departmentRepository.findByClub_IdOrderByNameAscIdAsc(club.getId());
+            List<Membership> activeMembers = membershipRepository
+                    .findByClub_IdAndStatusOrderByJoinedAtAsc(club.getId(), MembershipStatus.ACTIVE);
+            for (int d = 0; d < depts.size(); d++) {
+                Department dept = depts.get(d);
+                for (int mIdx = 0; mIdx < Math.min(2, activeMembers.size()); mIdx++) {
+                    Membership m = activeMembers.get((d + mIdx) % activeMembers.size());
+                    if (departmentMemberRepository.findByDepartment_IdAndMembership_Id(dept.getId(), m.getId()).isEmpty()) {
+                        DepartmentMember dm = new DepartmentMember();
+                        dm.setDepartment(dept);
+                        dm.setMembership(m);
+                        dm.setClubId(club.getId());
+                        dm.setJoinedAt(now.minusDays(20 - d));
+                        departmentMemberRepository.save(dm);
+                    }
                 }
             }
         }
 
+        // Seed 2 SUSPENDED memberships so Admin can test "Kích hoạt lại" (SUSPENDED -> ACTIVE)
+        ensureSuspendedMembership(svNam, clubsByCode.get("VJUA"), now.minusDays(18));
+        ensureSuspendedMembership(svMai, clubsByCode.get("ARC"), now.minusDays(15));
+
+        List<User> allStudents = List.of(student, svLinh, svMinh, svAnh, svTrang, svKhanh, svVy, svNam, svMai, userB, userC);
+
         if (clubApplicationRepository != null) {
-            seedShowcaseApplications(clubsByCode, svLinh, svMinh, svTrang, svVy, now);
+            seedShowcaseApplications(clubsByCode, allStudents, userA, adminUser, now);
         }
         if (taskRepository != null) {
-            seedShowcaseTasks(clubsByCode, userA, userB, userC, student, svLinh, svMinh, now);
+            seedShowcaseTasks(clubsByCode, userA, adminUser, userB, userC, student, svLinh, svMinh, now);
         }
-        seedShowcaseChannelsAndNotifications(clubsByCode, userA, userB, student, now);
+        seedRichEventsAndAttendances(clubsByCode, userA, adminUser, allStudents, now);
+        seedShowcaseChannelsAndNotifications(clubsByCode, userA, adminUser, userB, student, now);
+        seedShowcaseAuditLogs(clubsByCode, adminUser, userA, userB, svLinh, now);
+    }
+
+    private void ensureSuspendedMembership(User user, Club club, OffsetDateTime joinedAt) {
+        if (user == null || club == null) {
+            return;
+        }
+        membershipRepository.findFirstByUser_IdAndClub_IdAndStatusNot(user.getId(), club.getId(), MembershipStatus.LEFT)
+                .orElseGet(() -> {
+                    Membership m = new Membership();
+                    m.setUser(user);
+                    m.setClub(club);
+                    m.setStatus(MembershipStatus.SUSPENDED);
+                    m.setJoinedAt(joinedAt);
+                    return membershipRepository.save(m);
+                });
+    }
+
+    private void seedRichEventsAndAttendances(
+            Map<String, Club> clubsByCode,
+            User userA,
+            User adminUser,
+            List<User> students,
+            OffsetDateTime now) {
+        for (Club club : clubsByCode.values()) {
+            List<Department> depts = departmentRepository.findByClub_IdOrderByNameAscIdAsc(club.getId());
+            Department leadDept = depts.isEmpty() ? null : depts.getFirst();
+            Department secondDept = depts.size() > 1 ? depts.get(1) : leadDept;
+
+            List<Event> existingEvents = eventRepository.findByClub(club.getId(), null, null, PageRequest.of(0, 20)).getContent();
+
+            // 1. Ongoing event (started 1h ago, ends in 2h) so Admin can immediately click "Lưu điểm danh" (recordAttendance) without 409 EVENT_NOT_STARTED
+            String ongoingTitle = "Sinh hoạt định kỳ & Điểm danh Ban chuyên môn " + club.getCode();
+            Event ongoing = existingEvents.stream()
+                    .filter(e -> ongoingTitle.equalsIgnoreCase(e.getTitle()))
+                    .findFirst()
+                    .orElseGet(() -> {
+                        Event ev = new Event();
+                        ev.setClub(club);
+                        ev.setDepartment(leadDept);
+                        ev.setTitle(ongoingTitle);
+                        ev.setDescription("Buổi họp triển khai công việc tuần này, rà soát nhân sự sự kiện và điểm danh thành viên trực tiếp tại " + club.getName() + ".");
+                        ev.setEventType(EventType.MEETING);
+                        ev.setLocation("Phòng họp CLB 204 — Cơ sở Hòa Lạc");
+                        ev.setStartTime(now.minusHours(1).withSecond(0).withNano(0));
+                        ev.setEndTime(now.plusHours(2).withSecond(0).withNano(0));
+                        ev.setRegistrationDeadline(now.minusHours(3).withSecond(0).withNano(0));
+                        ev.setAllowCtv(true);
+                        ev.setMaxParticipants(60);
+                        ev.setStatus(EventStatus.OPEN_REGISTRATION);
+                        return eventRepository.save(ev);
+                    });
+
+            // Keep ongoing event window active relative to `now`
+            if (ongoing.getStartTime().isAfter(now.plusHours(1)) || ongoing.getEndTime().isBefore(now)) {
+                ongoing.setStartTime(now.minusHours(1).withSecond(0).withNano(0));
+                ongoing.setEndTime(now.plusHours(2).withSecond(0).withNano(0));
+                ongoing.setRegistrationDeadline(now.minusHours(3).withSecond(0).withNano(0));
+                ongoing = eventRepository.save(ongoing);
+            }
+
+            // 2. Completed event (completed 12h ago, within the 48h post-completion edit window) so Overview statistics & post-completion attendance edit work
+            String completedTitle = "Tổng kết hoạt động tháng & Tập huấn kỹ năng " + club.getCode();
+            Event completed = existingEvents.stream()
+                    .filter(e -> completedTitle.equalsIgnoreCase(e.getTitle()))
+                    .findFirst()
+                    .orElseGet(() -> {
+                        Event ev = new Event();
+                        ev.setClub(club);
+                        ev.setDepartment(secondDept);
+                        ev.setTitle(completedTitle);
+                        ev.setDescription("Buổi tổng kết hoạt động tháng, đánh giá tiến độ các ban chuyên môn và đào tạo kỹ năng điều phối sự kiện của " + club.getName() + ".");
+                        ev.setEventType(EventType.WORKSHOP);
+                        ev.setLocation("Hội trường nhỏ 105 — Cơ sở Hòa Lạc");
+                        ev.setStartTime(now.minusDays(1).minusHours(4).withSecond(0).withNano(0));
+                        ev.setEndTime(now.minusDays(1).minusHours(1).withSecond(0).withNano(0));
+                        ev.setRegistrationDeadline(now.minusDays(2).withSecond(0).withNano(0));
+                        ev.setAllowCtv(false);
+                        ev.setMaxParticipants(50);
+                        ev.setStatus(EventStatus.COMPLETED);
+                        ev.setCompletedAt(now.minusHours(12));
+                        return eventRepository.save(ev);
+                    });
+            if (completed.getCompletedAt() == null || completed.getCompletedAt().isBefore(now.minusHours(36))) {
+                completed.setCompletedAt(now.minusHours(12));
+                completed = eventRepository.save(completed);
+            }
+
+            // Register active club members & CTVs into upcoming, ongoing, and completed events
+            if (eventRegistrationRepository != null) {
+                List<Membership> clubMembers = membershipRepository
+                        .findByClub_IdAndStatusOrderByJoinedAtAsc(club.getId(), MembershipStatus.ACTIVE);
+                for (Event ev : eventRepository.findByClub(club.getId(), null, null, PageRequest.of(0, 10))) {
+                    int idx = 0;
+                    for (Membership m : clubMembers) {
+                        if (idx >= 5) {
+                            break;
+                        }
+                        ensureEventRegistration(ev, m.getUser(), EventParticipantType.MEMBER,
+                                idx == 0 ? "Điều phối viên sự kiện" : "Ban Tổ chức & Hậu cần",
+                                now.minusDays(3));
+                        idx++;
+                    }
+                    // Also add 1 CTV registration if allowCtv is true
+                    if (ev.isAllowCtv()) {
+                        for (User candidate : students) {
+                            if (!membershipRepository.existsByUser_IdAndClub_IdAndStatus(
+                                    candidate.getId(), club.getId(), MembershipStatus.ACTIVE)) {
+                                ensureEventRegistration(ev, candidate, EventParticipantType.CTV,
+                                        "Cộng tác viên hỗ trợ sự kiện", now.minusDays(2));
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Seed attendance records for completed event (PRESENT, LATE, EXCUSED, ABSENT) and initial records for ongoing event
+                if (eventAttendanceRepository != null) {
+                    User checker = adminUser != null ? adminUser : userA;
+                    List<EventRegistration> completedRegs = eventRegistrationRepository
+                            .findByEvent_IdOrderByRegisteredAtAsc(completed.getId(), PageRequest.of(0, 20))
+                            .getContent();
+                    AttendanceStatus[] statuses = {
+                            AttendanceStatus.PRESENT,
+                            AttendanceStatus.PRESENT,
+                            AttendanceStatus.LATE,
+                            AttendanceStatus.EXCUSED,
+                            AttendanceStatus.ABSENT
+                    };
+                    for (int i = 0; i < completedRegs.size(); i++) {
+                        User participant = completedRegs.get(i).getUser();
+                        AttendanceStatus st = statuses[i % statuses.length];
+                        ensureEventAttendance(completed, participant, checker, st,
+                                st == AttendanceStatus.PRESENT ? "Tham gia đầy đủ, đúng giờ"
+                                        : st == AttendanceStatus.LATE ? "Đến muộn 10 phút do lịch học"
+                                        : st == AttendanceStatus.EXCUSED ? "Có đơn xin phép bận thi môn chuyên ngành"
+                                        : "Vắng mặt chưa báo trước",
+                                now.minusHours(12));
+                    }
+
+                    List<EventRegistration> ongoingRegs = eventRegistrationRepository
+                            .findByEvent_IdOrderByRegisteredAtAsc(ongoing.getId(), PageRequest.of(0, 20))
+                            .getContent();
+                    for (int i = 0; i < Math.min(2, ongoingRegs.size()); i++) {
+                        User participant = ongoingRegs.get(i).getUser();
+                        AttendanceStatus st = i == 0 ? AttendanceStatus.PRESENT : AttendanceStatus.LATE;
+                        ensureEventAttendance(ongoing, participant, checker, st,
+                                i == 0 ? "Đã check-in tại phòng họp CLB" : "Báo đến muộn 5 phút",
+                                now.minusMinutes(30));
+                    }
+                }
+            }
+        }
+    }
+
+    private void ensureEventRegistration(
+            Event event,
+            User user,
+            EventParticipantType type,
+            String role,
+            OffsetDateTime registeredAt) {
+        if (event == null || user == null || eventRegistrationRepository == null) {
+            return;
+        }
+        if (eventRegistrationRepository.existsByEvent_IdAndUser_Id(event.getId(), user.getId())) {
+            return;
+        }
+        EventRegistration reg = new EventRegistration();
+        reg.setEvent(event);
+        reg.setUser(user);
+        reg.setParticipantType(type);
+        reg.setStatus(EventRegistrationStatus.REGISTERED);
+        reg.setEventRole(role);
+        reg.setNote("Đăng ký tham gia hoạt động CLB " + event.getClub().getCode());
+        reg.setRegisteredAt(registeredAt);
+        eventRegistrationRepository.save(reg);
+    }
+
+    private void ensureEventAttendance(
+            Event event,
+            User user,
+            User checkedBy,
+            AttendanceStatus status,
+            String note,
+            OffsetDateTime checkedAt) {
+        if (event == null || user == null || checkedBy == null || eventAttendanceRepository == null) {
+            return;
+        }
+        if (eventAttendanceRepository.findByEvent_IdAndUser_Id(event.getId(), user.getId()).isPresent()) {
+            return;
+        }
+        EventAttendance att = new EventAttendance();
+        att.setEvent(event);
+        att.setUser(user);
+        att.setStatus(status);
+        att.setNote(note);
+        att.setCheckedBy(checkedBy);
+        att.setCheckedAt(checkedAt);
+        eventAttendanceRepository.save(att);
     }
 
     private void seedShowcaseChannelsAndNotifications(
             Map<String, Club> clubsByCode,
             User userA,
+            User adminUser,
             User userB,
             User student,
             OffsetDateTime now) {
@@ -415,62 +685,76 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
                 if (documentRepository.findNames(club.getId(), false).isEmpty()) {
                     seedClubDocument(club, userA,
                             "Quy-che-Hoat-dong-" + club.getCode() + "-2026.pdf",
-                            "club_charter",
-                            "1111111111111111111111111111111111111111111111111111111111111111");
+                            "club_charter");
                     seedClubDocument(club, userA,
                             "Ke-hoach-Hoat-dong-Hoc-ky-" + club.getCode() + "-2026.pdf",
-                            "semester_plan",
-                            "2222222222222222222222222222222222222222222222222222222222222222");
-                }
-            }
-        }
-        if (eventRegistrationRepository != null && student != null) {
-            for (Club club : clubsByCode.values()) {
-                for (Event ev : eventRepository.findByClub(club.getId(), EventStatus.OPEN_REGISTRATION, null, PageRequest.of(0, 5))) {
-                    if (!eventRegistrationRepository.existsByEvent_IdAndUser_Id(ev.getId(), student.getId())) {
-                        EventRegistration reg = new EventRegistration();
-                        reg.setEvent(ev);
-                        reg.setUser(student);
-                        reg.setParticipantType(EventParticipantType.MEMBER);
-                        reg.setStatus(EventRegistrationStatus.REGISTERED);
-                        reg.setEventRole("Ban Tổ chức & Hậu cần");
-                        reg.setNote("Đăng ký tham gia sự kiện CLB " + club.getCode());
-                        reg.setRegisteredAt(now.minusDays(2));
-                        eventRegistrationRepository.save(reg);
+                            "semester_plan");
+                } else {
+                    // Repair physical PDF files on disk for any already-seeded documents
+                    for (Document doc : documentRepository.findAll()) {
+                        if (!doc.getClub().getId().equals(club.getId())) {
+                            continue;
+                        }
+                        byte[] pdfBytes = buildValidPdfBytes(doc.getName(), "CLB: " + club.getCode() + " - VJU ClubHub");
+                        String sha = sha256Hex(pdfBytes);
+                        writeStorageIfPresent(doc.getPath(), pdfBytes, "application/pdf");
+                        if (doc.getSizeBytes() != pdfBytes.length || !sha.equals(doc.getChecksumSha256())) {
+                            doc.setSizeBytes(pdfBytes.length);
+                            doc.setChecksumSha256(sha);
+                            documentRepository.save(doc);
+                        }
+                        for (DocumentVersion ver : documentVersionRepository.findByDocument_IdOrderByVersionDesc(doc.getId())) {
+                            writeStorageIfPresent(ver.getPath(), pdfBytes, "application/pdf");
+                            if (ver.getSizeBytes() != pdfBytes.length || !sha.equals(ver.getChecksumSha256())) {
+                                ver.setSizeBytes(pdfBytes.length);
+                                ver.setChecksumSha256(sha);
+                                documentVersionRepository.save(ver);
+                            }
+                        }
                     }
                 }
             }
         }
-        if (notificationRepository != null && student != null) {
-            notificationRepository.insertIdempotent(
-                    student.getId(),
-                    "Chào mừng bạn gia nhập hệ thống 12 Câu lạc bộ VJU ClubHub",
-                    "Hồ sơ thành viên của bạn đã được đồng bộ đầy đủ tại 12 câu lạc bộ sinh viên Trường Đại học Việt Nhật.",
-                    "CLUB",
-                    null,
-                    "welcome-vju-student-2026"
-            );
-            notificationRepository.insertIdempotent(
-                    student.getId(),
-                    "Công việc mới: Chuẩn bị gian hàng Yukata & Origami lễ hội Aki Matsuri",
-                    "Ban Chủ nhiệm CLB Văn hoá Việt Nam - Nhật Bản (NEB) vừa phân công nhiệm vụ chuẩn bị gian hàng văn hoá cho bạn.",
-                    "TASK",
-                    null,
-                    "task-assigned-neb-student-2026"
-            );
-            notificationRepository.insertIdempotent(
-                    student.getId(),
-                    "Tài liệu mới: Quy chế Tổ chức & Kế hoạch hoạt động CLB học kỳ 2026",
-                    "Ban Chủ nhiệm các câu lạc bộ vừa cập nhật bộ Quy chế hoạt động và Kế hoạch học kỳ 2026. Xem tại mục Quy chế & Tài liệu.",
-                    "DOCUMENT",
-                    null,
-                    "doc-published-student-2026"
-            );
+        if (notificationRepository != null) {
+            for (User target : List.of(student, userA, adminUser)) {
+                if (target == null) {
+                    continue;
+                }
+                String prefix = target.getId().toString().substring(0, 8);
+                notificationRepository.insertIdempotent(
+                        target.getId(),
+                        "Chào mừng bạn vận hành hệ thống 12 Câu lạc bộ VJU ClubHub",
+                        "Toàn bộ dữ liệu thành viên, ban chuyên môn, hồ sơ đơn ứng tuyển, sự kiện điểm danh, công việc và tài liệu của 12 CLB đã sẵn sàng.",
+                        "CLUB",
+                        null,
+                        "welcome-vju-" + prefix + "-2026"
+                );
+                notificationRepository.insertIdempotent(
+                        target.getId(),
+                        "Hồ sơ ứng tuyển mới đang chờ duyệt tại các CLB",
+                        "Có hồ sơ đăng ký gia nhập mới tại các câu lạc bộ VJU. Mở mục Quản lý CLB -> Đơn đăng ký để xét duyệt và phân ban.",
+                        "APPLICATION",
+                        null,
+                        "app-pending-" + prefix + "-2026"
+                );
+                notificationRepository.insertIdempotent(
+                        target.getId(),
+                        "Công việc chờ nghiệm thu & Lịch điểm danh sự kiện hôm nay",
+                        "Kiểm tra các công việc đã hoàn thành 100% (chờ nghiệm thu) và sự kiện đang mở điểm danh trực tiếp tại Hòa Lạc.",
+                        "TASK",
+                        null,
+                        "task-verify-" + prefix + "-2026"
+                );
+            }
         }
     }
 
-    private void seedClubDocument(Club club, User owner, String fileName, String appDetailKey, String sha256) {
+    private void seedClubDocument(Club club, User owner, String fileName, String appDetailKey) {
+        byte[] pdfBytes = buildValidPdfBytes(fileName, "CLB: " + club.getCode() + " - VJU ClubHub 2026");
+        String sha256 = sha256Hex(pdfBytes);
         String storagePath = "2026/11/09/" + java.util.UUID.randomUUID() + ".pdf";
+        writeStorageIfPresent(storagePath, pdfBytes, "application/pdf");
+
         Document doc = new Document();
         doc.setClub(club);
         doc.setOwner(owner);
@@ -478,7 +762,7 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
         doc.setPath(storagePath);
         doc.setVersion(1);
         doc.setContentType("application/pdf");
-        doc.setSizeBytes(676L);
+        doc.setSizeBytes(pdfBytes.length);
         doc.setChecksumSha256(sha256);
         doc.setAppDetailKey(appDetailKey);
         Document saved = documentRepository.saveAndFlush(doc);
@@ -489,10 +773,67 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
         ver.setPath(storagePath);
         ver.setOriginalName(fileName);
         ver.setContentType("application/pdf");
-        ver.setSizeBytes(676L);
+        ver.setSizeBytes(pdfBytes.length);
         ver.setChecksumSha256(sha256);
         ver.setUploadedBy(owner.getId());
         documentVersionRepository.saveAndFlush(ver);
+    }
+
+    private void writeStorageIfPresent(String storagePath, byte[] bytes, String contentType) {
+        if (documentStorage == null || storagePath == null) {
+            return;
+        }
+        documentStorage.put(storagePath, new ByteArrayInputStream(bytes), bytes.length, contentType);
+    }
+
+    private byte[] buildValidPdfBytes(String title, String subtitle) {
+        String safeTitle = toAsciiText(title);
+        String safeSub = toAsciiText(subtitle);
+        String streamContent = "BT\n/F1 16 Tf\n50 750 Td\n(" + safeTitle + ") Tj\n"
+                + "/F1 11 Tf\n0 -24 Td\n(" + safeSub + ") Tj\n"
+                + "0 -20 Td\n(Tai lieu chinh thuc he thong quan ly Cau lac bo VJU ClubHub.) Tj\nET\n";
+        byte[] streamBytes = streamContent.getBytes(StandardCharsets.US_ASCII);
+        String pdf = "%PDF-1.4\n"
+                + "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+                + "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+                + "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+                + "/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n"
+                + "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n"
+                + "5 0 obj\n<< /Length " + streamBytes.length + " >>\nstream\n"
+                + streamContent
+                + "endstream\nendobj\n"
+                + "xref\n0 6\n"
+                + "0000000000 65535 f \n"
+                + "0000000009 00000 n \n"
+                + "0000000058 00000 n \n"
+                + "0000000115 00000 n \n"
+                + "0000000241 00000 n \n"
+                + "0000000309 00000 n \n"
+                + "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n"
+                + (345 + streamBytes.length) + "\n%%EOF\n";
+        return pdf.getBytes(StandardCharsets.US_ASCII);
+    }
+
+    private String toAsciiText(String input) {
+        if (input == null) {
+            return "VJU Document";
+        }
+        return java.text.Normalizer.normalize(input, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd')
+                .replace('Đ', 'D')
+                .replaceAll("[^\\x20-\\x7E]", " ")
+                .replace("(", "[")
+                .replace(")", "]");
+    }
+
+    private String sha256Hex(byte[] bytes) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(md.digest(bytes));
+        } catch (Exception e) {
+            return "1111111111111111111111111111111111111111111111111111111111111111";
+        }
     }
 
     private User ensureUser(String email, String fullName, String studentCode) {
@@ -602,41 +943,163 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
 
     private void seedShowcaseApplications(
             Map<String, Club> clubsByCode,
-            User svLinh,
-            User svMinh,
-            User svTrang,
-            User svVy,
+            List<User> candidateStudents,
+            User userA,
+            User adminUser,
             OffsetDateTime now) {
-        ensurePendingApplication(svLinh, clubsByCode.get("NEB"), "0987123450", "Nhật Bản học (BJS)", "K7 (Năm 2)",
-                "Mong muốn tham gia Ban Sự kiện & Lễ hội để tổ chức ngày hội văn hóa Việt - Nhật Aki Matsuri.", now.minusDays(3));
-        ensurePendingApplication(svMinh, clubsByCode.get("OUVEVJU"), "0912345671", "Khoa học và Kỹ thuật Máy tính (BCSE)", "K7 (Năm 2)",
-                "Yêu thích nhiếp ảnh sự kiện và dựng video truyền thông cho các hoạt động sinh viên VJU.", now.minusDays(2));
-        ensurePendingApplication(svTrang, clubsByCode.get("VJUA"), "0934567892", "Nông nghiệp thông minh và Bền vững (BSSA)", "K8 (Năm 1)",
-                "Đam mê ca hát acoustic và muốn thử sức tại đêm nhạc sinh viên VJU.", now.minusDays(1));
-        ensurePendingApplication(svVy, clubsByCode.get("BIGHEART"), "0978112233", "Kỹ thuật Xây dựng (BCE)", "K8 (Năm 1)",
-                "Mong muốn đồng hành cùng các chiến dịch thiện nguyện Áo ấm mùa đông tại vùng cao.", now.minusHours(18));
+        User reviewer = adminUser != null ? adminUser : userA;
+        String[] majors = {
+                "Khoa học và Kỹ thuật Máy tính (BCSE)",
+                "Nhật Bản học (BJS)",
+                "Nông nghiệp thông minh và Bền vững (BSSA)",
+                "Kỹ thuật Xây dựng (BCE)",
+                "Thực phẩm và Sức khỏe (FTH)",
+                "Cơ điện tử thông minh và Sản xuất theo phương thức Nhật Bản (EMJM)"
+        };
+        String[] years = {"K7 (Năm 2)", "K8 (Năm 1)", "K6 (Năm 3)", "K8 (Năm 1)"};
+
+        int clubIdx = 0;
+        for (Club club : clubsByCode.values()) {
+            ClubApplicationForm form = formRepository.findFirstByClub_IdOrderByIsDefaultDescCreatedAtDesc(club.getId()).orElse(null);
+            if (form != null && clubApplicationFileRepository != null) {
+                ensureFormTemplateFile(club, form, reviewer);
+            }
+
+            // Find students who are NOT active members of this club
+            List<User> nonMembers = candidateStudents.stream()
+                    .filter(u -> u != null && !membershipRepository.existsByUser_IdAndClub_IdAndStatus(
+                            u.getId(), club.getId(), MembershipStatus.ACTIVE))
+                    .toList();
+
+            if (!nonMembers.isEmpty()) {
+                User pending1 = nonMembers.get(0);
+                ClubApplication app1 = ensureApplicationWithStatus(
+                        pending1, club, form,
+                        "0987654" + String.format("%03d", clubIdx * 3 + 1),
+                        majors[clubIdx % majors.length],
+                        years[clubIdx % years.length],
+                        "Em rất yêu thích các hoạt động của " + club.getName()
+                                + " và mong muốn đóng góp sức trẻ cho các sự kiện sắp tới của CLB tại Hòa Lạc.",
+                        ClubApplicationStatus.PENDING,
+                        null, null,
+                        now.minusDays(2).minusHours(clubIdx));
+                if (app1 != null && clubApplicationFileRepository != null) {
+                    ensureApplicantAttachment(club, app1, pending1);
+                }
+            }
+            if (nonMembers.size() > 1) {
+                User pending2 = nonMembers.get(1);
+                ClubApplication app2 = ensureApplicationWithStatus(
+                        pending2, club, form,
+                        "0912345" + String.format("%03d", clubIdx * 3 + 2),
+                        majors[(clubIdx + 1) % majors.length],
+                        years[(clubIdx + 1) % years.length],
+                        "Mong muốn rèn luyện kỹ năng làm việc nhóm, tổ chức sự kiện và giao lưu cùng các anh chị trong " + club.getCode() + ".",
+                        ClubApplicationStatus.PENDING,
+                        null, null,
+                        now.minusDays(1).minusHours(clubIdx));
+                if (app2 != null && clubApplicationFileRepository != null) {
+                    ensureApplicantAttachment(club, app2, pending2);
+                }
+            }
+            if (nonMembers.size() > 2) {
+                User rejectedCandidate = nonMembers.get(2);
+                ClubApplication appRej = ensureApplicationWithStatus(
+                        rejectedCandidate, club, form,
+                        "0934567" + String.format("%03d", clubIdx * 3 + 3),
+                        majors[(clubIdx + 2) % majors.length],
+                        years[(clubIdx + 2) % years.length],
+                        "Đăng ký ứng tuyển đợt trước vào " + club.getCode() + ".",
+                        ClubApplicationStatus.REJECTED,
+                        reviewer,
+                        "Lịch cá nhân chưa phù hợp với khung giờ sinh hoạt cố định của Ban chuyên môn. Hẹn bạn ở đợt tuyển CTV tiếp theo!",
+                        now.minusDays(10));
+                if (appRej != null && clubApplicationFileRepository != null) {
+                    ensureApplicantAttachment(club, appRej, rejectedCandidate);
+                }
+            }
+            clubIdx++;
+        }
     }
 
-    private void ensurePendingApplication(
+    private void ensureFormTemplateFile(Club club, ClubApplicationForm form, User uploader) {
+        List<ClubApplicationFile> existing = clubApplicationFileRepository.findByForm_IdOrderByCreatedAtAsc(form.getId());
+        String fileName = "Mau-Don-Ung-Tuyen-" + club.getCode() + "-2026.pdf";
+        byte[] pdfBytes = buildValidPdfBytes(fileName, "Bieu mau don dang ky thanh vien " + club.getCode());
+        String sha = sha256Hex(pdfBytes);
+        if (!existing.isEmpty()) {
+            for (ClubApplicationFile f : existing) {
+                writeStorageIfPresent(f.getStoragePath(), pdfBytes, "application/pdf");
+            }
+            return;
+        }
+        String path = "applications/forms/" + club.getId() + "/" + java.util.UUID.randomUUID() + ".pdf";
+        writeStorageIfPresent(path, pdfBytes, "application/pdf");
+
+        ClubApplicationFile file = new ClubApplicationFile();
+        file.setClub(club);
+        file.setForm(form);
+        file.setFileCategory("FORM_TEMPLATE_DOC");
+        file.setOriginalName(fileName);
+        file.setFileType("PDF");
+        file.setContentType("application/pdf");
+        file.setSizeBytes(pdfBytes.length);
+        file.setStoragePath(path);
+        file.setChecksumSha256(sha);
+        file.setUploadedBy(uploader != null ? uploader.getId() : null);
+        clubApplicationFileRepository.save(file);
+    }
+
+    private void ensureApplicantAttachment(Club club, ClubApplication app, User applicant) {
+        List<ClubApplicationFile> existing = clubApplicationFileRepository.findByApplication_IdOrderByCreatedAtAsc(app.getId());
+        String code = applicant.getStudentCode() != null ? applicant.getStudentCode() : "SV";
+        String fileName = "CV-Ung-Tuyen-" + club.getCode() + "-" + code + ".pdf";
+        byte[] pdfBytes = buildValidPdfBytes(fileName, "Ho so ung tuyen CLB " + club.getCode() + " - " + applicant.getFullName());
+        String sha = sha256Hex(pdfBytes);
+        if (!existing.isEmpty()) {
+            for (ClubApplicationFile f : existing) {
+                writeStorageIfPresent(f.getStoragePath(), pdfBytes, "application/pdf");
+            }
+            return;
+        }
+        String path = "applications/submissions/" + club.getId() + "/" + java.util.UUID.randomUUID() + ".pdf";
+        writeStorageIfPresent(path, pdfBytes, "application/pdf");
+
+        ClubApplicationFile file = new ClubApplicationFile();
+        file.setClub(club);
+        file.setApplication(app);
+        file.setFileCategory("APPLICANT_ATTACHMENT");
+        file.setOriginalName(fileName);
+        file.setFileType("PDF");
+        file.setContentType("application/pdf");
+        file.setSizeBytes(pdfBytes.length);
+        file.setStoragePath(path);
+        file.setChecksumSha256(sha);
+        file.setUploadedBy(applicant.getId());
+        clubApplicationFileRepository.save(file);
+    }
+
+    private ClubApplication ensureApplicationWithStatus(
             User applicant,
             Club club,
+            ClubApplicationForm form,
             String phone,
             String facultyMajor,
             String academicYear,
             String message,
+            ClubApplicationStatus status,
+            User reviewedBy,
+            String reviewNote,
             OffsetDateTime createdAt) {
         if (applicant == null || club == null) {
-            return;
+            return null;
         }
-        if (membershipRepository.existsByUser_IdAndClub_IdAndStatus(applicant.getId(), club.getId(), MembershipStatus.ACTIVE)) {
-            return;
-        }
-        if (!clubApplicationRepository.findByClub_IdAndStatus(club.getId(), ClubApplicationStatus.PENDING).isEmpty()) {
-            return;
+        Optional<ClubApplication> existing = clubApplicationRepository
+                .findByApplicant_IdAndClub_IdAndStatus(applicant.getId(), club.getId(), status);
+        if (existing.isPresent()) {
+            return existing.get();
         }
         List<Department> depts = departmentRepository.findByClub_IdOrderByNameAscIdAsc(club.getId());
-        ClubApplicationForm form = formRepository.findFirstByClub_IdOrderByIsDefaultDescCreatedAtDesc(club.getId()).orElse(null);
-
         ClubApplication app = new ClubApplication();
         app.setApplicant(applicant);
         app.setClub(club);
@@ -650,80 +1113,98 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
         app.setApplicantPhone(phone);
         app.setFacultyMajor(facultyMajor);
         app.setAcademicYear(academicYear);
-        app.setGpa("3.45/4.0");
+        app.setGpa("3.52/4.0");
         app.setSelfIntroduction(message);
-        app.setSkillsExperience("Làm việc nhóm, thiết kế Canva, giao tiếp tiếng Nhật giao tiếp cơ bản.");
-        app.setAvailability("Chiều trong tuần và cuối tuần tại Hòa Lạc");
+        app.setSkillsExperience("Làm việc nhóm, thiết kế Canva, tổ chức sự kiện, giao tiếp tiếng Nhật N4.");
+        app.setAvailability("Chiều trong tuần (16:30 - 18:30) và cuối tuần tại Hòa Lạc");
         app.setMessage(message);
-        app.setCustomAnswers("{\"motivation\":\"" + message + "\",\"timeCommitment\":\"Linh hoạt theo lịch CLB\"}");
-        app.setStatus(ClubApplicationStatus.PENDING);
+        app.setCustomAnswers("{\"motivation\":\"" + message + "\",\"skills\":\"Canva, Premiere, Tiếng Nhật giao tiếp\",\"timeCommitment\":\"Chiều trong tuần (16:30 - 18:30)\"}");
+        app.setStatus(status);
+        if (status != ClubApplicationStatus.PENDING && reviewedBy != null) {
+            app.setReviewedBy(reviewedBy);
+            app.setReviewedAt(createdAt.plusDays(1));
+            app.setReviewNote(reviewNote);
+        }
         app.setCreatedAt(createdAt);
         app.setUpdatedAt(createdAt);
-        clubApplicationRepository.save(app);
+        return clubApplicationRepository.save(app);
     }
 
     private void seedShowcaseTasks(
             Map<String, Club> clubsByCode,
             User userA,
+            User adminUser,
             User userB,
             User userC,
             User student,
             User svLinh,
             User svMinh,
             OffsetDateTime now) {
-        ensureClubTask(clubsByCode.get("VJUA"), userA, userB,
-                "Chuẩn bị kịch bản & âm thanh Đêm nhạc Acoustic VJU",
-                "Hoàn thiện danh sách tiết mục, liên hệ hội trường Hòa Lạc và kiểm tra hệ thống âm thanh ánh sáng.",
-                TaskPriority.HIGH, TaskStatus.IN_PROGRESS, 65, now.plusDays(4));
-        ensureClubTask(clubsByCode.get("ARC"), userA, svLinh,
-                "Tổng hợp tài liệu diễn giả Seminar Nghiên cứu Khoa học",
-                "Chuẩn bị slide giới thiệu phương pháp nghiên cứu và gửi thư mời cho giảng viên cố vấn.",
-                TaskPriority.MEDIUM, TaskStatus.IN_PROGRESS, 45, now.plusDays(5));
-        ensureClubTask(clubsByCode.get("BIGHEART"), userB, student,
-                "Truyền thông Chiến dịch Áo ấm Mùa đông & Gây quỹ Sách",
-                "Thiết kế bộ bài đăng fanpage và đặt bàn tiếp nhận quyên góp tại sảnh tòa nhà VJU Hòa Lạc.",
-                TaskPriority.HIGH, TaskStatus.TODO, 20, now.plusDays(6));
-        ensureClubTask(clubsByCode.get("MONOZUKURI"), svMinh, userA,
-                "Kiểm tra linh kiện IoT & mô hình Robot triển lãm",
-                "Test mạch điều khiển và chuẩn bị bàn trưng bày sản phẩm kỹ thuật cho ngày hội Monozukuri.",
-                TaskPriority.MEDIUM, TaskStatus.IN_PROGRESS, 50, now.plusDays(7));
-        ensureClubTask(clubsByCode.get("NEB"), userB, student,
-                "Chuẩn bị gian hàng Yukata & Origami cho lễ hội Aki Matsuri",
-                "Kiểm kê trang phục Yukata, giấy gấp Origami và phân công thành viên trực gian hàng văn hóa.",
-                TaskPriority.MEDIUM, TaskStatus.TODO, 15, now.plusDays(5));
-        ensureClubTask(clubsByCode.get("VJUP"), userC, student,
-                "Biên tập bộ ảnh Photowalk Khuôn viên Hòa Lạc",
-                "Chọn lọc 30 ảnh đẹp nhất và hậu kỳ màu sắc để đăng tải lên trang truyền thông của CLB.",
-                TaskPriority.LOW, TaskStatus.IN_PROGRESS, 80, now.plusDays(3));
+        User effectiveAdmin = adminUser != null ? adminUser : userA;
+
         for (Club club : clubsByCode.values()) {
-            ensureClubTask(club, userA, student,
-                    "Lập kế hoạch & chuẩn bị hậu cần sự kiện " + club.getCode(),
-                    "Phối hợp cùng các ban chuyên môn của " + club.getName() + " chuẩn bị thiết bị và danh sách điểm danh tại Hòa Lạc.",
-                    TaskPriority.MEDIUM, TaskStatus.IN_PROGRESS, 60, now.plusDays(5));
+            List<Membership> activeMembers = membershipRepository
+                    .findByClub_IdAndStatusOrderByJoinedAtAsc(club.getId(), MembershipStatus.ACTIVE);
+            // Pick a member who is NOT effectiveAdmin and NOT userA so both Admin and userA can click "Nghiệm thu" (verify)
+            User memberAssignee = activeMembers.stream()
+                    .map(Membership::getUser)
+                    .filter(u -> !u.getId().equals(effectiveAdmin.getId()) && !u.getId().equals(userA.getId()))
+                    .findFirst()
+                    .orElse(student);
+
+            // 1. DONE task (100% progress) — ready for Admin to click "Nghiệm thu công việc" (verify) immediately!
+            ensureClubTaskByTitle(club, userA, memberAssignee, 0,
+                    "Hoàn thiện ấn phẩm truyền thông & danh sách hậu cần " + club.getCode(),
+                    "Đã thiết kế xong bộ banner sự kiện, danh sách phân công ca trực và gửi Ban Chủ nhiệm " + club.getName() + " nghiệm thu.",
+                    TaskPriority.HIGH, TaskStatus.DONE, 100, now.plusDays(2), null, null);
+
+            // 2. IN_PROGRESS task assigned to Admin — so Admin sees tasks in /dashboard & /schedule and can test updating progress
+            ensureClubTaskByTitle(club, userA, effectiveAdmin, 1,
+                    "Phê duyệt kế hoạch hoạt động & dự trù kinh phí " + club.getCode(),
+                    "Rà soát nội dung chương trình, danh sách khách mời và kinh phí tổ chức hoạt động học kỳ của " + club.getName() + ".",
+                    TaskPriority.HIGH, TaskStatus.IN_PROGRESS, 65, now.plusDays(4), null, null);
+
+            // 3. TODO overdue task — so "Quá hạn" filter and overdueTasks metric are populated
+            ensureClubTaskByTitle(club, effectiveAdmin, memberAssignee, 2,
+                    "Bổ sung biên bản họp Ban chuyên môn " + club.getCode(),
+                    "Tổng hợp ý kiến đóng góp của các thành viên trong buổi họp tuần trước và tải lên kho tài liệu CLB.",
+                    TaskPriority.MEDIUM, TaskStatus.TODO, 25, now.minusDays(1), null, null);
+
+            // 4. COMPLETED (verified) task — so completedTasks & completionRate statistics in OverviewTab are non-zero
+            ensureClubTaskByTitle(club, userA, memberAssignee, 3,
+                    "Báo cáo tổng kết hoạt động tháng trước " + club.getCode(),
+                    "Đã hoàn thành báo cáo số liệu thành viên, điểm danh sự kiện và được Ban Chủ nhiệm nghiệm thu.",
+                    TaskPriority.MEDIUM, TaskStatus.COMPLETED, 100, now.minusDays(5), userA, now.minusDays(3));
         }
     }
 
-    private void ensureClubTask(
+    private void ensureClubTaskByTitle(
             Club club,
             User assigner,
             User assignee,
+            int deptIdx,
             String title,
             String description,
             TaskPriority priority,
             TaskStatus status,
             int progressPercent,
-            OffsetDateTime deadline) {
+            OffsetDateTime deadline,
+            User verifiedBy,
+            OffsetDateTime verifiedAt) {
         if (club == null || assigner == null || assignee == null) {
             return;
         }
-        if (!taskRepository.findAllByClubFiltered(club.getId(), null, null, null, false, false, OffsetDateTime.now(clock)).isEmpty()) {
+        List<Task> existing = taskRepository.findAllByClubFiltered(
+                club.getId(), null, null, null, false, false, OffsetDateTime.now(clock));
+        boolean found = existing.stream().anyMatch(t -> title.equalsIgnoreCase(t.getTitle()));
+        if (found) {
             return;
         }
         List<Department> depts = departmentRepository.findByClub_IdOrderByNameAscIdAsc(club.getId());
         Task task = new Task();
         task.setClub(club);
         if (!depts.isEmpty()) {
-            task.setDepartment(depts.getFirst());
+            task.setDepartment(depts.get(Math.floorMod(deptIdx, depts.size())));
         }
         task.setTitle(title);
         task.setDescription(description);
@@ -733,7 +1214,80 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
         task.setDeadline(deadline);
         task.setAssigner(assigner);
         task.setAssignee(assignee);
+        if (status == TaskStatus.COMPLETED && verifiedBy != null) {
+            task.setVerifiedBy(verifiedBy);
+            task.setVerifiedAt(verifiedAt);
+        }
         taskRepository.save(task);
+    }
+
+    private void seedShowcaseAuditLogs(
+            Map<String, Club> clubsByCode,
+            User adminUser,
+            User userA,
+            User userB,
+            User svLinh,
+            OffsetDateTime now) {
+        if (auditLogRepository != null && auditLogRepository.count() == 0) {
+            User actor = adminUser != null ? adminUser : userA;
+            for (Club club : clubsByCode.values()) {
+                auditLogRepository.save(new AuditLog(
+                        actor.getId(),
+                        "CLUB_UPDATED",
+                        "CLUB",
+                        club.getId(),
+                        club.getId(),
+                        "{\"status\":\"ACTIVE\"}",
+                        "{\"name\":\"" + club.getName() + "\",\"code\":\"" + club.getCode() + "\",\"status\":\"ACTIVE\"}"
+                ));
+                auditLogRepository.save(new AuditLog(
+                        userA.getId(),
+                        "EVENT_CREATED",
+                        "EVENT",
+                        club.getId(),
+                        club.getId(),
+                        null,
+                        "{\"clubCode\":\"" + club.getCode() + "\",\"status\":\"OPEN_REGISTRATION\"}"
+                ));
+                auditLogRepository.save(new AuditLog(
+                        actor.getId(),
+                        "DOCUMENT_UPLOADED",
+                        "DOCUMENT",
+                        club.getId(),
+                        club.getId(),
+                        null,
+                        "{\"fileName\":\"Quy-che-Hoat-dong-" + club.getCode() + "-2026.pdf\"}"
+                ));
+            }
+        }
+        if (permissionAuditLogRepository != null && permissionAuditLogRepository.count() == 0 && roleRepository != null) {
+            User actor = adminUser != null ? adminUser : userA;
+            Role presidentRole = roleRepository.findByCode("CLUB_PRESIDENT").orElse(null);
+            Role viceRole = roleRepository.findByCode("CLUB_VICE_PRESIDENT").orElse(null);
+            Club vjua = clubsByCode.get("VJUA");
+            if (presidentRole != null && vjua != null) {
+                PermissionAuditLog log1 = new PermissionAuditLog();
+                log1.setActorUser(actor);
+                log1.setTargetUser(userA);
+                log1.setRole(presidentRole);
+                log1.setAction(PermissionAuditAction.GRANT);
+                log1.setScope(PermissionScope.CLUB);
+                log1.setClub(vjua);
+                log1.setReason("Bổ nhiệm Chủ nhiệm CLB Nghệ thuật VJU (VJUA) nhiệm kỳ 2026");
+                permissionAuditLogRepository.save(log1);
+            }
+            if (viceRole != null && vjua != null && svLinh != null) {
+                PermissionAuditLog log2 = new PermissionAuditLog();
+                log2.setActorUser(userA);
+                log2.setTargetUser(svLinh);
+                log2.setRole(viceRole);
+                log2.setAction(PermissionAuditAction.GRANT);
+                log2.setScope(PermissionScope.CLUB);
+                log2.setClub(vjua);
+                log2.setReason("Bổ nhiệm Phó Chủ nhiệm CLB Nghệ thuật VJU (VJUA)");
+                permissionAuditLogRepository.save(log2);
+            }
+        }
     }
 
     private Club upsertClub(ClubCatalogEntry spec) {
