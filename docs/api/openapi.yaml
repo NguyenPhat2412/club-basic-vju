@@ -827,6 +827,60 @@ paths:
           type: string
           format: uuid
       description: Xem chi tiết một CLB đang ACTIVE trên trang Landing Page công khai (không cần đăng nhập). CLB INACTIVE hoặc không tồn tại trả về 404.
+  /public/clubs/{clubId}/logo:
+    get:
+      operationId: club.publicLogo
+      summary: Download public club logo
+      description: Tải ảnh logo công khai của CLB từ kho lưu trữ đám mây (Cloudflare R2).
+      tags:
+      - Club
+      security: []
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Binary image stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /public/clubs/{clubId}/cover:
+    get:
+      operationId: club.publicCover
+      summary: Download public club cover image
+      description: Tải ảnh bìa công khai của CLB từ kho lưu trữ đám mây (Cloudflare R2).
+      tags:
+      - Club
+      security: []
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Binary image stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
   /clubs:
     get:
       operationId: club.list
@@ -1097,6 +1151,92 @@ paths:
         ACTIVE: club.active
         INACTIVE: club.inactive
       description: 'Quyền phụ thuộc trạng thái mới trong body: ACTIVE → club.active, INACTIVE → club.inactive. Tạm dừng CLB tự động từ chối mọi đơn đang chờ (ghi chú: CLB tạm dừng hoạt động).'
+  /clubs/{clubId}/logo:
+    post:
+      operationId: club.uploadLogo
+      summary: Upload club logo
+      description: Tải lên ảnh logo mới cho CLB (lưu trữ trên Cloudflare R2) và cập nhật logoUrl.
+      tags:
+      - Club
+      x-permission: club.update
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Updated club with new logoUrl
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Club'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /clubs/{clubId}/cover:
+    post:
+      operationId: club.uploadCover
+      summary: Upload club cover image
+      description: Tải lên ảnh bìa mới cho CLB (lưu trữ trên Cloudflare R2) và cập nhật coverUrl.
+      tags:
+      - Club
+      x-permission: club.update
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Updated club with new coverUrl
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Club'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /clubs/{clubId}/departments:
     get:
       operationId: department.list
