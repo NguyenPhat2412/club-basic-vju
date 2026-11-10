@@ -108,7 +108,7 @@ export function ClubsDirectoryTab({
           </p>
           <p className="mt-1 text-2xl font-extrabold text-foreground tabular-nums">{clubs.length}</p>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Đồng bộ trực tiếp từ cơ sở dữ liệu PostgreSQL
+            Dữ liệu được cập nhật trực tiếp
           </p>
         </div>
         <div className="rounded-xl border border-border/70 bg-background/60 p-3.5">

@@ -8,6 +8,14 @@ public record SystemSettingsResponse(
         int reapplyCooldownDays,
         int maxActiveClubs,
         int attendanceEditWindowHours,
+        boolean allowSelfRegistration,
+        int attendanceOpensBeforeMinutes,
+        int eventTaskGraceDays,
+        int chatSummariesPerHour,
+        int chatMaxMessageLength,
+        int documentMaxFileMb,
+        int clubImageMaxMb,
+        int avatarMaxMb,
         OffsetDateTime updatedAt,
         UUID updatedBy) {
 }

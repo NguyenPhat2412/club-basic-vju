@@ -91,7 +91,6 @@ public class EventServiceImpl implements EventService {
             EventStatus.OPEN_REGISTRATION, Set.of(EventStatus.CLOSED_REGISTRATION, EventStatus.COMPLETED, EventStatus.CANCELLED),
             EventStatus.CLOSED_REGISTRATION, Set.of(EventStatus.OPEN_REGISTRATION, EventStatus.COMPLETED, EventStatus.CANCELLED));
     private static final Set<TaskStatus> OPEN_TASK_STATUSES = Set.of(TaskStatus.TODO, TaskStatus.IN_PROGRESS);
-    private static final Duration ATTENDANCE_OPENS_BEFORE_START = Duration.ofHours(2);
     private static final Duration MAX_CALENDAR_RANGE = Duration.ofDays(366);
 
     private final EventRepository eventRepository;
@@ -537,9 +536,10 @@ public class EventServiceImpl implements EventService {
         if (event.getStatus() == EventStatus.DRAFT || event.getStatus() == EventStatus.CANCELLED) {
             throw new ApiException(HttpStatus.CONFLICT, "EVENT_NOT_HELD", "Attendance cannot be recorded for a draft or cancelled event");
         }
-        if (now.isBefore(event.getStartTime().minus(ATTENDANCE_OPENS_BEFORE_START))) {
+        int opensBeforeMinutes = systemSettingsService != null ? systemSettingsService.current().attendanceOpensBeforeMinutes() : 120;
+        if (now.isBefore(event.getStartTime().minusMinutes(opensBeforeMinutes))) {
             throw new ApiException(HttpStatus.CONFLICT, "EVENT_NOT_STARTED",
-                    "Attendance opens " + ATTENDANCE_OPENS_BEFORE_START.toHours() + " hours before the event starts");
+                    "Attendance opens " + opensBeforeMinutes + " minutes before the event starts");
         }
 
         String strippedReason = request.reason() == null ? null : request.reason().strip();

@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiModel } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
 import { Button } from "@/components/ui/button";
-import { FormField, Input } from "@/components/ui/input";
+import { FormField, PasswordInput } from "@/components/ui/input";
 
 export function FirstLoginPassword({ email }: { email?: string }) {
   const queryClient = useQueryClient();
@@ -38,13 +38,13 @@ export function FirstLoginPassword({ email }: { email?: string }) {
           Tài khoản này do quản trị viên tạo hoặc vừa được đặt lại mật khẩu. Hãy chọn mật khẩu riêng trước khi sử dụng hệ thống.
         </p>
         <FormField label="Mật khẩu được cấp" required>
-          <Input type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
+          <PasswordInput autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
         </FormField>
         <FormField label="Mật khẩu mới" required hint="Tối thiểu 8 ký tự, khác mật khẩu được cấp">
-          <Input type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
+          <PasswordInput autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
         </FormField>
         <FormField label="Nhập lại mật khẩu mới" required>
-          <Input type="password" autoComplete="new-password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />
+          <PasswordInput autoComplete="new-password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />
         </FormField>
         {mismatch && <p className="text-xs text-destructive">Mật khẩu nhập lại không khớp.</p>}
         {sameAsCurrent && <p className="text-xs text-destructive">Mật khẩu mới phải khác mật khẩu được cấp.</p>}

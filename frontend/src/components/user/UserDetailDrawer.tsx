@@ -1,4 +1,5 @@
 "use client";
+import { AvatarField } from "./AvatarField";
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -47,6 +48,7 @@ export function UserDetailDrawer({
   const [editFullName, setEditFullName] = useState(detail?.fullName ?? "");
   const [editStudentCode, setEditStudentCode] = useState(detail?.studentCode ?? "");
   const [editPhone, setEditPhone] = useState(detail?.phone ?? "");
+  const [editAvatarUrl, setEditAvatarUrl] = useState(detail?.avatarUrl ?? "");
   const [assignDraft, setAssignDraft] = useState<RoleDraft>(EMPTY_ROLE_DRAFT);
 
   const detailRoles = useQuery({
@@ -70,6 +72,8 @@ export function UserDetailDrawer({
         fullName: editFullName.trim() || undefined,
         studentCode: editStudentCode.trim() || undefined,
         phone: editPhone.trim() || undefined,
+        // "" clears the avatar on the backend; undefined would leave it unchanged
+        avatarUrl: editAvatarUrl.trim(),
       }),
     onSuccess: (updated) => {
       onUserUpdated(updated, `Đã cập nhật thông tin tài khoản ${updated.email}.`);
@@ -154,6 +158,13 @@ export function UserDetailDrawer({
               <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
             </FormField>
           </div>
+          <AvatarField
+            value={editAvatarUrl}
+            onChange={setEditAvatarUrl}
+            fallbackName={editFullName || detail.email}
+            upload={(file) => apiModel.uploadUserAvatar(detail.id, file)}
+            onUploaded={(updated) => onUserUpdated(updated, `Đã cập nhật ảnh đại diện cho ${updated.email}.`)}
+          />
           {updateProfile.error && <p className="text-xs text-destructive">{describeError(updateProfile.error)}</p>}
           <Button
             size="sm"

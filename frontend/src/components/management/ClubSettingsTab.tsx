@@ -173,7 +173,7 @@ export function ClubSettingsTab({
               </div>
 
               <ClubMediaPickerField
-                label="Logo câu lạc bộ (Tải ảnh lên Cloudflare R2 & lưu Database)"
+                label="Logo câu lạc bộ"
                 value={logoUrl}
                 onChange={setLogoUrl}
                 kind="logo"
@@ -181,13 +181,13 @@ export function ClubSettingsTab({
                 clubCode={club.code}
                 onUploaded={(updated) => {
                   setLogoUrl(updated.logoUrl ?? "");
-                  onNotice("Đã cập nhật Logo CLB (lưu ảnh trên Cloudflare R2 & dữ liệu trong PostgreSQL Database).");
+                  onNotice("Đã cập nhật logo CLB.");
                   onError("");
                 }}
               />
 
               <ClubMediaPickerField
-                label="Ảnh bìa câu lạc bộ (Tải ảnh lên Cloudflare R2 & lưu Database)"
+                label="Ảnh bìa câu lạc bộ"
                 value={coverUrl}
                 onChange={setCoverUrl}
                 kind="cover"
@@ -195,7 +195,7 @@ export function ClubSettingsTab({
                 clubCode={club.code}
                 onUploaded={(updated) => {
                   setCoverUrl(updated.coverUrl ?? "");
-                  onNotice("Đã cập nhật Ảnh bìa CLB (lưu ảnh trên Cloudflare R2 & dữ liệu trong PostgreSQL Database).");
+                  onNotice("Đã cập nhật ảnh bìa CLB.");
                   onError("");
                 }}
               />

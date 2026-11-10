@@ -4,7 +4,8 @@ import { translateKey, translateUiText } from "@/i18n/translator";
 import { cn } from "@/lib/utils";
 
 const tones = {
-  primary: { box: "bg-primary/8 text-primary border-primary/20", dot: "bg-primary" },
+  // opaque like the other tones: badges also sit on top of cover photos
+  primary: { box: "bg-rose-50 text-primary border-primary/20", dot: "bg-primary" },
   pending: { box: "bg-amber-50 text-amber-800 border-amber-200", dot: "bg-amber-500" },
   danger: { box: "bg-rose-50 text-rose-700 border-rose-200", dot: "bg-rose-600" },
   neutral: { box: "bg-slate-100 text-slate-600 border-slate-200", dot: "bg-slate-400" },

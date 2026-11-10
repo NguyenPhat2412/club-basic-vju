@@ -1,4 +1,5 @@
 "use client";
+import { AvatarField } from "@/components/user/AvatarField";
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -8,7 +9,7 @@ import { apiModel } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { Badge, StatusBadge } from "@/components/ui/badge";
-import { FormField, Input } from "@/components/ui/input";
+import { FormField, Input, PasswordInput } from "@/components/ui/input";
 import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
 import { DetailList } from "@/components/shared/Overlays";
 import { describeError } from "@/components/shared/ListPage";
@@ -150,14 +151,19 @@ export function ProfileView() {
                     placeholder="0901234567"
                   />
                 </FormField>
-                <FormField label="URL ảnh đại diện (Avatar)" hint="Đường dẫn ảnh http:// hoặc https:// (tùy chọn).">
-                  <Input
-                    type="url"
-                    value={avatarUrl}
-                    onChange={(e) => setAvatarUrlDraft(e.target.value)}
-                    placeholder="https://example.com/avatar.png"
-                  />
-                </FormField>
+                <AvatarField
+                  value={avatarUrl}
+                  onChange={setAvatarUrlDraft}
+                  fallbackName={user.fullName || user.email}
+                  upload={apiModel.uploadMyAvatar}
+                  onUploaded={(updated) => {
+                    setAvatarUrlDraft(null);
+                    queryClient.setQueryData(["me"], updated);
+                    queryClient.invalidateQueries({ queryKey: ["me"] });
+                    queryClient.invalidateQueries({ queryKey: ["optional-me"] });
+                    setProfileNotice("Đã cập nhật ảnh đại diện.");
+                  }}
+                />
                 {profileNotice && (
                   <p
                     role="status"
@@ -192,24 +198,21 @@ export function ProfileView() {
               </div>
               <form onSubmit={submit} className="mt-5 grid gap-4">
                 <FormField label="Mật khẩu hiện tại" required>
-                  <Input
-                    type="password"
+                  <PasswordInput
                     autoComplete="current-password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                   />
                 </FormField>
                 <FormField label="Mật khẩu mới" required hint="Nên dùng ít nhất 8 ký tự.">
-                  <Input
-                    type="password"
+                  <PasswordInput
                     autoComplete="new-password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                   />
                 </FormField>
                 <FormField label="Nhập lại mật khẩu mới" required>
-                  <Input
-                    type="password"
+                  <PasswordInput
                     autoComplete="new-password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}

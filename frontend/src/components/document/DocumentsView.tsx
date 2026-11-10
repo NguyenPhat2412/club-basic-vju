@@ -179,7 +179,7 @@ export function DocumentsView() {
         <EmptyState
           icon={<FileText />}
           title={trash ? "Thùng rác trống" : "Chưa có tài liệu"}
-          description={trash ? undefined : "Tài liệu được lưu trên Cloudflare R2 theo thư mục năm / tháng / ngày."}
+          description={trash ? undefined : "Tài liệu được sắp xếp theo năm / tháng / ngày."}
           actionLabel={!trash && canUpload ? "Tải lên tài liệu" : undefined}
           onAction={() => setUploading(true)}
         />
@@ -231,7 +231,7 @@ export function DocumentsView() {
                       : [
                           { icon: <Eye />, label: "Xem chi tiết", onClick: () => openDetail(x) },
                           { icon: <Download />, label: "Tải xuống", onClick: () => download(x) },
-                          { icon: <Link2 />, label: "Mở link R2", onClick: () => openLink(x) },
+                          { icon: <Link2 />, label: "Mở tài liệu", onClick: () => openLink(x) },
                           ...(canUpdate ? [{ icon: <Pencil />, label: "Sửa", onClick: () => openDetail(x) }] : []),
                           ...(canDelete ? [{ icon: <Trash2 />, label: "Xoá mềm", danger: true, onClick: () => softDelete(x) }] : []),
                         ]
@@ -268,7 +268,7 @@ export function DocumentsView() {
           ) : (
             <>
               <Button variant="outline" size="sm" onClick={() => download(d)}><Download size={14} /> Tải xuống</Button>
-              <Button variant="outline" size="sm" onClick={() => openLink(d)}><Link2 size={14} /> Link R2</Button>
+              <Button variant="outline" size="sm" onClick={() => openLink(d)}><Link2 size={14} /> Mở tài liệu</Button>
               {canDelete && <Button variant="destructive" size="sm" onClick={() => softDelete(d)}><Trash2 size={14} /> Xoá mềm</Button>}
             </>
           ))
@@ -282,7 +282,7 @@ export function DocumentsView() {
               <DetailList
                 rows={[
                   ["Trạng thái", d.deleted ? <Badge key="s" tone="danger">Đã xoá {formatDateTime(d.deletedAt)}</Badge> : <Badge key="s" tone="primary">Đang dùng</Badge>],
-                  ["Đường dẫn R2", <span key="p" className="break-all font-mono text-xs">{d.path}</span>],
+                  ["Đường dẫn tệp", <span key="p" className="break-all font-mono text-xs">{d.path}</span>],
                   ["Phiên bản", <span key="v" className="font-mono font-bold text-primary">v{d.version}</span>],
                   ["Loại", d.contentType.split(";")[0]],
                   ["Kích thước", <span key="z" className="font-mono">{formatSize(d.sizeBytes)}</span>],

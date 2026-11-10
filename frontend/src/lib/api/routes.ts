@@ -15,6 +15,8 @@ export const API_ROUTES = {
     detail: (id: string) => `/users/${id}`,
     password: (id: string) => `/users/${id}/password`,
     status: (id: string) => `/users/${id}/status`,
+    avatar: (id: string) => `/users/${id}/avatar`,
+    myAvatar: '/users/me/avatar',
     roles: (userId: string) => `/users/${userId}/roles`,
     roleAssignment: (userId: string, assignmentId: string) => `/users/${userId}/roles/${assignmentId}`,
     permissions: (userId: string) => `/users/${userId}/permissions`,

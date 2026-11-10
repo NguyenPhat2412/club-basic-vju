@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Building2, CalendarCheck2, Compass, ShieldCheck, UserRound } from "lucide-react";
+import { Building2, CalendarCheck2, ShieldCheck, UserRound, UsersRound } from "lucide-react";
 import { getPresentationLocale } from "@/i18n/config";
 import { translateUiText } from "@/i18n/translator";
 import { CLUB_MANAGEMENT_KEYS } from "@/hooks/useSession";
@@ -102,52 +102,67 @@ export function buildNavigationSections(params: {
     "chat.send",
   ]);
 
+  // one sidebar entry per /management tab: that page has no tab bar of its own
+  const mgmt = (tab: string, label: string, visible: boolean): SubNavItem => ({
+    href: `/management?tab=${tab}`,
+    tab,
+    tabs: [tab],
+    label,
+    visible,
+  });
+
   const rawSections: NavSection[] =
     canManageClub || canSystemAdmin
       ? [
           {
-            id: "sec-club",
+            id: "sec-admin",
             groups: [
               {
-                id: "grp-club-mgmt",
-                label: "Quản lý Câu lạc bộ",
-                icon: <Building2 size={15} />,
+                id: "grp-personal",
+                label: "Cá nhân",
+                icon: <UserRound size={15} />,
                 items: [
-                  {
-                    href: "/management?tab=clubs",
-                    tab: "clubs",
-                    tabs: ["clubs", "overview", "departments", "settings"],
-                    label: "Danh sách & Cơ cấu CLB",
-                    visible: canClubOrg,
-                  },
-                  {
-                    href: "/management?tab=members",
-                    tab: "members",
-                    tabs: ["members"],
-                    label: "Thành viên & Phân ban",
-                    visible: canClubMembers,
-                  },
-                  {
-                    href: "/management?tab=applications",
-                    tab: "applications",
-                    tabs: ["applications", "forms"],
-                    label: "Tuyển quân & Biểu mẫu",
-                    visible: canClubRecruitment,
-                  },
-                  {
-                    href: "/management?tab=events",
-                    tab: "events",
-                    tabs: ["events", "tasks", "chat"],
-                    label: "Sự kiện, Việc & Kênh CLB",
-                    visible: canClubOps,
-                  },
+                  { href: "/memberships", label: "CLB đang tham gia", visible: authenticated },
+                  { href: "/clubs", label: "Khám phá câu lạc bộ", visible: true },
+                  { href: "/applications", label: "Đơn đăng ký của tôi", visible: authenticated },
+                  { href: "/schedule", label: "Lịch & Công việc của tôi", visible: authenticated },
+                  { href: "/events", label: "Sự kiện & Cộng tác viên", visible: true },
+                  { href: "/documents", label: "Quy chế & Tài liệu", visible: authenticated && can("document.view") },
+                  { href: "/notifications", label: "Thông báo của tôi", visible: authenticated },
+                  { href: "/profile", label: "Hồ sơ cá nhân", visible: authenticated },
                 ],
               },
-            ],
-          },
-          {
-            id: "sec-system",
-            groups: [
+              {
+                id: "grp-club",
+                label: "Câu lạc bộ",
+                icon: <Building2 size={15} />,
+                items: [
+                  mgmt("clubs", "Danh sách CLB", canClubOrg),
+                  mgmt("overview", "Tổng quan CLB", canClubOrg),
+                  mgmt("settings", "Cài đặt CLB", canClubOrg),
+                ],
+              },
+              {
+                id: "grp-members",
+                label: "Thành viên & Tuyển quân",
+                icon: <UsersRound size={15} />,
+                items: [
+                  mgmt("members", "Thành viên", canClubMembers),
+                  mgmt("departments", "Ban chuyên môn", canClubOrg || canClubMembers),
+                  mgmt("applications", "Đơn ứng tuyển", canClubRecruitment),
+                  mgmt("forms", "Biểu mẫu", canClubRecruitment),
+                ],
+              },
+              {
+                id: "grp-activities",
+                label: "Hoạt động CLB",
+                icon: <CalendarCheck2 size={15} />,
+                items: [
+                  mgmt("events", "Sự kiện", canClubOps),
+                  mgmt("tasks", "Công việc", canClubOps),
+                  mgmt("chat", "Chat & AI", canClubOps),
+                ],
+              },
               {
                 id: "grp-sys",
                 label: "Quản trị hệ thống",
@@ -157,24 +172,6 @@ export function buildNavigationSections(params: {
                   { href: "/roles", label: "Vai trò & Phân quyền", visible: can("role.view") },
                   { href: "/audit-logs", label: "Nhật ký hệ thống", visible: can("audit.view") },
                   { href: "/settings", label: "Cài đặt hệ thống", visible: can("setting.view") },
-                ],
-              },
-            ],
-          },
-          {
-            id: "sec-personal",
-            groups: [
-              {
-                id: "grp-portal",
-                label: "Cổng cá nhân",
-                icon: <Compass size={15} />,
-                items: [
-                  { href: "/memberships", label: "CLB đang tham gia", visible: authenticated },
-                  { href: "/clubs", label: "Khám phá câu lạc bộ", visible: true },
-                  { href: "/applications", label: "Đơn đăng ký của tôi", visible: authenticated },
-                  { href: "/events", label: "Sự kiện & Cộng tác viên", visible: true },
-                  { href: "/schedule", label: "Lịch & Công việc của tôi", visible: authenticated },
-                  { href: "/documents", label: "Quy chế & Tài liệu", visible: authenticated && can("document.view") },
                 ],
               },
             ],

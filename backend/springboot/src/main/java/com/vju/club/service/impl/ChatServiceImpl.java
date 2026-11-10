@@ -69,7 +69,6 @@ import java.util.UUID;
 public class ChatServiceImpl implements ChatService {
     private static final Logger log = LoggerFactory.getLogger(ChatServiceImpl.class);
     private static final ObjectMapper JSON = new ObjectMapper();
-    private static final int SUMMARIES_PER_HOUR = 10;
     private static final int MAX_MESSAGE_LENGTH = 4000;
     private static final Sort MESSAGE_SORT = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id"));
 
@@ -87,6 +86,9 @@ public class ChatServiceImpl implements ChatService {
     private final ChatMapper chatMapper;
     private final DepartmentMemberRepository departmentMemberRepository;
     private final java.time.Clock clock;
+    // optional so hand-built unit tests keep working; absent means the built-in defaults
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.vju.club.service.SystemSettingsService settingsService;
 
     @Override
     @Transactional
@@ -162,7 +164,12 @@ public class ChatServiceImpl implements ChatService {
         message.setChannel(channel);
         message.setSender(sender);
         message.setSenderType(ChatSenderType.USER);
-        message.setContent(request.content().strip());
+        String content = request.content().strip();
+        int maxLength = settingsService != null ? settingsService.current().chatMaxMessageLength() : MAX_MESSAGE_LENGTH;
+        if (content.length() > maxLength) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "MESSAGE_TOO_LONG", "A message may be at most " + maxLength + " characters");
+        }
+        message.setContent(content);
         ChatMessage saved = messageRepository.save(message);
         return chatMapper.toMessageResponse(saved);
     }
@@ -186,10 +193,14 @@ public class ChatServiceImpl implements ChatService {
         ChatChannel channel = channelRepository.findWithRelationsById(channelId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CHANNEL_NOT_FOUND", "Chat channel not found"));
         requireChannelAccess(actor, channel, ChatConstants.PERMISSION_SUMMARIZE, true);
+        int summariesPerHour = settingsService != null ? settingsService.current().chatSummariesPerHour() : 10;
+        if (summariesPerHour == 0) {
+            throw new ApiException(HttpStatus.CONFLICT, "AI_SUMMARY_DISABLED", "AI summaries are turned off by the administrator");
+        }
         if (summaryRepository.countByRequestedBy_IdAndCreatedAtAfter(actor.id(),
-                java.time.OffsetDateTime.now(clock).minusHours(1)) >= SUMMARIES_PER_HOUR) {
+                java.time.OffsetDateTime.now(clock).minusHours(1)) >= summariesPerHour) {
             throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "SUMMARY_LIMIT_REACHED",
-                    "At most " + SUMMARIES_PER_HOUR + " AI summaries per hour");
+                    "At most " + summariesPerHour + " AI summaries per hour");
         }
 
         int limit = request != null && request.messageLimit() != null ? request.messageLimit() : 50;

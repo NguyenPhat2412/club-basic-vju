@@ -183,7 +183,7 @@ export function CreateClubModal({
         </FormField>
       </div>
       <ClubMediaPickerField
-        label="Logo câu lạc bộ (Tải ảnh lên Cloudflare R2 & lưu Database)"
+        label="Logo câu lạc bộ"
         value={clubForm.logoUrl}
         onChange={(v) => setClubForm((f) => ({ ...f, logoUrl: v }))}
         kind="logo"
@@ -191,7 +191,7 @@ export function CreateClubModal({
         onPendingFileChange={setPendingLogoFile}
       />
       <ClubMediaPickerField
-        label="Ảnh bìa câu lạc bộ (Tải ảnh lên Cloudflare R2 & lưu Database)"
+        label="Ảnh bìa câu lạc bộ"
         value={clubForm.coverUrl}
         onChange={(v) => setClubForm((f) => ({ ...f, coverUrl: v }))}
         kind="cover"

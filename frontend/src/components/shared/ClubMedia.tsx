@@ -167,7 +167,7 @@ export function ClubMediaPickerField({
       setPendingFileName(file.name);
       const localUrl = URL.createObjectURL(file);
       onChange(localUrl);
-      setUploadNotice(`Đã chọn file "${file.name}" — sẽ tự động tải lên Cloudflare R2 & lưu Database ngay khi tạo CLB.`);
+      setUploadNotice(`Đã chọn file "${file.name}" — ảnh sẽ được tải lên khi tạo CLB.`);
       return;
     }
     setUploading(true);
@@ -181,8 +181,8 @@ export function ClubMediaPickerField({
       onUploaded?.(updated);
       setUploadNotice(
         kind === "logo"
-          ? "Đã tải Logo CLB lên Cloudflare R2 và lưu bản ghi vào PostgreSQL Database."
-          : "Đã tải Ảnh bìa CLB lên Cloudflare R2 và lưu bản ghi vào PostgreSQL Database."
+          ? "Đã tải logo CLB lên."
+          : "Đã tải ảnh bìa CLB lên."
       );
       queryClient.invalidateQueries({ queryKey: ["club", clubId] });
       queryClient.invalidateQueries({ queryKey: ["clubs"] });
@@ -257,8 +257,8 @@ export function ClubMediaPickerField({
             }}
             placeholder={
               kind === "logo"
-                ? "Tải file lên Cloudflare R2 hoặc dán URL..."
-                : "Tải file lên Cloudflare R2 hoặc dán URL..."
+                ? "Tải ảnh lên hoặc dán đường link..."
+                : "Tải ảnh lên hoặc dán đường link..."
             }
             className="min-w-0 flex-1 sm:min-w-48"
           />
@@ -283,7 +283,7 @@ export function ClubMediaPickerField({
             onClick={() => fileInputRef.current?.click()}
           >
             {uploading ? <Loader2 size={13} className="animate-spin" /> : <CloudUpload size={13} />}
-            {uploading ? "Đang tải lên R2…" : "Tải lên Cloud (R2)"}
+            {uploading ? "Đang tải lên…" : "Tải ảnh lên"}
           </Button>
           {value && (
             <Button
@@ -335,7 +335,7 @@ export function ClubMediaPickerField({
                     : "bg-slate-100 text-slate-700"
                 )}
               >
-                {isCloudStored ? "Cloudflare R2 + PostgreSQL" : value.startsWith("blob:") ? "Chờ tải lên R2" : "URL"}
+                {isCloudStored ? "Đã lưu trên hệ thống" : value.startsWith("blob:") ? "Chờ tải lên" : "URL"}
               </span>
             </div>
             <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
@@ -349,7 +349,7 @@ export function ClubMediaPickerField({
         <div className="rounded-xl border border-border bg-muted/25 p-3">
           <div className="mb-2 flex items-center justify-between">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-foreground">
-              <ImageIcon size={13} className="text-primary" /> Chọn từ kho Logo/Ảnh bìa CLB đã tách (tự động đẩy lên Cloudflare R2 & DB)
+              <ImageIcon size={13} className="text-primary" /> Chọn từ thư viện logo/ảnh bìa CLB
             </span>
             <button
               type="button"

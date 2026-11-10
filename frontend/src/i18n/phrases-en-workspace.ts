@@ -76,14 +76,14 @@ export const PHRASES_EN_WORKSPACE: Record<string, string> = {
   'Giới hạn khi sinh viên nộp đơn và tham gia CLB, có hiệu lực ngay.':
     'Operational limits when students submit applications and join clubs, effective immediately.',
   'Số đơn chờ duyệt tối đa': 'Maximum Pending Applications',
-  'Số đơn ứng tuyển đang ở trạng thái PENDING tối đa của mỗi sinh viên.':
-    'Maximum number of PENDING club applications allowed per student.',
+  'Số đơn đang chờ duyệt mà mỗi sinh viên được có cùng lúc (0 = không giới hạn).':
+    'How many applications each student may have awaiting review at once (0 = unlimited).',
   'Thời gian chờ nộp lại đơn': 'Re-application Cooldown Period',
-  'Số ngày chờ trước khi nộp lại vào CLB vừa từ chối.':
-    'Number of waiting days before re-applying to a club after rejection.',
+  'Số ngày sinh viên phải chờ để nộp lại vào CLB vừa từ chối đơn (0 = nộp lại ngay).':
+    'Days a student must wait before re-applying to a club that rejected them (0 = right away).',
   'Số CLB tham gia tối đa': 'Maximum Active Clubs Joined',
-  'Số câu lạc bộ đang hoạt động (ACTIVE) tối đa của mỗi sinh viên (0 = không giới hạn).':
-    'Maximum number of ACTIVE clubs a student can belong to simultaneously (0 = unlimited).',
+  'Số câu lạc bộ mỗi sinh viên được tham gia cùng lúc (0 = không giới hạn).':
+    'How many clubs each student may belong to at once (0 = unlimited).',
   'Thời hạn chỉnh sửa điểm danh': 'Attendance Amendment Window',
   'Số giờ sau khi sự kiện kết thúc mà Ban Chủ nhiệm được phép chỉnh sửa điểm danh.':
     'Hours after an event ends during which the Executive Board can amend attendance records.',
@@ -104,7 +104,7 @@ export const PHRASES_EN_WORKSPACE: Record<string, string> = {
   'Khi được gán vai trò có tích quyền tại CLB hoặc Ban, các phân hệ tương ứng sẽ tự động hiển thị tại đây.':
     'Once assigned a role with Club or Department permissions, the corresponding management modules will appear here.',
   'Tổng số CLB quản lý': 'Total Managed Clubs',
-  'Đồng bộ trực tiếp từ cơ sở dữ liệu PostgreSQL': 'Synchronized directly from PostgreSQL database',
+  'Dữ liệu được cập nhật trực tiếp': 'Data is updated in real time',
   'Báo cáo tổng hợp hoạt động CLB': 'Club Activity Analytics Report',
   'Từ ngày': 'From Date',
   'Đến ngày': 'To Date',

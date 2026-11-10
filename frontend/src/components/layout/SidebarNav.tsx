@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRef, useState, type FocusEvent, type MouseEvent } from "react";
 import { ChevronDown, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { isNavItemActive, NavSection } from "@/config/navigation";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,32 @@ export function SidebarNav({
   const { t, tr } = useI18n();
   const isCollapsed = !isMobile && collapsed;
   const isOverviewActive = pathname === "/dashboard";
+  // fixed-position flyout: the nav scrolls (overflow clips absolute children), so it can't live inside it
+  type Tip = { label: string; items?: { href: string; label: string; active: boolean }[]; top: number; left: number };
+  const [tip, setTip] = useState<Tip | null>(null);
+  const closeTimer = useRef<number | undefined>(undefined);
+  const keepTip = () => window.clearTimeout(closeTimer.current);
+  // short delay so the pointer can travel from the icon into the flyout
+  const hideTip = () => {
+    keepTip();
+    closeTimer.current = window.setTimeout(() => setTip(null), 150);
+  };
+  const showTip = (label: string, el: HTMLElement, items?: Tip["items"]) => {
+    keepTip();
+    const r = el.getBoundingClientRect();
+    const height = items ? 40 + items.length * 30 : 0;
+    setTip({ label, items, top: items ? Math.max(8, Math.min(r.top, window.innerHeight - height - 8)) : r.top + r.height / 2, left: r.right + 8 });
+  };
+  const tipProps = (label: string, items?: Tip["items"]) =>
+    isCollapsed
+      ? {
+          "aria-label": label,
+          onMouseEnter: (e: MouseEvent<HTMLElement>) => showTip(label, e.currentTarget, items),
+          onFocus: (e: FocusEvent<HTMLElement>) => showTip(label, e.currentTarget, items),
+          onMouseLeave: hideTip,
+          onBlur: hideTip,
+        }
+      : {};
 
   return (
     <aside
@@ -50,8 +77,13 @@ export function SidebarNav({
         isMobile ? "w-64 max-w-[82vw] sm:w-72" : isCollapsed ? "w-13" : "w-56"
       )}
     >
-      <div className="flex h-13 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border px-3">
-        <Link href="/home" className="flex min-w-0 items-center gap-2.5" aria-label="VJU ClubHub">
+      <div
+        className={cn(
+          "flex shrink-0 border-b border-sidebar-border",
+          isCollapsed ? "flex-col items-center gap-1.5 py-2" : "h-13 items-center justify-between gap-2 px-3"
+        )}
+      >
+        <Link href="/home" className="flex min-w-0 shrink-0 items-center gap-2.5" aria-label="VJU ClubHub">
           <Image
             src="/images/vju-logo.png"
             alt="Logo Trường Đại học Việt Nhật (VJU)"
@@ -83,8 +115,9 @@ export function SidebarNav({
           <button
             type="button"
             aria-label={isCollapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
-            title="Thu gọn / Mở rộng (Ctrl+B)"
+            title={isCollapsed ? undefined : "Thu gọn / Mở rộng (Ctrl+B)"}
             onClick={onToggleCollapsed}
+            {...tipProps("Mở rộng (Ctrl+B)")}
             className="hidden size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent lg:flex"
           >
             {isCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
@@ -96,8 +129,9 @@ export function SidebarNav({
         {user && !mustChangePassword && (
           <Link
             href="/dashboard"
-            title="Tổng quan"
+            title={isCollapsed ? undefined : tr("Tổng quan")}
             onClick={onCloseMobile}
+            {...tipProps(tr("Tổng quan"))}
             className={cn(
               "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors",
               isOverviewActive
@@ -149,8 +183,11 @@ export function SidebarNav({
                         <Link
                           key={group.id}
                           href={firstHref}
-                          title={`${group.label}: ${group.items.map((i) => i.label).join(", ")}`}
                           onClick={onCloseMobile}
+                          {...tipProps(
+                            group.label,
+                            group.items.map((i) => ({ href: i.href, label: i.label, active: isNavItemActive(i, pathname, currentTab) }))
+                          )}
                           className={cn(
                             "flex items-center justify-center rounded-lg p-2 transition-colors",
                             hasActiveChild
@@ -225,6 +262,50 @@ export function SidebarNav({
           );
         })}
       </nav>
+
+      {isCollapsed && tip && !tip.items && (
+        <div
+          role="tooltip"
+          style={{ top: tip.top, left: tip.left }}
+          className="pointer-events-none fixed z-[60] -translate-y-1/2 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg"
+        >
+          {tip.label}
+        </div>
+      )}
+      {isCollapsed && tip?.items && (
+        <div
+          style={{ top: tip.top, left: tip.left }}
+          onMouseEnter={keepTip}
+          onMouseLeave={hideTip}
+          onFocus={keepTip}
+          onBlur={hideTip}
+          className="fade-in fixed z-[60] min-w-48 rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-lg"
+        >
+          {/* invisible bridge over the 8px gap so the pointer never "leaves" on the way in */}
+          <span aria-hidden className="absolute inset-y-0 -left-2 w-2" />
+          <p className="px-2 pb-1 pt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{tip.label}</p>
+          <ul className="space-y-0.5">
+            {tip.items.map((item) => (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  onClick={() => {
+                    setTip(null);
+                    onCloseMobile();
+                  }}
+                  className={cn(
+                    "flex items-center gap-2 whitespace-nowrap rounded-lg px-2 py-1.5 text-xs transition-colors",
+                    item.active ? "bg-primary/10 font-semibold text-primary" : "text-foreground/80 hover:bg-sidebar-accent hover:text-foreground"
+                  )}
+                >
+                  <span className={cn("size-1 shrink-0 rounded-full", item.active ? "bg-primary" : "bg-muted-foreground/60")} />
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {!isCollapsed && user && (
         <div className="border-t border-sidebar-border p-2">

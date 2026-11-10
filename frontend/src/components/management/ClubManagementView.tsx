@@ -266,25 +266,6 @@ function ClubManagementViewContent() {
           }
         }}
       />
-      {visibleTabs.length > 1 && (
-        <div className="flex max-w-full shrink-0 flex-wrap items-center gap-1.5 border-b border-border/60 bg-white px-4 py-2.5 sm:px-6">
-          {visibleTabs.map((item) => {
-            const selected = item.value === activeTab;
-            return (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => navigateClubAndTab(activeClubId, item.value)}
-                className={`inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-lg px-3 text-xs font-semibold transition-colors ${
-                  selected ? "bg-primary text-primary-foreground shadow-2xs" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                }`}
-              >
-                {item.value === "clubs" ? `${item.label} (${manageable.length})` : item.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
       {notice && <Notice tone="success">{notice}</Notice>}
       {(errorMsg || mutationError) && <Notice tone="error">{errorMsg || describeError(mutationError)}</Notice>}
 
@@ -353,7 +334,7 @@ function ClubManagementViewContent() {
         open={creatingClub}
         onClose={() => setCreatingClub(false)}
         onCreated={(created) => {
-          setNotice(`Đã thành lập câu lạc bộ "${created.name}" (${created.code}) và đồng bộ dữ liệu lên Cloudflare R2 & PostgreSQL.`);
+          setNotice(`Đã thành lập câu lạc bộ "${created.name}" (${created.code}).`);
           setErrorMsg("");
           setClubId(created.id);
           queryClient.invalidateQueries({ queryKey: ["clubs"] });

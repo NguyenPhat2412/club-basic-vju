@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Service
@@ -51,6 +52,14 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
         if (request.attendanceEditWindowHours() != null) {
             settings.setAttendanceEditWindowHours(request.attendanceEditWindowHours());
         }
+        if (request.allowSelfRegistration() != null) settings.setAllowSelfRegistration(request.allowSelfRegistration());
+        if (request.attendanceOpensBeforeMinutes() != null) settings.setAttendanceOpensBeforeMinutes(request.attendanceOpensBeforeMinutes());
+        if (request.eventTaskGraceDays() != null) settings.setEventTaskGraceDays(request.eventTaskGraceDays());
+        if (request.chatSummariesPerHour() != null) settings.setChatSummariesPerHour(request.chatSummariesPerHour());
+        if (request.chatMaxMessageLength() != null) settings.setChatMaxMessageLength(request.chatMaxMessageLength());
+        if (request.documentMaxFileMb() != null) settings.setDocumentMaxFileMb(request.documentMaxFileMb());
+        if (request.clubImageMaxMb() != null) settings.setClubImageMaxMb(request.clubImageMaxMb());
+        if (request.avatarMaxMb() != null) settings.setAvatarMaxMb(request.avatarMaxMb());
         SystemSettings saved = repository.saveAndFlush(settings);
         auditService.record(actor.id(), AuditAction.SYSTEM_SETTINGS_UPDATED, saved.getId(), null, before, values(saved));
         return settingsMapper.toResponse(saved);
@@ -62,11 +71,20 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
     }
 
     private static Map<String, Object> values(SystemSettings s) {
-        return Map.of(
-                "maxPendingApplications", s.getMaxPendingApplications(),
-                "reapplyCooldownDays", s.getReapplyCooldownDays(),
-                "maxActiveClubs", s.getMaxActiveClubs(),
-                "attendanceEditWindowHours", s.getAttendanceEditWindowHours());
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("maxPendingApplications", s.getMaxPendingApplications());
+        values.put("reapplyCooldownDays", s.getReapplyCooldownDays());
+        values.put("maxActiveClubs", s.getMaxActiveClubs());
+        values.put("attendanceEditWindowHours", s.getAttendanceEditWindowHours());
+        values.put("allowSelfRegistration", s.isAllowSelfRegistration());
+        values.put("attendanceOpensBeforeMinutes", s.getAttendanceOpensBeforeMinutes());
+        values.put("eventTaskGraceDays", s.getEventTaskGraceDays());
+        values.put("chatSummariesPerHour", s.getChatSummariesPerHour());
+        values.put("chatMaxMessageLength", s.getChatMaxMessageLength());
+        values.put("documentMaxFileMb", s.getDocumentMaxFileMb());
+        values.put("clubImageMaxMb", s.getClubImageMaxMb());
+        values.put("avatarMaxMb", s.getAvatarMaxMb());
+        return values;
     }
 }
 

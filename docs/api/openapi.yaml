@@ -827,6 +827,107 @@ paths:
           type: string
           format: uuid
       description: Xem chi tiết một CLB đang ACTIVE trên trang Landing Page công khai (không cần đăng nhập). CLB INACTIVE hoặc không tồn tại trả về 404.
+  /public/avatars/{fileName}:
+    get:
+      operationId: user.publicAvatar
+      summary: Download a user avatar
+      description: Tải ảnh đại diện đã được tải lên. Mỗi lần tải lên tạo tên file mới nên ảnh được cache lâu dài.
+      tags:
+      - User
+      security: []
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: fileName
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Binary image stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /users/me/avatar:
+    post:
+      operationId: user.uploadMyAvatar
+      summary: Upload my avatar
+      description: Tải ảnh PNG, JPG, WEBP hoặc GIF (tối đa 5 MB) làm ảnh đại diện và cập nhật avatarUrl. Định dạng được nhận diện theo nội dung file.
+      tags:
+      - User
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Updated user with new avatarUrl
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /users/{userId}/avatar:
+    post:
+      operationId: user.uploadAvatar
+      summary: Upload avatar for a user
+      description: Tải ảnh PNG, JPG, WEBP hoặc GIF (tối đa 5 MB) làm ảnh đại diện và cập nhật avatarUrl. Định dạng được nhận diện theo nội dung file.
+      tags:
+      - User
+      x-permission: user.update
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Updated user with new avatarUrl
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /public/clubs/{clubId}/logo:
     get:
       operationId: club.publicLogo
@@ -4822,12 +4923,20 @@ components:
   schemas:
     SystemSettings:
       type: object
-      required: [maxPendingApplications, reapplyCooldownDays, maxActiveClubs, attendanceEditWindowHours]
+      required: [maxPendingApplications, reapplyCooldownDays, maxActiveClubs, attendanceEditWindowHours, allowSelfRegistration, attendanceOpensBeforeMinutes, eventTaskGraceDays, chatSummariesPerHour, chatMaxMessageLength, documentMaxFileMb, clubImageMaxMb, avatarMaxMb]
       properties:
         maxPendingApplications: {type: integer, minimum: 0, maximum: 100, description: Số đơn PENDING tối đa của một sinh viên trên mọi CLB; 0 = không giới hạn}
         reapplyCooldownDays: {type: integer, minimum: 0, maximum: 365, description: Số ngày chờ sau khi bị từ chối mới được nộp lại cùng CLB; 0 = không chờ}
         maxActiveClubs: {type: integer, minimum: 0, maximum: 100, description: Số CLB tối đa một sinh viên được tham gia cùng lúc; 0 = không giới hạn}
         attendanceEditWindowHours: {type: integer, minimum: 0, maximum: 720, description: Số giờ cho phép hiệu chỉnh điểm danh sau khi sự kiện chuyển COMPLETED}
+        allowSelfRegistration: {type: boolean, description: Cho phép tự đăng ký bằng email hoặc Google; false = chỉ quản trị viên tạo tài khoản (403 SIGN_UP_CLOSED)}
+        attendanceOpensBeforeMinutes: {type: integer, minimum: 0, maximum: 1440, description: Số phút trước giờ bắt đầu sự kiện thì được điểm danh}
+        eventTaskGraceDays: {type: integer, minimum: 0, maximum: 90, description: Số ngày tối đa hạn công việc sự kiện được vượt quá giờ kết thúc}
+        chatSummariesPerHour: {type: integer, minimum: 0, maximum: 100, description: Lượt tóm tắt AI mỗi người mỗi giờ; 0 = tắt (409 AI_SUMMARY_DISABLED)}
+        chatMaxMessageLength: {type: integer, minimum: 100, maximum: 4000, description: Số ký tự tối đa của một tin nhắn (400 MESSAGE_TOO_LONG)}
+        documentMaxFileMb: {type: integer, minimum: 1, maximum: 20, description: Dung lượng tối đa (MB) của tài liệu và file đính kèm đơn}
+        clubImageMaxMb: {type: integer, minimum: 1, maximum: 20, description: Dung lượng tối đa (MB) của logo/ảnh bìa CLB}
+        avatarMaxMb: {type: integer, minimum: 1, maximum: 20, description: Dung lượng tối đa (MB) của ảnh đại diện}
         updatedAt: {type: string, format: date-time}
         updatedBy: {type: [string, 'null'], format: uuid}
     UpdateSystemSettingsRequest:
@@ -4838,6 +4947,14 @@ components:
         reapplyCooldownDays: {type: integer, minimum: 0, maximum: 365}
         maxActiveClubs: {type: integer, minimum: 0, maximum: 100}
         attendanceEditWindowHours: {type: [integer, 'null'], minimum: 0, maximum: 720}
+        allowSelfRegistration: {type: [boolean, 'null']}
+        attendanceOpensBeforeMinutes: {type: [integer, 'null'], minimum: 0, maximum: 1440}
+        eventTaskGraceDays: {type: [integer, 'null'], minimum: 0, maximum: 90}
+        chatSummariesPerHour: {type: [integer, 'null'], minimum: 0, maximum: 100}
+        chatMaxMessageLength: {type: [integer, 'null'], minimum: 100, maximum: 4000}
+        documentMaxFileMb: {type: [integer, 'null'], minimum: 1, maximum: 20}
+        clubImageMaxMb: {type: [integer, 'null'], minimum: 1, maximum: 20}
+        avatarMaxMb: {type: [integer, 'null'], minimum: 1, maximum: 20}
     FormFieldDefinition:
       type: object
       required: [key, label, type, required]

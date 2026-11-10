@@ -78,4 +78,51 @@ class SystemSettingsApiTest extends ApiIntegrationTest {
         UUID clubC = club("C");
         problem(post(applications(clubC)), memberToken, Map.of("message", "C"), 409, "MEMBERSHIP_LIMIT_REACHED");
     }
+
+    private void settingsWith(Map<String, Object> extra) throws Exception {
+        Map<String, Object> body = new java.util.HashMap<>(Map.of("maxPendingApplications", 3, "reapplyCooldownDays", 7, "maxActiveClubs", 0));
+        body.putAll(extra);
+        call(put(SETTINGS), adminToken, body, 200);
+    }
+
+    @Test
+    void newSettingsHaveDefaultsAndRoundTrip() throws Exception {
+        JsonNode current = call(get(SETTINGS), adminToken, null, 200);
+        assertThat(current.path("allowSelfRegistration").asBoolean()).isTrue();
+        assertThat(current.path("attendanceOpensBeforeMinutes").asInt()).isEqualTo(120);
+        assertThat(current.path("documentMaxFileMb").asInt()).isEqualTo(20);
+
+        settingsWith(Map.of("eventTaskGraceDays", 14, "chatMaxMessageLength", 500, "avatarMaxMb", 2));
+        JsonNode saved = call(get(SETTINGS), adminToken, null, 200);
+        assertThat(saved.path("eventTaskGraceDays").asInt()).isEqualTo(14);
+        assertThat(saved.path("chatMaxMessageLength").asInt()).isEqualTo(500);
+        assertThat(saved.path("avatarMaxMb").asInt()).isEqualTo(2);
+        // fields left out of a request keep their value
+        assertThat(saved.path("clubImageMaxMb").asInt()).isEqualTo(10);
+
+        problem(put(SETTINGS), adminToken, Map.of("maxPendingApplications", 3, "reapplyCooldownDays", 7, "maxActiveClubs", 0,
+                "documentMaxFileMb", 21), 400, "VALIDATION_ERROR");
+    }
+
+    @Test
+    void closingSelfRegistrationBlocksSignUp() throws Exception {
+        settingsWith(Map.of("allowSelfRegistration", false));
+        problem(post("/api/v1/auth/register"), null, Map.of("email", "closed@test.local", "password", "Password123!",
+                "fullName", "Closed"), 403, "SIGN_UP_CLOSED");
+
+        settingsWith(Map.of("allowSelfRegistration", true));
+        call(post("/api/v1/auth/register"), null, Map.of("email", "open@test.local", "password", "Password123!",
+                "fullName", "Open"), 201);
+    }
+
+    @Test
+    void avatarSizeLimitFollowsSettings() throws Exception {
+        settingsWith(Map.of("avatarMaxMb", 1));
+        byte[] big = new byte[1024 * 1024 + 16];
+        byte[] png = {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+        System.arraycopy(png, 0, big, 0, png.length);
+        var request = org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/v1/users/me/avatar");
+        request.file(new org.springframework.mock.web.MockMultipartFile("file", "big.png", "image/png", big));
+        problem(request, memberToken, null, 413, "IMAGE_TOO_LARGE");
+    }
 }

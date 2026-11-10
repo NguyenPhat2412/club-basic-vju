@@ -1,4 +1,4 @@
-import { api, cleanParams } from '@/lib/api/client';
+import { api, apiForm, cleanParams } from '@/lib/api/client';
 import { API_ROUTES } from '@/lib/api/routes';
 import type { Page } from '@/types/common.types';
 import type { CreateUserInput, UpdateUserInput, User, UserStatus } from '@/types/user/user.types';
@@ -22,6 +22,16 @@ export const usersApi = {
       method: 'PATCH',
       body: JSON.stringify({ newPassword, requiresPasswordChange }),
     }),
+  uploadUserAvatar: (id: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return apiForm<User>(API_ROUTES.users.avatar(id), form);
+  },
+  uploadMyAvatar: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return apiForm<User>(API_ROUTES.users.myAvatar, form);
+  },
   updateUserStatus: (id: string, status: UserStatus) =>
     api<User>(API_ROUTES.users.status(id), {
       method: 'PATCH',

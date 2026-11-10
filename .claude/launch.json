@@ -9,6 +9,15 @@
         "cd backend/springboot && set -a && { [ -f .env.local ] && . ./.env.local; true; } && set +a && DB_URL=jdbc:postgresql://localhost:5433/club ./mvnw spring-boot:run -Dspring-boot.run.profiles=local"
       ],
       "port": 8080
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd frontend && pnpm dev"
+      ],
+      "port": 3000
     }
   ]
 }

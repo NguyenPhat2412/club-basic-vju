@@ -13,7 +13,8 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
+            // not immutable: /images files get replaced in place under the same name
+            value: "public, max-age=86400, stale-while-revalidate=604800",
           },
         ],
       },

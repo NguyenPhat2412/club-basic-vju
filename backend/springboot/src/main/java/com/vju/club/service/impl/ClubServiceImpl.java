@@ -8,6 +8,7 @@ import com.vju.club.dto.response.PageResponse;
 import com.vju.club.config.CacheConfig;
 import com.vju.club.error.ApiException;
 import com.vju.club.storage.DocumentStorage;
+import com.vju.club.storage.ImageUploads;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
@@ -41,9 +42,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -54,7 +52,13 @@ import java.util.UUID;
 
 @Service
 public class ClubServiceImpl implements ClubService {
-    private static final long MAX_CLUB_IMAGE_BYTES = 10L * 1024 * 1024;
+    // optional so hand-built unit tests keep working; absent means the built-in defaults
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.vju.club.service.SystemSettingsService settingsService;
+
+    private long maxClubImageBytes() {
+        return (settingsService != null ? settingsService.current().clubImageMaxMb() : 10) * 1024L * 1024;
+    }
 
     private final ClubRepository clubRepository;
     private final PermissionAuthorizationService authorizationService;
@@ -309,7 +313,7 @@ public class ClubServiceImpl implements ClubService {
         }
         Club club = findClub(clubId);
         Map<String, Object> before = snapshot(club);
-        ValidatedImage image = validateAndReadImage(file);
+        ImageUploads.ValidatedImage image = ImageUploads.read(file, maxClubImageBytes());
         String oldKey = club.getLogoStorageKey();
         String storageKey = "clubs/" + club.getCode().toLowerCase(Locale.ROOT) + "/logo-" + UUID.randomUUID() + image.extension();
 
@@ -343,7 +347,7 @@ public class ClubServiceImpl implements ClubService {
         }
         Club club = findClub(clubId);
         Map<String, Object> before = snapshot(club);
-        ValidatedImage image = validateAndReadImage(file);
+        ImageUploads.ValidatedImage image = ImageUploads.read(file, maxClubImageBytes());
         String oldKey = club.getCoverStorageKey();
         String storageKey = "clubs/" + club.getCode().toLowerCase(Locale.ROOT) + "/cover-" + UUID.randomUUID() + image.extension();
 
@@ -365,90 +369,6 @@ public class ClubServiceImpl implements ClubService {
         Club saved = clubRepository.saveAndFlush(club);
         auditService.recordChange(actor.id(), AuditAction.CLUB_UPDATED, clubId, clubId, before, snapshot(saved));
         return clubMapper.toResponse(saved);
-    }
-
-    private record ValidatedImage(byte[] bytes, String contentType, String extension) { }
-
-    private static ValidatedImage validateAndReadImage(UploadedFile file) {
-        if (file == null || file.originalName() == null || file.originalName().isBlank() || file.content() == null) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "EMPTY_IMAGE", "Vui lòng chọn file ảnh để tải lên");
-        }
-        byte[] bytes;
-        try (InputStream in = file.content().open();
-             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            byte[] buf = new byte[8192];
-            long total = 0;
-            int read;
-            while ((read = in.read(buf)) != -1) {
-                total += read;
-                if (total > MAX_CLUB_IMAGE_BYTES) {
-                    throw new ApiException(HttpStatus.PAYLOAD_TOO_LARGE, "IMAGE_TOO_LARGE",
-                            "Kích thước ảnh vượt quá giới hạn 10 MB");
-                }
-                out.write(buf, 0, read);
-            }
-            bytes = out.toByteArray();
-        } catch (IOException ex) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_IMAGE_STREAM", "Không thể đọc dữ liệu file ảnh");
-        }
-        if (bytes.length < 8) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "EMPTY_IMAGE", "File ảnh rỗng hoặc không hợp lệ");
-        }
-        if (isPng(bytes)) {
-            return new ValidatedImage(bytes, "image/png", ".png");
-        }
-        if (isJpeg(bytes)) {
-            return new ValidatedImage(bytes, "image/jpeg", ".jpg");
-        }
-        if (isGif(bytes)) {
-            return new ValidatedImage(bytes, "image/gif", ".gif");
-        }
-        if (isWebp(bytes)) {
-            return new ValidatedImage(bytes, "image/webp", ".webp");
-        }
-        throw new ApiException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_IMAGE_TYPE",
-                "Chỉ hỗ trợ định dạng ảnh PNG, JPG/JPEG, WEBP hoặc GIF");
-    }
-
-    private static boolean isPng(byte[] b) {
-        return b.length >= 8
-                && (b[0] & 0xFF) == 0x89
-                && b[1] == 0x50
-                && b[2] == 0x4E
-                && b[3] == 0x47
-                && b[4] == 0x0D
-                && b[5] == 0x0A
-                && b[6] == 0x1A
-                && b[7] == 0x0A;
-    }
-
-    private static boolean isJpeg(byte[] b) {
-        return b.length >= 3
-                && (b[0] & 0xFF) == 0xFF
-                && (b[1] & 0xFF) == 0xD8
-                && (b[2] & 0xFF) == 0xFF;
-    }
-
-    private static boolean isGif(byte[] b) {
-        return b.length >= 6
-                && b[0] == 'G'
-                && b[1] == 'I'
-                && b[2] == 'F'
-                && b[3] == '8'
-                && (b[4] == '7' || b[4] == '9')
-                && b[5] == 'a';
-    }
-
-    private static boolean isWebp(byte[] b) {
-        return b.length >= 12
-                && b[0] == 'R'
-                && b[1] == 'I'
-                && b[2] == 'F'
-                && b[3] == 'F'
-                && b[8] == 'W'
-                && b[9] == 'E'
-                && b[10] == 'B'
-                && b[11] == 'P';
     }
 
     private static String extensionForContentType(String contentType) {

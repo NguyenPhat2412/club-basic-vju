@@ -28,6 +28,9 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class DocumentFileInspectorImpl implements DocumentFileInspector {
     private final StorageProperties properties;
+    // optional so hand-built unit tests keep working; absent means the built-in defaults
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.vju.club.service.SystemSettingsService settingsService;
 
     @Override
     public InspectedFile inspect(String rawName, ContentSource content) {
@@ -37,7 +40,9 @@ public class DocumentFileInspectorImpl implements DocumentFileInspector {
         byte[] head = new byte[DocumentConstants.SIGNATURE_BYTES];
         int headLength = 0;
         long size = 0;
-        long max = properties.getMaxFileSize().toBytes();
+        long max = settingsService != null
+                ? settingsService.current().documentMaxFileMb() * 1024L * 1024
+                : properties.getMaxFileSize().toBytes();
         try (InputStream in = content.open()) {
             byte[] buffer = new byte[64 * 1024];
             int read;
@@ -50,7 +55,7 @@ public class DocumentFileInspectorImpl implements DocumentFileInspector {
                 digest.update(buffer, 0, read);
                 size += read;
                 if (size > max) throw new DocumentTooLargeException(
-                        "File is larger than the allowed " + properties.getMaxFileSize().toMegabytes() + " MB");
+                        "File is larger than the allowed " + (max / (1024 * 1024)) + " MB");
             }
         } catch (IOException exception) {
             throw new DocumentStorageException("Uploaded file could not be read", exception);

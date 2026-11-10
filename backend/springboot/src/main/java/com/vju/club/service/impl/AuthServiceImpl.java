@@ -54,6 +54,9 @@ public class AuthServiceImpl implements AuthService {
     private final UserMapper userMapper;
     private final GoogleSignInProperties googleSignIn;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
+    // optional so hand-built unit tests keep working; absent means the built-in defaults
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.vju.club.service.SystemSettingsService settingsService;
 
     @Override
     @Transactional
@@ -93,6 +96,9 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public SignedIn register(RegisterRequest request) {
+        if (!selfRegistrationOpen()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "SIGN_UP_CLOSED", "Sign-up is closed; an administrator issues accounts");
+        }
         String email = normalizeEmail(request.email());
         String studentCode = blankToNull(request.studentCode());
         if (userRepository.existsByEmailIgnoreCase(email)) {
@@ -155,12 +161,16 @@ public class AuthServiceImpl implements AuthService {
         return new SignedIn(principal, new AuthResponse(userMapper.toResponse(saved)));
     }
 
+    private boolean selfRegistrationOpen() {
+        return settingsService == null || settingsService.current().allowSelfRegistration();
+    }
+
     private User createStudent(GoogleIdentity identity, String email, boolean register) {
         if (!register) {
             throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_ACCOUNT_NOT_REGISTERED",
                     "This school account has not signed up yet");
         }
-        if (!googleSignIn.isCreateAccounts()) {
+        if (!googleSignIn.isCreateAccounts() || !selfRegistrationOpen()) {
             throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_SIGN_UP_CLOSED",
                     "Sign-up is closed; an administrator issues accounts");
         }

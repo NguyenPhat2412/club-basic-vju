@@ -23,6 +23,7 @@ class PublicEndpointApiTest extends ApiIntegrationTest {
                 "GET /api/v1/api-catalog", "GET /api-docs/phase1.yaml",
                 "GET /api/v1/public/clubs", "GET /api/v1/public/clubs/categories", "GET /api/v1/public/clubs/{clubId}",
                 "GET /api/v1/public/clubs/{clubId}/logo", "GET /api/v1/public/clubs/{clubId}/cover", "GET /api/v1/public/events",
+                "GET /api/v1/public/avatars/{fileName}",
                 "GET /api/v1/public/i18n/translations", "POST /api/v1/public/i18n/translate-batch");
     }
 

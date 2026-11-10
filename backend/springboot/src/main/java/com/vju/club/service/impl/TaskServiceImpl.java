@@ -44,7 +44,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -57,7 +56,6 @@ import java.util.UUID;
 public class TaskServiceImpl implements TaskService {
     private static final Sort DEFAULT_SORT = Sort.by(Sort.Order.asc("deadline"), Sort.Order.asc("id"));
     private static final Set<TaskStatus> OPEN_STATUSES = Set.of(TaskStatus.TODO, TaskStatus.IN_PROGRESS);
-    private static final Duration EVENT_TASK_POST_END_BUFFER = Duration.ofDays(7);
 
     private final TaskRepository taskRepository;
     private final ClubRepository clubRepository;
@@ -72,6 +70,9 @@ public class TaskServiceImpl implements TaskService {
     private final AuditService auditService;
     private final Clock clock;
     private final TaskMapper taskMapper;
+    // optional so hand-built unit tests keep working; absent means the built-in defaults
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.vju.club.service.SystemSettingsService settingsService;
 
     @Override
     @Transactional
@@ -545,9 +546,10 @@ public class TaskServiceImpl implements TaskService {
             throw new ApiException(HttpStatus.CONFLICT, "EVENT_CLOSED_FOR_TASKS",
                     "Cannot create or reschedule tasks on a completed or cancelled event");
         }
-        if (deadline.isAfter(event.getEndTime().plus(EVENT_TASK_POST_END_BUFFER))) {
+        int graceDays = settingsService != null ? settingsService.current().eventTaskGraceDays() : 7;
+        if (deadline.isAfter(event.getEndTime().plusDays(graceDays))) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "TASK_DEADLINE_OUTSIDE_EVENT_WINDOW",
-                    "Event task deadline cannot be more than 7 days after the event endTime");
+                    "Event task deadline cannot be more than " + graceDays + " days after the event endTime");
         }
     }
 

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode, useState } from "react";
 import { useThemePreference } from "@/hooks/useThemePreference";
 import { I18nProvider } from "@/providers/I18nContext";
+import { Toaster } from "@/components/ui/toast";
 
 function ThemeSync({ children }: { children: ReactNode }) {
   useThemePreference();
@@ -16,9 +17,11 @@ export function AppProviders({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 15_000,
+            // revisiting a page within a minute reuses the cache; coming back to the tab resyncs stale data
+            staleTime: 60_000,
+            gcTime: 10 * 60_000,
             retry: 1,
-            refetchOnWindowFocus: false,
+            refetchOnWindowFocus: true,
           },
         },
       })
@@ -28,6 +31,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <QueryClientProvider client={client}>
       <I18nProvider>
         <ThemeSync>{children}</ThemeSync>
+        <Toaster />
       </I18nProvider>
     </QueryClientProvider>
   );

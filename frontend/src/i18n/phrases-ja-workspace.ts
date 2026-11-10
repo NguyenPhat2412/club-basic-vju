@@ -76,14 +76,14 @@ export const PHRASES_JA_WORKSPACE: Record<string, string> = {
   'Giới hạn khi sinh viên nộp đơn và tham gia CLB, có hiệu lực ngay.':
     '学生の入部申請およびクラブ所属に関する制限設定（保存後すぐに反映されます）。',
   'Số đơn chờ duyệt tối đa': '審査待ち応募の最大件数',
-  'Số đơn ứng tuyển đang ở trạng thái PENDING tối đa của mỗi sinh viên.':
-    '学生1人あたり同時に保持できる審査待ち（PENDING）申請の最大数。',
+  'Số đơn đang chờ duyệt mà mỗi sinh viên được có cùng lúc (0 = không giới hạn).':
+    '学生1人が同時に審査待ちにできる申請の数（0＝無制限）。',
   'Thời gian chờ nộp lại đơn': '再応募までの待機日数',
-  'Số ngày chờ trước khi nộp lại vào CLB vừa từ chối.':
-    '却下されたクラブへ再度入部申請を行うまでに必要な待機日数。',
+  'Số ngày sinh viên phải chờ để nộp lại vào CLB vừa từ chối đơn (0 = nộp lại ngay).':
+    '却下されたクラブへ再応募できるまでの日数（0＝すぐに可能）。',
   'Số CLB tham gia tối đa': '最大所属クラブ数',
-  'Số câu lạc bộ đang hoạt động (ACTIVE) tối đa của mỗi sinh viên (0 = không giới hạn).':
-    '学生1人が同時に所属できる有効（ACTIVE）クラブの最大数（0＝無制限）。',
+  'Số câu lạc bộ mỗi sinh viên được tham gia cùng lúc (0 = không giới hạn).':
+    '学生1人が同時に所属できるクラブの数（0＝無制限）。',
   'Thời hạn chỉnh sửa điểm danh': '出席記録の修正可能時間',
   'Số giờ sau khi sự kiện kết thúc mà Ban Chủ nhiệm được phép chỉnh sửa điểm danh.':
     'イベント終了後に運営幹部が出席記録を事後修正できる制限時間（時間）。',
@@ -104,7 +104,7 @@ export const PHRASES_JA_WORKSPACE: Record<string, string> = {
   'Khi được gán vai trò có tích quyền tại CLB hoặc Ban, các phân hệ tương ứng sẽ tự động hiển thị tại đây.':
     'クラブまたは部署の権限を持つロールが割り当てられると、対応する管理タブがここに表示されます。',
   'Tổng số CLB quản lý': '管理対象クラブ総数',
-  'Đồng bộ trực tiếp từ cơ sở dữ liệu PostgreSQL': 'PostgreSQLデータベースとリアルタイム同期',
+  'Dữ liệu được cập nhật trực tiếp': 'データはリアルタイムで更新されます',
   'Báo cáo tổng hợp hoạt động CLB': 'クラブ活動総合レポート',
   'Từ ngày': '開始日',
   'Đến ngày': '終了日',

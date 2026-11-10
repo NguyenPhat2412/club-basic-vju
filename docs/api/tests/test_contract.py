@@ -79,7 +79,7 @@ class ContractTest(unittest.TestCase):
     def test_post_creation_and_delete_status_codes(self):
         for path, method, op in self.operations():
             with self.subTest(path=path, method=method):
-                if method == 'post' and '/auth/' not in path and not path.endswith(('/approve', '/reject', '/restore', '/logo', '/cover', '/translate-batch')):
+                if method == 'post' and '/auth/' not in path and not path.endswith(('/approve', '/reject', '/restore', '/logo', '/cover', '/avatar', '/translate-batch')):
                     self.assertIn('201', op['responses'])
                 if method == 'delete':
                     self.assertIn('204', op['responses'])

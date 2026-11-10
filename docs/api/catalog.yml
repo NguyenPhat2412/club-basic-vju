@@ -104,6 +104,20 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: user.active | user.inactive
+- method: POST
+  path: /api/v1/users/me/avatar
+  module: user-profile
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: POST
+  path: /api/v1/users/{userId}/avatar
+  module: user-profile
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: user.update
 - method: GET
   path: /api/v1/public/clubs
   module: club
@@ -128,6 +142,13 @@ entries:
 - method: GET
   path: /api/v1/public/clubs/{clubId}/logo
   module: club
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: GET
+  path: /api/v1/public/avatars/{fileName}
+  module: user-profile
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: false

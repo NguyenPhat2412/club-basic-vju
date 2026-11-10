@@ -13,7 +13,7 @@ test("errorMessage maps Phase 3 and Phase 4 domain error codes to clear Vietname
   assert.match(errorMessage(new ApiError("Deadline", 400, "SUBTASK_DEADLINE_EXCEEDS_PARENT")), /công việc cha/i);
   assert.match(errorMessage(new ApiError("Hierarchy", 400, "TASK_INVALID_HIERARCHY")), /công việc cha – con/i);
   assert.match(errorMessage(new ApiError("CTV", 409, "ASSIGNEE_NOT_ELIGIBLE_FOR_EVENT_TASK")), /cộng tác viên/i);
-  assert.match(errorMessage(new ApiError("Window", 400, "TASK_DEADLINE_OUTSIDE_EVENT_WINDOW")), /7 ngày/i);
+  assert.match(errorMessage(new ApiError("Window", 400, "TASK_DEADLINE_OUTSIDE_EVENT_WINDOW")), /sau khi sự kiện kết thúc/i);
   assert.match(errorMessage(new ApiError("Anon", 403, "ACCOUNT_ANONYMIZED")), /ẩn danh/i);
   assert.match(errorMessage(new ApiError("Self", 409, "CANNOT_DELETE_SELF")), /chính mình/i);
 });

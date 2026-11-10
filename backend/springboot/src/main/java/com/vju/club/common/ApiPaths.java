@@ -40,6 +40,9 @@ public final class ApiPaths {
     public static final String USER_BY_ID = "/users/{userId}";
     public static final String USER_PASSWORD = "/users/{userId}/password";
     public static final String USER_STATUS = "/users/{userId}/status";
+    public static final String USERS_ME_AVATAR = "/users/me/avatar";
+    public static final String USER_AVATAR = "/users/{userId}/avatar";
+    public static final String PUBLIC_AVATAR = "/public/avatars/{fileName}";
 
     public static final String FULL_USERS_ME = API_V1 + USERS_ME;
 
@@ -168,6 +171,10 @@ public final class ApiPaths {
 
     public static String documentDownloadPath(UUID documentId, int version) {
         return API_V1 + "/documents/" + documentId + "/download?version=" + version;
+    }
+
+    public static String publicAvatarPath(String fileName) {
+        return API_V1 + "/public/avatars/" + fileName;
     }
 
     public static String publicClubLogoPath(UUID clubId) {

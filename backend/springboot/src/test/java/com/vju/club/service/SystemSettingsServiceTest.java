@@ -96,8 +96,25 @@ class SystemSettingsServiceTest {
                 AuditAction.SYSTEM_SETTINGS_UPDATED,
                 row.getId(),
                 null,
-                Map.of("maxPendingApplications", 3, "reapplyCooldownDays", 7, "maxActiveClubs", 2, "attendanceEditWindowHours", 48),
-                Map.of("maxPendingApplications", 6, "reapplyCooldownDays", 30, "maxActiveClubs", 4, "attendanceEditWindowHours", 48));
+                auditValues(3, 7, 2),
+                auditValues(6, 30, 4));
+    }
+
+    private static Map<String, Object> auditValues(int pending, int cooldown, int clubs) {
+        Map<String, Object> values = new java.util.LinkedHashMap<>();
+        values.put("maxPendingApplications", pending);
+        values.put("reapplyCooldownDays", cooldown);
+        values.put("maxActiveClubs", clubs);
+        values.put("attendanceEditWindowHours", 48);
+        values.put("allowSelfRegistration", true);
+        values.put("attendanceOpensBeforeMinutes", 120);
+        values.put("eventTaskGraceDays", 7);
+        values.put("chatSummariesPerHour", 10);
+        values.put("chatMaxMessageLength", 4000);
+        values.put("documentMaxFileMb", 20);
+        values.put("clubImageMaxMb", 10);
+        values.put("avatarMaxMb", 5);
+        return values;
     }
 
     @Test
