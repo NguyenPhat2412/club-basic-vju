@@ -3904,6 +3904,46 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/EventListResponse'}
         '400': {$ref: '#/components/responses/BadRequest'}
+  /public/i18n/translations:
+    get:
+      operationId: i18n.listPublicTranslations
+      summary: Get cached dynamic translations for a target locale
+      tags: [System]
+      security: []
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: locale
+        in: query
+        schema: {type: string, default: en}
+      responses:
+        '200':
+          description: Map of Vietnamese source strings to translated strings
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {type: string}
+  /public/i18n/translate-batch:
+    post:
+      operationId: i18n.translateBatch
+      summary: Translate a batch of Vietnamese strings via 9router AI and store in PostgreSQL
+      tags: [System]
+      security: []
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TranslateBatchRequest'}
+      responses:
+        '200':
+          description: Translated strings map
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TranslateBatchResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
   /clubs/{clubId}/events:
     post:
       operationId: event.create
@@ -7005,6 +7045,24 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ClubPositionSlot'
+    TranslateBatchRequest:
+      type: object
+      required: [locale, texts]
+      properties:
+        locale: {type: string}
+        texts:
+          type: array
+          maxItems: 30
+          items: {type: string}
+    TranslateBatchResponse:
+      type: object
+      required: [locale, translations, provider]
+      properties:
+        locale: {type: string}
+        translations:
+          type: object
+          additionalProperties: {type: string}
+        provider: {type: string}
 tags:
 - name: System
   description: Danh mục và trạng thái API

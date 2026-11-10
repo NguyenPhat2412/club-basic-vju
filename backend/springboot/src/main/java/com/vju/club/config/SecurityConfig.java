@@ -41,7 +41,10 @@ public class SecurityConfig {
             CsrfTokenRepository csrfTokenRepository,
             @Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping handlerMapping) throws Exception {
         http
-                .csrf(csrf -> csrf.spa().csrfTokenRepository(csrfTokenRepository))
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers(ApiPaths.API_V1 + ApiPaths.PUBLIC_I18N_TRANSLATE_BATCH)
+                        .spa()
+                        .csrfTokenRepository(csrfTokenRepository))
                 .cors(Customizer.withDefaults())
                 .securityContext(context -> context.securityContextRepository(securityContextRepository))
                 .requestCache(cache -> cache.requestCache(new NullRequestCache()))

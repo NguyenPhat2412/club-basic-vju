@@ -124,6 +124,8 @@ public final class ApiPaths {
 
     // Events & Calendar
     public static final String PUBLIC_EVENTS = "/public/events";
+    public static final String PUBLIC_I18N_TRANSLATIONS = "/public/i18n/translations";
+    public static final String PUBLIC_I18N_TRANSLATE_BATCH = "/public/i18n/translate-batch";
     public static final String CLUB_EVENTS = "/clubs/{clubId}/events";
     public static final String CLUB_EVENT_BY_ID = "/clubs/{clubId}/events/{eventId}";
     public static final String EVENT_BY_ID = "/events/{eventId}";

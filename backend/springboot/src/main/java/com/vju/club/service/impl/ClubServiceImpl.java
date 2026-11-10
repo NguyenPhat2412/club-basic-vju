@@ -14,6 +14,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import com.vju.club.enums.AuditAction;
 import com.vju.club.enums.ClubApplicationStatus;
+import com.vju.club.service.AiTranslationService;
 import com.vju.club.service.AuditService;
 import com.vju.club.service.NotificationService;
 import com.vju.club.common.ClubConstants;
@@ -64,6 +65,9 @@ public class ClubServiceImpl implements ClubService {
     private final NotificationService notificationService;
     private final DocumentStorage documentStorage;
     private final String publicApiBaseUrl;
+
+    @Autowired(required = false)
+    private AiTranslationService aiTranslationService;
 
     public ClubServiceImpl(
             ClubRepository clubRepository,
@@ -186,6 +190,7 @@ public class ClubServiceImpl implements ClubService {
         apply(club, request);
         Club saved = clubRepository.saveAndFlush(club);
         auditService.record(actor.id(), AuditAction.CLUB_CREATED, saved.getId(), saved.getId(), null, snapshot(saved));
+        warmTranslateClub(saved);
         return clubMapper.toResponse(saved);
     }
 
@@ -203,7 +208,17 @@ public class ClubServiceImpl implements ClubService {
         applyPatch(club, request);
         Club saved = clubRepository.saveAndFlush(club);
         auditService.recordChange(actor.id(), AuditAction.CLUB_UPDATED, clubId, clubId, before, snapshot(saved));
+        warmTranslateClub(saved);
         return clubMapper.toResponse(saved);
+    }
+
+    private void warmTranslateClub(Club club) {
+        if (aiTranslationService == null || club == null) return;
+        List<String> texts = new java.util.ArrayList<>();
+        if (club.getName() != null) texts.add(club.getName());
+        if (club.getActivityField() != null) texts.add(club.getActivityField());
+        if (club.getDescription() != null) texts.add(club.getDescription());
+        aiTranslationService.warmTranslateAsync(texts);
     }
 
     @Override

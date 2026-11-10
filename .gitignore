@@ -1,8 +1,12 @@
 __pycache__/
 *.pyc
 
-# Local-only credentials (bootstrap admin)
-.env.local
+# Environment variables & secrets (never commit real .env files)
+.env
+.env.*
+!.env.example
+!.env.local.example
+!.env.production.example
 
 # Local worktrees
 .worktrees/

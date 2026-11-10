@@ -50,7 +50,8 @@ export function HomeClubsEventsSections({
             </h2>
           </div>
           <Link href="/clubs" className="inline-flex items-center gap-2 pb-1 text-sm font-bold text-primary hover:underline">
-            XEM TẤT CẢ CÂU LẠC BỘ {totalClubs !== undefined ? `(${totalClubs})` : ""} <ArrowRight size={15} />
+            <span>{totalClubs !== undefined ? `XEM TẤT CẢ CÂU LẠC BỘ (${totalClubs})` : "XEM TẤT CẢ CÂU LẠC BỘ"}</span>
+            <ArrowRight size={15} />
           </Link>
         </div>
         <p className="mt-3 max-w-[660px] text-sm leading-6 text-slate-700 sm:text-[15px] sm:leading-7">
@@ -68,7 +69,7 @@ export function HomeClubsEventsSections({
                   : "border border-slate-200 bg-white text-slate-700 hover:border-primary/40 hover:text-primary"
               }`}
             >
-              Tất cả ({allClubs.length})
+              {`Tất cả (${allClubs.length})`}
             </button>
             {categories.map((cat) => (
               <button

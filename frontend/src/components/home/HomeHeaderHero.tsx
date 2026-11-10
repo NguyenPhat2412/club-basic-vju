@@ -19,7 +19,6 @@ import {
 import { AuthModalMode } from "@/components/auth/AuthModal";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { keepWords } from "@/lib/utils";
-import { useI18n } from "@/providers/I18nContext";
 import { SessionUser } from "@/types";
 
 const HERO_SLIDES = [
@@ -101,11 +100,10 @@ export function HomeHeaderHero({
   openAuthModal,
   signOut,
 }: HomeHeaderHeroProps) {
-  const { tr } = useI18n();
   return (
     <>
       <div className="bg-primary px-3 py-2 text-center text-[10px] font-semibold tracking-[.08em] text-white sm:px-5 sm:text-xs sm:tracking-[.14em]">
-        <span>{tr("TRƯỜNG ĐẠI HỌC VIỆT NHẬT")}</span> · <span>{tr("ĐẠI HỌC QUỐC GIA HÀ NỘI")}</span>
+        <span>TRƯỜNG ĐẠI HỌC VIỆT NHẬT</span> · <span>ĐẠI HỌC QUỐC GIA HÀ NỘI</span>
       </div>
 
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-xs">

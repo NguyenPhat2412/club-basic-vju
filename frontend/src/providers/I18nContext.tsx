@@ -14,11 +14,17 @@ import {
 import {
   defaultLocale,
   getLocaleMeta,
+  getPresentationLocale,
   LOCALE_STORAGE_KEY,
   normalizeLocale,
   setPresentationLocale,
   supportedLocales,
 } from '@/i18n/config';
+import {
+  hasVietnameseDiacritics,
+  queueAutoTranslate,
+  syncBackendI18nCatalog,
+} from '@/i18n/auto-translate';
 import { translateKey, translateUiText } from '@/i18n/translator';
 import type {
   I18nContextType,
@@ -41,7 +47,7 @@ function shouldIgnoreNode(node: Node | null): boolean {
   const parent = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
   if (!parent) return true;
   if (IGNORED_TAGS.has(parent.tagName)) return true;
-  if (parent.closest('[data-no-i18n="true"]')) return true;
+  if (parent.closest('[data-no-i18n="true"], [contenteditable="true"]')) return true;
   return false;
 }
 
@@ -63,6 +69,25 @@ function translateTextNode(textNode: Text, locale: SupportedLocale) {
     textNode.nodeValue = nextValue;
   }
   lastRenderedTextNodeMap.set(textNode, nextValue);
+
+  if (
+    locale !== 'vi' &&
+    nextValue === baseVietnamese &&
+    hasVietnameseDiacritics(baseVietnamese)
+  ) {
+    const capturedBase = baseVietnamese;
+    queueAutoTranslate(capturedBase, locale, (autoTranslated) => {
+      if (
+        !textNode.isConnected ||
+        getPresentationLocale() !== locale ||
+        originalTextNodeMap.get(textNode) !== capturedBase
+      ) {
+        return;
+      }
+      lastRenderedTextNodeMap.set(textNode, autoTranslated);
+      textNode.nodeValue = autoTranslated;
+    });
+  }
 }
 
 function translateElementAttributes(element: Element, locale: SupportedLocale) {
@@ -156,6 +181,14 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = locale;
     if (document.body) {
       translateSubtree(document.body, locale);
+    }
+
+    if (locale !== 'vi') {
+      void syncBackendI18nCatalog(locale, () => {
+        if (document.body && getPresentationLocale() === locale) {
+          translateSubtree(document.body, locale);
+        }
+      });
     }
 
     let rafId: number | null = null;

@@ -1,7 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { getIntlLocale, getPresentationLocale } from "@/i18n/config";
-import { translateUiText } from "@/i18n/translator";
+import { getIntlLocale } from "@/i18n/config";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -31,10 +30,5 @@ const COMPOUND_PATTERN = new RegExp(
   "giu",
 );
 
-export const keepWords = (text: string) => {
-  const locale = getPresentationLocale();
-  if (locale !== "vi") {
-    return translateUiText(text, locale);
-  }
-  return text.replace(COMPOUND_PATTERN, (match) => match.replace(/ /g, "\u00a0"));
-};
+export const keepWords = (text: string) =>
+  text.replace(COMPOUND_PATTERN, (match) => match.replace(/ /g, "\u00a0"));

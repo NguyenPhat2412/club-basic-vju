@@ -4,19 +4,23 @@ import type {
   SupportedLocale,
   TranslationParams,
 } from '@/types';
+import { getCachedAutoTranslation } from './auto-translate';
 import { defaultLocale, normalizeLocale } from './config';
 import { CORE_MESSAGES } from './messages-core';
 import { PHRASES_EN_CORE } from './phrases-en';
 import { PHRASES_EN_ADMIN } from './phrases-en-admin';
+import { PHRASES_EN_CONTENT } from './phrases-en-content';
 import { PHRASES_EN_PERMISSIONS } from './phrases-en-permissions';
 import { PHRASES_EN_WORKSPACE } from './phrases-en-workspace';
 import { PHRASES_JA_CORE } from './phrases-ja';
 import { PHRASES_JA_ADMIN } from './phrases-ja-admin';
+import { PHRASES_JA_CONTENT } from './phrases-ja-content';
 import { PHRASES_JA_PERMISSIONS } from './phrases-ja-permissions';
 import { PHRASES_JA_WORKSPACE } from './phrases-ja-workspace';
 
 const EN_DICTIONARY: Record<string, string> = {
   ...PHRASES_EN_CORE,
+  ...PHRASES_EN_CONTENT,
   ...PHRASES_EN_ADMIN,
   ...PHRASES_EN_PERMISSIONS,
   ...PHRASES_EN_WORKSPACE,
@@ -24,6 +28,7 @@ const EN_DICTIONARY: Record<string, string> = {
 
 const JA_DICTIONARY: Record<string, string> = {
   ...PHRASES_JA_CORE,
+  ...PHRASES_JA_CONTENT,
   ...PHRASES_JA_ADMIN,
   ...PHRASES_JA_PERMISSIONS,
   ...PHRASES_JA_WORKSPACE,
@@ -139,6 +144,21 @@ const DYNAMIC_PATTERNS: PatternRule[] = [
     ja: (_, name) => `こんにちは、${name} さん`,
   },
   {
+    pattern: /^Tổng kết hoạt động tháng\s*&\s*Tập huấn kỹ năng\s+(.+)$/i,
+    en: (_, club) => `Monthly Activity Review & Skills Training — ${club}`,
+    ja: (_, club) => `月次活動総括＆スキルアップ研修 — ${club}`,
+  },
+  {
+    pattern: /^Sinh hoạt định kỳ\s*&\s*Điểm danh Ban chuyên môn\s+(.+)$/i,
+    en: (_, club) => `Regular Meeting & Department Attendance — ${club}`,
+    ja: (_, club) => `定例ミーティング＆専門部署出席確認 — ${club}`,
+  },
+  {
+    pattern: /^Không thể tải danh sách câu lạc bộ:\s*(.+)$/i,
+    en: (_, err) => `Unable to load clubs list: ${err}`,
+    ja: (_, err) => `クラブ一覧を読み込めませんでした: ${err}`,
+  },
+  {
     pattern: /^(\d+)\s+vai trò$/i,
     en: (_, count) => `${count} roles`,
     ja: (_, count) => `ロール ${count} 件`,
@@ -244,7 +264,7 @@ export function translateUiText(
   const trailingMatch = normalizedSource.match(/\s*$/);
   const leading = leadingMatch ? leadingMatch[0] : '';
   const trailing = trailingMatch ? trailingMatch[0] : '';
-  const trimmed = normalizedSource.trim();
+  const trimmed = normalizedSource.replace(/\s+/g, ' ').trim();
 
   if (!trimmed) {
     return rawText;
@@ -256,12 +276,14 @@ export function translateUiText(
     return `${leading}${directHit}${trailing}`;
   }
 
-  const suffixMatch = trimmed.match(/^(.+?)(\s*[:*]+)$/);
-  if (suffixMatch) {
-    const baseText = suffixMatch[1]?.trim() ?? '';
-    const suffix = suffixMatch[2] ?? '';
-    if (baseText && dictionary[baseText]) {
-      return `${leading}${dictionary[baseText]}${suffix}${trailing}`;
+  // Handle JSX split text nodes with surrounding punctuation like "Tất cả (" or "Phòng ban:"
+  const punctMatch = trimmed.match(/^([(\[•·:–—\-*]*\s*)(.+?)(\s*[(\])•·:–—\-*]+)$/);
+  if (punctMatch) {
+    const prefix = punctMatch[1] ?? '';
+    const coreText = punctMatch[2]?.trim() ?? '';
+    const suffix = punctMatch[3] ?? '';
+    if (coreText && dictionary[coreText]) {
+      return `${leading}${prefix}${dictionary[coreText]}${suffix}${trailing}`;
     }
   }
 
@@ -271,6 +293,11 @@ export function translateUiText(
       const translated = locale === 'en' ? rule.en(...match) : rule.ja(...match);
       return `${leading}${translated}${trailing}`;
     }
+  }
+
+  const cachedAuto = getCachedAutoTranslation(trimmed, locale);
+  if (cachedAuto) {
+    return `${leading}${cachedAuto}${trailing}`;
   }
 
   return rawText;

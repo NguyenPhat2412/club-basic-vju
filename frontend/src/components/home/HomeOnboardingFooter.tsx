@@ -64,7 +64,7 @@ export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFoot
               >
                 <div>
                   <span className="inline-flex rounded-lg bg-primary/10 px-3 py-1 font-mono text-xs font-extrabold text-primary">
-                    BƯỚC {item.step}
+                    {`BƯỚC ${item.step}`}
                   </span>
                   <h3 className="mt-4 text-lg font-bold text-slate-900">{item.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-slate-700">{item.desc}</p>

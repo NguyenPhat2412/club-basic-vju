@@ -45,11 +45,13 @@ import com.vju.club.repository.TaskRepository;
 import com.vju.club.repository.UserRepository;
 import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
+import com.vju.club.service.AiTranslationService;
 import com.vju.club.service.AuditService;
 import com.vju.club.service.EventService;
 import com.vju.club.service.NotificationService;
 import com.vju.club.service.SystemSettingsService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Sort;
@@ -107,6 +109,9 @@ public class EventServiceImpl implements EventService {
     private final AuditService auditService;
     private final Clock clock;
     private final EventMapper eventMapper;
+
+    @Autowired(required = false)
+    private AiTranslationService aiTranslationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -169,6 +174,7 @@ public class EventServiceImpl implements EventService {
         }
 
         auditService.record(actor.id(), AuditAction.EVENT_CREATED, saved.getId(), club.getId(), null, snapshot(saved));
+        warmTranslateEvent(saved);
         return eventMapper.toResponse(saved);
     }
 
@@ -253,7 +259,17 @@ public class EventServiceImpl implements EventService {
             cancelOpenTasksForCancelledEvent(saved, actor.id());
         }
         auditService.recordChange(actor.id(), AuditAction.EVENT_UPDATED, saved.getId(), clubId, before, snapshot(saved));
+        warmTranslateEvent(saved);
         return eventMapper.toResponse(saved);
+    }
+
+    private void warmTranslateEvent(Event event) {
+        if (aiTranslationService == null || event == null) return;
+        List<String> texts = new ArrayList<>();
+        if (event.getTitle() != null) texts.add(event.getTitle());
+        if (event.getLocation() != null) texts.add(event.getLocation());
+        if (event.getDescription() != null) texts.add(event.getDescription());
+        aiTranslationService.warmTranslateAsync(texts);
     }
 
     @Override

@@ -204,10 +204,9 @@ function AuthModalDialog({
 
           {googleOn && (
             <div className="mt-4 grid gap-2">
-              <p className="text-center text-xs font-medium text-slate-600">
-                Sinh viên VJU: bấm 1 lần với email trường{" "}
-                <span className="font-semibold text-slate-800">@{google.data?.allowedDomains[0]}</span>{" "}
-                để gia nhập hoặc đăng nhập ngay
+              <p className="truncate whitespace-nowrap text-center text-xs font-medium text-slate-600">
+                Sinh viên VJU: Đăng nhập nhanh bằng email{" "}
+                <span className="font-semibold text-slate-800">@{google.data?.allowedDomains[0]}</span>
               </p>
               <GoogleSignInButton
                 onSignedIn={handleAuthSuccess}
