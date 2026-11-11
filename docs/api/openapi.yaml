@@ -3216,6 +3216,25 @@ paths:
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
+  /applications/review-summary:
+    get:
+      operationId: clubApplication.reviewSummary
+      summary: Count applications by status for clubs I review
+      description: Đếm số đơn theo trạng thái trên mọi CLB người gọi có quyền application.view (GLOBAL = mọi CLB, CLUB = các CLB được cấp). Không có quyền thì trả về toàn số 0.
+      tags: [ClubApplication]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      responses:
+        '200':
+          description: Counts per status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationStatusCounts'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /users/me/applications:
     get:
       operationId: clubApplication.listMine
@@ -4921,6 +4940,20 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
   schemas:
+    ApplicationStatusCounts:
+      type: object
+      required: [pending, approved, rejected, cancelled, total, recent]
+      properties:
+        pending: {type: integer, format: int64}
+        approved: {type: integer, format: int64}
+        rejected: {type: integer, format: int64}
+        cancelled: {type: integer, format: int64}
+        total: {type: integer, format: int64}
+        recent:
+          type: array
+          maxItems: 6
+          description: Sáu đơn mới nhất trong phạm vi được xem
+          items: {$ref: '#/components/schemas/MyClubApplicationSummary'}
     SystemSettings:
       type: object
       required: [maxPendingApplications, reapplyCooldownDays, maxActiveClubs, attendanceEditWindowHours, allowSelfRegistration, attendanceOpensBeforeMinutes, eventTaskGraceDays, chatSummariesPerHour, chatMaxMessageLength, documentMaxFileMb, clubImageMaxMb, avatarMaxMb]

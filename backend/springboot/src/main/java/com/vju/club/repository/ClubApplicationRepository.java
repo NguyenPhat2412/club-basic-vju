@@ -39,6 +39,18 @@ public interface ClubApplicationRepository extends JpaRepository<ClubApplication
 
     long countByApplicant_IdAndStatus(UUID applicantId, ClubApplicationStatus status);
 
+    interface StatusCount {
+        ClubApplicationStatus getStatus();
+
+        long getTotal();
+    }
+
+    @Query("SELECT a.status AS status, COUNT(a) AS total FROM ClubApplication a GROUP BY a.status")
+    List<StatusCount> countByStatus();
+
+    @Query("SELECT a.status AS status, COUNT(a) AS total FROM ClubApplication a WHERE a.club.id IN :clubIds GROUP BY a.status")
+    List<StatusCount> countByStatusForClubs(@Param("clubIds") java.util.Collection<UUID> clubIds);
+
     Optional<ClubApplication> findFirstByApplicant_IdAndClub_IdAndStatusOrderByReviewedAtDesc(
             UUID applicantId, UUID clubId, ClubApplicationStatus status);
 

@@ -31,6 +31,7 @@ interface DashboardActivitySectionProps {
   setActiveFeedTab: (tab: "applications" | "tasks" | "clubs") => void;
   canReviewApps: boolean;
   relevantApps: ApplicationSummary[];
+  relevantAppsTotal: number;
   tasksList: TaskItem[];
   myClubList: Membership[];
   allClubs: ClubItem[];
@@ -49,6 +50,7 @@ export function DashboardActivitySection({
   setActiveFeedTab,
   canReviewApps,
   relevantApps,
+  relevantAppsTotal,
   tasksList,
   myClubList,
   allClubs,
@@ -75,7 +77,7 @@ export function DashboardActivitySection({
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {canReviewApps ? "Đơn ứng tuyển CLB" : "Đơn đăng ký của tôi"} ({relevantApps.length})
+              {canReviewApps ? "Đơn ứng tuyển CLB" : "Đơn đăng ký của tôi"} ({relevantAppsTotal})
             </button>
             <button
               type="button"

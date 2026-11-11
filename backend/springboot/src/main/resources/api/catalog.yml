@@ -483,6 +483,13 @@ entries:
   authRequired: true
   permission: null
 - method: GET
+  path: /api/v1/applications/review-summary
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
   path: /api/v1/users/me/applications/{applicationId}
   module: club-application
   backend: backend/springboot

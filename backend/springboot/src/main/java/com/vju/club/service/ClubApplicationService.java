@@ -43,6 +43,8 @@ public interface ClubApplicationService {
 
     ClubApplicationResponse cancel(Actor actor, UUID applicationId);
 
+    com.vju.club.dto.response.ApplicationStatusCountsResponse reviewSummary(Actor actor);
+
     PageResponse<ClubApplicationResponse> listForClub(Actor actor, UUID clubId, ClubApplicationStatus status, String search, OffsetDateTime createdFrom, OffsetDateTime createdTo, String sort, int offset, int limit);
 
     ClubApplicationResponse getForClub(Actor actor, UUID clubId, UUID applicationId);

@@ -5,6 +5,7 @@ import type {
   Application,
   ApplicationFile,
   ApplicationForm,
+  ApplicationReviewSummary,
   ApplicationSummary,
   CreateApplicationInput,
   ReviewApplicationInput,
@@ -18,6 +19,7 @@ export const applicationsApi = {
       method: 'POST',
       body: JSON.stringify(typeof body === 'string' ? { message: body } : body),
     }),
+  applicationReviewSummary: () => api<ApplicationReviewSummary>(API_ROUTES.users.applicationReviewSummary),
   myApplications: (q: { status?: string; clubId?: string; sort?: string; offset?: number; limit?: number } = {}) =>
     api<Page<ApplicationSummary>>(
       `${API_ROUTES.users.myApplications}?${cleanParams({

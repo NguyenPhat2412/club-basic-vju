@@ -25,6 +25,7 @@ export const API_ROUTES = {
     myEffectivePermissions: '/users/me/effective-permissions',
     myMemberships: '/users/me/memberships',
     myApplications: '/users/me/applications',
+    applicationReviewSummary: '/applications/review-summary',
     myApplicationDetail: (id: string) => `/users/me/applications/${id}`,
     myApplicationCancel: (id: string) => `/users/me/applications/${id}/cancel`,
     myEventRegistrations: '/users/me/event-registrations',

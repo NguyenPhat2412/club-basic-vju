@@ -402,6 +402,43 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
 
     @Override
     @Transactional(readOnly = true)
+    public com.vju.club.dto.response.ApplicationStatusCountsResponse reviewSummary(Actor actor) {
+        // same rule as listForClub: a global grant sees every club, otherwise only clubs granted at CLUB scope
+        List<ClubApplicationRepository.StatusCount> rows;
+        List<ClubApplication> recent;
+        OffsetLimitRequest newest = new OffsetLimitRequest(0, 6, applicationSort(null));
+        if (authorizationService.hasGlobalPermission(actor, "application.view")) {
+            rows = applicationRepository.countByStatus();
+            recent = applicationRepository.findAll((Specification<ClubApplication>) (root, query, cb) -> cb.conjunction(), newest).getContent();
+        } else {
+            java.util.Set<UUID> clubIds = authorizationService.getPermittedClubIds(actor, "application.view");
+            if (clubIds.isEmpty()) {
+                rows = List.of();
+                recent = List.of();
+            } else {
+                rows = applicationRepository.countByStatusForClubs(clubIds);
+                Specification<ClubApplication> inClubs = (root, query, cb) -> root.get("club").get("id").in(clubIds);
+                recent = applicationRepository.findAll(inClubs, newest).getContent();
+            }
+        }
+        Map<UUID, List<ClubApplicationFileResponse>> filesByApp = filesByApplicationIds(
+                recent.stream().map(ClubApplication::getId).toList());
+        List<ClubApplicationSummaryResponse> recentItems = recent.stream()
+                .map(app -> clubApplicationMapper.toSummary(
+                        app, filesByApp.getOrDefault(app.getId(), Collections.emptyList()).size()))
+                .toList();
+        Map<ClubApplicationStatus, Long> byStatus = new java.util.EnumMap<>(ClubApplicationStatus.class);
+        rows.forEach(row -> byStatus.put(row.getStatus(), row.getTotal()));
+        long pending = byStatus.getOrDefault(ClubApplicationStatus.PENDING, 0L);
+        long approved = byStatus.getOrDefault(ClubApplicationStatus.APPROVED, 0L);
+        long rejected = byStatus.getOrDefault(ClubApplicationStatus.REJECTED, 0L);
+        long cancelled = byStatus.getOrDefault(ClubApplicationStatus.CANCELLED, 0L);
+        return new com.vju.club.dto.response.ApplicationStatusCountsResponse(
+                pending, approved, rejected, cancelled, pending + approved + rejected + cancelled, recentItems);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResponse<ClubApplicationResponse> listForClub(Actor actor, UUID clubId,
                                                              ClubApplicationStatus status, String search,
                                                              OffsetDateTime createdFrom, OffsetDateTime createdTo,

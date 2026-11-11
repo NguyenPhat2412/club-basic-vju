@@ -100,6 +100,7 @@ public final class ApiPaths {
     public static final String CLUB_APPLICATION_APPROVE = "/clubs/{clubId}/applications/{applicationId}/approve";
     public static final String CLUB_APPLICATION_REJECT = "/clubs/{clubId}/applications/{applicationId}/reject";
     public static final String MY_APPLICATIONS = "/users/me/applications";
+    public static final String APPLICATION_REVIEW_SUMMARY = "/applications/review-summary";
     public static final String MY_APPLICATION_BY_ID = "/users/me/applications/{applicationId}";
     public static final String MY_APPLICATION_CANCEL = "/users/me/applications/{applicationId}/cancel";
     public static final String APPLICATION_FILES = "/applications/{applicationId}/files";

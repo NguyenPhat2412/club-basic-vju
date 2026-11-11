@@ -119,6 +119,11 @@ public class ClubApplicationController {
         return ResponseEntity.status(HttpStatus.CREATED).body(applicationService.create(actor, clubId, request));
     }
 
+    @GetMapping(ApiPaths.APPLICATION_REVIEW_SUMMARY)
+    public com.vju.club.dto.response.ApplicationStatusCountsResponse reviewSummary(Actor actor) {
+        return applicationService.reviewSummary(actor);
+    }
+
     @GetMapping(ApiPaths.MY_APPLICATIONS)
     public PageResponse<ClubApplicationSummaryResponse> listMine(
             Actor actor,

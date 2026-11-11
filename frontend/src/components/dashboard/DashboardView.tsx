@@ -6,7 +6,7 @@ import { useState } from "react";
 import {
   Bell, Building2, Calendar, ClipboardCheck, ClipboardList, Users, UsersRound,
 } from "lucide-react";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiModel, ApplicationSummary } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { CLUB_MANAGEMENT_KEYS } from "@/hooks/useSession";
@@ -80,16 +80,11 @@ export function DashboardView() {
   const visibleManagedClubs = (managedClubs.data?.items ?? []).filter(
     (club) => managedClubScope.global || managedClubScope.ids.has(club.id),
   );
-  const appReviewScope = session.clubsWith(APPLICATION_PERMISSIONS);
-  const reviewableClubs = (managedClubs.data?.items ?? []).filter(
-    (club) => appReviewScope.global || appReviewScope.ids.has(club.id),
-  );
-  const reviewQueues = useQueries({
-    queries: reviewableClubs.map((club) => ({
-      queryKey: ["dashboard", "club-applications", club.id],
-      queryFn: () => apiModel.clubApplications(club.id),
-      enabled: canQuery && canReviewApps,
-    })),
+  // one request: the backend counts per status across every club the caller may review
+  const reviewSummary = useQuery({
+    queryKey: ["dashboard", "application-review-summary"],
+    queryFn: apiModel.applicationReviewSummary,
+    enabled: canQuery && canReviewApps,
   });
 
   const systemUsers = useQuery({
@@ -177,13 +172,13 @@ export function DashboardView() {
     myClubList.filter((m) => m.status === "ACTIVE").length || (memberships.data?.total ?? 0);
 
   const myAppsList = myApplications.data?.items ?? [];
-  const managedAppsList = reviewQueues.flatMap((q) => q.data?.items ?? []);
-  const relevantApps: ApplicationSummary[] =
-    canReviewApps && managedAppsList.length > 0 ? managedAppsList : myAppsList;
+  const summary = canReviewApps && reviewSummary.data && reviewSummary.data.total > 0 ? reviewSummary.data : null;
+  const relevantApps: ApplicationSummary[] = summary ? summary.recent : myAppsList;
+  const relevantAppsTotal = summary ? summary.total : myAppsList.length;
 
-  const pendingAppsCount = relevantApps.filter((a) => a.status === "PENDING").length;
-  const approvedAppsCount = relevantApps.filter((a) => a.status === "APPROVED").length;
-  const rejectedAppsCount = relevantApps.filter((a) => a.status === "REJECTED").length;
+  const pendingAppsCount = summary ? summary.pending : myAppsList.filter((a) => a.status === "PENDING").length;
+  const approvedAppsCount = summary ? summary.approved : myAppsList.filter((a) => a.status === "APPROVED").length;
+  const rejectedAppsCount = summary ? summary.rejected : myAppsList.filter((a) => a.status === "REJECTED").length;
 
   const tasksList = myTasks.data?.items ?? [];
   const totalTasksCount = myTasks.data?.total ?? tasksList.length;
@@ -222,7 +217,7 @@ export function DashboardView() {
     notifications.refetch();
     if (canManageClubs || canAdminUsers) {
       managedClubs.refetch();
-      reviewQueues.forEach((q) => q.refetch());
+      if (canReviewApps) reviewSummary.refetch();
     }
     if (canAdminUsers) {
       systemUsers.refetch();
@@ -263,8 +258,8 @@ export function DashboardView() {
     },
     {
       label: canReviewApps ? "Đơn chờ xét duyệt" : "Đơn ứng tuyển chờ duyệt",
-      value: canReviewApps && managedClubs.isPending ? "—" : pendingAppsCount,
-      sub: `${approvedAppsCount} đã duyệt · ${relevantApps.length} tổng đơn`,
+      value: canReviewApps && reviewSummary.isPending ? "—" : pendingAppsCount,
+      sub: `${approvedAppsCount} đã duyệt · ${relevantAppsTotal} tổng đơn`,
       icon: ClipboardList,
       href: canReviewApps ? "/management?tab=applications" : "/applications",
       accent: "text-primary bg-primary/8 border-primary/20",
@@ -351,7 +346,7 @@ export function DashboardView() {
           totalClubsCount={totalClubsCount}
           sortedCategories={sortedCategories}
           canReviewApps={canReviewApps}
-          relevantAppsCount={relevantApps.length}
+          relevantAppsCount={relevantAppsTotal}
           pendingAppsCount={pendingAppsCount}
           approvedAppsCount={approvedAppsCount}
           rejectedAppsCount={rejectedAppsCount}
@@ -368,6 +363,7 @@ export function DashboardView() {
           setActiveFeedTab={setActiveFeedTab}
           canReviewApps={canReviewApps}
           relevantApps={relevantApps}
+          relevantAppsTotal={relevantAppsTotal}
           tasksList={tasksList}
           myClubList={myClubList}
           allClubs={allClubs}

@@ -121,6 +121,15 @@ export type ApplicationSummary = {
   cancelledAt?: string;
 };
 
+export type ApplicationReviewSummary = {
+  pending: number;
+  approved: number;
+  rejected: number;
+  cancelled: number;
+  total: number;
+  recent: ApplicationSummary[];
+};
+
 export type Application = ApplicationSummary & {
   applicantId: string;
   applicantName?: string;
