@@ -1,0 +1,67 @@
+name: Deploy Production
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  deployments: write
+
+jobs:
+  deploy:
+    name: Deploy to vju-club.all1.vn
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://vju-club.all1.vn
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Ship release to Production VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: ./deploy/deploy.sh "$VPS_HOST" "${GITHUB_SHA}"
+
+      - name: Verify live Production HTTPS endpoints
+        run: |
+          for i in $(seq 1 24); do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" https://api.vju-club.all1.vn/api/v1/api-catalog || echo "000")
+            if [ "$code" = "200" ]; then
+              break
+            fi
+            sleep 3
+          done
+          curl -fsS https://vju-club.all1.vn >/dev/null
+          curl -fsS https://api.vju-club.all1.vn/api/v1/public/clubs >/dev/null
+
+      - name: Publish Official Production Release (on tag push)
+        if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-rc') && !contains(github.ref, '-stagging')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          gh release view "$TAG_NAME" >/dev/null 2>&1 || gh release create "$TAG_NAME" \
+            --title "$TAG_NAME (Production)" \
+            --latest \
+            --generate-notes

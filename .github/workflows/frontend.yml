@@ -2,7 +2,7 @@ name: frontend
 
 on:
   push:
-    branches: [main]
+    branches: [main, stagging]
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend.yml'
