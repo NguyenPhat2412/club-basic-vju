@@ -1,17 +1,20 @@
 # Triển khai và sao lưu
 
-| Thành phần | Địa chỉ |
-|---|---|
-| Frontend | https://vju-club.all1.vn → `127.0.0.1:3110` |
-| Backend | https://api.vju-club.all1.vn → `127.0.0.1:8110` |
-| VPS | `root@160.22.123.184`, Ubuntu 24.04, múi giờ Asia/Ho_Chi_Minh |
+| Thành phần | Production | Stagging (tách DB riêng) |
+|---|---|---|
+| Frontend | https://vju-club.all1.vn → `127.0.0.1:3110` | https://stagging.vju-club.all1.vn → `127.0.0.1:3111` |
+| Backend | https://api.vju-club.all1.vn → `127.0.0.1:8110` | https://stagging.vju-club.all1.vn/api/v1 → `127.0.0.1:8111` |
+| VPS | `root@160.22.123.184`, Ubuntu 24.04 (`Asia/Ho_Chi_Minh`) | `/srv/vju-club-stagging` (cùng VPS, project Docker độc lập) |
 
-nginx trên máy chủ (`deploy/nginx/vju-club.conf`) nhận HTTPS (Let's Encrypt, certbot tự gia hạn) rồi chuyển vào Docker Compose (`deploy/compose.prod.yml`: postgres, backend, frontend).
+nginx trên máy chủ (`deploy/nginx/vju-club.conf` và `deploy/nginx/vju-club-stagging.conf`) nhận HTTPS (Let's Encrypt, certbot tự gia hạn) rồi chuyển vào từng cụm Docker Compose độc lập (`deploy/compose.prod.yml`: postgres, redis, backend, frontend).
 
 ## Deploy
 
 ```bash
-deploy/deploy.sh                      # bản main lên root@160.22.123.184
+deploy/deploy-stagging.sh             # đẩy HEAD hiện tại lên https://stagging.vju-club.all1.vn
+deploy/deploy-stagging.sh root@160.22.123.184 <git-ref>
+
+deploy/deploy.sh                      # đẩy main lên Production (https://vju-club.all1.vn)
 deploy/deploy.sh root@160.22.123.184 <git-ref>
 ```
 
