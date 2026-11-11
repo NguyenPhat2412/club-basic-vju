@@ -170,10 +170,13 @@ class SprintTwoApplicationAcceptanceTest extends ApiIntegrationTest {
                 "applicantPhone", "0944444444"
         ), 201);
 
-        // TC-PB-20.1-01: Club manager lists and filters applications
-        JsonNode list = call(get(clubApplications(clubA)).param("search", "Thiết kế"), adminToken, null, 200);
+        // TC-PB-20.1-01: Club manager lists and filters applications by applicant keyword and status
+        JsonNode list = call(get(clubApplications(clubA)).param("search", "pb201-u1"), adminToken, null, 200);
         assertThat(list.path("total").asInt()).isEqualTo(1);
         assertThat(list.at("/items/0/applicantPhone").asText()).isEqualTo("0933333333");
+
+        JsonNode listPending = call(get(clubApplications(clubA)).param("status", "PENDING"), adminToken, null, 200);
+        assertThat(listPending.path("total").asInt()).isGreaterThanOrEqualTo(2);
 
         // TC-PB-20.1-03: Scope security: Non-manager / member of another club is forbidden (403)
         UUID outsider = user("pb201-outsider@vju.test");
