@@ -22,28 +22,30 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 
 ## Tính năng
 
-- **Xác thực:** đăng ký, đăng nhập, đăng xuất, đổi mật khẩu. Hệ thống dùng JWT access token (15 phút) kèm refresh token (30 ngày) được xoay vòng sau mỗi lần dùng và chỉ lưu dạng hash.
-- **Người dùng:** xem và sửa hồ sơ cá nhân, tìm kiếm và sắp xếp danh sách người dùng, khoá hoặc mở tài khoản. Tài khoản bị khoá mất quyền truy cập ngay lập tức.
-- **Câu lạc bộ:** tạo, sửa, tìm kiếm, bật/tắt hoạt động. Mã CLB là duy nhất, không phân biệt hoa thường.
+- **Xác thực:** đăng ký sinh viên (`@st.vju.ac.vn`), đăng nhập bằng mật khẩu hoặc Google OAuth (`@st.vju.ac.vn`), đăng xuất, đổi mật khẩu. Hệ thống dùng phiên máy chủ lưu trong PostgreSQL (`spring_session` — cookie `CLUB_SESSION` HttpOnly) kết hợp bảo vệ CSRF (`XSRF-TOKEN` / `X-XSRF-TOKEN`).
+- **Người dùng:** xem và sửa hồ sơ cá nhân, tìm kiếm và sắp xếp danh sách người dùng, khoá (`LOCKED`) hoặc vô hiệu hoá (`INACTIVE`) tài khoản, xóa/ẩn danh PII an toàn khi tài khoản đã có lịch sử CLB (`V21`). Tài khoản bị khoá mất quyền truy cập ngay lập tức (`AccountStatusFilter`).
+- **Câu lạc bộ & Hình ảnh truyền thông (`V22`):** tạo, sửa, tìm kiếm, lọc theo lĩnh vực động từ CSDL, tải lên/stream trực tiếp logo & ảnh bìa (cover) của 12 CLB VJU, bật/tắt hoạt động. Mã CLB là duy nhất, không phân biệt hoa thường.
 - **Ban:** mỗi CLB có nhiều ban. Tên ban là duy nhất trong phạm vi một CLB.
 - **Thành viên:** thêm thành viên vào CLB, tạm ngưng, cho rời CLB. Hệ thống lưu **lịch sử** tham gia: mỗi lần tham gia là một membership riêng, người đã rời có thể được thêm lại. Khi rời CLB, thành viên tự động bị gỡ khỏi mọi ban.
 - **Thành viên ban:** xếp thành viên vào ban, chuyển ban, gỡ khỏi ban. Chỉ xếp được thành viên đang hoạt động vào ban cùng CLB.
-- **Phân quyền:** 35 quyền, mỗi quyền được cấp theo một trong ba phạm vi `GLOBAL`, `CLUB` hoặc `DEPARTMENT`. Mọi lần cấp và thu hồi đều được ghi audit log.
+- **Phân quyền:** danh mục quyền đầy đủ theo module, mỗi quyền được cấp theo một trong ba phạm vi `GLOBAL`, `CLUB` hoặc `DEPARTMENT`. Mọi lần cấp và thu hồi đều được ghi audit log.
 - **Vai trò:** vai trò là nhóm quyền ứng với một chức vụ. Có 5 vai trò hệ thống (Quản trị hệ thống, Chủ nhiệm, Phó chủ nhiệm, Trưởng ban, Thành viên); admin có thể tạo thêm vai trò tuỳ chỉnh. Vai trò được gán theo cùng cơ chế scope như quyền.
+- **Sự kiện, Cộng tác viên (CTV), Nhiệm vụ & Điểm danh (`V14`, `V21`):** quản lý sự kiện CLB, cổng đăng ký Thành viên & CTV (khóa bi quan chống vượt chỉ tiêu), giao việc/subtask 1 cấp, điểm danh và hậu kiểm điểm danh trong cửa sổ cấu hình kèm lý do.
+- **Đa ngôn ngữ AI (`V23`):** dịch thuật tự động giao diện và nội dung động (`vi`, `en`, `ja`) qua cổng AI **9router** kết hợp bộ nhớ đệm bền vững trên PostgreSQL (`i18n_translations`).
 - **Audit log:** mọi thao tác nghiệp vụ quan trọng (khoá/mở tài khoản, tạo/sửa CLB và ban, thêm/xoá thành viên, cấp/thu hồi quyền và vai trò…) đều được ghi lại, kèm người thực hiện, thời điểm và giá trị trước/sau. Tra cứu qua `GET /audit-logs`.
-- **Bảo vệ:** giới hạn tần suất (rate limit) cho các endpoint đăng nhập/đăng ký/làm mới token. Mọi lỗi trả về theo định dạng RFC 7807. Người không có quyền không thể dò xem một ID có tồn tại hay không.
+- **Bảo vệ:** giới hạn tần suất (rate limit) cho các endpoint nhạy cảm. Mọi lỗi trả về theo định dạng RFC 7807. Người không có quyền không thể dò xem một ID có tồn tại hay không.
 
 ## Công nghệ
 
 | Thành phần | Công nghệ |
 |---|---|
-| Backend | Java 21, Spring Boot 4.1.1 (Web MVC, Security, OAuth2 Resource Server, Data JPA, Validation) |
-| Cơ sở dữ liệu | PostgreSQL 16, Flyway |
-| Xác thực | JWT HS256 (Nimbus), BCrypt |
-| Tài liệu API | OpenAPI 3.1, springdoc / Swagger UI |
-| Frontend | Next.js 16, React 19, TypeScript, pnpm |
-| Kiểm thử | JUnit 5, Mockito, Spring MockMvc trên PostgreSQL thật (Testcontainers); Python `unittest` cho contract |
-| Hạ tầng | Docker, Docker Compose, GitHub Actions |
+| Backend | Java 21, Spring Boot 4.1.1 (Web MVC, Security, Spring Session JDBC, Data JPA, Validation) |
+| Cơ sở dữ liệu | PostgreSQL 16, Flyway (`V1`..`V24`) |
+| Xác thực | Spring Session JDBC (`CLUB_SESSION` HttpOnly cookie), CSRF (`X-XSRF-TOKEN`), Google OAuth2 (`@st.vju.ac.vn`), BCrypt |
+| Tài liệu API | OpenAPI 3.1 (`143` HTTP operations), springdoc / Swagger UI |
+| Frontend | Next.js 16, React 19, TypeScript, TanStack Query 5, Tailwind CSS, pnpm (kiến trúc modular `≤ 400` dòng/tệp) |
+| Kiểm thử | JUnit 5, Mockito, Spring MockMvc trên PostgreSQL thật (Testcontainers); Python `unittest` cho contract (`16/16 Pass`) |
+| Hạ tầng | Docker, Docker Compose, GitHub Actions, Cloudflare R2 / Local Storage |
 
 ## Cấu trúc thư mục
 
@@ -78,11 +80,11 @@ Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt 
 │   │   └── api/                 # Bản copy runtime của OpenAPI và catalog
 │   ├── src/test/                # Unit test + integration test
 │   └── Dockerfile
-├── frontend/                    # Frontend Next.js: discovery, applications, memberships, management, notifications
+├── frontend/                    # Frontend Next.js: discovery, applications, memberships, events, schedule, management, notifications
 ├── docs/
-│   ├── api/                     # OpenAPI 3.1 contract (123 endpoints), catalog, test contract
-│   ├── baseline/                # Quyết định PO, ma trận truy vết và hồ sơ nghiệm thu Sprint 2
-│   ├── database/                # Hướng dẫn database & Flyway V1..V20
+│   ├── api/                     # OpenAPI 3.1 contract (143 endpoints), catalog, test contract (16/16 Pass)
+│   ├── baseline/                # Quyết định PO, ma trận truy vết và hồ sơ nghiệm thu Giai đoạn 2, 3 & 4
+│   ├── database/                # Hướng dẫn database & Flyway V1..V24
 │   └── superpowers/             # Spec và kế hoạch thiết kế
 ├── inf/                         # Chỗ dành cho cấu hình docker/nginx/postgres (chưa dùng)
 ├── docker-compose.yml           # PostgreSQL cho phát triển (cổng 5432)
@@ -314,13 +316,14 @@ Flyway quản lý schema tại `backend/springboot/src/main/resources/db/migrati
 
 | Migration | Nội dung |
 |---|---|
-| `V1__create_phase1_schema.sql` | 8 bảng `users`, `clubs`, `departments`, `memberships`, `department_members`, `permissions`, `user_permissions`, `permission_audit_logs`; seed 25 quyền |
-| `V2__create_refresh_tokens.sql` | Bảng `refresh_tokens` (chỉ lưu SHA-256 của token) |
-| `V3__harden_constraints_and_indexes.sql` | Chuyển các ràng buộc nghiệp vụ xuống tầng DB và bổ sung index (chi tiết bên dưới) |
-| `V4__membership_history.sql` | Lưu lịch sử tham gia: mỗi user chỉ có tối đa một membership chưa kết thúc cho mỗi CLB |
-| `V5__roles.sql` | Bảng `roles`, `role_permissions`, `user_roles`; view `effective_user_permissions`; seed 5 vai trò hệ thống và 2 quyền `role.*` |
-| `V6__audit_log_and_membership_timestamps.sql` | Bảng `audit_logs` (chỉ được thêm, không sửa/xoá), `created_at`/`updated_at` cho membership, quyền `audit.view` |
-| `V7__club_applications.sql` | Bảng đơn đăng ký CLB, giới hạn trạng thái/nội dung, partial unique index cho đơn PENDING, 7 quyền application và audit resource `APPLICATION` |
+| `V1`..`V6` | Nền tảng `users`, `clubs`, `departments`, `memberships`, `department_members`, RBAC (`permissions`, `roles`, `effective_user_permissions`) và `audit_logs` bất biến |
+| `V7`..`V10` | Đơn đăng ký CLB (`club_applications`), thông báo (`notifications`), cột audit `created_by`/`updated_by`, và quản lý tài liệu CLB (`documents`, `document_versions`) |
+| `V11`..`V16` | Tài khoản do Admin cấp (`user.create`), phiên HTTP lưu trong PostgreSQL (`spring_session`), bắt buộc đổi mật khẩu lần đầu, sự kiện/nhiệm vụ/chat/AI (`events`, `tasks`, `chat_channels`, `ai_summaries`), Google OAuth (`google_subject`) và đồng bộ vai trò `CLUB_MEMBER` |
+| `V17`..`V20` | Biểu mẫu ứng tuyển động (`club_application_forms`, `club_application_files`), trạng thái tài khoản `LOCKED` & giới hạn chức danh (`max_holders`), cấu hình hệ thống (`system_settings`), tách `internal_note`, khử trùng lặp thông báo (`uq_notifications_user_event_key`) và đình chỉ quyền khi membership `SUSPENDED` |
+| `V21` | Hoàn thiện vận hành Giai đoạn 3–4: vai trò sự kiện (`event_role`), hậu kiểm điểm danh (`edit_reason`, `@Version`, `attendance_edit_window_hours`), phân rã subtask 1 cấp (`parent_task_id`, `overdue_notified_at`) và ẩn danh PII (`users.anonymized_at`) |
+| `V22` | Lưu trữ và stream trực tiếp logo & ảnh bìa (cover) của 12 CLB VJU (`logo_storage_key`, `cover_storage_key`, content-type, kích thước tệp) |
+| `V23` | Bảng bộ nhớ đệm dịch thuật đa ngôn ngữ AI `i18n_translations` (`uq_i18n_translations_hash_lang`) |
+| `V24` | Mở rộng `system_settings` với các ngưỡng vận hành & giới hạn dung lượng tệp/ảnh đại diện (`allow_self_registration`, `attendance_opens_before_minutes`, `event_task_grace_days`, `chat_summaries_per_hour`, `chat_max_message_length`, `document_max_file_mb`, `club_image_max_mb`, `avatar_max_mb`) |
 
 Ràng buộc được đặt ngay ở tầng database, nên dữ liệu sai bị chặn kể cả khi ghi bằng SQL trực tiếp hoặc khi nhiều request chạy đồng thời:
 - **Duy nhất, không phân biệt hoa thường:** email, mã sinh viên, mã CLB, và tên ban trong một CLB (unique index trên `lower(...)`). Mỗi user chỉ có tối đa một membership **chưa kết thúc** trong một CLB; các membership đã `LEFT` được giữ làm lịch sử.
@@ -339,10 +342,10 @@ Khi chạy, Hibernate chỉ `validate` schema chứ không tự sửa. Mọi tha
 ## Kiểm thử
 
 ```bash
-# 574 test backend: unit + migration + concurrency + integration (cần Docker đang chạy)
+# 587+ test backend: unit + migration + concurrency + integration (cần Docker đang chạy)
 cd backend/springboot && ./mvnw test
 
-# Kiểm tra OpenAPI 3.1 & API catalog contract (15 test từ thư mục gốc)
+# Kiểm tra OpenAPI 3.1 & API catalog contract (16 test từ thư mục gốc — 143 HTTP operations)
 python3 -m unittest discover -s docs/api/tests -v
 
 # Kiểm tra Frontend Next.js: lint + typecheck + unit test + production build
@@ -404,10 +407,11 @@ Quyền mới gồm `application.view`, `application.view_detail`, `application.
 ## Tài liệu liên quan
 
 - [Backend README](backend/springboot/README.md): chi tiết chạy và kiểm thử backend
-- [API inventory và Swagger contract (123 endpoints)](docs/api/README.md)
+- [API inventory và Swagger contract (143 endpoints)](docs/api/README.md)
 - [OpenAPI 3.1 contract](docs/api/openapi.yaml)
-- [Hướng dẫn database (`V1..V20`)](docs/database/README.md)
+- [Hướng dẫn database (`V1..V24`)](docs/database/README.md)
 - [Quyết định PO Sprint 2 (`PB-55`, `PB-56`)](docs/baseline/phase2-po-decisions.md)
 - [Ma trận truy vết Sprint 2](docs/baseline/phase2-traceability-matrix.md)
 - [Hồ sơ nghiệm thu Baseline Sprint 2](docs/baseline/phase2-baseline.md)
+- [Hồ sơ nghiệm thu & bàn giao Giai đoạn 3–4](docs/baseline/phase3-4-baseline-and-handoff.md)
 - [Thiết kế và kế hoạch giai đoạn 1](docs/superpowers/specs/)

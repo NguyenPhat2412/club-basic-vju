@@ -306,7 +306,21 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
                 .or(() -> userRepository.findByEmailIgnoreCase("admin@vju.local"))
                 .orElse(userA);
 
-        // Enroll demo.a as CLUB_PRESIDENT across all 12 real VJU clubs
+        // Seed clean 5-role CSE3077 test accounts (@vju.club / 12345678)
+        User testAdmin = ensureUserWithPassword("admin@vju.club", "VJU System Admin", null, "12345678");
+        User testPresident = ensureUserWithPassword("president@vju.club", "Nguyễn Minh Quân (President)", null, "12345678");
+        User testManager = ensureUserWithPassword("manager@vju.club", "Trần Thu Hà (Manager)", null, "12345678");
+        User testMember = ensureUserWithPassword("member@vju.club", "Lê Hoàng Nam (Member)", null, "12345678");
+        ensureUserWithPassword("student@vju.club", "Phạm Thảo Linh (Student)", null, "12345678");
+        assignRoleIfAbsent(testAdmin, "SYSTEM_ADMIN", PermissionScope.GLOBAL, null, null, testAdmin, now.minusDays(45));
+        ensureClubMembership(testPresident, clubsByCode.get("MONOZUKURI"), 0, "CLUB_PRESIDENT", testAdmin, now.minusDays(46));
+        ensureClubMembership(testPresident, clubsByCode.get("BIGHEART"), 0, "CLUB_PRESIDENT", testAdmin, now.minusDays(46));
+        ensureClubMembership(testPresident, clubsByCode.get("VJUA"), 0, "CLUB_VICE_PRESIDENT", userA, now.minusDays(32));
+        ensureClubMembership(testManager, clubsByCode.get("VJUA"), 1, "DEPARTMENT_HEAD", userA, now.minusDays(28));
+        ensureClubMembership(testMember, clubsByCode.get("VJUA"), 2, "CLUB_MEMBER", userA, now.minusDays(22));
+        ensureClubMembership(testMember, clubsByCode.get("SUNPINKEY"), 1, "CLUB_MEMBER", userA, now.minusDays(18));
+
+        // Enroll demo.a as CLUB_PRESIDENT across remaining VJU clubs (including VJUA)
         int clubIdx = 0;
         for (Club club : clubsByCode.values()) {
             ensureClubMembership(userA, club, clubIdx, "CLUB_PRESIDENT", userA, now.minusDays(45 - clubIdx));
@@ -320,7 +334,7 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
                 continue;
             }
             String emailLower = existingUser.getEmail().toLowerCase(Locale.ROOT);
-            if (emailLower.startsWith("admin") || emailLower.startsWith("23110209")) {
+            if ((emailLower.startsWith("admin") && !emailLower.equals("admin@vju.club")) || emailLower.startsWith("23110209")) {
                 int idx = 0;
                 for (Club club : clubsByCode.values()) {
                     ensureClubMembership(existingUser, club, idx + 1, "CLUB_MEMBER", userA, now.minusDays(40 - idx));
@@ -837,19 +851,24 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
     }
 
     private User ensureUser(String email, String fullName, String studentCode) {
+        String rawPassword = demoDataProperties.getPassword();
+        if (rawPassword == null || rawPassword.isBlank()) {
+            rawPassword = "Demo-Password-123";
+        }
+        return ensureUserWithPassword(email, fullName, studentCode, rawPassword);
+    }
+
+    private User ensureUserWithPassword(String email, String fullName, String studentCode, String rawPassword) {
         return userRepository.findByEmailIgnoreCase(email).orElseGet(() -> {
-            String rawPassword = demoDataProperties.getPassword();
-            if (rawPassword == null || rawPassword.isBlank()) {
-                rawPassword = "Demo-Password-123";
-            }
             User created = new User();
             created.setEmail(email);
             created.setFullName(fullName);
-            if (!userRepository.existsByStudentCodeIgnoreCase(studentCode)) {
+            if (studentCode != null && !studentCode.isBlank() && !userRepository.existsByStudentCodeIgnoreCase(studentCode)) {
                 created.setStudentCode(studentCode);
             }
             created.setPasswordHash(passwordEncoder != null ? passwordEncoder.encode(rawPassword) : "{noop}" + rawPassword);
             created.setStatus(UserStatus.ACTIVE);
+            created.setRequiresPasswordChange(false);
             return userRepository.save(created);
         });
     }

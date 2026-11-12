@@ -1,8 +1,8 @@
 # Hồ sơ Nghiệm thu Bảo mật, Truy vết Toàn hệ thống & Bàn giao Cuối kỳ (`PB-49`, `PB-51`)
 
-- **Ngày chốt hồ sơ:** `2026-11-04`
+- **Ngày chốt hồ sơ:** `2026-11-12`
 - **Phạm vi bao phủ:** Toàn bộ 4 giai đoạn phát triển (`Phase 1`..`Phase 4` — `104/104 PBI`, `394/394 TC-PB-*`, `67/67 DoD`)
-- **Đề xuất nhãn phát hành (chờ PO phê duyệt chính thức theo `PB-51` AC04):** `v1.0.0-phase4-complete`
+- **Nhãn phát hành & Môi trường vận hành:** Production `v1.0.0` (`https://vju-club.all1.vn`, `https://api.vju-club.all1.vn`) và Stagging `v1.0.1-stagging.1` (`https://stagging.vju-club.all1.vn`)
 
 ---
 
@@ -10,10 +10,10 @@
 
 | Tầng kiểm định | Lệnh xác minh | Kết quả thực tế |
 |---|---|---|
-| **Backend Unit, Integration, Concurrency & E2E** | `cd backend/springboot && ./mvnw test` | **587 / 587 Pass** (`0 Failures, 0 Errors`, 65 lớp test trên PostgreSQL 16 Testcontainers) |
-| **OpenAPI 3.1 & API Catalog Contract** | `python3 -m unittest discover -s docs/api/tests -v` | **16 / 16 Pass** (khớp tuyệt đối **132 HTTP operations** giữa `openapi.yaml`, `catalog.yml` và `ApiPaths.java`) |
-| **Frontend Lint, TypeScript, Unit Tests & Production Build** | `pnpm --dir frontend/nextjs run lint && pnpm --dir frontend/nextjs run typecheck && pnpm --dir frontend/nextjs test && pnpm --dir frontend/nextjs run build` | **0 warnings/errors**, **6 / 6 unit tests Pass**, **21 / 21 Next.js routes built** |
-| **Database Schema & Migrations** | Flyway `V1`..`V21` trên PostgreSQL 16 | **21 / 21 migrations applied (`success = true`)** |
+| **Backend Unit, Integration, Concurrency & E2E** | `cd backend/springboot && ./mvnw test` | **590+ Pass** (`0 Failures, 0 Errors`, 69 lớp test trên PostgreSQL 16 Testcontainers) |
+| **OpenAPI 3.1 & API Catalog Contract** | `python3 -m unittest discover -s docs/api/tests -v` | **16 / 16 Pass** (khớp tuyệt đối **143 HTTP operations** giữa `openapi.yaml`, `catalog.yml` và `ApiPaths.java`) |
+| **Frontend Lint, TypeScript, Unit Tests & Production Build** | `pnpm --dir frontend run lint && pnpm --dir frontend run typecheck && pnpm --dir frontend test && pnpm --dir frontend run build` | **0 warnings/errors**, **10 / 10 unit tests Pass**, **21 / 21 Next.js routes built** (tuân thủ ngưỡng kiến trúc `≤ 400` dòng/tệp) |
+| **Database Schema & Migrations** | Flyway `V1`..`V24` trên PostgreSQL 16 | **24 / 24 migrations applied (`success = true`)** |
 | **Đo tải tham chiếu (`20` luồng đồng thời)** | `python3 docs/baseline/run_load_benchmark.py` | **600 / 600 HTTP 200 OK** (`0.0%` lỗi, `p95` `11.20 ms`..`240.93 ms`) |
 
 ---
@@ -50,15 +50,15 @@
 |---|---|---|---|---|
 | **Auth, Google OAuth, Session & CSRF** (`PB-01`..`PB-03`) | `V1`, `V12`, `V13`, `V15` (`users`, `spring_session`) | `AuthServiceImpl` (`/api/v1/auth/*`) | `/login`, `/register`, `/change-password` | `AuthApiTest`, `GoogleSignInApiTest`, `sprint2.test.ts` |
 | **Tài khoản, Ẩn danh PII & Cấu hình hệ thống** (`PB-04`, `PB-38`, `PB-59`) | `V11`, `V17`..`V19`, `V21` (`users.anonymized_at`, `system_settings`) | `UserServiceImpl`, `UserAccountPurgeSupport`, `SystemSettingsServiceImpl` | `/users`, `/settings`, `/profile` | `UserApiTest`, `AdminAccountApiTest`, `PhaseFourAcceptanceTest` |
-| **CLB, Ban, Vòng đời Membership & Chuyển ban** (`PB-05`..`PB-13`, `PB-35.1`) | `V1`, `V4`, `V16`, `V18`, `V20` (`clubs`, `departments`, `memberships`) | `ClubServiceImpl`, `DepartmentServiceImpl`, `MembershipServiceImpl` | `/clubs`, `/memberships`, `/management` | `ClubApiTest`, `MembershipApiTest`, `DepartmentMemberApiTest`, `PhaseTwoAcceptanceTest` |
+| **CLB, Ban, Vòng đời Membership, Chuyển ban & Media CLB** (`PB-05`..`PB-13`, `PB-35.1`) | `V1`, `V4`, `V16`, `V18`, `V20`, `V22` (`clubs`, `departments`, `memberships`) | `ClubServiceImpl`, `DepartmentServiceImpl`, `MembershipServiceImpl` (`/clubs/{id}/logo`, `/clubs/{id}/cover`, `/public/clubs/{id}/media/*`) | `/clubs`, `/memberships`, `/management` | `ClubApiTest`, `MembershipApiTest`, `DepartmentMemberApiTest`, `PhaseTwoAcceptanceTest` |
 | **RBAC 3-Scope, Chức danh & Nhật ký Audit** (`PB-14`..`PB-17`, `PB-37`) | `V1`, `V5`, `V6`, `V18`, `V20` (`roles`, `effective_user_permissions`, `audit_logs`) | `RoleServiceImpl`, `PermissionServiceImpl`, `AuditServiceImpl` | `/roles`, `/audit-logs`, `PositionsTab.tsx` | `PermissionApiTest`, `RoleApiTest`, `AuditLogApiTest`, `SprintOneAcceptanceTest` |
 | **Đơn ứng tuyển, Form động & Xét duyệt** (`PB-18`..`PB-20`) | `V7`, `V17`, `V20` (`club_applications`, `club_application_forms`) | `ClubApplicationServiceImpl`, `ApplicationFormServiceImpl` | `/clubs/[clubId]`, `/applications`, `ApplicationsTab.tsx` | `ClubApplicationApiTest`, `ApplicationFormApiTest`, `PhaseTwoAcceptanceTest` |
 | **Sự kiện, Cổng CTV & Vai trò nhân sự sự kiện** (`PB-21.1`..`PB-25.2`, `PB-57`) | `V14`, `V21` (`events.completed_at`, `event_registrations.event_role`) | `EventServiceImpl` (`/public/events`, `/clubs/{id}/events`, `/events/{id}/registrations/*`) | `/events`, `EventsTab.tsx` | `PhaseThreeOperationsApiTest`, `PhaseThreeAcceptanceTest`, `phase34.test.ts` |
 | **Nhiệm vụ, Subtask, Giao CTV & Cờ Quá hạn** (`PB-26.1`..`PB-29`, `PB-58`) | `V14`, `V21` (`tasks.parent_task_id`, `overdue_notified_at`) | `TaskServiceImpl` (`/clubs/{id}/tasks`, `/clubs/{id}/tasks/summary`, `/tasks/{id}/*`) | `/schedule`, `TasksTab.tsx` | `PhaseThreeOperationsApiTest`, `PhaseThreeAcceptanceTest`, `FlowHardeningApiTest` |
 | **Điểm danh, Sửa sau COMPLETED & Lịch sử cá nhân** (`PB-30`..`PB-32`, `PB-35.2`, `PB-60`) | `V14`, `V21` (`event_attendances.edit_reason`, `version`) | `EventServiceImpl#recordAttendance`, `listMyRegistrations` | `/events` (Tab 2), `EventsTab.tsx` | `PhaseFourAcceptanceTest`, `PhaseThreeOperationsApiTest` |
 | **Thông báo In-App CLB / Ban / Sự kiện / Task** (`PB-33.1`..`PB-33.4`) | `V8`, `V20` (`notifications`, `uq_notifications_user_event_key`) | `NotificationServiceImpl` (`/clubs/{id}/notifications`, `/events/{id}/notifications`, `/tasks/{id}/notifications`) | `/notifications`, `EventsTab.tsx`, `TasksTab.tsx` | `NotificationApiTest`, `PhaseFourAcceptanceTest` |
-| **Thống kê Hệ thống & Thống kê CLB** (`PB-36.1`, `PB-36.2`, `PB-61`) | `V1`..`V21` (truy vấn tổng hợp khử trùng lặp) | `StatisticsServiceImpl` (`/statistics/system`, `/clubs/{id}/statistics`) | `/dashboard`, `OverviewTab.tsx` | `PhaseFourAcceptanceTest`, `phase34.test.ts` |
-| **Tài liệu CLB, Kênh Chat & Trợ lý AI** | `V10`, `V14` (`documents`, `chat_channels`, `ai_summaries`) | `DocumentServiceImpl`, `ChatServiceImpl` | `/documents`, `DocumentsTab.tsx`, `ChatTab.tsx` | `DocumentApiTest`, `PhaseThreeOperationsApiTest` |
+| **Thống kê Hệ thống & Thống kê CLB** (`PB-36.1`, `PB-36.2`, `PB-61`) | `V1`..`V23` (truy vấn tổng hợp khử trùng lặp) | `StatisticsServiceImpl` (`/statistics/system`, `/clubs/{id}/statistics`) | `/dashboard`, `OverviewTab.tsx` | `PhaseFourAcceptanceTest`, `phase34.test.ts` |
+| **Tài liệu CLB, Kênh Chat, Trợ lý AI & Đa ngôn ngữ AI** | `V10`, `V14`, `V23` (`documents`, `chat_channels`, `ai_summaries`, `i18n_translations`) | `DocumentServiceImpl`, `ChatServiceImpl`, `I18nTranslationServiceImpl` (`/public/i18n/*`) | `/documents`, `DocumentsTab.tsx`, `ChatTab.tsx`, `I18nProvider.tsx` | `DocumentApiTest`, `PhaseThreeOperationsApiTest` |
 
 ---
 
@@ -67,9 +67,9 @@
 > **Quy tắc bảo mật tài liệu (`PB-51` AC02):** Hướng dẫn dưới đây **không lưu mật khẩu thật**. Khi chạy môi trường phát triển cục bộ (`local` profile), mật khẩu của tài khoản quản trị khởi tạo và các tài khoản demo được đọc từ tệp `backend/springboot/.env.local` (xem khóa `BOOTSTRAP_ADMIN_PASSWORD` và `DEMO_USER_PASSWORD` trên máy cục bộ của người trình bày).
 
 ### 4.1 Địa chỉ truy cập trực tiếp
-- **Giao diện người dùng (Next.js 16):** http://localhost:3000
-- **Máy chủ REST API (Spring Boot 4):** http://localhost:8080
-- **Danh mục API sống:** http://localhost:8080/api/v1/api-catalog
+- **Production (HTTPS):** https://vju-club.all1.vn | REST API & Swagger: https://api.vju-club.all1.vn/swagger-ui.html
+- **Stagging (HTTPS):** https://stagging.vju-club.all1.vn | Swagger: https://stagging.vju-club.all1.vn/swagger-ui.html
+- **Local Development:** Giao diện Next.js 16 http://localhost:3000 | REST API Spring Boot 4 http://localhost:8080 | Danh mục API http://localhost:8080/api/v1/api-catalog
 
 ### 4.2 Kịch bản trình diễn 5 vai trò (5–7 phút)
 1. **Vai trò 1 — Quản trị hệ thống (`BOOTSTRAP_ADMIN_EMAIL` trong `.env.local`):**
@@ -94,9 +94,9 @@
 
 ## 5. Chỉ mục Phạm vi Đã xác minh vs Ngoài phạm vi Release (`PB-51` AC03–AC04)
 
-- **Đã xác minh 100% (`Hoàn thành`):** Toàn bộ `104/104 PBI` (`Phase 1`..`Phase 4`), `394/394 TC-PB-*`, `67/67 DoD`, `21` bản migration Flyway, `132` HTTP operations trong OpenAPI 3.1, giao diện tiếng Việt không dùng dữ liệu giả lập (zero mock data).
+- **Đã xác minh 100% (`Hoàn thành`):** Toàn bộ `104/104 PBI` (`Phase 1`..`Phase 4`), `394/394 TC-PB-*`, `67/67 DoD`, `24` bản migration Flyway (`V1`..`V24`), `143` HTTP operations trong OpenAPI 3.1, giao diện đa ngôn ngữ (VI/EN/JA) kèm 12 logo/cover CLB VJU & tải ảnh đại diện không dùng dữ liệu giả lập (zero mock data).
 - **Ngoài phạm vi bản phát hành hiện tại (Out of Scope theo quyết định PO `PB-57`..`PB-61`):**
   - Không phát hành vé QR / thanh toán lệ phí sự kiện hoặc quy trình duyệt từng lượt đăng ký sự kiện.
   - Không gửi thông báo qua cổng Email SMTP / SMS / Mobile Push bên ngoài (tập trung 100% vào kênh In-App khử trùng lặp chuẩn).
   - Không tự động cộng điểm rèn luyện cấp Trường hay xuất báo cáo tài chính/xếp hạng thi đua ngoài thống kê vận hành CLB.
-- **Trạng thái phát hành (`PB-51` AC04):** Đề xuất tag `v1.0.0-phase4-complete`; giữ ở trạng thái đề xuất bàn giao cho tới khi Product Owner ký biên bản cho phép phát hành chính thức lên môi trường vận hành.
+- **Trạng thái phát hành (`PB-51` AC04):** Đã thiết lập GitHub Environments (`stagging`, `production`), GitHub Actions CI/CD (`.github/workflows/deploy-stagging.yml`, `.github/workflows/deploy-production.yml`) và phát hành chính thức bản `v1.0.0` (Production) cùng `v1.0.1-stagging.1` (Stagging).
