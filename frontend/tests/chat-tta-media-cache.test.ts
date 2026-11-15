@@ -7,11 +7,15 @@ import {
   areMessagesInSameDisplayGroup,
   canApplyActiveChannelMessage,
   chunkAlbumRows,
+  filterChannelMessages,
   getAlbumRows,
   getCachedChatAttachmentUrl,
+  getCachedPinnedMessages,
   isComposerImeComposing,
   readRealtimeChatMessage,
   reconcileIncomingChatMessage,
+  reconcilePinnedChatMessage,
+  saveCachedPinnedMessages,
   seedChatAttachmentPreviewUrl,
   setMessageWindowCacheEntry,
   shouldIgnoreTrailingComposerImeText,
@@ -185,9 +189,35 @@ test("apiModel builds exact Chat Media & Quick Replies HTTP endpoints", async ()
     });
     assert.equal(calls.at(-1)!.method, "POST");
     assert.equal(new URL(calls.at(-1)!.url).pathname, "/api/v1/clubs/club-12/quick-replies");
+
+    await apiModel.pinnedMessages("ch-99");
+    assert.equal(new URL(calls.at(-1)!.url).pathname, "/api/v1/channels/ch-99/pinned-messages");
+    assert.equal(calls.at(-1)!.method, "GET");
+
+    await apiModel.pinMessage("ch-99", "msg-55");
+    assert.equal(new URL(calls.at(-1)!.url).pathname, "/api/v1/channels/ch-99/messages/msg-55/pin");
+    assert.equal(calls.at(-1)!.method, "POST");
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("filterChannelMessages and Messenger pinned cache prevent cross-channel bleed on rapid switches", () => {
+  const mixed: ChatMessage[] = [
+    { id: "m-a1", channelId: "ch-A", senderType: "USER", content: "Kênh A", createdAt: "2026-11-15T15:00:00Z" },
+    { id: "m-b1", channelId: "ch-B", senderType: "USER", content: "Kênh B", createdAt: "2026-11-15T15:00:01Z" },
+  ];
+  assert.deepEqual(filterChannelMessages(mixed, "ch-A").map((m) => m.id), ["m-a1"]);
+  assert.deepEqual(filterChannelMessages(mixed, "ch-B").map((m) => m.id), ["m-b1"]);
+
+  const pinnedAfterPin = reconcilePinnedChatMessage([], mixed[0]!, true);
+  assert.equal(pinnedAfterPin.length, 1);
+  assert.equal(pinnedAfterPin[0]?.pinned, true);
+  saveCachedPinnedMessages("ch-A", pinnedAfterPin, "user-1", "ch-A");
+  assert.equal(getCachedPinnedMessages("ch-A", "user-1")?.items.length, 1);
+
+  const pinnedAfterUnpin = reconcilePinnedChatMessage(pinnedAfterPin, mixed[0]!, false);
+  assert.equal(pinnedAfterUnpin.length, 0);
 });
 
 test("Chat-TTA album rows and 5-minute sender grouping stay compact and accurate", () => {

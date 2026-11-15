@@ -142,6 +142,9 @@ function ClubsDiscoveryContent() {
   const apply = useMutation({
     mutationFn: async () => {
       const formData = activeForm.data;
+      if (!draft.applicantPhone.trim() || !draft.facultyMajor.trim() || !draft.academicYear.trim()) {
+        throw new Error("Vui lòng điền đầy đủ Số điện thoại liên hệ, Khoa / Ngành học và Khóa / Năm học.");
+      }
       if (formData?.requireAttachment && attachments.length === 0) {
         throw new Error("Biểu mẫu của CLB này yêu cầu đính kèm ít nhất 1 tệp hồ sơ (.docx, .pdf hoặc hình ảnh).");
       }

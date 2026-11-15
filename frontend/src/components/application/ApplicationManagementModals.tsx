@@ -88,7 +88,7 @@ export function ReviewApplicationModal({
         </div>
       )}
       {review?.approve && activeDepartments.length > 0 && (
-        <FormField label="Phân vào Ban ngay khi duyệt (tuỳ chọn)">
+        <FormField label="Phân vào Ban ngay khi duyệt">
           <Select value={reviewDeptId} onChange={(e) => setReviewDeptId(e.target.value)}>
             <option value="">— Chưa phân ban (chỉ thêm làm thành viên CLB) —</option>
             {activeDepartments.map((d) => (
@@ -105,7 +105,7 @@ export function ReviewApplicationModal({
         </FormField>
       )}
       <FormField
-        label="Phản hồi gửi ứng viên (tuỳ chọn)"
+        label="Phản hồi gửi ứng viên"
         hint="Hiển thị trực tiếp cho sinh viên trong chi tiết đơn đăng ký."
       >
         <Textarea
@@ -229,7 +229,7 @@ export function UpsertApplicationModal({
       <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
         {modalMode === "create" && (
           <div className="rounded-lg border border-primary/20 bg-primary/[0.03] p-3.5">
-            <FormField label="Chọn người nộp đơn (Ứng viên)" required>
+            <FormField label="Chọn người nộp đơn (Ứng viên)" required={Boolean(usersListQuery.data?.items?.length)}>
               {usersListQuery.data?.items && usersListQuery.data.items.length > 0 ? (
                 <Select
                   value={draft.applicantId}

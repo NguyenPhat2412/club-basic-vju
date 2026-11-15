@@ -20,6 +20,9 @@ public record ChatMessageResponse(
         Long documentSizeBytes,
         Boolean documentPreviewable,
         List<ChatAttachmentResponse> attachments,
+        boolean pinned,
+        OffsetDateTime pinnedAt,
+        String pinnedByName,
         String clientTempId,
         OffsetDateTime createdAt
 ) {
@@ -40,6 +43,9 @@ public record ChatMessageResponse(
                 documentSizeBytes,
                 documentPreviewable,
                 items == null ? List.of() : items,
+                pinned,
+                pinnedAt,
+                pinnedByName,
                 tempId,
                 createdAt
         );

@@ -109,6 +109,11 @@ const DYNAMIC_PATTERNS: PatternRule[] = [
     ja: (_, count) => `機能権限（${count} 件選択中）`,
   },
   {
+    pattern: /^Tệp phiên bản mới\s*\(\.([a-z0-9]+)\)$/i,
+    en: (_, ext) => `New Version File (.${ext})`,
+    ja: (_, ext) => `新バージョンファイル (.${ext})`,
+  },
+  {
     pattern: /^XEM TẤT CẢ CÂU LẠC BỘ(?:\s*\((\d+)\))?$/i,
     en: (_, count) => (count ? `VIEW ALL CLUBS (${count})` : 'VIEW ALL CLUBS'),
     ja: (_, count) => (count ? `すべてのクラブを見る (${count})` : 'すべてのクラブを見る'),

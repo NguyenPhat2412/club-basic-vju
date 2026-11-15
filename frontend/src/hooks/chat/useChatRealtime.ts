@@ -8,10 +8,13 @@ import { chatApi } from '@/api/chat/chat.api';
 import {
   canApplyActiveChannelMessage,
   getCachedChannelWindow,
+  getCachedPinnedMessages,
   preloadChannelMedia,
   readRealtimeChatMessage,
   reconcileIncomingChatMessage,
+  reconcilePinnedChatMessage,
   saveCachedChannelWindow,
+  saveCachedPinnedMessages,
 } from '@/lib/chat-message-cache';
 import type { Page } from '@/types/common.types';
 import type { ChatChannel, ChatMessage, ChatRealtimeEvent } from '@/types/chat/chat.types';
@@ -105,6 +108,42 @@ export function useChatRealtime({
             },
           }));
         }
+        return;
+      }
+
+      if ((event.type === 'MESSAGE_PINNED' || event.type === 'MESSAGE_UNPINNED') && event.message) {
+        const incoming = readRealtimeChatMessage(event.message, event.channelId);
+        if (!incoming) return;
+        const isPinned = event.type === 'MESSAGE_PINNED';
+        queryClient.setQueryData<ChatMessage[]>(
+          ['channel-pinned-messages', event.channelId],
+          (old) => {
+            const base = old ?? getCachedPinnedMessages(event.channelId, userIdRef.current)?.items;
+            const next = reconcilePinnedChatMessage(base, incoming, isPinned);
+            saveCachedPinnedMessages(
+              event.channelId,
+              next,
+              userIdRef.current,
+              activeChannelRef.current || event.channelId
+            );
+            return next;
+          }
+        );
+        queryClient.setQueryData<Page<ChatMessage>>(
+          ['channel-messages', event.channelId],
+          (old) => {
+            const base = old ?? getCachedChannelWindow(event.channelId, userIdRef.current)?.page;
+            if (!base) return old;
+            const reconciled = reconcileIncomingChatMessage(base, { ...incoming, pinned: isPinned });
+            saveCachedChannelWindow(
+              event.channelId,
+              reconciled.page,
+              userIdRef.current,
+              activeChannelRef.current || event.channelId
+            );
+            return reconciled.page;
+          }
+        );
         return;
       }
 

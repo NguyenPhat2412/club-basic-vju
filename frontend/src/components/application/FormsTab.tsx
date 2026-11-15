@@ -14,6 +14,7 @@ import { EmptyState, ErrorState, LoadingRows } from "@/components/shared/States"
 import { describeError } from "@/components/shared/ListPage";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { OptionalMark, RequiredMark } from "@/components/ui/input";
 import { EMPTY_FORM_DRAFT } from "@/forms/application/application-form";
 import { FormBuilderModal } from "@/components/application/FormBuilderModal";
 
@@ -208,8 +209,8 @@ export function FormsTab({
                         <li key={f.key || idx} className="rounded-md border border-border/60 bg-card px-3 py-2 text-xs">
                           <div className="flex items-center justify-between gap-2">
                             <span className="font-bold">
-                              {idx + 1}. {f.label}
-                              {f.required && <span className="ml-1 text-destructive">*</span>}
+                              <span>{idx + 1}. {f.label}</span>
+                              {f.required ? <RequiredMark /> : <OptionalMark />}
                             </span>
                             <Badge tone="neutral" dot={false}>{f.type}</Badge>
                           </div>

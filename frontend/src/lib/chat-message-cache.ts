@@ -50,11 +50,17 @@ export type ComposerPostSendImeGuard = {
 };
 
 const windowMap = new Map<string, CachedChannelWindow>();
+const pinnedMap = new Map<string, { items: ChatMessage[]; savedAt: number }>();
 const mediaUrlCache = new Map<string, string>();
 const pinnedPreviewUrls = new Set<string>();
 const inflightMediaLoads = new Map<string, Promise<string>>();
 let cacheOwner = '';
 let hydratedSession = false;
+
+export function filterChannelMessages(items: ChatMessage[] | undefined, channelId: string): ChatMessage[] {
+  if (!channelId || !items?.length) return [];
+  return items.filter((m) => m.channelId === channelId);
+}
 
 export function setMessageWindowCacheEntry<T>(
   cache: Map<string, T>,
@@ -105,58 +111,68 @@ export function reconcileIncomingChatMessage(
   incoming: ChatMessage,
   limit = 50
 ): { page: Page<ChatMessage>; insertedNew: boolean } {
+  const cleanIncoming: ChatMessage = {
+    ...incoming,
+    optimistic: false,
+    deliveryStatus: undefined,
+    deliveryError: undefined,
+  };
   if (!oldPage) {
     return {
-      page: { items: [{ ...incoming, optimistic: false }], total: 1, offset: 0, limit },
+      page: { items: [cleanIncoming], total: 1, offset: 0, limit },
       insertedNew: true,
     };
   }
+  const channelItems = oldPage.items.filter((m) => m.channelId === incoming.channelId);
 
-  const existingByIdIdx = oldPage.items.findIndex((m) => m.id === incoming.id);
+  const existingByIdIdx = channelItems.findIndex((m) => m.id === incoming.id);
   if (existingByIdIdx >= 0) {
-    const nextItems = [...oldPage.items];
-    nextItems[existingByIdIdx] = { ...nextItems[existingByIdIdx], ...incoming, optimistic: false };
+    const nextItems = [...channelItems];
+    nextItems[existingByIdIdx] = { ...nextItems[existingByIdIdx], ...cleanIncoming };
     return { page: { ...oldPage, items: nextItems }, insertedNew: false };
   }
 
   if (incoming.clientTempId) {
-    const tempIdx = oldPage.items.findIndex(
+    const tempIdx = channelItems.findIndex(
       (m) => m.id === incoming.clientTempId || m.clientTempId === incoming.clientTempId
     );
     if (tempIdx >= 0) {
-      const prevOptimistic = oldPage.items[tempIdx];
+      const prevOptimistic = channelItems[tempIdx];
       const mergedAttachments = (incoming.attachments ?? []).map((att, idx) => {
         const localFallback = prevOptimistic?.attachments?.[idx]?.localPreviewUrl;
         if (localFallback) seedChatAttachmentPreviewUrl(att.id, localFallback, true);
-        return {
-          ...att,
-          localPreviewUrl: getCachedChatAttachmentUrl(att.id) ?? localFallback,
-        };
+        return { ...att, localPreviewUrl: getCachedChatAttachmentUrl(att.id) ?? localFallback };
       });
-      const nextItems = [...oldPage.items];
+      const nextItems = [...channelItems];
       nextItems[tempIdx] = {
-        ...incoming,
+        ...cleanIncoming,
         attachments: mergedAttachments.length ? mergedAttachments : incoming.attachments,
-        optimistic: false,
       };
       return { page: { ...oldPage, items: nextItems }, insertedNew: false };
     }
   }
 
   return {
-    page: {
-      ...oldPage,
-      items: [{ ...incoming, optimistic: false }, ...oldPage.items],
-      total: oldPage.total + 1,
-    },
+    page: { ...oldPage, items: [cleanIncoming, ...channelItems], total: oldPage.total + 1 },
     insertedNew: true,
   };
+}
+
+export function reconcilePinnedChatMessage(
+  oldItems: ChatMessage[] | undefined,
+  incoming: ChatMessage,
+  isPinned: boolean,
+  maxPinned = 10
+): ChatMessage[] {
+  const base = (oldItems ?? []).filter((m) => m.channelId === incoming.channelId && m.id !== incoming.id);
+  return isPinned ? [{ ...incoming, pinned: true, optimistic: false }, ...base].slice(0, maxPinned) : base;
 }
 
 function syncOwner(userId?: string) {
   const normalized = userId?.trim() || '';
   if (hydratedSession && normalized === cacheOwner) return normalized;
   windowMap.clear();
+  pinnedMap.clear();
   cacheOwner = normalized;
   hydratedSession = true;
   if (!normalized || typeof window === 'undefined') return normalized;
@@ -182,10 +198,7 @@ function persistWindowCache() {
         chId,
         {
           savedAt: val.savedAt,
-          page: {
-            ...val.page,
-            items: val.page.items.filter((m) => !m.optimistic).slice(0, 40),
-          },
+          page: { ...val.page, items: val.page.items.filter((m) => !m.optimistic).slice(0, 40) },
         },
       ])
       .slice(-SESSION_WINDOW_LIMIT);
@@ -212,14 +225,30 @@ export function saveCachedChannelWindow(
   keepChannelId: string | null = channelId
 ) {
   if (!channelId || !syncOwner(userId)) return;
+  const scopedPage = { ...page, items: filterChannelMessages(page.items, channelId) };
+  setMessageWindowCacheEntry(windowMap, channelId, { page: scopedPage, savedAt: Date.now() }, WINDOW_CACHE_LIMIT, keepChannelId);
+  persistWindowCache();
+}
+
+export function getCachedPinnedMessages(channelId: string, userId?: string) {
+  if (!channelId || !syncOwner(userId)) return undefined;
+  return pinnedMap.get(channelId);
+}
+
+export function saveCachedPinnedMessages(
+  channelId: string,
+  items: ChatMessage[],
+  userId?: string,
+  keepChannelId: string | null = channelId
+) {
+  if (!channelId || !syncOwner(userId)) return;
   setMessageWindowCacheEntry(
-    windowMap,
+    pinnedMap,
     channelId,
-    { page, savedAt: Date.now() },
+    { items: filterChannelMessages(items, channelId), savedAt: Date.now() },
     WINDOW_CACHE_LIMIT,
     keepChannelId
   );
-  persistWindowCache();
 }
 
 export function seedChatAttachmentPreviewUrl(attachmentId: string, objectUrl: string, pin = false) {

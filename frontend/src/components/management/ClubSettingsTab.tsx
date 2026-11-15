@@ -245,7 +245,7 @@ export function ClubSettingsTab({
             <Bell size={18} className="text-primary" />
             <h3 className="text-sm font-bold">Gửi thông báo hàng loạt (Broadcast)</h3>
           </div>
-          <FormField label="Đối tượng nhận thông báo">
+          <FormField label="Đối tượng nhận thông báo" required>
             <Select value={notifDeptId} onChange={(e) => setNotifDeptId(e.target.value)}>
               {notifScope.all && <option value="">Toàn bộ thành viên CLB ({club.name})</option>}
               {allowedNotifDepts.map((d) => (

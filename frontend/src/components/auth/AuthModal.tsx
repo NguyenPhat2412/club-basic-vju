@@ -216,10 +216,10 @@ function AuthModalDialog({
 
           {mode === "login" ? (
             <form onSubmit={submitLogin} className="mt-4 grid gap-3.5 sm:mt-5 sm:gap-4">
-              <FormField label="Địa chỉ email">
+              <FormField label="Địa chỉ email" required>
                 <Input required type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="sinhvien@st.vju.ac.vn" className="h-10 rounded-lg border-slate-300 bg-white px-3.5 text-sm text-slate-900" />
               </FormField>
-              <FormField label="Mật khẩu">
+              <FormField label="Mật khẩu" required>
                 <PasswordInput required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="h-10 rounded-lg border-slate-300 bg-white px-3.5 text-sm text-slate-900" />
               </FormField>
               <button type="submit" disabled={loading} className="mt-1 flex h-11 items-center justify-center gap-2 rounded-lg bg-primary text-sm font-bold text-white shadow-xs transition-opacity hover:opacity-90 disabled:opacity-60">
@@ -237,7 +237,7 @@ function AuthModalDialog({
           ) : (
             <form onSubmit={submitRegister} className="mt-4 grid gap-2.5 sm:gap-3">
               <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
-                <FormField label="Họ và tên">
+                <FormField label="Họ và tên" required>
                   <Input required type="text" autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nguyễn Văn A" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
                 </FormField>
                 <FormField label="Mã sinh viên">
@@ -245,7 +245,7 @@ function AuthModalDialog({
                 </FormField>
               </div>
               <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
-                <FormField label="Địa chỉ email">
+                <FormField label="Địa chỉ email" required>
                   <Input required type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="sinhvien@st.vju.ac.vn" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
                 </FormField>
                 <FormField label="Số điện thoại">
@@ -253,10 +253,10 @@ function AuthModalDialog({
                 </FormField>
               </div>
               <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
-                <FormField label="Mật khẩu (8+ ký tự)">
+                <FormField label="Mật khẩu (8+ ký tự)" required>
                   <PasswordInput required autoComplete="new-password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
                 </FormField>
-                <FormField label="Xác nhận mật khẩu">
+                <FormField label="Xác nhận mật khẩu" required>
                   <PasswordInput required autoComplete="new-password" minLength={8} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
                 </FormField>
               </div>

@@ -10,19 +10,26 @@ import com.vju.club.entity.Club;
 import com.vju.club.entity.User;
 import com.vju.club.enums.ClubStatus;
 import com.vju.club.error.ApiException;
+import com.vju.club.mapper.ChatMapper;
 import com.vju.club.repository.ChatMessageAttachmentRepository;
+import com.vju.club.repository.ChatMessageRepository;
 import com.vju.club.repository.ChatQuickReplyRepository;
 import com.vju.club.repository.ClubRepository;
+import com.vju.club.repository.DepartmentMemberRepository;
+import com.vju.club.repository.MembershipRepository;
 import com.vju.club.repository.UserRepository;
 import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
 import com.vju.club.storage.impl.LocalDocumentStorage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mapstruct.factory.Mappers;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -170,5 +177,61 @@ class ChatMediaAndQuickReplyTest {
                 actor, clubId, new ChatQuickReplyRequest("Báo cáo tiến độ", "Báo cáo tuần", "Đã cập nhật tiến độ tuần này!"));
         assertThat(created.shortcut()).isEqualTo("/bao-cao-tien-do");
         assertThat(created.title()).isEqualTo("Báo cáo tuần");
+    }
+
+    @Test
+    void pinAndUnpinMessageBroadcastsRealtimeEventsAndListsPinnedOrder() {
+        ChatAccessPolicy accessPolicy = mock(ChatAccessPolicy.class);
+        ChatMessageRepository msgRepo = mock(ChatMessageRepository.class);
+        UserRepository userRepo = mock(UserRepository.class);
+        MembershipRepository memberRepo = mock(MembershipRepository.class);
+        DepartmentMemberRepository deptMemberRepo = mock(DepartmentMemberRepository.class);
+        ChatMediaService mediaService = mock(ChatMediaService.class);
+        ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
+        ChatMapper mapper = Mappers.getMapper(ChatMapper.class);
+
+        ChatPinService pinService = new ChatPinService(
+                accessPolicy, msgRepo, userRepo, memberRepo, deptMemberRepo,
+                mediaService, mapper, publisher, Clock.systemUTC()
+        );
+
+        UUID clubId = UUID.randomUUID();
+        UUID channelId = UUID.randomUUID();
+        UUID messageId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+        Actor actor = new Actor(actorId);
+
+        Club club = new Club();
+        club.setId(clubId);
+        club.setStatus(ClubStatus.ACTIVE);
+        ChatChannel channel = new ChatChannel();
+        channel.setId(channelId);
+        channel.setClub(club);
+        User user = new User();
+        user.setId(actorId);
+        user.setFullName("Nguyễn Văn Pin");
+
+        ChatMessage message = new ChatMessage();
+        message.setId(messageId);
+        message.setChannel(channel);
+        message.setSender(user);
+        message.setContent("Thông báo lịch họp toàn CLB");
+
+        when(accessPolicy.requireChannelAccessById(actor, channelId, "chat.send", true)).thenReturn(channel);
+        when(accessPolicy.requireChannelAccessById(actor, channelId, "chat.view", false)).thenReturn(channel);
+        when(userRepo.findById(actorId)).thenReturn(Optional.of(user));
+        when(msgRepo.findWithRelationsById(messageId)).thenReturn(Optional.of(message));
+        when(msgRepo.findPinnedByChannelId(channelId)).thenReturn(List.of());
+        when(msgRepo.saveAndFlush(any(ChatMessage.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(memberRepo.findActiveUserIdsByClubId(clubId)).thenReturn(List.of(actorId));
+        when(mediaService.enrichMessages(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var pinnedRes = pinService.pinMessage(actor, channelId, messageId);
+        assertThat(pinnedRes.pinned()).isTrue();
+        assertThat(pinnedRes.pinnedByName()).isEqualTo("Nguyễn Văn Pin");
+
+        var unpinnedRes = pinService.unpinMessage(actor, channelId, messageId);
+        assertThat(unpinnedRes.pinned()).isFalse();
+        assertThat(unpinnedRes.pinnedAt()).isNull();
     }
 }

@@ -31,10 +31,30 @@ export const chatApi = {
     clubId: string,
     body: { name: string; channelType?: string; departmentId?: string; eventId?: string }
   ) => api<ChatChannel>(API_ROUTES.clubs.channels(clubId), { method: 'POST', body: JSON.stringify(body) }),
-  channelMessages: (channelId: string, offset = 0, limit = 50, beforeId?: string) =>
+  channelMessages: (
+    channelId: string,
+    offset = 0,
+    limit = 50,
+    beforeId?: string,
+    signal?: AbortSignal
+  ) =>
     api<Page<ChatMessage>>(
-      `${API_ROUTES.channels.messages(channelId)}?${cleanParams({ beforeId, offset, limit })}`
+      `${API_ROUTES.channels.messages(channelId)}?${cleanParams({ beforeId, offset, limit })}`,
+      signal ? { signal } : undefined
     ),
+  pinnedMessages: (channelId: string, signal?: AbortSignal) =>
+    api<ChatMessage[]>(
+      API_ROUTES.channels.pinnedMessages(channelId),
+      signal ? { signal } : undefined
+    ),
+  pinMessage: (channelId: string, messageId: string) =>
+    api<ChatMessage>(API_ROUTES.channels.messagePin(channelId, messageId), {
+      method: 'POST',
+    }),
+  unpinMessage: (channelId: string, messageId: string) =>
+    api<void>(API_ROUTES.channels.messagePin(channelId, messageId), {
+      method: 'DELETE',
+    }),
   sendMessage: (channelId: string, input: SendMessageInput) => {
     const body = typeof input === 'string' ? { content: input } : input;
     return api<ChatMessage>(API_ROUTES.channels.messages(channelId), {

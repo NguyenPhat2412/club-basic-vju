@@ -47,6 +47,7 @@ public interface ChatMapper {
     @Mapping(target = "documentSizeBytes", expression = "java(liveDocSize(message.getDocument()))")
     @Mapping(target = "documentPreviewable", expression = "java(liveDocPreviewable(message.getDocument()))")
     @Mapping(target = "attachments", expression = "java(java.util.List.of())")
+    @Mapping(target = "pinnedByName", source = "pinnedBy.fullName")
     @Mapping(target = "clientTempId", ignore = true)
     ChatMessageResponse toMessageResponse(ChatMessage message);
 

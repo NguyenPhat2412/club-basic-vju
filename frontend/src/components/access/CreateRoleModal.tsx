@@ -101,7 +101,10 @@ export function CreateRoleModal({
         />
       </FormField>
       <div className="space-y-2">
-        <p className="text-sm font-bold">Quyền chức năng ({newFitting.length} đã tích chọn)</p>
+        <p className="text-sm font-bold">
+          <span>Quyền chức năng ({newFitting.length} đã tích chọn)</span>
+          <span className="ml-1 font-bold text-destructive" aria-hidden="true">*</span>
+        </p>
         <div className="max-h-72 space-y-3 overflow-auto rounded-lg border border-border/60 p-3">
           {groups.map((group) => {
             const items = group.permissions.filter((p) => p.active && fitsRole(p, newRole));

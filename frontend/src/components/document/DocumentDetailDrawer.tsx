@@ -191,14 +191,14 @@ export function DocumentDetailDrawer({
               <>
                 {canUpdate && (
                   <Section title="Sửa thông tin & Phân quyền hiển thị" icon={<Pencil />}>
-                    <FormField label="Tên tài liệu">
+                    <FormField label="Tên tài liệu" required>
                       <Input value={editName} maxLength={200} onChange={(e) => onEditName(e.target.value)} />
                     </FormField>
                     <FormField label="appDetailKey" hint="Bỏ trống để xoá" error={editKeyError ?? undefined}>
                       <Input value={editKey} maxLength={100} onChange={(e) => onEditKey(e.target.value)} />
                     </FormField>
                     {doc.scope !== "DEPARTMENT" && canChangeVisibility && (
-                      <FormField label="Mức hiển thị">
+                      <FormField label="Mức hiển thị" required>
                         <Select
                           value={editVisibility}
                           onChange={(e) => onEditVisibility(e.target.value as DocumentVisibility)}
@@ -265,24 +265,29 @@ export function DocumentDetailDrawer({
                   </div>
                   {canUploadVersion && (
                     <div className="grid gap-1.5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <input
-                          key={versionInputKey}
-                          type="file"
-                          accept={currentExt ? `.${currentExt}` : undefined}
-                          aria-label={`Chọn tệp phiên bản mới (.${currentExt})`}
-                          className="min-w-0 max-w-full text-xs"
-                          onChange={(e) => onVersionFile(e.target.files?.[0] ?? null)}
-                        />
-                        <Button
-                          size="sm"
-                          disabled={busy || !versionFile || Boolean(versionError)}
-                          onClick={() => onUploadVersion(doc)}
-                        >
-                          <Upload size={14} /> {busy ? "Đang tải…" : `Tải lên v${doc.version + 1}`}
-                        </Button>
-                      </div>
-                      {versionError && <p className="text-xs font-semibold text-destructive">{versionError}</p>}
+                      <FormField
+                        label={currentExt ? `Tệp phiên bản mới (.${currentExt})` : "Tệp phiên bản mới"}
+                        required
+                        error={versionError ?? undefined}
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <input
+                            key={versionInputKey}
+                            type="file"
+                            accept={currentExt ? `.${currentExt}` : undefined}
+                            aria-label={`Chọn tệp phiên bản mới (.${currentExt})`}
+                            className="min-w-0 max-w-full text-xs font-normal"
+                            onChange={(e) => onVersionFile(e.target.files?.[0] ?? null)}
+                          />
+                          <Button
+                            size="sm"
+                            disabled={busy || !versionFile || Boolean(versionError)}
+                            onClick={() => onUploadVersion(doc)}
+                          >
+                            <Upload size={14} /> {busy ? "Đang tải…" : `Tải lên v${doc.version + 1}`}
+                          </Button>
+                        </div>
+                      </FormField>
                     </div>
                   )}
                 </Section>

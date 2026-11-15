@@ -65,23 +65,24 @@ export function DocumentUploadModal({
       submitLoading={submitting}
       submitDisabled={Boolean(!file || fileError || appKeyError)}
     >
-      <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/25 bg-primary/5 px-4 py-6 text-center text-sm text-primary hover:bg-primary/8">
-        <Upload size={22} />
-        <span className="max-w-full truncate font-semibold">
-          {file ? `${file.name} · ${formatSize(file.size)}` : "Chọn tệp để lưu vào Kho tập trung"}
-        </span>
-        <input
-          type="file"
-          accept={VAULT_ACCEPT}
-          aria-label="Chọn tệp tài liệu"
-          className="sr-only"
-          onChange={(e) => onFile(e.target.files?.[0] ?? null)}
-        />
-      </label>
-      {fileError && <p className="text-xs font-semibold text-destructive">{fileError}</p>}
+      <FormField label="Tệp tài liệu tải lên" required error={fileError ?? undefined}>
+        <div className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/25 bg-primary/5 px-4 py-5 text-center text-sm text-primary hover:bg-primary/8">
+          <Upload size={22} />
+          <span className="max-w-full truncate font-semibold">
+            {file ? `${file.name} · ${formatSize(file.size)}` : "Chọn tệp để lưu vào Kho tập trung"}
+          </span>
+          <input
+            type="file"
+            accept={VAULT_ACCEPT}
+            aria-label="Chọn tệp tài liệu"
+            className="sr-only"
+            onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+          />
+        </div>
+      </FormField>
 
       {!isSystemTier && (
-        <FormField label="Không gian lưu trữ">
+        <FormField label="Không gian lưu trữ" required>
           <Select
             value={uploadDeptId}
             onChange={(e) => {
@@ -100,7 +101,7 @@ export function DocumentUploadModal({
         </FormField>
       )}
       {(isSystemTier || !uploadDeptId) && (
-        <FormField label="Quyền xem tài liệu">
+        <FormField label="Quyền xem tài liệu" required>
           <Select value={uploadVis} onChange={(e) => onUploadVis(e.target.value as DocumentVisibility)}>
             {isSystemTier ? (
               <>

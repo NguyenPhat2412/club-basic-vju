@@ -75,7 +75,7 @@ export function EventParticipationDrawers({
                 ? "Bạn đang là thành viên chính thức của CLB này."
                 : "Bạn sẽ tham gia với tư cách Cộng tác viên (CTV) theo sự kiện — không tự động trở thành thành viên chính thức của CLB."}
             </p>
-            <FormField label="Ghi chú / Nguyện vọng hỗ trợ (tuỳ chọn)">
+            <FormField label="Ghi chú / Nguyện vọng hỗ trợ">
               <Textarea
                 value={regNote}
                 maxLength={500}

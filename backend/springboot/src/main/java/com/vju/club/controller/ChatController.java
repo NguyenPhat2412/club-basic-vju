@@ -11,6 +11,7 @@ import com.vju.club.dto.response.ChatMessageResponse;
 import com.vju.club.dto.response.PageResponse;
 import com.vju.club.security.Actor;
 import com.vju.club.service.ChatService;
+import com.vju.club.service.impl.ChatPinService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -19,6 +20,7 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,6 +38,7 @@ import java.util.UUID;
 @Tag(name = "Chat & AI Assistant", description = "Kênh trao đổi nội bộ CLB/Ban/Sự kiện qua WebSocket STOMP thời gian thực, đính kèm tài liệu kho tập trung và AI Bot tóm tắt.")
 public class ChatController {
     private final ChatService chatService;
+    private final ChatPinService chatPinService;
 
     @PostMapping(ApiPaths.CLUB_CHANNELS)
     @Operation(summary = "Tạo kênh trao đổi nội bộ CLB, Ban hoặc Sự kiện")
@@ -67,6 +70,29 @@ public class ChatController {
                                                           @RequestParam(defaultValue = "0") @Min(0) int offset,
                                                           @RequestParam(defaultValue = "50") @Min(1) @Max(100) int limit) {
         return chatService.listMessages(actor, channelId, beforeId, offset, limit);
+    }
+
+    @GetMapping(ApiPaths.CHANNEL_PINNED_MESSAGES)
+    @Operation(summary = "Danh sách tin nhắn đã ghim trong kênh (kiểu Messenger)")
+    public List<ChatMessageResponse> listPinnedMessages(Actor actor, @PathVariable UUID channelId) {
+        return chatPinService.listPinnedMessages(actor, channelId);
+    }
+
+    @PostMapping(ApiPaths.CHANNEL_MESSAGE_PIN)
+    @Operation(summary = "Ghim tin nhắn vào thanh ghim của kênh và phát realtime")
+    public ResponseEntity<ChatMessageResponse> pinMessage(Actor actor,
+                                                          @PathVariable UUID channelId,
+                                                          @PathVariable UUID messageId) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(chatPinService.pinMessage(actor, channelId, messageId));
+    }
+
+    @DeleteMapping(ApiPaths.CHANNEL_MESSAGE_PIN)
+    @Operation(summary = "Bỏ ghim tin nhắn khỏi kênh và phát realtime")
+    public ResponseEntity<Void> unpinMessage(Actor actor,
+                                             @PathVariable UUID channelId,
+                                             @PathVariable UUID messageId) {
+        chatPinService.unpinMessage(actor, channelId, messageId);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping(ApiPaths.CHANNEL_READ)

@@ -255,7 +255,7 @@ export function ScheduleView() {
             {selectedTask.status !== "COMPLETED" && selectedTask.status !== "CANCELLED" && (
               <Section title="Cập nhật tiến độ" icon={<Send />}>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <FormField label="Trạng thái">
+                  <FormField label="Trạng thái" required>
                     <Select
                       value={progressStatus}
                       onChange={(e) => {
@@ -270,7 +270,7 @@ export function ScheduleView() {
                       <option value="DONE">Hoàn thành (Chờ nghiệm thu)</option>
                     </Select>
                   </FormField>
-                  <FormField label="Phần trăm hoàn thành (%)">
+                  <FormField label="Phần trăm hoàn thành (%)" required>
                     <Input type="number" min={0} max={100} value={progressPercent} onChange={(e) => setProgressPercent(Number(e.target.value))} />
                   </FormField>
                 </div>

@@ -138,7 +138,7 @@ export function UserPermissionsSections({
             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Cấp quyền trực tiếp mới
             </p>
-            <FormField label="Quyền nghiệp vụ">
+            <FormField label="Quyền nghiệp vụ" required>
               <Select
                 value={permId}
                 onChange={(e) => {
@@ -157,7 +157,7 @@ export function UserPermissionsSections({
               </Select>
             </FormField>
             <div className="grid gap-2.5 sm:grid-cols-2">
-              <FormField label="Phạm vi áp dụng">
+              <FormField label="Phạm vi áp dụng" required>
                 <Select
                   value={permScope}
                   onChange={(e) => {
@@ -179,7 +179,7 @@ export function UserPermissionsSections({
                 </Select>
               </FormField>
               {(permScope === "CLUB" || permScope === "DEPARTMENT") && (
-                <FormField label="Câu lạc bộ">
+                <FormField label="Câu lạc bộ" required>
                   <Select
                     value={permClubId}
                     onChange={(e) => {
@@ -198,7 +198,7 @@ export function UserPermissionsSections({
               )}
             </div>
             {permScope === "DEPARTMENT" && permClubId && (
-              <FormField label="Ban chuyên môn">
+              <FormField label="Ban chuyên môn" required>
                 <Select value={permDeptId} onChange={(e) => setPermDeptId(e.target.value)}>
                   <option value="">-- Chọn ban --</option>
                   {(permDepartments.data?.items ?? []).map((d) => (

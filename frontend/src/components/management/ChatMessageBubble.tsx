@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, Download, Eye, FileText, Loader2, Reply } from "lucide-react";
+import { AlertCircle, Bot, Download, Eye, FileText, Pin, PinOff, Reply, RotateCcw, X } from "lucide-react";
 import type { ChatMessage } from "@/lib/api";
 import type { PreviewTarget } from "@/components/document/DocumentPreviewModal";
 import { formatChatTimeCompact } from "@/lib/chat-message-cache";
@@ -20,8 +20,13 @@ export function ChatMessageBubble({
   currentUserId,
   groupedPrev,
   groupedNext,
+  highlighted,
   canSend,
   onReply,
+  onTogglePin,
+  onJumpToMessage,
+  onRetryMessage,
+  onDismissFailed,
   onPreviewDoc,
   onDownloadDoc,
   onError,
@@ -30,14 +35,20 @@ export function ChatMessageBubble({
   currentUserId?: string;
   groupedPrev: boolean;
   groupedNext: boolean;
+  highlighted?: boolean;
   canSend: boolean;
   onReply: (msg: ChatMessage) => void;
+  onTogglePin: (msg: ChatMessage) => void;
+  onJumpToMessage: (messageId: string) => void;
+  onRetryMessage: (clientTempId: string) => void;
+  onDismissFailed: (channelId: string, clientTempId: string) => void;
   onPreviewDoc: (target: PreviewTarget) => void;
   onDownloadDoc: (id: string, name: string) => void;
   onError: (msg: string) => void;
 }) {
   const isBot = m.senderType === "AI_BOT";
   const isMine = !isBot && Boolean(currentUserId) && m.senderId === currentUserId;
+  const isFailed = m.deliveryStatus === "failed";
   const showSender = !isMine && !groupedPrev;
   const showTime = !groupedNext || Boolean(m.optimistic);
   const attachments = m.attachments ?? [];
@@ -49,11 +60,12 @@ export function ChatMessageBubble({
 
   return (
     <div
+      id={`chat-msg-${m.id}`}
       className={cn(
-        "group flex w-full max-w-[min(560px,88%)] items-end gap-2 first:mt-0",
-        groupedPrev ? "mt-1" : "mt-3",
+        "group flex w-full max-w-[min(560px,86%)] items-end gap-2 rounded-xl transition-colors first:mt-0",
+        groupedPrev ? "mt-0.5" : "mt-2.5",
         isMine && "ml-auto flex-row-reverse",
-        m.optimistic && "opacity-80"
+        highlighted && "bg-primary/[0.08] ring-2 ring-primary/35"
       )}
     >
       {!isMine && (
@@ -72,36 +84,47 @@ export function ChatMessageBubble({
       )}
 
       <div className={cn("flex min-w-0 max-w-full flex-col", isMine ? "items-end" : "items-start")}>
-        {showSender && (
-          <span className="mb-0.5 px-1 text-[11px] font-semibold text-muted-foreground">{senderLabel}</span>
+        {(showSender || m.pinned) && (
+          <div className={cn("mb-0.5 flex items-center gap-1.5 px-1 text-[10.5px]", isMine && "flex-row-reverse")}>
+            {showSender && <span className="font-semibold text-muted-foreground">{senderLabel}</span>}
+            {m.pinned && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-primary">
+                <Pin size={9.5} className="rotate-45" /> Đã ghim
+              </span>
+            )}
+          </div>
         )}
 
-        <div className={cn("flex max-w-full items-center gap-1.5", isMine && "flex-row-reverse")}>
+        <div className={cn("flex max-w-full items-center gap-1", isMine && "flex-row-reverse")}>
           <div
             className={cn(
-              "relative max-w-full text-[13px] leading-relaxed",
+              "relative max-w-full text-[13px] leading-snug",
               isBareMedia
                 ? "p-0"
                 : cn(
-                    "w-fit rounded-xl border px-3 py-2",
-                    isMine
-                      ? "border-primary/20 bg-primary/[0.09] text-foreground"
-                      : isBot
-                        ? "border-primary/25 bg-primary/[0.05] text-foreground"
-                        : "border-border/60 bg-card text-foreground shadow-2xs"
+                    "w-fit rounded-2xl border px-3 py-1.5",
+                    isFailed
+                      ? "border-destructive/40 bg-destructive/[0.05] text-foreground"
+                      : isMine
+                        ? "border-primary/20 bg-primary/[0.09] text-foreground"
+                        : isBot
+                          ? "border-primary/25 bg-primary/[0.05] text-foreground"
+                          : "border-border/60 bg-card text-foreground shadow-2xs"
                   )
             )}
           >
             {m.replyToId && (
-              <div className="mb-1.5 flex items-start gap-2 rounded-md bg-background/70 px-2 py-1 text-[11px]">
-                <span className="mt-0.5 h-6 w-0.5 shrink-0 rounded-full bg-primary" />
-                <span className="min-w-0">
-                  <span className="block truncate font-semibold text-foreground">
-                    {m.replyToSenderName || "Tin nhắn trước"}
-                  </span>
-                  <span className="line-clamp-1 text-muted-foreground">{m.replyToPreview || "…"}</span>
+              <button
+                type="button"
+                onClick={() => onJumpToMessage(m.replyToId!)}
+                className="mb-1 flex max-w-full items-center gap-1.5 rounded-lg bg-background/75 px-2 py-0.5 text-left text-[11px] transition-colors hover:bg-background"
+              >
+                <span className="h-3.5 w-0.5 shrink-0 rounded-full bg-primary" />
+                <span className="shrink-0 font-semibold text-foreground">
+                  {m.replyToSenderName || "Tin nhắn"}:
                 </span>
-              </div>
+                <span className="truncate text-muted-foreground">{m.replyToPreview || "…"}</span>
+              </button>
             )}
 
             {attachments.length > 0 && (
@@ -117,20 +140,20 @@ export function ChatMessageBubble({
             {m.documentId && (
               <div
                 className={cn(
-                  "flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/20 bg-background/85 px-2.5 py-1.5 text-xs",
+                  "flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/20 bg-background/85 px-2 py-1 text-xs",
                   hasText && "mt-1.5"
                 )}
               >
-                <div className="flex min-w-0 items-center gap-2">
-                  <FileText size={14} className="shrink-0 text-primary" />
-                  <div className="min-w-0">
-                    <p className="max-w-[200px] truncate font-semibold text-foreground">
-                      {m.documentName || "Tài liệu CLB"}
-                    </p>
-                    {typeof m.documentSizeBytes === "number" && (
-                      <p className="font-mono text-[10px] text-muted-foreground">{formatSize(m.documentSizeBytes)}</p>
-                    )}
-                  </div>
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <FileText size={13} className="shrink-0 text-primary" />
+                  <span className="max-w-[190px] truncate font-semibold text-foreground">
+                    {m.documentName || "Tài liệu CLB"}
+                  </span>
+                  {typeof m.documentSizeBytes === "number" && (
+                    <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                      {formatSize(m.documentSizeBytes)}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-1">
                   {m.documentPreviewable !== false && (
@@ -143,15 +166,15 @@ export function ChatMessageBubble({
                           contentType: m.documentContentType,
                         })
                       }
-                      className="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-0.5 text-[11px] font-semibold hover:bg-muted"
+                      className="inline-flex items-center gap-1 rounded border border-border bg-card px-1.5 py-0.5 text-[10.5px] font-semibold hover:bg-muted"
                     >
                       <Eye size={11} /> Xem
                     </button>
                   )}
                   <button
                     type="button"
-                    onClick={() => onDownloadDoc(m.documentId!, m.documentName || "document")}
-                    className="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-0.5 text-[11px] font-semibold hover:bg-muted"
+                    onClick={() => onDownloadDoc(m.documentId!, m.documentId ? m.documentName || "document" : "document")}
+                    className="inline-flex items-center gap-1 rounded border border-border bg-card px-1.5 py-0.5 text-[10.5px] font-semibold hover:bg-muted"
                   >
                     <Download size={11} /> Tải
                   </button>
@@ -159,39 +182,69 @@ export function ChatMessageBubble({
               </div>
             )}
 
-            {showTime && (
+            {showTime && !isFailed && (
               <div
                 title={formatDateTime(m.createdAt)}
                 className={cn(
-                  "mt-1 flex items-center gap-1 whitespace-nowrap text-[10px] leading-none text-muted-foreground",
+                  "mt-0.5 flex items-center gap-1 whitespace-nowrap text-[10px] leading-none text-muted-foreground",
                   isMine && "justify-end",
                   isBareMedia && "w-fit rounded-full bg-black/50 px-2 py-0.5 text-white",
                   isBareMedia && isMine && "ml-auto"
                 )}
               >
-                {m.optimistic ? (
-                  <>
-                    <Loader2 size={10} className="animate-spin" /> Đang gửi
-                  </>
-                ) : (
-                  formatChatTimeCompact(m.createdAt)
-                )}
+                {m.optimistic ? "Đang gửi…" : formatChatTimeCompact(m.createdAt)}
               </div>
             )}
           </div>
 
           {canSend && !m.optimistic && (
-            <button
-              type="button"
-              title="Trả lời"
-              aria-label={`Trả lời ${senderLabel}`}
-              onClick={() => onReply(m)}
-              className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
-            >
-              <Reply size={13} />
-            </button>
+            <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+              <button
+                type="button"
+                title="Trả lời"
+                aria-label={`Trả lời ${senderLabel}`}
+                onClick={() => onReply(m)}
+                className="grid h-6 w-6 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <Reply size={12} />
+              </button>
+              <button
+                type="button"
+                title={m.pinned ? "Bỏ ghim tin nhắn" : "Ghim tin nhắn"}
+                aria-label={m.pinned ? "Bỏ ghim tin nhắn" : "Ghim tin nhắn"}
+                onClick={() => onTogglePin(m)}
+                className={cn(
+                  "grid h-6 w-6 place-items-center rounded-full transition-colors hover:bg-muted",
+                  m.pinned ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {m.pinned ? <PinOff size={12} /> : <Pin size={12} />}
+              </button>
+            </div>
           )}
         </div>
+
+        {isFailed && m.clientTempId && (
+          <div className="mt-1 flex items-center gap-1.5 px-1 text-[10.5px] text-destructive">
+            <AlertCircle size={11} />
+            <span>Chưa gửi được</span>
+            <button
+              type="button"
+              onClick={() => onRetryMessage(m.clientTempId!)}
+              className="inline-flex items-center gap-0.5 font-semibold underline hover:opacity-80"
+            >
+              <RotateCcw size={10} /> Thử lại
+            </button>
+            <button
+              type="button"
+              onClick={() => onDismissFailed(m.channelId, m.clientTempId!)}
+              aria-label="Xóa tin lỗi"
+              className="inline-flex items-center text-muted-foreground hover:text-foreground"
+            >
+              <X size={11} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

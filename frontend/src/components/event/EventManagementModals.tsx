@@ -95,7 +95,7 @@ export function UpsertEventModal({
         />
       </FormField>
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Loại hoạt động">
+        <FormField label="Loại hoạt động" required>
           <Select value={form.eventType} onChange={(e) => setForm((f) => ({ ...f, eventType: e.target.value }))}>
             {Object.entries(EVENT_TYPE_LABELS).map(([k, v]) => (
               <option key={k} value={k}>
@@ -104,7 +104,7 @@ export function UpsertEventModal({
             ))}
           </Select>
         </FormField>
-        <FormField label="Ban phụ trách (tuỳ chọn)">
+        <FormField label="Ban phụ trách">
           <Select value={form.departmentId} onChange={(e) => setForm((f) => ({ ...f, departmentId: e.target.value }))}>
             <option value="">Toàn câu lạc bộ</option>
             {departments.map((d) => (
@@ -158,7 +158,7 @@ export function UpsertEventModal({
             placeholder="Phòng 402 VJU / Online…"
           />
         </FormField>
-        <FormField label="Trạng thái">
+        <FormField label="Trạng thái" required>
           <Select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
             {[
               { value: "DRAFT", label: "Bản nháp" },
@@ -266,7 +266,7 @@ export function UpdateParticipantModal({
               placeholder="Nhập vai trò phân công…"
             />
           </FormField>
-          <FormField label="Trạng thái tham gia">
+          <FormField label="Trạng thái tham gia" required>
             <Select value={status} onChange={(e) => setStatus(e.target.value as "REGISTERED" | "CANCELLED")}>
               <option value="REGISTERED">REGISTERED — Đang tham gia</option>
               <option value="CANCELLED">CANCELLED — Rút / Huỷ tham gia (tự trả việc sự kiện mở)</option>

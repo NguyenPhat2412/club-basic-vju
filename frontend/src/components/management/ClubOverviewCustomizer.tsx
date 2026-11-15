@@ -264,38 +264,20 @@ export function ClubOverviewCustomizer({
           ) : (
             <div className="space-y-2.5">
               {customMetrics.map((m, idx) => (
-                <div
-                  key={idx}
-                  className="grid gap-2 rounded-lg border border-border/80 bg-card p-2.5 sm:grid-cols-[1fr_120px_auto]"
-                >
-                  <Input
-                    value={m.label}
-                    maxLength={80}
-                    placeholder="Tên chỉ số (VD: Giải đấu/năm)"
-                    onChange={(e) => updateMetric(idx, { label: e.target.value })}
-                  />
-                  <Input
-                    value={m.value}
-                    maxLength={40}
-                    placeholder="Giá trị (04 giải)"
-                    onChange={(e) => updateMetric(idx, { value: e.target.value })}
-                  />
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label="Xóa chỉ số"
-                    onClick={() => setCustomMetrics((prev) => prev.filter((_, i) => i !== idx))}
-                    className="justify-self-end text-destructive hover:bg-destructive/10"
-                  >
+                <div key={idx} className="grid items-end gap-2 rounded-lg border border-border/80 bg-card p-2.5 sm:grid-cols-[1fr_135px_auto]">
+                  <FormField label="Tên chỉ số" required>
+                    <Input value={m.label} maxLength={80} placeholder="VD: Giải đấu/năm" onChange={(e) => updateMetric(idx, { label: e.target.value })} />
+                  </FormField>
+                  <FormField label="Giá trị" required>
+                    <Input value={m.value} maxLength={40} placeholder="VD: 04 giải" onChange={(e) => updateMetric(idx, { value: e.target.value })} />
+                  </FormField>
+                  <Button size="sm" variant="ghost" aria-label="Xóa chỉ số" onClick={() => setCustomMetrics((prev) => prev.filter((_, i) => i !== idx))} className="justify-self-end text-destructive hover:bg-destructive/10">
                     <Trash2 size={14} />
                   </Button>
                   <div className="sm:col-span-3">
-                    <Input
-                      value={m.sub ?? ""}
-                      maxLength={140}
-                      placeholder="Ghi chú phụ (VD: VJU Champions Cup & Giao hữu ĐHQGHN)"
-                      onChange={(e) => updateMetric(idx, { sub: e.target.value })}
-                    />
+                    <FormField label="Ghi chú phụ">
+                      <Input value={m.sub ?? ""} maxLength={140} placeholder="VD: VJU Champions Cup & Giao hữu ĐHQGHN" onChange={(e) => updateMetric(idx, { sub: e.target.value })} />
+                    </FormField>
                   </div>
                 </div>
               ))}
@@ -332,40 +314,21 @@ export function ClubOverviewCustomizer({
           ) : (
             <div className="space-y-2.5">
               {highlights.map((h, idx) => (
-                <div
-                  key={idx}
-                  className="space-y-2 rounded-lg border border-border/80 bg-card p-2.5"
-                >
-                  <div className="grid gap-2 sm:grid-cols-[1fr_150px_auto]">
-                    <Input
-                      value={h.title}
-                      maxLength={120}
-                      placeholder="Tên chương trình / giải thưởng"
-                      onChange={(e) => updateHighlight(idx, { title: e.target.value })}
-                    />
-                    <Input
-                      value={h.tag ?? ""}
-                      maxLength={50}
-                      placeholder="Nhãn (VD: Thường niên)"
-                      onChange={(e) => updateHighlight(idx, { tag: e.target.value })}
-                    />
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      aria-label="Xóa dấu ấn"
-                      onClick={() => setHighlights((prev) => prev.filter((_, i) => i !== idx))}
-                      className="justify-self-end text-destructive hover:bg-destructive/10"
-                    >
+                <div key={idx} className="space-y-2 rounded-lg border border-border/80 bg-card p-2.5">
+                  <div className="grid items-end gap-2 sm:grid-cols-[1fr_155px_auto]">
+                    <FormField label="Tên chương trình / giải thưởng" required>
+                      <Input value={h.title} maxLength={120} placeholder="Tên chương trình / giải thưởng" onChange={(e) => updateHighlight(idx, { title: e.target.value })} />
+                    </FormField>
+                    <FormField label="Nhãn phân loại">
+                      <Input value={h.tag ?? ""} maxLength={50} placeholder="VD: Thường niên" onChange={(e) => updateHighlight(idx, { tag: e.target.value })} />
+                    </FormField>
+                    <Button size="sm" variant="ghost" aria-label="Xóa dấu ấn" onClick={() => setHighlights((prev) => prev.filter((_, i) => i !== idx))} className="justify-self-end text-destructive hover:bg-destructive/10">
                       <Trash2 size={14} />
                     </Button>
                   </div>
-                  <Textarea
-                    rows={2}
-                    value={h.description ?? ""}
-                    maxLength={360}
-                    placeholder="Mô tả ngắn gọn giá trị hoặc quy mô chương trình…"
-                    onChange={(e) => updateHighlight(idx, { description: e.target.value })}
-                  />
+                  <FormField label="Mô tả ngắn">
+                    <Textarea rows={2} value={h.description ?? ""} maxLength={360} placeholder="Mô tả ngắn gọn giá trị hoặc quy mô chương trình…" onChange={(e) => updateHighlight(idx, { description: e.target.value })} />
+                  </FormField>
                 </div>
               ))}
             </div>

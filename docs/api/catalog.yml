@@ -846,6 +846,27 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: chat.view
+- method: GET
+  path: /api/v1/channels/{channelId}/pinned-messages
+  module: chat
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.view
+- method: POST
+  path: /api/v1/channels/{channelId}/messages/{messageId}/pin
+  module: chat
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.send
+- method: DELETE
+  path: /api/v1/channels/{channelId}/messages/{messageId}/pin
+  module: chat
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.send
 - method: POST
   path: /api/v1/channels/{channelId}/summaries
   module: chat

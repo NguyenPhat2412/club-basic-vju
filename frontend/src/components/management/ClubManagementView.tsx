@@ -219,8 +219,9 @@ function ClubManagementViewContent() {
   const pending = pendingApps.data?.total ?? 0;
 
   return (
-    <ListPage title="Không gian & Quản lý CLB">
+    <ListPage title="Không gian & Quản lý CLB" fillViewport={activeTab === "chat"}>
       <BreadcrumbToolbar
+        compact={activeTab === "chat"}
         crumbs={[
           { label: "Tổng quan", href: "/dashboard" },
           { label: activeTab === "clubs" ? `Toàn bộ câu lạc bộ (${manageable.length})` : (currentClub?.name ?? "Không gian CLB") },
@@ -268,6 +269,7 @@ function ClubManagementViewContent() {
           if (activeTab === "chat") {
             queryClient.invalidateQueries({ queryKey: ["club-channels", activeClubId] });
             queryClient.invalidateQueries({ queryKey: ["channel-messages"] });
+            queryClient.invalidateQueries({ queryKey: ["channel-pinned-messages"] });
             queryClient.invalidateQueries({ queryKey: ["channel-summaries"] });
           }
         }}

@@ -153,7 +153,10 @@ export function CreateUserModal({
       {canAssign && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-bold">Vai trò & Phạm vi</p>
+            <p className="text-sm font-bold">
+              <span>Vai trò & Phạm vi</span>
+              <span className="ml-1 text-[11px] font-normal text-muted-foreground">(Tuỳ chọn)</span>
+            </p>
             <Button
               type="button"
               variant="outline"

@@ -5,7 +5,7 @@ import { Paperclip, Trash2, Upload } from "lucide-react";
 import { formatBytes } from "@/components/shared/ApplicationFileView";
 import { DetailList } from "@/components/shared/Overlays";
 import { Badge, StatusBadge } from "@/components/ui/badge";
-import { FormField, Input, Select, Textarea } from "@/components/ui/input";
+import { FormField, Input, OptionalMark, RequiredMark, Select, Textarea } from "@/components/ui/input";
 import { ClubApplicationDraft } from "@/forms/application/application-form";
 import { formatDateTime } from "@/lib/utils";
 import { ApplicationDetail } from "@/types";
@@ -76,7 +76,7 @@ export function ApplicationDraftFormFields({
               placeholder="VD: K8 - Năm 3"
             />
           </FormField>
-          <FormField label="Điểm GPA (tuỳ chọn)">
+          <FormField label="Điểm GPA">
             <Input
               value={values.gpa}
               onChange={(e) => onChange("gpa", e.target.value)}
@@ -114,7 +114,7 @@ export function ApplicationDraftFormFields({
                 ))}
               </Select>
             </FormField>
-            <FormField label="Ban nguyện vọng 2 (tuỳ chọn)">
+            <FormField label="Ban nguyện vọng 2">
               <Select
                 value={values.secondaryDepartmentId}
                 onChange={(e) => onChange("secondaryDepartmentId", e.target.value)}
@@ -199,12 +199,18 @@ export function ApplicationAttachmentPicker({
     <div className="grid gap-3 rounded-lg border border-dashed border-primary/35 bg-primary/[0.02] p-3.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary">
-            <Paperclip size={13} /> Đính kèm Đơn Word (.doc/.docx), CV (.pdf) & Hình ảnh
-            {requireAttachment && (
-              <Badge tone="danger" dot={false}>
-                Bắt buộc
-              </Badge>
+          <p className="flex flex-wrap items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary">
+            <Paperclip size={13} />
+            <span>Đính kèm Đơn Word (.doc/.docx), CV (.pdf) & Hình ảnh</span>
+            {requireAttachment ? (
+              <>
+                <RequiredMark className="ml-0" />
+                <Badge tone="danger" dot={false}>
+                  Bắt buộc
+                </Badge>
+              </>
+            ) : (
+              <OptionalMark className="ml-0" />
             )}
           </p>
           <p className="mt-0.5 text-[11px] text-muted-foreground">

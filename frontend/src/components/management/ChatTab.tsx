@@ -3,11 +3,23 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Hash, MessageSquare, Plus } from "lucide-react";
-import { apiModel, ChatChannel, ChatMessage, Department } from "@/lib/api";
+import { apiModel, ChatChannel, ChatMessage, Department, Page } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
-import { useChannelMessages, useClubChannels, useClubQuickReplies } from "@/hooks/chat/useClubChat";
+import {
+  useChannelMessages,
+  useChannelPinnedMessages,
+  useClubChannels,
+  useClubQuickReplies,
+  useWarmClubChannels,
+} from "@/hooks/chat/useClubChat";
 import { useChatMessageSender } from "@/hooks/chat/useChatMessageSender";
 import { useChatRealtime } from "@/hooks/chat/useChatRealtime";
+import {
+  filterChannelMessages,
+  reconcilePinnedChatMessage,
+  saveCachedChannelWindow,
+  saveCachedPinnedMessages,
+} from "@/lib/chat-message-cache";
 import { DocumentPreviewModal, PreviewTarget } from "@/components/document/DocumentPreviewModal";
 import { ChatDocumentPickerModal } from "@/components/management/ChatDocumentPickerModal";
 import { ChatMessagePane } from "@/components/management/ChatMessagePane";
@@ -39,7 +51,7 @@ export function ChatTab({
   const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
   const [olderByChannel, setOlderByChannel] = useState<Record<string, ChatMessage[]>>({});
   const [exhaustedChannels, setExhaustedChannels] = useState<Record<string, boolean>>({});
-  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [loadingOlderByChannel, setLoadingOlderByChannel] = useState<Record<string, boolean>>({});
 
   const canSend = session.canInClub("chat.send", clubId);
   const canSummarize = session.canInClub("chat.summarize", clubId);
@@ -54,10 +66,13 @@ export function ChatTab({
   const quickReplies = useClubQuickReplies(clubId, Boolean(clubId));
   const activeChannel = (channels.data ?? []).find((c) => c.id === channelId) ?? channels.data?.[0];
   const activeChannelId = activeChannel?.id ?? "";
+  const userId = session.user?.id;
+
+  const { warmChannel } = useWarmClubChannels(channels.data, activeChannelId, userId, 50);
 
   const composer = useChatMessageSender({
     activeChannelId,
-    userId: session.user?.id,
+    userId,
     userFullName: session.user?.fullName,
     onError,
   });
@@ -65,21 +80,23 @@ export function ChatTab({
   const { status: wsStatus, wsError, typingUsers, sendTyping } = useChatRealtime({
     clubId,
     activeChannelId,
-    currentUserId: session.user?.id,
+    currentUserId: userId,
     enabled: !!activeChannelId && session.ready,
   });
 
-  const messages = useChannelMessages(activeChannelId, 50, Boolean(activeChannelId), session.user?.id);
+  const messages = useChannelMessages(activeChannelId, 50, Boolean(activeChannelId), userId);
+  const pinnedQuery = useChannelPinnedMessages(activeChannelId, Boolean(activeChannelId), userId);
 
   const summaries = useQuery({
     queryKey: ["channel-summaries", activeChannelId],
     queryFn: () => apiModel.channelSummaries(activeChannelId),
+    staleTime: 25_000,
     enabled: !!activeChannelId,
   });
 
   useEffect(() => {
     if (!activeChannelId || !activeChannel?.unreadCount) return;
-    const newestId = messages.data?.items?.find((m) => !m.optimistic)?.id;
+    const newestId = filterChannelMessages(messages.data?.items, activeChannelId).find((m) => !m.optimistic)?.id;
     apiModel.markChannelRead(activeChannelId, newestId).catch(() => {});
     queryClient.setQueryData<ChatChannel[]>(["club-channels", clubId], (old) =>
       old?.map((ch) => (ch.id === activeChannelId ? { ...ch, unreadCount: 0 } : ch))
@@ -105,50 +122,86 @@ export function ChatTab({
   });
 
   const summarize = useMutation({
-    mutationFn: () => apiModel.summarizeChannel(activeChannelId, { messageLimit: 50, postToChannel: true }),
-    onSuccess: () => {
+    mutationFn: (targetChId: string) =>
+      apiModel.summarizeChannel(targetChId, { messageLimit: 50, postToChannel: true }),
+    onSuccess: (_res, targetChId) => {
       onNotice("Trợ lý AI đã tóm tắt nội dung thảo luận của kênh.");
       onError("");
-      queryClient.invalidateQueries({ queryKey: ["channel-messages", activeChannelId] });
-      queryClient.invalidateQueries({ queryKey: ["channel-summaries", activeChannelId] });
+      queryClient.invalidateQueries({ queryKey: ["channel-messages", targetChId] });
+      queryClient.invalidateQueries({ queryKey: ["channel-summaries", targetChId] });
     },
     onError: (e) => onError(describeError(e)),
   });
 
+  const applyOptimisticPinState = (targetChId: string, msg: ChatMessage, nextPinned: boolean) => {
+    const updatedMsg: ChatMessage = { ...msg, pinned: nextPinned, pinnedAt: nextPinned ? new Date().toISOString() : null };
+    queryClient.setQueryData<ChatMessage[]>(["channel-pinned-messages", targetChId], (old) => {
+      const next = reconcilePinnedChatMessage(old, updatedMsg, nextPinned);
+      saveCachedPinnedMessages(targetChId, next, userId, activeChannelId || targetChId);
+      return next;
+    });
+    queryClient.setQueryData<Page<ChatMessage>>(["channel-messages", targetChId], (old) => {
+      if (!old) return old;
+      const next = {
+        ...old,
+        items: old.items.map((m) => (m.id === msg.id ? { ...m, pinned: nextPinned } : m)),
+      };
+      saveCachedChannelWindow(targetChId, next, userId, activeChannelId || targetChId);
+      return next;
+    });
+  };
+
+  const togglePinMessage = (msg: ChatMessage, forceUnpin = false) => {
+    const targetChId = msg.channelId;
+    const nextPinned = forceUnpin ? false : !msg.pinned;
+    applyOptimisticPinState(targetChId, msg, nextPinned);
+    const req = nextPinned
+      ? apiModel.pinMessage(targetChId, msg.id)
+      : apiModel.unpinMessage(targetChId, msg.id);
+    void req.catch((e) => {
+      applyOptimisticPinState(targetChId, msg, !nextPinned);
+      onError(describeError(e));
+    });
+  };
+
   if (channels.isPending) return <LoadingRows />;
   if (channels.isError) return <ErrorState message={describeError(channels.error)} onRetry={() => channels.refetch()} />;
 
-  const primaryDesc = messages.data?.items ?? [];
-  const extraOlder = olderByChannel[activeChannelId] ?? [];
+  const primaryDesc = filterChannelMessages(messages.data?.items, activeChannelId);
+  const extraOlder = filterChannelMessages(olderByChannel[activeChannelId], activeChannelId);
   const seenIds = new Set(primaryDesc.map((m) => m.id));
   const mergedDesc = [...primaryDesc, ...extraOlder.filter((m) => !seenIds.has(m.id))];
   const orderedMessages = [...mergedDesc].reverse();
+  const pinnedMessages = filterChannelMessages(pinnedQuery.data, activeChannelId);
+  const loadingOlder = Boolean(loadingOlderByChannel[activeChannelId]);
   const hasOlder =
     !exhaustedChannels[activeChannelId] &&
     mergedDesc.length > 0 &&
     mergedDesc.length < (messages.data?.total ?? 0);
 
   const loadOlder = async () => {
+    const targetChId = activeChannelId;
     const oldest = mergedDesc.filter((m) => !m.optimistic).at(-1);
-    if (!oldest || loadingOlder) return;
-    setLoadingOlder(true);
+    if (!targetChId || !oldest || loadingOlderByChannel[targetChId]) return;
+    setLoadingOlderByChannel((prev) => ({ ...prev, [targetChId]: true }));
     try {
-      const page = await apiModel.channelMessages(activeChannelId, 0, 30, oldest.id);
-      if (!page.items.length) {
-        setExhaustedChannels((prev) => ({ ...prev, [activeChannelId]: true }));
+      const page = await apiModel.channelMessages(targetChId, 0, 30, oldest.id);
+      const safeItems = filterChannelMessages(page.items, targetChId);
+      if (!safeItems.length) {
+        setExhaustedChannels((prev) => ({ ...prev, [targetChId]: true }));
       } else {
         setOlderByChannel((prev) => ({
           ...prev,
-          [activeChannelId]: [...(prev[activeChannelId] ?? []), ...page.items],
+          [targetChId]: [...(prev[targetChId] ?? []), ...safeItems],
         }));
-        if (page.items.length < 30) {
-          setExhaustedChannels((prev) => ({ ...prev, [activeChannelId]: true }));
+        if (safeItems.length < 30) {
+          setExhaustedChannels((prev) => ({ ...prev, [targetChId]: true }));
         }
       }
     } catch (e) {
       onError(describeError(e));
     } finally {
-      setLoadingOlder(false);
+      setLoadingOlderByChannel((prev) => ({ ...prev, [targetChId]: false }));
     }
   };
 
@@ -161,18 +214,23 @@ export function ChatTab({
   };
 
   return (
-    <div className="p-2.5 sm:p-3">
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
       {!channels.data.length ? (
-        <EmptyState
-          icon={<MessageSquare />}
-          title="CLB chưa có kênh trao đổi nội bộ"
-          actionLabel={canCreateChannel ? "Tạo kênh trao đổi đầu tiên" : undefined}
-          onAction={canCreateChannel ? () => setCreating(true) : undefined}
-        />
+        <div className="p-4">
+          <EmptyState
+            icon={<MessageSquare />}
+            title="CLB chưa có kênh trao đổi nội bộ"
+            actionLabel={canCreateChannel ? "Tạo kênh trao đổi đầu tiên" : undefined}
+            onAction={canCreateChannel ? () => setCreating(true) : undefined}
+          />
+        </div>
       ) : (
-        <div className="grid h-[calc(100vh-215px)] max-h-[760px] min-h-[500px] overflow-hidden rounded-xl border border-border/60 bg-card lg:grid-cols-[224px_minmax(0,1fr)]">
-          <aside className="flex min-h-0 flex-col border-b border-border/60 bg-muted/[0.18] lg:border-r lg:border-b-0">
-            <div className="flex h-12 shrink-0 items-center justify-between border-b border-border/60 px-3">
+        <div
+          data-testid="chat-split-workspace"
+          className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-card lg:grid lg:grid-cols-[224px_minmax(0,1fr)]"
+        >
+          <aside className="flex min-h-0 shrink-0 flex-col border-b border-border/60 bg-muted/[0.16] lg:h-full lg:border-r lg:border-b-0">
+            <div className="flex h-11 shrink-0 items-center justify-between border-b border-border/60 px-3">
               <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 Kênh ({channels.data.length})
               </span>
@@ -188,7 +246,7 @@ export function ChatTab({
               )}
             </div>
 
-            <div className="flex gap-1 overflow-x-auto p-2 lg:flex-1 lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden">
+            <div className="flex gap-1 overflow-x-auto p-1.5 lg:flex-1 lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden">
               {channels.data.map((ch) => {
                 const active = ch.id === activeChannelId;
                 const unread = (ch.unreadCount ?? 0) > 0 && !active;
@@ -197,6 +255,8 @@ export function ChatTab({
                     key={ch.id}
                     type="button"
                     aria-current={active ? "true" : undefined}
+                    onPointerEnter={() => warmChannel(ch.id)}
+                    onFocus={() => warmChannel(ch.id)}
                     onClick={() => {
                       if (active) return;
                       setChannelId(ch.id);
@@ -234,7 +294,7 @@ export function ChatTab({
           <ChatMessagePane
             clubId={clubId}
             activeChannel={activeChannel}
-            currentUserId={session.user?.id}
+            currentUserId={userId}
             wsStatus={wsStatus}
             wsError={wsError}
             canSend={canSend}
@@ -243,8 +303,16 @@ export function ChatTab({
             quickReplies={quickReplies.data ?? []}
             quickRepliesLoading={quickReplies.isPending}
             summarizePending={summarize.isPending}
-            onSummarize={() => summarize.mutate()}
+            onSummarize={() => activeChannelId && summarize.mutate(activeChannelId)}
             latestSummary={summaries.data?.[0]}
+            pinnedMessages={pinnedMessages}
+            onTogglePin={(m) => togglePinMessage(m)}
+            onUnpinById={(messageId) => {
+              const target =
+                pinnedMessages.find((m) => m.id === messageId) ??
+                orderedMessages.find((m) => m.id === messageId);
+              if (target) togglePinMessage(target, true);
+            }}
             messagesPending={messages.isPending}
             messagesError={messages.isError ? messages.error : null}
             onRetryMessages={() => messages.refetch()}
@@ -270,6 +338,8 @@ export function ChatTab({
             }}
             sendPending={composer.sendPending}
             onSend={composer.handleDispatchSend}
+            onRetryMessage={composer.handleRetryMessage}
+            onDismissFailed={composer.handleDismissFailedMessage}
             onPreviewDoc={setPreviewTarget}
             onDownloadDoc={downloadDoc}
             onNotice={onNotice}
@@ -289,14 +359,9 @@ export function ChatTab({
         submitDisabled={!newName.trim() || (newType === "DEPARTMENT" && !newDeptId)}
       >
         <FormField label="Tên kênh" required>
-          <Input
-            value={newName}
-            maxLength={160}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Ví dụ: thong-bao-chung, ban-truyen-thong…"
-          />
+          <Input value={newName} maxLength={160} onChange={(e) => setNewName(e.target.value)} placeholder="Ví dụ: thong-bao-chung, ban-truyen-thong…" />
         </FormField>
-        <FormField label="Loại kênh">
+        <FormField label="Loại kênh" required>
           <Select value={newType} onChange={(e) => setNewType(e.target.value)}>
             <option value="CLUB_GENERAL">Kênh chung toàn CLB</option>
             <option value="DEPARTMENT">Kênh riêng theo Ban</option>
@@ -306,29 +371,14 @@ export function ChatTab({
           <FormField label="Chọn Ban" required>
             <Select value={newDeptId} onChange={(e) => setNewDeptId(e.target.value)}>
               <option value="">Chọn ban…</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
+              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </Select>
           </FormField>
         )}
       </ModalShell>
 
-      <ChatDocumentPickerModal
-        open={pickingDoc}
-        clubId={clubId}
-        canViewClubDocs={canViewClubDocs}
-        onClose={() => setPickingDoc(false)}
-        onSelect={composer.setAttachedDoc}
-      />
-
-      <DocumentPreviewModal
-        target={previewTarget}
-        onClose={() => setPreviewTarget(null)}
-        onDownload={(t) => downloadDoc(t.id, t.name)}
-      />
+      <ChatDocumentPickerModal open={pickingDoc} clubId={clubId} canViewClubDocs={canViewClubDocs} onClose={() => setPickingDoc(false)} onSelect={composer.setAttachedDoc} />
+      <DocumentPreviewModal target={previewTarget} onClose={() => setPreviewTarget(null)} onDownload={(t) => downloadDoc(t.id, t.name)} />
     </div>
   );
 }

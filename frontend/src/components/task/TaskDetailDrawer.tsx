@@ -177,7 +177,7 @@ export function TaskDetailDrawer({
             selected.status !== "CANCELLED" && (
               <Section title="Cập nhật tiến độ của bạn" icon={<Send />}>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <FormField label="Trạng thái">
+                  <FormField label="Trạng thái" required>
                     <Select
                       value={progressStatus}
                       onChange={(e) => {
@@ -192,7 +192,7 @@ export function TaskDetailDrawer({
                       <option value="DONE">Hoàn thành (Chờ nghiệm thu)</option>
                     </Select>
                   </FormField>
-                  <FormField label="Phần trăm hoàn thành (%)">
+                  <FormField label="Phần trăm hoàn thành (%)" required>
                     <Input
                       type="number"
                       min={0}
@@ -209,7 +209,7 @@ export function TaskDetailDrawer({
                     placeholder="Báo cáo ngắn gọn kết quả hoặc vướng mắc…"
                   />
                 </FormField>
-                <FormField label="Đường dẫn báo cáo / sản phẩm (tuỳ chọn)">
+                <FormField label="Đường dẫn báo cáo / sản phẩm">
                   <Input
                     value={reportLink}
                     onChange={(e) => setReportLink(e.target.value)}

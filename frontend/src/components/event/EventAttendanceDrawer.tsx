@@ -179,11 +179,13 @@ export function EventAttendanceDrawer({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <Input
-                    value={regNote}
-                    onChange={(e) => setRegNote(e.target.value)}
-                    placeholder="Ghi chú khi đăng ký (tuỳ chọn)…"
-                  />
+                  <FormField label="Ghi chú khi đăng ký">
+                    <Input
+                      value={regNote}
+                      onChange={(e) => setRegNote(e.target.value)}
+                      placeholder="Ví dụ: Có thể hỗ trợ check-in, hậu cần…"
+                    />
+                  </FormField>
                   <Button size="sm" disabled={register.isPending} onClick={() => register.mutate()}>
                     Đăng ký tham gia
                   </Button>

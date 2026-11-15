@@ -4939,6 +4939,75 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+  /channels/{channelId}/pinned-messages:
+    get:
+      operationId: chat.listPinnedMessages
+      summary: List pinned messages in a chat channel
+      tags: [Chat]
+      x-permission: chat.view
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: channelId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Pinned channel messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/ChatMessage'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /channels/{channelId}/messages/{messageId}/pin:
+    post:
+      operationId: chat.pinMessage
+      summary: Pin a message in a chat channel
+      tags: [Chat]
+      x-permission: chat.send
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: channelId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: messageId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '201':
+          description: Pinned message
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ChatMessage'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    delete:
+      operationId: chat.unpinMessage
+      summary: Unpin a message in a chat channel
+      tags: [Chat]
+      x-permission: chat.send
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: channelId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: messageId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '204':
+          description: Unpinned message
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
   /channels/{channelId}/attachments:
     post:
       operationId: chat.uploadAttachment
@@ -7433,6 +7502,9 @@ components:
         senderFullName: {type: [string, 'null']}
         senderType: {type: string, enum: [USER, AI_BOT]}
         content: {type: string}
+        pinned: {type: boolean}
+        pinnedAt: {type: [string, 'null'], format: date-time}
+        pinnedByName: {type: [string, 'null']}
         createdAt: {type: string, format: date-time}
     ChatMessageListResponse:
       type: object

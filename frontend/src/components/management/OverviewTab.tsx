@@ -169,7 +169,7 @@ export function OverviewTab({
             </Button>
           </div>
           <div className="flex-1 sm:flex-initial">
-            <FormField label="Từ ngày">
+            <FormField label="Từ ngày" hideIndicator>
               <Input
                 type="date"
                 value={fromDate}
@@ -180,7 +180,7 @@ export function OverviewTab({
             </FormField>
           </div>
           <div className="flex-1 sm:flex-initial">
-            <FormField label="Đến ngày">
+            <FormField label="Đến ngày" hideIndicator>
               <Input
                 type="date"
                 value={toDate}

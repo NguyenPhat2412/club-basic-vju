@@ -12,6 +12,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.OffsetDateTime;
+
 @Entity
 @Table(name = "chat_messages")
 @Getter
@@ -39,4 +41,14 @@ public class ChatMessage extends TimestampedEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "document_id")
     private Document document;
+
+    @Column(nullable = false)
+    private boolean pinned = false;
+
+    @Column(name = "pinned_at")
+    private OffsetDateTime pinnedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pinned_by")
+    private User pinnedBy;
 }

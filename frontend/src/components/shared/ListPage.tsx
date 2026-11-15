@@ -1,10 +1,24 @@
 import { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 export { describeError } from "@/lib/errors";
 
-export function ListPage({ title, children }: { title: string; children: ReactNode }) {
+export function ListPage({
+  title,
+  fillViewport = false,
+  children,
+}: {
+  title: string;
+  fillViewport?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <div className="flex min-h-full w-full min-w-0 max-w-full flex-1 flex-col bg-background text-foreground">
+    <div
+      className={cn(
+        "flex w-full min-w-0 max-w-full flex-1 flex-col bg-background text-foreground",
+        fillViewport ? "h-full min-h-0 overflow-hidden" : "min-h-full"
+      )}
+    >
       <h1 className="sr-only">{title}</h1>
       {children}
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FileText, FolderOpen, ImagePlus, Loader2, Paperclip, Play, Plus, Send, Upload, X, Zap } from "lucide-react";
+import { FileText, FolderOpen, ImagePlus, Paperclip, Play, Plus, Send, Upload, X, Zap } from "lucide-react";
 import {
   CHAT_MAX_ATTACHMENTS,
   ComposerPostSendImeGuard,
@@ -46,7 +46,7 @@ export function ChatComposerBar(props: ChatComposerBarProps) {
     clubId, channelName, currentUserId, canManageQuickReplies, quickReplies, quickRepliesLoading,
     replyTo, onClearReply, attachedDoc, onOpenDocPicker, onClearAttachedDoc,
     stagedMedia, onAddFiles, onRemoveStagedMedia, onClearStagedMedia,
-    content, onContentChange, sendPending, onSend, onNotice, onError,
+    content, onContentChange, onSend, onNotice, onError,
   } = props;
 
   const mediaInputRef = useRef<HTMLInputElement | null>(null);
@@ -67,9 +67,7 @@ export function ChatComposerBar(props: ChatComposerBarProps) {
   const slashMatches = isSlashTrigger ? filterQuickReplies(quickReplies, slashQuery) : [];
   const showQuickPopover = quickPanelOpen || isSlashTrigger;
 
-  const canSubmitNow = Boolean(
-    (content.trim() || attachedDoc || stagedMedia.length > 0) && !sendPending
-  );
+  const canSubmitNow = Boolean(content.trim() || attachedDoc || stagedMedia.length > 0);
 
   const triggerSubmit = () => {
     if (!canSubmitNow) return;
@@ -147,25 +145,25 @@ export function ChatComposerBar(props: ChatComposerBarProps) {
       />
 
       {(replyTo || attachedDoc) && (
-        <div className="flex flex-wrap items-center gap-2 border-b border-border/50 px-3 py-1.5 text-xs">
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-border/50 px-3 py-1 text-[11.5px]">
           {replyTo && (
-            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-md bg-muted/40 px-2.5 py-1">
-              <span className="h-5 w-0.5 shrink-0 rounded-full bg-primary" />
+            <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md bg-muted/40 px-2 py-0.5">
+              <span className="h-3.5 w-0.5 shrink-0 rounded-full bg-primary" />
               <span className="min-w-0 flex-1 truncate">
                 <b className="text-foreground">Trả lời {replyTo.senderFullName || "Thành viên"}: </b>
-                <span className="text-muted-foreground">{replyTo.content || "[Đính kèm đa phương tiện]"}</span>
+                <span className="text-muted-foreground">{replyTo.content || "[Đính kèm]"}</span>
               </span>
-              <button type="button" aria-label="Huỷ trả lời" onClick={onClearReply} className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">
-                <X size={12} />
+              <button type="button" aria-label="Huỷ trả lời" onClick={onClearReply} className="grid h-4.5 w-4.5 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">
+                <X size={11} />
               </button>
             </div>
           )}
           {attachedDoc && (
-            <div className="flex min-w-0 items-center gap-1.5 rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-primary">
-              <FileText size={12} className="shrink-0" />
-              <span className="max-w-[200px] truncate font-semibold">{attachedDoc.name}</span>
+            <div className="flex min-w-0 items-center gap-1 rounded-md border border-primary/20 bg-primary/5 px-2 py-0.5 text-primary">
+              <FileText size={11} className="shrink-0" />
+              <span className="max-w-[180px] truncate font-semibold">{attachedDoc.name}</span>
               <button type="button" aria-label="Bỏ đính kèm" onClick={onClearAttachedDoc} className="hover:opacity-75">
-                <X size={12} />
+                <X size={11} />
               </button>
             </div>
           )}
@@ -385,7 +383,7 @@ export function ChatComposerBar(props: ChatComposerBarProps) {
           title="Gửi tin nhắn (Enter)"
           className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-xs transition-all hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-35"
         >
-          {sendPending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+          <Send size={15} />
         </button>
       </div>
     </form>

@@ -100,7 +100,12 @@ function SettingsForm({
               {group.fields.map((f) => (
                 <li key={f.key} className="flex items-center justify-between gap-4 px-5 py-3.5">
                   <label htmlFor={f.key} className="min-w-0">
-                    <span className="block text-sm font-medium text-slate-900">{f.label}</span>
+                    <span className="block text-sm font-medium text-slate-900">
+                      <span>{f.label}</span>
+                      {f.kind === "number" && canEdit && (
+                        <span className="ml-1 font-bold text-destructive" aria-hidden="true">*</span>
+                      )}
+                    </span>
                     <span className="block text-xs text-slate-500">{f.hint}</span>
                   </label>
                   {f.kind === "toggle" ? (

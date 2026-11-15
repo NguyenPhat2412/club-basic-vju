@@ -6,7 +6,7 @@ import { Edit2, Plus, Search, Send, Trash2, X } from "lucide-react";
 import { chatApi } from "@/api/chat/chat.api";
 import { describeError } from "@/components/shared/ListPage";
 import { Button } from "@/components/ui/button";
-import { Input, Textarea } from "@/components/ui/input";
+import { FormField, Input, Textarea } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { ChatQuickReply } from "@/types/chat/chat.types";
 
@@ -158,29 +158,16 @@ export function ChatQuickReplyPopover({
         {editing ? (
           <div className="space-y-2 p-3 text-xs">
             <div className="grid grid-cols-2 gap-2">
-              <Input
-                value={shortcut}
-                maxLength={40}
-                placeholder="/diem-danh"
-                aria-label="Phím tắt"
-                onChange={(e) => setShortcut(e.target.value)}
-              />
-              <Input
-                value={title}
-                maxLength={120}
-                placeholder="Tiêu đề ngắn"
-                aria-label="Tiêu đề ngắn"
-                onChange={(e) => setTitle(e.target.value)}
-              />
+              <FormField label="Phím tắt" required>
+                <Input value={shortcut} maxLength={40} placeholder="/diem-danh" onChange={(e) => setShortcut(e.target.value)} />
+              </FormField>
+              <FormField label="Tiêu đề ngắn" required>
+                <Input value={title} maxLength={120} placeholder="Tiêu đề ngắn" onChange={(e) => setTitle(e.target.value)} />
+              </FormField>
             </div>
-            <Textarea
-              rows={2}
-              maxLength={2000}
-              value={body}
-              placeholder="Nội dung tin nhắn nhanh…"
-              aria-label="Nội dung tin nhắn nhanh"
-              onChange={(e) => setBody(e.target.value)}
-            />
+            <FormField label="Nội dung tin nhắn nhanh" required>
+              <Textarea rows={2} maxLength={2000} value={body} placeholder="Nội dung tin nhắn nhanh…" onChange={(e) => setBody(e.target.value)} />
+            </FormField>
             <div className="flex justify-end gap-1.5">
               <Button type="button" size="sm" variant="outline" onClick={() => setEditing(null)}>
                 Huỷ

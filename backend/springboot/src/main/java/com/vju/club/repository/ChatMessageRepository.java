@@ -16,18 +16,27 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> {
-    @EntityGraph(attributePaths = {"channel", "sender", "replyTo", "replyTo.sender", "document"})
+    @EntityGraph(attributePaths = {"channel", "sender", "replyTo", "replyTo.sender", "document", "pinnedBy"})
     Page<ChatMessage> findByChannel_IdOrderByCreatedAtDesc(UUID channelId, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"channel", "sender", "replyTo", "replyTo.sender", "document"})
+    @EntityGraph(attributePaths = {"channel", "sender", "replyTo", "replyTo.sender", "document", "pinnedBy"})
     List<ChatMessage> findByChannel_IdOrderByCreatedAtDesc(UUID channelId);
 
-    @EntityGraph(attributePaths = {"channel", "sender", "replyTo", "replyTo.sender", "document"})
+    @EntityGraph(attributePaths = {"channel", "sender", "replyTo", "replyTo.sender", "document", "pinnedBy"})
     Optional<ChatMessage> findWithRelationsById(UUID id);
+
+    @EntityGraph(attributePaths = {"channel", "sender", "replyTo", "replyTo.sender", "document", "pinnedBy"})
+    @Query("""
+            SELECT m FROM ChatMessage m
+            WHERE m.channel.id = :channelId
+              AND m.pinned = true
+            ORDER BY m.pinnedAt DESC, m.createdAt DESC, m.id DESC
+            """)
+    List<ChatMessage> findPinnedByChannelId(@Param("channelId") UUID channelId);
 
     long countByChannel_Id(UUID channelId);
 
-    @EntityGraph(attributePaths = {"channel", "sender", "replyTo", "replyTo.sender", "document"})
+    @EntityGraph(attributePaths = {"channel", "sender", "replyTo", "replyTo.sender", "document", "pinnedBy"})
     @Query("""
             SELECT m FROM ChatMessage m
             WHERE m.channel.id = :channelId

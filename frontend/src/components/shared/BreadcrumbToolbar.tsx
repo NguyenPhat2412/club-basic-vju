@@ -2,6 +2,7 @@
 import { ReactNode } from "react";
 import { Plus, RefreshCw, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export type Crumb = { label: string; href?: string };
 
@@ -14,6 +15,7 @@ type Props = {
   addLabel?: string;
   onAdd?: () => void;
   addDisabled?: boolean;
+  compact?: boolean;
 };
 
 export function BreadcrumbToolbar({
@@ -25,11 +27,17 @@ export function BreadcrumbToolbar({
   addLabel,
   onAdd,
   addDisabled,
+  compact = false,
 }: Props) {
   const pageTitle = crumbs[crumbs.length - 1]?.label ?? "";
 
   return (
-    <div className="relative z-30 flex min-h-13 shrink-0 select-none flex-wrap items-center justify-between gap-2.5 border-b border-border bg-white px-4 py-2.5 text-xs sm:gap-3 sm:px-6">
+    <div
+      className={cn(
+        "relative z-30 flex shrink-0 select-none flex-wrap items-center justify-between gap-2 border-b border-border bg-white text-xs",
+        compact ? "min-h-10 px-3 py-1 sm:px-4" : "min-h-13 gap-2.5 px-4 py-2.5 sm:gap-3 sm:px-6"
+      )}
+    >
       <div className="flex min-w-0 items-center gap-2">
         <span className="h-4 w-1 shrink-0 rounded-full bg-primary" />
         <span className="truncate text-[13.5px] font-bold text-slate-900">{pageTitle}</span>

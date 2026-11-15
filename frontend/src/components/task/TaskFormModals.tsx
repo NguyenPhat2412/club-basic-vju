@@ -76,7 +76,7 @@ export function CreateTaskModal({
         />
       </FormField>
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Thuộc công việc cha (Subtask - tuỳ chọn)">
+        <FormField label="Thuộc công việc cha (Subtask)">
           <Select
             value={form.parentTaskId}
             onChange={(e) => {
@@ -125,7 +125,7 @@ export function CreateTaskModal({
             ))}
           </Select>
         </FormField>
-        <FormField label="Mức độ ưu tiên">
+        <FormField label="Mức độ ưu tiên" required>
           <Select value={form.priority} onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}>
             <option value="LOW">Thấp</option>
             <option value="MEDIUM">Trung bình</option>
@@ -233,14 +233,14 @@ export function EditTaskModal({
         </FormField>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Mức độ ưu tiên">
+        <FormField label="Mức độ ưu tiên" required>
           <Select value={editPriority} onChange={(e) => setEditPriority(e.target.value)}>
             <option value="LOW">Thấp</option>
             <option value="MEDIUM">Trung bình</option>
             <option value="HIGH">Cao</option>
           </Select>
         </FormField>
-        <FormField label="Điều chỉnh trạng thái">
+        <FormField label="Điều chỉnh trạng thái" required>
           <Select value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
             <option value="TODO">TODO — Chưa bắt đầu</option>
             <option value="IN_PROGRESS">IN_PROGRESS — Đang thực hiện (Mở lại việc)</option>

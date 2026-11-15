@@ -70,7 +70,14 @@ export function FormBuilderModal({
       onSubmit={() => saveFormMutation.mutate()}
       submitLabel={editingFormId ? "Lưu biểu mẫu" : "Tạo biểu mẫu"}
       submitLoading={saveFormMutation.isPending}
-      submitDisabled={!formDraft.title.trim()}
+      submitDisabled={
+        !formDraft.title.trim() ||
+        formDraft.fields.some(
+          (f) =>
+            !f.label.trim() ||
+            ((f.type === "SELECT" || f.type === "RADIO") && !(f.options ?? []).some((o) => o.trim())),
+        )
+      }
     >
       <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
         <div className="grid gap-3 sm:grid-cols-3">
@@ -83,7 +90,7 @@ export function FormBuilderModal({
               />
             </FormField>
           </div>
-          <FormField label="Trạng thái mở đơn">
+          <FormField label="Trạng thái mở đơn" required>
             <Select
               value={formDraft.status}
               onChange={(e) =>
@@ -209,7 +216,7 @@ export function FormBuilderModal({
                     />
                   </FormField>
                 </div>
-                <FormField label="Loại ô nhập">
+                <FormField label="Loại ô nhập" required>
                   <Select
                     value={field.type}
                     onChange={(e) => {
@@ -230,7 +237,7 @@ export function FormBuilderModal({
               </div>
 
               {(field.type === "SELECT" || field.type === "RADIO") && (
-                <FormField label="Các lựa chọn (phân tách bằng dấu phẩy)">
+                <FormField label="Các lựa chọn (phân tách bằng dấu phẩy)" required>
                   <Input
                     value={(field.options ?? []).join(", ")}
                     placeholder="VD: Sáng Thứ 7, Chiều Thứ 7, Sáng Chủ Nhật"

@@ -2,6 +2,7 @@
 
 import { ChangeEvent, Children, InputHTMLAttributes, isValidElement, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes, forwardRef, useState } from "react";
 import { ChevronDown, Eye, EyeOff } from "lucide-react";
+import { resolveFormFieldIndicator, sanitizeFormLabel } from "@/forms/form-field-meta";
 import { cn } from "@/lib/utils";
 
 const field = "w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-2xs outline-none transition-[box-shadow,border-color,background-color] hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50 placeholder:text-muted-foreground";
@@ -93,10 +94,59 @@ export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTex
   return <textarea className={cn(field, "min-h-28 py-2.5", className)} {...props} />;
 }
 
-export function FormField({ label, required, hint, error, children }: { label: string; required?: boolean; hint?: string; error?: string; children: ReactNode }) {
+export function RequiredMark({ className }: { className?: string }) {
+  return (
+    <span className={cn("ml-1 font-bold text-destructive", className)} aria-hidden="true">
+      *
+    </span>
+  );
+}
+
+export function OptionalMark({ className }: { className?: string }) {
+  return (
+    <span className={cn("ml-1 text-[11px] font-normal normal-case tracking-normal text-muted-foreground", className)}>
+      (Tuỳ chọn)
+    </span>
+  );
+}
+
+export function FormField({
+  label,
+  required,
+  optional,
+  hideIndicator,
+  hint,
+  error,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  optional?: boolean;
+  hideIndicator?: boolean;
+  hint?: string;
+  error?: string;
+  children: ReactNode;
+}) {
+  const cleanLabel = sanitizeFormLabel(label);
+  const singleChild = Children.count(children) === 1 ? Children.only(children) : null;
+  const isReadOnlyChild =
+    isValidElement<{ disabled?: boolean; readOnly?: boolean }>(singleChild) &&
+    Boolean(singleChild.props.disabled || singleChild.props.readOnly);
+  const indicator = resolveFormFieldIndicator({ required, optional, hideIndicator, isReadOnlyChild });
+
   return (
     <label className="grid gap-1.5 text-xs font-semibold text-foreground">
-      <span>{label}{required && <span className="text-destructive"> *</span>}</span>
+      <span className="inline-flex flex-wrap items-baseline gap-x-1">
+        <span>{cleanLabel}</span>
+        {indicator === "required" && (
+          <span className="font-bold text-destructive" aria-hidden="true">
+            *
+          </span>
+        )}
+        {indicator === "optional" && (
+          <span className="text-[11px] font-normal normal-case tracking-normal text-muted-foreground">(Tuỳ chọn)</span>
+        )}
+      </span>
       {children}
       {error ? (
         <span role="alert" className="font-normal text-destructive">{error}</span>

@@ -158,6 +158,8 @@ public final class ApiPaths {
     public static final String WS_ENDPOINT = API_V1 + "/ws";
     public static final String CLUB_CHANNELS = "/clubs/{clubId}/channels";
     public static final String CHANNEL_MESSAGES = "/channels/{channelId}/messages";
+    public static final String CHANNEL_PINNED_MESSAGES = "/channels/{channelId}/pinned-messages";
+    public static final String CHANNEL_MESSAGE_PIN = "/channels/{channelId}/messages/{messageId}/pin";
     public static final String CHANNEL_ATTACHMENTS = "/channels/{channelId}/attachments";
     public static final String CHAT_ATTACHMENT_STREAM = "/chat-attachments/{attachmentId}/stream";
     public static final String CLUB_QUICK_REPLIES = "/clubs/{clubId}/quick-replies";

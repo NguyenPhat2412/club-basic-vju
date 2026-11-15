@@ -87,6 +87,9 @@ export const API_ROUTES = {
   },
   channels: {
     messages: (channelId: string) => `/channels/${channelId}/messages`,
+    pinnedMessages: (channelId: string) => `/channels/${channelId}/pinned-messages`,
+    messagePin: (channelId: string, messageId: string) =>
+      `/channels/${channelId}/messages/${messageId}/pin`,
     attachments: (channelId: string) => `/channels/${channelId}/attachments`,
     read: (channelId: string) => `/channels/${channelId}/read`,
     summaries: (channelId: string) => `/channels/${channelId}/summaries`,

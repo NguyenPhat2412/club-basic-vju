@@ -97,7 +97,7 @@ export function DepartmentMembersDrawer({
               {canViewClubMembers ? (
                 <div className="flex flex-wrap items-end gap-2">
                   <div className="min-w-52 flex-1">
-                    <FormField label="Chọn thành viên đang hoạt động (ACTIVE)">
+                    <FormField label="Chọn thành viên đang hoạt động (ACTIVE)" required>
                       <Select
                         value={newDeptMembershipId}
                         onChange={(e) => setNewDeptMembershipId(e.target.value)}
@@ -122,7 +122,7 @@ export function DepartmentMembersDrawer({
               ) : (
                 <div className="flex flex-wrap items-end gap-2">
                   <div className="min-w-52 flex-1">
-                    <FormField label="Mã Membership (UUID)">
+                    <FormField label="Mã Membership (UUID)" required>
                       <Input
                         value={newDeptMembershipId}
                         onChange={(e) => setNewDeptMembershipId(e.target.value)}
