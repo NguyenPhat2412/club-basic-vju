@@ -53,6 +53,9 @@ public class Club extends TimestampedEntity {
     @Column(name = "contact_email", length = 320)
     private String contactEmail;
 
+    @Column(name = "overview_config", nullable = false, columnDefinition = "TEXT")
+    private String overviewConfig = "{}";
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private ClubStatus status = ClubStatus.ACTIVE;

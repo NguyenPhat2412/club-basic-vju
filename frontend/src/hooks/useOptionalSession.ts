@@ -61,6 +61,7 @@ export function useOptionalSession() {
     settled: mounted && (me.isSuccess || me.isError),
     mustChangePassword: mounted && mustChangePassword,
     can: (key: string) => list.some((permission) => permission.permissionKey === key),
+    hasGlobal: (key: string) => list.some((p) => p.permissionKey === key && p.scope === "GLOBAL"),
     canInClub: (key: string, clubId: string) => hasClubPermission(list, key, clubId),
     canClubWide: (key: string, clubId: string) => hasClubWidePermission(list, key, clubId),
     canInDepartment: (key: string, clubId: string, departmentId?: string) =>

@@ -44,24 +44,12 @@ export const applicationsApi = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  createApplicationForm: (clubId: string, body: UpsertApplicationFormInput) =>
-    api<ApplicationForm>(API_ROUTES.clubs.applicationForms(clubId), {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
   updateClubApplicationForm: (clubId: string, formId: string, body: UpsertApplicationFormInput) =>
     api<ApplicationForm>(API_ROUTES.clubs.applicationFormDetail(clubId, formId), {
       method: 'PUT',
       body: JSON.stringify(body),
     }),
-  updateApplicationForm: (clubId: string, formId: string, body: UpsertApplicationFormInput) =>
-    api<ApplicationForm>(API_ROUTES.clubs.applicationFormDetail(clubId, formId), {
-      method: 'PUT',
-      body: JSON.stringify(body),
-    }),
   deleteClubApplicationForm: (clubId: string, formId: string) =>
-    api<void>(API_ROUTES.clubs.applicationFormDetail(clubId, formId), { method: 'DELETE' }),
-  deleteApplicationForm: (clubId: string, formId: string) =>
     api<void>(API_ROUTES.clubs.applicationFormDetail(clubId, formId), { method: 'DELETE' }),
   uploadFormFile: (clubId: string, formId: string, file: File, fileCategory?: string) => {
     const form = new FormData();
@@ -69,15 +57,7 @@ export const applicationsApi = {
     const q = fileCategory ? `?fileCategory=${encodeURIComponent(fileCategory)}` : '';
     return apiForm<ApplicationFile>(`${API_ROUTES.clubs.applicationFormFiles(clubId, formId)}${q}`, form);
   },
-  uploadApplicationFormFile: (clubId: string, formId: string, file: File, fileCategory?: string) => {
-    const form = new FormData();
-    form.append('file', file);
-    const q = fileCategory ? `?fileCategory=${encodeURIComponent(fileCategory)}` : '';
-    return apiForm<ApplicationFile>(`${API_ROUTES.clubs.applicationFormFiles(clubId, formId)}${q}`, form);
-  },
   deleteFormFile: (clubId: string, formId: string, fileId: string) =>
-    api<void>(API_ROUTES.clubs.applicationFormFileDetail(clubId, formId, fileId), { method: 'DELETE' }),
-  deleteApplicationFormFile: (clubId: string, formId: string, fileId: string) =>
     api<void>(API_ROUTES.clubs.applicationFormFileDetail(clubId, formId, fileId), { method: 'DELETE' }),
   uploadApplicationFile: (applicationId: string, file: File, fileCategory?: string) => {
     const form = new FormData();

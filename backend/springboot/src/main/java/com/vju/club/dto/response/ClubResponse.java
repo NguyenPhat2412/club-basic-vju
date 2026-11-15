@@ -1,5 +1,7 @@
 package com.vju.club.dto.response;
 
+import com.vju.club.dto.record.ClubOverviewConfig;
+
 import java.io.Serializable;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -13,6 +15,7 @@ public record ClubResponse(
         String description,
         String activityField,
         String contactEmail,
+        ClubOverviewConfig overviewConfig,
         String status,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt

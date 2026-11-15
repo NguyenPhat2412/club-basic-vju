@@ -80,15 +80,15 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     @Transactional(readOnly = true)
-    @RequirePermission(RoleConstants.PERMISSION_VIEW)
     public List<RoleResponse> list(Actor actor) {
+        requireAnyOrGlobal(actor, RoleConstants.PERMISSION_VIEW);
         return roleRepository.findAllWithPermissions().stream().map(roleMapper::toResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    @RequirePermission(RoleConstants.PERMISSION_VIEW)
     public RoleResponse get(Actor actor, UUID roleId) {
+        requireAnyOrGlobal(actor, RoleConstants.PERMISSION_VIEW);
         return roleMapper.toResponse(findRole(roleId));
     }
 
@@ -165,17 +165,21 @@ public class RoleServiceImpl implements RoleService {
     @Override
     @Transactional(readOnly = true)
     public List<UserRoleResponse> listAssignments(Actor actor, UUID userId) {
-        if (!userId.equals(actor.id())) {
-            authorizationService.require(actor, "permission.view", null, null);
-        }
+        Set<UUID> scopedClubs = permittedClubsForTarget(actor, userId);
         findUser(userId);
-        return userRoleRepository.findActiveByUser(userId).stream().map(roleMapper::toUserRoleResponse).toList();
+        return userRoleRepository.findActiveByUser(userId).stream()
+                .filter(ur -> scopedClubs == null || (clubOf(ur) != null && scopedClubs.contains(clubOf(ur))))
+                .map(roleMapper::toUserRoleResponse).toList();
     }
 
     @Override
     @Transactional
-    @RequirePermission(PermissionConstants.PERMISSION_ASSIGN)
     public UserRoleResponse assign(Actor actor, UUID userId, AssignRoleRequest request) {
+        if (request.clubId() == null && request.departmentId() == null) {
+            requireScopedOrGlobal(actor, PermissionConstants.PERMISSION_ASSIGN, null, null);
+        } else if (!authorizationService.hasAnyPermission(actor, PermissionConstants.PERMISSION_ASSIGN)) {
+            authorizationService.require(actor, PermissionConstants.PERMISSION_ASSIGN, null, null);
+        }
         User actorUser = findUser(actor.id());
         User target = findUser(userId);
         Role role = findRole(request.roleId());
@@ -194,6 +198,13 @@ public class RoleServiceImpl implements RoleService {
         Department department = request.departmentId() == null ? null : departmentRepository.findById(request.departmentId())
                 .orElseThrow(() -> notFound("DEPARTMENT_NOT_FOUND", "Department not found"));
         UUID targetClubId = club != null ? club.getId() : (department != null ? department.getClub().getId() : null);
+        UUID targetDeptId = department == null ? null : department.getId();
+        boolean scopedOnly = requireScopedOrGlobal(actor, PermissionConstants.PERMISSION_ASSIGN, targetClubId, targetDeptId);
+        if (scopedOnly && targetClubId != null && membershipRepository != null
+                && !membershipRepository.existsByUser_IdAndClub_IdAndStatus(userId, targetClubId, MembershipStatus.ACTIVE)) {
+            throw new ApiException(HttpStatus.CONFLICT, "MEMBERSHIP_REQUIRED_FOR_POSITION",
+                    "Target user must be an active member of the club before receiving club or department roles");
+        }
         if (targetClubId != null && membershipRepository != null
                 && membershipRepository.existsByUser_IdAndClub_IdAndStatus(userId, targetClubId, MembershipStatus.SUSPENDED)) {
             throw new ApiException(HttpStatus.CONFLICT, "MEMBERSHIP_NOT_ACTIVE",
@@ -221,12 +232,17 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     @Transactional
-    @RequirePermission(PermissionConstants.PERMISSION_REVOKE)
     public void revoke(Actor actor, UUID userId, UUID assignmentId) {
+        if (!authorizationService.hasAnyPermission(actor, PermissionConstants.PERMISSION_REVOKE)) {
+            authorizationService.require(actor, PermissionConstants.PERMISSION_REVOKE, null, null);
+        }
         User actorUser = findUser(actor.id());
         UserRole assignment = userRoleRepository.findByIdAndUser_Id(assignmentId, userId)
                 .filter(found -> found.getRevokedAt() == null)
                 .orElseThrow(() -> notFound("ROLE_ASSIGNMENT_NOT_FOUND", "Role assignment not found"));
+        UUID targetClubId = clubOf(assignment);
+        UUID targetDeptId = assignment.getDepartment() == null ? null : assignment.getDepartment().getId();
+        requireScopedOrGlobal(actor, PermissionConstants.PERMISSION_REVOKE, targetClubId, targetDeptId);
         if (GrantGuard.SYSTEM_ADMIN.equals(assignment.getRole().getCode())) {
             if (userId.equals(actor.id())) {
                 throw new ApiException(HttpStatus.CONFLICT, "CANNOT_REVOKE_OWN_ADMIN",
@@ -241,6 +257,38 @@ public class RoleServiceImpl implements RoleService {
         audit(actorUser, assignment, PermissionAuditAction.REVOKE, null);
         auditService.record(actorUser.getId(), AuditAction.ROLE_REVOKED, assignment.getId(), clubOf(assignment),
                 assignmentValues(assignment, null), null);
+    }
+
+    private void requireAnyOrGlobal(Actor actor, String permissionKey) {
+        if (authorizationService.hasAnyPermission(actor, permissionKey)) return;
+        authorizationService.require(actor, permissionKey, null, null);
+    }
+
+    private boolean requireScopedOrGlobal(Actor actor, String permissionKey, UUID clubId, UUID departmentId) {
+        if ((clubId != null || departmentId != null)
+                && authorizationService.hasPermission(actor, permissionKey, clubId, departmentId)) {
+            return !authorizationService.hasGlobalPermission(actor, permissionKey);
+        }
+        authorizationService.require(actor, permissionKey, null, null);
+        return false;
+    }
+
+    private Set<UUID> permittedClubsForTarget(Actor actor, UUID targetUserId) {
+        if (targetUserId.equals(actor.id()) || authorizationService.hasGlobalPermission(actor, PermissionConstants.PERMISSION_VIEW)) {
+            return null;
+        }
+        Set<UUID> shared = new LinkedHashSet<>();
+        if (membershipRepository != null) {
+            for (UUID cid : authorizationService.getPermittedClubIds(actor, PermissionConstants.PERMISSION_VIEW)) {
+                if (membershipRepository.existsByUser_IdAndClub_IdAndStatus(targetUserId, cid, MembershipStatus.ACTIVE)
+                        || membershipRepository.existsByUser_IdAndClub_IdAndStatus(targetUserId, cid, MembershipStatus.SUSPENDED)) {
+                    shared.add(cid);
+                }
+            }
+        }
+        if (!shared.isEmpty()) return shared;
+        authorizationService.require(actor, PermissionConstants.PERMISSION_VIEW, null, null);
+        return null;
     }
 
     @Override

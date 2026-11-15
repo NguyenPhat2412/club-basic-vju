@@ -11,6 +11,7 @@
     "test": "node --import ./tests/register-alias.mjs --test tests/*.test.ts"
   },
   "dependencies": {
+    "@stomp/stompjs": "^7.5.0",
     "@tanstack/react-query": "^5.104.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.577.0",

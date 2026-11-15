@@ -38,7 +38,7 @@ export function BreadcrumbToolbar({
       <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-2 sm:w-auto">
         {search && (
           <div className="relative w-full sm:w-56">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               value={search.value}
               onChange={(e) => search.onChange(e.target.value)}
@@ -51,7 +51,7 @@ export function BreadcrumbToolbar({
                 type="button"
                 aria-label="Xoá tìm kiếm"
                 onClick={() => search.onChange("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800"
               >
                 <X size={13} />
               </button>
@@ -100,6 +100,7 @@ export function SegmentedTabs<T extends string>({
         <button
           type="button"
           key={option.value}
+          aria-pressed={option.value === value}
           onClick={() => onChange(option.value)}
           className={
             option.value === value

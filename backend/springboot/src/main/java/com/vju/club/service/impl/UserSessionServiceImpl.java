@@ -1,5 +1,6 @@
 package com.vju.club.service.impl;
 
+import com.vju.club.security.websocket.WebSocketSessionTracker;
 import com.vju.club.service.UserSessionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.session.FindByIndexNameSessionRepository;
@@ -13,6 +14,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserSessionServiceImpl implements UserSessionService {
     private final FindByIndexNameSessionRepository<? extends Session> sessions;
+    private final WebSocketSessionTracker webSocketSessionTracker;
 
     @Override
     public int endAllSessions(UUID userId) {
@@ -25,6 +27,9 @@ public class UserSessionServiceImpl implements UserSessionService {
                 .filter(sessionId -> !sessionId.equals(keptSessionId))
                 .toList();
         ended.forEach(sessions::deleteById);
+        if (keptSessionId == null) {
+            webSocketSessionTracker.closeUserSessions(userId);
+        }
         return ended.size();
     }
 }

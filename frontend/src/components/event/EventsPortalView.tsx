@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Compass, Eye, MapPin, UserCheck, XCircle } from "lucide-react";
 import { apiModel, MyEventParticipation, PublicEvent } from "@/lib/api";
@@ -20,6 +21,16 @@ import { MyEventsHistorySection } from "./MyEventsHistorySection";
 const HISTORY_LIMIT = 20;
 
 export function EventsPortalView() {
+  return (
+    <Suspense fallback={<LoadingRows />}>
+      <EventsPortalContent />
+    </Suspense>
+  );
+}
+
+function EventsPortalContent() {
+  const searchParams = useSearchParams();
+  const requestedEventId = searchParams.get("eventId");
   const session = useOptionalSession();
   const queryClient = useQueryClient();
   const isLoggedIn = !!session.user;
@@ -32,6 +43,7 @@ export function EventsPortalView() {
   const [historyOffset, setHistoryOffset] = useState(0);
 
   const [selectedDiscover, setSelectedDiscover] = useState<PublicEvent | null>(null);
+  const [closedDeepLinkId, setClosedDeepLinkId] = useState<string | null>(null);
   const [selectedParticipation, setSelectedParticipation] = useState<MyEventParticipation | null>(null);
   const [registeringEvent, setRegisteringEvent] = useState<PublicEvent | null>(null);
   const [regNote, setRegNote] = useState("");
@@ -116,6 +128,19 @@ export function EventsPortalView() {
       })
       .sort((a, b) => b.startTime.localeCompare(a.startTime));
   }, [publicEvents.data?.items, memberClubEventQueries, search, ctvFilter]);
+
+  const activeSelectedDiscover: PublicEvent | null =
+    selectedDiscover ??
+    (requestedEventId && closedDeepLinkId !== requestedEventId
+      ? (discoverList.find((ev) => ev.id === requestedEventId) ?? null)
+      : null);
+
+  const handleSetSelectedDiscover = (ev: PublicEvent | null) => {
+    if (!ev && requestedEventId) {
+      setClosedDeepLinkId(requestedEventId);
+    }
+    setSelectedDiscover(ev);
+  };
 
   const refreshAll = () => {
     queryClient.invalidateQueries({ queryKey: ["events-portal"] });
@@ -374,8 +399,8 @@ export function EventsPortalView() {
         setRegisteringEvent={setRegisteringEvent}
         regNote={regNote}
         setRegNote={setRegNote}
-        selectedDiscover={selectedDiscover}
-        setSelectedDiscover={setSelectedDiscover}
+        selectedDiscover={activeSelectedDiscover}
+        setSelectedDiscover={handleSetSelectedDiscover}
         selectedParticipation={selectedParticipation}
         setSelectedParticipation={setSelectedParticipation}
         canRegisterNow={canRegisterNow}

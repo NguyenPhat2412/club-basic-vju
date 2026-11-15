@@ -1,23 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, Hash, MessageSquare, Plus, Send, Sparkles } from "lucide-react";
-import { apiModel, Department } from "@/lib/api";
+import { Hash, MessageSquare, Plus } from "lucide-react";
+import { apiModel, ChatChannel, ChatMessage, Department } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
+import { useChannelMessages, useClubChannels, useClubQuickReplies } from "@/hooks/chat/useClubChat";
+import { useChatMessageSender } from "@/hooks/chat/useChatMessageSender";
+import { useChatRealtime } from "@/hooks/chat/useChatRealtime";
+import { DocumentPreviewModal, PreviewTarget } from "@/components/document/DocumentPreviewModal";
+import { ChatDocumentPickerModal } from "@/components/management/ChatDocumentPickerModal";
+import { ChatMessagePane } from "@/components/management/ChatMessagePane";
 import { ModalShell } from "@/components/shared/Overlays";
 import { EmptyState, ErrorState, LoadingRows } from "@/components/shared/States";
 import { describeError } from "@/components/shared/ListPage";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { FormField, Input, Select } from "@/components/ui/input";
-import { cn, formatDateTime } from "@/lib/utils";
-
-const CHANNEL_TYPE_LABELS: Record<string, string> = {
-  CLUB_GENERAL: "Kênh chung CLB",
-  DEPARTMENT: "Kênh theo Ban",
-  EVENT_THREAD: "Thảo luận Sự kiện",
-};
+import { cn, saveBlob } from "@/lib/utils";
 
 export function ChatTab({
   clubId,
@@ -37,36 +35,56 @@ export function ChatTab({
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState("CLUB_GENERAL");
   const [newDeptId, setNewDeptId] = useState("");
-  const [content, setContent] = useState("");
+  const [pickingDoc, setPickingDoc] = useState(false);
+  const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
+  const [olderByChannel, setOlderByChannel] = useState<Record<string, ChatMessage[]>>({});
+  const [exhaustedChannels, setExhaustedChannels] = useState<Record<string, boolean>>({});
+  const [loadingOlder, setLoadingOlder] = useState(false);
 
   const canSend = session.canInClub("chat.send", clubId);
   const canSummarize = session.canInClub("chat.summarize", clubId);
+  const canViewClubDocs = session.canInClub("document.view", clubId);
   const canCreateChannel =
     session.canInClub("club.update", clubId) ||
     session.canInClub("department.create", clubId) ||
     session.canInClub("department.update", clubId) ||
     session.canInClub("event.create", clubId);
 
-  const channels = useQuery({
-    queryKey: ["club-channels", clubId],
-    queryFn: () => apiModel.clubChannels(clubId),
-    enabled: !!clubId,
-  });
-
+  const channels = useClubChannels(clubId, Boolean(clubId));
+  const quickReplies = useClubQuickReplies(clubId, Boolean(clubId));
   const activeChannel = (channels.data ?? []).find((c) => c.id === channelId) ?? channels.data?.[0];
   const activeChannelId = activeChannel?.id ?? "";
 
-  const messages = useQuery({
-    queryKey: ["channel-messages", activeChannelId],
-    queryFn: () => apiModel.channelMessages(activeChannelId),
-    enabled: !!activeChannelId,
+  const composer = useChatMessageSender({
+    activeChannelId,
+    userId: session.user?.id,
+    userFullName: session.user?.fullName,
+    onError,
   });
+
+  const { status: wsStatus, wsError, typingUsers, sendTyping } = useChatRealtime({
+    clubId,
+    activeChannelId,
+    currentUserId: session.user?.id,
+    enabled: !!activeChannelId && session.ready,
+  });
+
+  const messages = useChannelMessages(activeChannelId, 50, Boolean(activeChannelId), session.user?.id);
 
   const summaries = useQuery({
     queryKey: ["channel-summaries", activeChannelId],
     queryFn: () => apiModel.channelSummaries(activeChannelId),
     enabled: !!activeChannelId,
   });
+
+  useEffect(() => {
+    if (!activeChannelId || !activeChannel?.unreadCount) return;
+    const newestId = messages.data?.items?.find((m) => !m.optimistic)?.id;
+    apiModel.markChannelRead(activeChannelId, newestId).catch(() => {});
+    queryClient.setQueryData<ChatChannel[]>(["club-channels", clubId], (old) =>
+      old?.map((ch) => (ch.id === activeChannelId ? { ...ch, unreadCount: 0 } : ch))
+    );
+  }, [activeChannelId, activeChannel?.unreadCount, clubId, messages.data?.items, queryClient]);
 
   const createChannel = useMutation({
     mutationFn: () =>
@@ -86,16 +104,6 @@ export function ChatTab({
     onError: (e) => onError(describeError(e)),
   });
 
-  const sendMessage = useMutation({
-    mutationFn: () => apiModel.sendMessage(activeChannelId, content.trim()),
-    onSuccess: () => {
-      setContent("");
-      onError("");
-      queryClient.invalidateQueries({ queryKey: ["channel-messages", activeChannelId] });
-    },
-    onError: (e) => onError(describeError(e)),
-  });
-
   const summarize = useMutation({
     mutationFn: () => apiModel.summarizeChannel(activeChannelId, { messageLimit: 50, postToChannel: true }),
     onSuccess: () => {
@@ -110,11 +118,50 @@ export function ChatTab({
   if (channels.isPending) return <LoadingRows />;
   if (channels.isError) return <ErrorState message={describeError(channels.error)} onRetry={() => channels.refetch()} />;
 
-  const orderedMessages = [...(messages.data?.items ?? [])].reverse();
-  const latestSummary = summaries.data?.[0];
+  const primaryDesc = messages.data?.items ?? [];
+  const extraOlder = olderByChannel[activeChannelId] ?? [];
+  const seenIds = new Set(primaryDesc.map((m) => m.id));
+  const mergedDesc = [...primaryDesc, ...extraOlder.filter((m) => !seenIds.has(m.id))];
+  const orderedMessages = [...mergedDesc].reverse();
+  const hasOlder =
+    !exhaustedChannels[activeChannelId] &&
+    mergedDesc.length > 0 &&
+    mergedDesc.length < (messages.data?.total ?? 0);
+
+  const loadOlder = async () => {
+    const oldest = mergedDesc.filter((m) => !m.optimistic).at(-1);
+    if (!oldest || loadingOlder) return;
+    setLoadingOlder(true);
+    try {
+      const page = await apiModel.channelMessages(activeChannelId, 0, 30, oldest.id);
+      if (!page.items.length) {
+        setExhaustedChannels((prev) => ({ ...prev, [activeChannelId]: true }));
+      } else {
+        setOlderByChannel((prev) => ({
+          ...prev,
+          [activeChannelId]: [...(prev[activeChannelId] ?? []), ...page.items],
+        }));
+        if (page.items.length < 30) {
+          setExhaustedChannels((prev) => ({ ...prev, [activeChannelId]: true }));
+        }
+      }
+    } catch (e) {
+      onError(describeError(e));
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
+
+  const downloadDoc = async (id: string, name: string) => {
+    try {
+      saveBlob(await apiModel.downloadDocument(id), name);
+    } catch (e) {
+      onError(describeError(e));
+    }
+  };
 
   return (
-    <div className="p-4">
+    <div className="p-2.5 sm:p-3">
       {!channels.data.length ? (
         <EmptyState
           icon={<MessageSquare />}
@@ -123,133 +170,111 @@ export function ChatTab({
           onAction={canCreateChannel ? () => setCreating(true) : undefined}
         />
       ) : (
-        <div className="grid min-h-[520px] gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-          <aside className="flex min-w-0 flex-col justify-between rounded-xl border border-border/60 bg-card p-3">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between pb-2">
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Kênh thảo luận</p>
-                {canCreateChannel && (
-                  <Button size="sm" variant="outline" onClick={() => setCreating(true)}>
-                    <Plus size={13} /> Tạo kênh
-                  </Button>
-                )}
-              </div>
-              {channels.data.map((ch) => (
+        <div className="grid h-[calc(100vh-215px)] max-h-[760px] min-h-[500px] overflow-hidden rounded-xl border border-border/60 bg-card lg:grid-cols-[224px_minmax(0,1fr)]">
+          <aside className="flex min-h-0 flex-col border-b border-border/60 bg-muted/[0.18] lg:border-r lg:border-b-0">
+            <div className="flex h-12 shrink-0 items-center justify-between border-b border-border/60 px-3">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Kênh ({channels.data.length})
+              </span>
+              {canCreateChannel && (
                 <button
-                  key={ch.id}
-                  onClick={() => setChannelId(ch.id)}
-                  className={cn(
-                    "flex w-full min-w-0 flex-col items-start gap-0.5 rounded-lg px-3 py-2 text-left text-xs transition-colors",
-                    ch.id === activeChannelId ? "bg-primary/10 font-bold text-primary" : "hover:bg-muted"
-                  )}
+                  type="button"
+                  onClick={() => setCreating(true)}
+                  aria-label="Tạo kênh mới"
+                  className="inline-flex h-7 items-center gap-1 rounded-md border border-border/70 bg-background px-2 text-[11px] font-semibold text-foreground hover:bg-muted"
                 >
-                  <span className="flex w-full min-w-0 items-center gap-1.5">
-                    <Hash size={13} className="shrink-0" />
-                    <span className="truncate">{ch.name}</span>
-                  </span>
-                  {ch.departmentName && (
-                    <span className="w-full truncate pl-4 text-[10px] font-normal text-muted-foreground">
-                      {ch.departmentName}
-                    </span>
-                  )}
+                  <Plus size={12} /> Tạo kênh
                 </button>
-              ))}
+              )}
+            </div>
+
+            <div className="flex gap-1 overflow-x-auto p-2 lg:flex-1 lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden">
+              {channels.data.map((ch) => {
+                const active = ch.id === activeChannelId;
+                const unread = (ch.unreadCount ?? 0) > 0 && !active;
+                return (
+                  <button
+                    key={ch.id}
+                    type="button"
+                    aria-current={active ? "true" : undefined}
+                    onClick={() => {
+                      if (active) return;
+                      setChannelId(ch.id);
+                      composer.resetComposerAttachments();
+                    }}
+                    className={cn(
+                      "flex shrink-0 flex-col items-start gap-0.5 rounded-lg px-2.5 py-2 text-left text-xs transition-colors lg:w-full",
+                      active
+                        ? "bg-primary/10 font-semibold text-primary"
+                        : "text-foreground/85 hover:bg-muted/70"
+                    )}
+                  >
+                    <span className="flex w-full min-w-0 items-center justify-between gap-1.5">
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <Hash size={13} className="shrink-0 opacity-75" />
+                        <span className="max-w-[140px] truncate lg:max-w-none">{ch.name}</span>
+                      </span>
+                      {unread && (
+                        <span className="grid min-w-4 place-items-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold leading-none text-primary-foreground">
+                          {ch.unreadCount! > 99 ? "99+" : ch.unreadCount}
+                        </span>
+                      )}
+                    </span>
+                    {ch.departmentName && (
+                      <span className="hidden w-full truncate pl-5 text-[10.5px] font-normal text-muted-foreground lg:block">
+                        {ch.departmentName}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </aside>
 
-          <section className="flex min-w-0 flex-col rounded-xl border border-border/60 bg-card">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
-              <div className="min-w-0 flex-1">
-                <h3 className="truncate text-sm font-bold"># {activeChannel?.name}</h3>
-                <p className="truncate text-xs text-muted-foreground">
-                  {activeChannel ? CHANNEL_TYPE_LABELS[activeChannel.channelType] ?? activeChannel.channelType : ""}
-                  {activeChannel?.departmentName ? ` · ${activeChannel.departmentName}` : ""}
-                </p>
-              </div>
-              {canSummarize && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={summarize.isPending || !orderedMessages.some((m) => m.senderType === "USER")}
-                  onClick={() => summarize.mutate()}
-                >
-                  <Sparkles size={14} /> {summarize.isPending ? "Đang tóm tắt…" : "Tóm tắt thảo luận bằng AI"}
-                </Button>
-              )}
-            </div>
-
-            {latestSummary && (
-              <div className="border-b border-primary/15 bg-primary/5 px-4 py-3 text-xs">
-                <div className="flex items-center gap-1.5 font-bold text-primary">
-                  <Bot size={14} /> Bản tóm tắt AI gần nhất ({formatDateTime(latestSummary.createdAt)})
-                </div>
-                <p className="mt-1 whitespace-pre-line text-foreground">{latestSummary.summary}</p>
-                {latestSummary.decisions?.length > 0 && (
-                  <p className="mt-1 text-muted-foreground">
-                    <b>Quyết định:</b> {latestSummary.decisions.join(" · ")}
-                  </p>
-                )}
-              </div>
-            )}
-
-            <div className="max-h-[380px] flex-1 space-y-3 overflow-y-auto p-4">
-              {messages.isPending ? (
-                <LoadingRows rows={3} />
-              ) : messages.isError ? (
-                <ErrorState message={describeError(messages.error)} onRetry={() => messages.refetch()} />
-              ) : !orderedMessages.length ? (
-                <p className="py-8 text-center text-xs text-muted-foreground">Chưa có tin nhắn nào trong kênh này.</p>
-              ) : (
-                orderedMessages.map((m) => (
-                  <div
-                    key={m.id}
-                    className={cn(
-                      "rounded-lg border px-3.5 py-2.5 text-xs",
-                      m.senderType === "AI_BOT"
-                        ? "border-primary/25 bg-primary/5"
-                        : "border-border/60 bg-background"
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-bold text-foreground">
-                        {m.senderType === "AI_BOT" ? "Trợ lý AI CLB" : m.senderFullName || "Thành viên"}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        {m.senderType === "AI_BOT" && (
-                          <Badge tone="primary" dot={false}>
-                            AI
-                          </Badge>
-                        )}
-                        <span className="font-mono text-[10px] text-muted-foreground">{formatDateTime(m.createdAt)}</span>
-                      </div>
-                    </div>
-                    <p className="mt-1.5 whitespace-pre-line leading-relaxed text-foreground">{m.content}</p>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {canSend && (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (content.trim() && !sendMessage.isPending) sendMessage.mutate();
-                }}
-                className="flex gap-2 border-t border-border/60 p-3"
-              >
-                <Input
-                  value={content}
-                  maxLength={4000}
-                  onChange={(e) => setContent(e.target.value)}
-                  placeholder="Nhập nội dung trao đổi trong kênh…"
-                  className="flex-1"
-                />
-                <Button type="submit" size="sm" disabled={!content.trim() || sendMessage.isPending}>
-                  <Send size={14} /> Gửi
-                </Button>
-              </form>
-            )}
-          </section>
+          <ChatMessagePane
+            clubId={clubId}
+            activeChannel={activeChannel}
+            currentUserId={session.user?.id}
+            wsStatus={wsStatus}
+            wsError={wsError}
+            canSend={canSend}
+            canSummarize={canSummarize}
+            canManageQuickReplies={canCreateChannel || canSummarize}
+            quickReplies={quickReplies.data ?? []}
+            quickRepliesLoading={quickReplies.isPending}
+            summarizePending={summarize.isPending}
+            onSummarize={() => summarize.mutate()}
+            latestSummary={summaries.data?.[0]}
+            messagesPending={messages.isPending}
+            messagesError={messages.isError ? messages.error : null}
+            onRetryMessages={() => messages.refetch()}
+            orderedMessages={orderedMessages}
+            hasOlder={hasOlder}
+            loadingOlder={loadingOlder}
+            onLoadOlder={loadOlder}
+            typingUsers={typingUsers}
+            replyTo={composer.replyTo}
+            onReply={composer.setReplyTo}
+            onClearReply={() => composer.setReplyTo(null)}
+            attachedDoc={composer.attachedDoc}
+            onOpenDocPicker={() => setPickingDoc(true)}
+            onClearAttachedDoc={() => composer.setAttachedDoc(null)}
+            stagedMedia={composer.stagedMedia}
+            onAddFiles={composer.handleAddFiles}
+            onRemoveStagedMedia={composer.handleRemoveStagedMedia}
+            onClearStagedMedia={composer.handleClearStagedMedia}
+            content={composer.content}
+            onContentChange={(val) => {
+              composer.setContent(val);
+              if (val.trim()) sendTyping();
+            }}
+            sendPending={composer.sendPending}
+            onSend={composer.handleDispatchSend}
+            onPreviewDoc={setPreviewTarget}
+            onDownloadDoc={downloadDoc}
+            onNotice={onNotice}
+            onError={onError}
+          />
         </div>
       )}
 
@@ -290,6 +315,20 @@ export function ChatTab({
           </FormField>
         )}
       </ModalShell>
+
+      <ChatDocumentPickerModal
+        open={pickingDoc}
+        clubId={clubId}
+        canViewClubDocs={canViewClubDocs}
+        onClose={() => setPickingDoc(false)}
+        onSelect={composer.setAttachedDoc}
+      />
+
+      <DocumentPreviewModal
+        target={previewTarget}
+        onClose={() => setPreviewTarget(null)}
+        onDownload={(t) => downloadDoc(t.id, t.name)}
+      />
     </div>
   );
 }

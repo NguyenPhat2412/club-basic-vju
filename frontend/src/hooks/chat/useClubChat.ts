@@ -1,6 +1,11 @@
 'use client';
 import { useQuery } from '@tanstack/react-query';
 import { chatApi } from '@/api/chat/chat.api';
+import {
+  getCachedChannelWindow,
+  preloadChannelMedia,
+  saveCachedChannelWindow,
+} from '@/lib/chat-message-cache';
 
 export function useClubChannels(clubId: string, enabled = true) {
   return useQuery({
@@ -10,11 +15,31 @@ export function useClubChannels(clubId: string, enabled = true) {
   });
 }
 
-export function useChannelMessages(channelId: string, offset = 0, limit = 50, enabled = true) {
+export function useChannelMessages(
+  channelId: string,
+  limit = 50,
+  enabled = true,
+  userId?: string
+) {
   return useQuery({
-    queryKey: ['channel-messages', channelId, offset, limit],
-    queryFn: () => chatApi.channelMessages(channelId, offset, limit),
+    queryKey: ['channel-messages', channelId],
+    queryFn: async () => {
+      const page = await chatApi.channelMessages(channelId, 0, limit);
+      saveCachedChannelWindow(channelId, page, userId, channelId);
+      preloadChannelMedia(page.items, 12);
+      return page;
+    },
+    initialData: () => getCachedChannelWindow(channelId, userId)?.page,
+    initialDataUpdatedAt: () => getCachedChannelWindow(channelId, userId)?.savedAt,
     enabled: Boolean(channelId && enabled),
-    refetchInterval: 8_000,
+  });
+}
+
+export function useClubQuickReplies(clubId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['club-quick-replies', clubId],
+    queryFn: () => chatApi.clubQuickReplies(clubId),
+    enabled: Boolean(clubId && enabled),
+    staleTime: 60_000,
   });
 }

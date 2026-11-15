@@ -26,7 +26,8 @@
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-border: var(--sidebar-border);
   --font-sans: var(--font-inter), 'Inter', 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-serif: var(--font-inter), 'Inter', 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: var(--font-libre-franklin), var(--font-inter), sans-serif;
+  --font-serif: var(--font-source-serif), Georgia, Cambria, 'Times New Roman', serif;
   --font-mono: var(--font-inter), 'Inter', 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -49,12 +50,12 @@
   --secondary: #f1f5f9;
   --secondary-foreground: #1e293b;
   --muted: #f1f5f9;
-  --muted-foreground: #64748b;
+  --muted-foreground: #475569;
   --accent: #fff1f2;
   --accent-foreground: #8e1f32;
   --destructive: #dc2626;
   --border: #e2e8f0;
-  --input: #cbd5e1;
+  --input: #94a3b8;
   --ring: var(--primary);
   --sidebar: #ffffff;
   --sidebar-foreground: #0f172a;
@@ -105,7 +106,13 @@
     box-shadow: var(--shadow-modal);
   }
   .font-serif {
-    font-family: var(--font-sans);
+    font-family: var(--font-serif);
+  }
+  .font-display {
+    font-family: var(--font-display);
+  }
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
   .font-mono {
     font-family: var(--font-sans);
@@ -116,6 +123,13 @@
   }
   .toast-in {
     animation: toast-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .slide-in-right {
+    animation: slide-in-right 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .toast-progress {
+    transform-origin: left center;
+    animation: toast-progress linear forwards;
   }
 }
 
@@ -128,6 +142,16 @@
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: none; }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toast-progress {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
 }
 
 ::-webkit-scrollbar { width: 4px; height: 4px; }

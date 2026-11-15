@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Building2, CalendarCheck2, ShieldCheck, UserRound, UsersRound } from "lucide-react";
+import { Building2, CalendarCheck2, FileText, ShieldCheck, UserRound, UsersRound } from "lucide-react";
 import { getPresentationLocale } from "@/i18n/config";
 import { translateUiText } from "@/i18n/translator";
 import { CLUB_MANAGEMENT_KEYS } from "@/hooks/useSession";
@@ -9,6 +9,7 @@ export type SubNavItem = {
   label: string;
   tab?: string;
   tabs?: string[];
+  tier?: "club" | "system";
   visible?: boolean;
 };
 
@@ -29,16 +30,20 @@ export function buildNavigationSections(params: {
   authenticated: boolean;
   mustChangePassword: boolean;
   can: (permissionKey: string) => boolean;
+  hasGlobal?: (permissionKey: string) => boolean;
 }): NavSection[] {
-  const { authenticated, mustChangePassword, can } = params;
+  const { authenticated, mustChangePassword, can, hasGlobal } = params;
   const hasAnyPerm = (keys: string[]) => keys.some(can);
+  const canGlobalRoleView = can("role.manage") || (hasGlobal ? hasGlobal("role.view") : can("role.view"));
 
   const canManageClub = CLUB_MANAGEMENT_KEYS.some(can);
-  const canSystemAdmin = hasAnyPerm([
-    "user.view",
-    "role.view",
-    "audit.view",
-    "setting.view",
+  const canSystemAdmin = canGlobalRoleView || hasAnyPerm(["user.view", "audit.view", "setting.view"]);
+  const canClubDocs = hasAnyPerm([
+    "document.view",
+    "document.upload",
+    "document.update",
+    "document.delete",
+    "document.restore",
   ]);
   const canClubOrg =
     canManageClub ||
@@ -64,6 +69,9 @@ export function buildNavigationSections(params: {
       "department.member.view",
       "department.member.add",
       "department.member.remove",
+      "permission.view",
+      "permission.assign",
+      "permission.revoke",
     ]);
   const canClubRecruitment =
     canManageClub &&
@@ -111,6 +119,26 @@ export function buildNavigationSections(params: {
     visible,
   });
 
+  const documentGroup: NavParentGroup = {
+    id: "grp-documents",
+    label: "Tài liệu & Quy chế",
+    icon: <FileText size={15} />,
+    items: [
+      {
+        href: "/documents?tier=club",
+        tier: "club",
+        label: "Kho tài liệu CLB & Ban",
+        visible: authenticated && (canClubDocs || canStudentClubSpace),
+      },
+      {
+        href: "/documents?tier=system",
+        tier: "system",
+        label: "Quy chế & Biểu mẫu Trường",
+        visible: authenticated,
+      },
+    ],
+  };
+
   const rawSections: NavSection[] =
     canManageClub || canSystemAdmin
       ? [
@@ -127,7 +155,6 @@ export function buildNavigationSections(params: {
                   { href: "/applications", label: "Đơn đăng ký của tôi", visible: authenticated },
                   { href: "/schedule", label: "Lịch & Công việc của tôi", visible: authenticated },
                   { href: "/events", label: "Sự kiện & Cộng tác viên", visible: true },
-                  { href: "/documents", label: "Quy chế & Tài liệu", visible: authenticated && can("document.view") },
                   { href: "/notifications", label: "Thông báo của tôi", visible: authenticated },
                   { href: "/profile", label: "Hồ sơ cá nhân", visible: authenticated },
                 ],
@@ -160,16 +187,18 @@ export function buildNavigationSections(params: {
                 items: [
                   mgmt("events", "Sự kiện", canClubOps),
                   mgmt("tasks", "Công việc", canClubOps),
+                  mgmt("documents", "Tài liệu CLB", canManageClub && canClubDocs),
                   mgmt("chat", "Chat & AI", canClubOps),
                 ],
               },
+              documentGroup,
               {
                 id: "grp-sys",
                 label: "Quản trị hệ thống",
                 icon: <ShieldCheck size={15} />,
                 items: [
                   { href: "/users", label: "Tài khoản người dùng", visible: can("user.view") },
-                  { href: "/roles", label: "Vai trò & Phân quyền", visible: can("role.view") },
+                  { href: "/roles", label: "Vai trò & Phân quyền", visible: canGlobalRoleView },
                   { href: "/audit-logs", label: "Nhật ký hệ thống", visible: can("audit.view") },
                   { href: "/settings", label: "Cài đặt hệ thống", visible: can("setting.view") },
                 ],
@@ -191,7 +220,7 @@ export function buildNavigationSections(params: {
                   {
                     href: "/management?tab=chat",
                     tab: "chat",
-                    tabs: ["clubs", "overview", "members", "departments", "events", "tasks", "chat"],
+                    tabs: ["clubs", "overview", "members", "departments", "events", "tasks", "documents", "chat"],
                     label: "Không gian & Chat CLB",
                     visible: authenticated && canStudentClubSpace,
                   },
@@ -210,10 +239,13 @@ export function buildNavigationSections(params: {
                 items: [
                   { href: "/events", label: "Sự kiện & Cộng tác viên", visible: true },
                   { href: "/schedule", label: "Lịch & Việc của tôi", visible: authenticated },
-                  { href: "/documents", label: "Quy chế & Tài liệu", visible: true },
                 ],
               },
             ],
+          },
+          {
+            id: "sec-student-documents",
+            groups: [documentGroup],
           },
           {
             id: "sec-student-personal",
@@ -251,7 +283,12 @@ export function buildNavigationSections(params: {
     .filter((sec) => sec.groups.length > 0);
 }
 
-export function isNavItemActive(item: SubNavItem, pathname: string, currentTab: string | null): boolean {
+export function isNavItemActive(
+  item: SubNavItem,
+  pathname: string,
+  currentTab: string | null,
+  currentTier?: string | null
+): boolean {
   if (item.tabs && item.tabs.length > 0) {
     if (pathname !== "/management") return false;
     const effectiveTab = currentTab || "clubs";
@@ -261,6 +298,10 @@ export function isNavItemActive(item: SubNavItem, pathname: string, currentTab: 
     if (pathname !== "/management") return false;
     if (!currentTab) return item.tab === "clubs";
     return currentTab === item.tab;
+  }
+  if (item.tier) {
+    if (pathname !== "/documents") return false;
+    return (currentTier === "system" ? "system" : "club") === item.tier;
   }
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
@@ -275,13 +316,15 @@ const MANAGEMENT_TAB_TITLES: Record<string, string> = {
   forms: "Biểu mẫu tuyển thành viên",
   events: "Sự kiện & Điểm danh",
   tasks: "Báo cáo công việc",
+  documents: "Kho tài liệu & Quy chế CLB",
   chat: "Kênh trao đổi & AI",
 };
 
 export function resolveActiveNavMeta(
   sections: NavSection[],
   pathname: string,
-  currentTab: string | null
+  currentTab: string | null,
+  currentTier?: string | null
 ): { groupLabel: string; pageTitle: string } {
   const locale = getPresentationLocale();
   const tr = (text: string) => translateUiText(text, locale);
@@ -299,7 +342,7 @@ export function resolveActiveNavMeta(
   for (const sec of sections) {
     for (const grp of sec.groups) {
       for (const item of grp.items) {
-        if (isNavItemActive(item, pathname, currentTab)) {
+        if (isNavItemActive(item, pathname, currentTab, currentTier)) {
           return { groupLabel: grp.label, pageTitle: item.label };
         }
       }

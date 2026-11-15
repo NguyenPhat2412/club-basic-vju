@@ -64,14 +64,14 @@ export function DashboardActivitySection({
   onMarkAllRead,
 }: DashboardActivitySectionProps) {
   return (
-    <section className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.95fr)]">
+    <section className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.95fr)]">
       <div className="flex min-w-0 flex-col rounded-xl border border-border bg-card">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3 sm:px-5">
-          <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-lg bg-secondary/70 p-1">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-1 rounded-lg bg-secondary/70 p-1 sm:w-auto">
             <button
               type="button"
               onClick={() => setActiveFeedTab("applications")}
-              className={`shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+              className={`flex-1 whitespace-nowrap rounded-md px-2.5 py-1 text-[11.5px] font-semibold transition-colors sm:flex-initial sm:text-xs ${
                 activeFeedTab === "applications"
                   ? "bg-card text-foreground shadow-2xs"
                   : "text-muted-foreground hover:text-foreground"
@@ -82,7 +82,7 @@ export function DashboardActivitySection({
             <button
               type="button"
               onClick={() => setActiveFeedTab("tasks")}
-              className={`shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+              className={`flex-1 whitespace-nowrap rounded-md px-2.5 py-1 text-[11.5px] font-semibold transition-colors sm:flex-initial sm:text-xs ${
                 activeFeedTab === "tasks"
                   ? "bg-card text-foreground shadow-2xs"
                   : "text-muted-foreground hover:text-foreground"
@@ -93,7 +93,7 @@ export function DashboardActivitySection({
             <button
               type="button"
               onClick={() => setActiveFeedTab("clubs")}
-              className={`shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+              className={`flex-1 whitespace-nowrap rounded-md px-2.5 py-1 text-[11.5px] font-semibold transition-colors sm:flex-initial sm:text-xs ${
                 activeFeedTab === "clubs"
                   ? "bg-card text-foreground shadow-2xs"
                   : "text-muted-foreground hover:text-foreground"

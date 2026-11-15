@@ -33,9 +33,9 @@ spring:
       fail-on-unknown-properties: true
   servlet:
     multipart:
-      # Slightly above app.storage.max-file-size so the precise DOCUMENT_TOO_LARGE check runs in the app.
-      max-file-size: ${DOCUMENT_MAX_UPLOAD_SIZE:21MB}
-      max-request-size: ${DOCUMENT_MAX_UPLOAD_SIZE:21MB}
+      # Supports 50MB chat videos as well as 20MB formal vault documents (DocumentFileInspector enforces vault limits).
+      max-file-size: ${DOCUMENT_MAX_UPLOAD_SIZE:55MB}
+      max-request-size: ${CHAT_MAX_REQUEST_SIZE:65MB}
 
 springdoc:
   api-docs:
@@ -87,6 +87,15 @@ app:
       bucket: ${R2_BUCKET:}
       access-key-id: ${R2_ACCESS_KEY_ID:}
       secret-access-key: ${R2_SECRET_ACCESS_KEY:}
+    gdrive:
+      # Centralized Google Drive Vault (SERVICE_ACCOUNT with Workspace Shared Drive, or OAUTH_REFRESH_TOKEN).
+      auth-mode: ${GDRIVE_AUTH_MODE:SERVICE_ACCOUNT}
+      root-folder-id: ${GDRIVE_ROOT_FOLDER_ID:}
+      client-email: ${GDRIVE_CLIENT_EMAIL:}
+      private-key: ${GDRIVE_PRIVATE_KEY:}
+      client-id: ${GDRIVE_CLIENT_ID:}
+      client-secret: ${GDRIVE_CLIENT_SECRET:}
+      refresh-token: ${GDRIVE_REFRESH_TOKEN:}
   tasks:
     overdue-check-interval: ${TASK_OVERDUE_CHECK_INTERVAL:300000}
   ai:

@@ -1,9 +1,22 @@
 package com.vju.club.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
+import java.util.UUID;
+
 public record SendChatMessageRequest(
-        @NotBlank @Size(max = 4000) String content
+        @Size(max = 4000) String content,
+        UUID replyToId,
+        UUID documentId,
+        @Size(max = 8) List<UUID> attachmentIds,
+        @Size(max = 64) String clientTempId
 ) {
+    public SendChatMessageRequest(String content) {
+        this(content, null, null, null, null);
+    }
+
+    public SendChatMessageRequest(String content, UUID replyToId, UUID documentId) {
+        this(content, replyToId, documentId, null, null);
+    }
 }

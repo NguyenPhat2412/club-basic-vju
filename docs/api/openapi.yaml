@@ -3925,6 +3925,77 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
       description: 'Stream file qua backend.'
+  /documents/{documentId}/preview:
+    get:
+      operationId: document.preview
+      summary: Preview a document inline through backend proxy
+      tags:
+      - Document
+      x-permission: document.view
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: version
+        in: query
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Inline preview stream (PDF, image, text)
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /system/documents:
+    get:
+      operationId: document.list_system
+      summary: List centralized system-level documents
+      tags:
+      - Document
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      responses:
+        '200':
+          description: Paginated system documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: document.upload_system
+      summary: Upload a centralized system-level document
+      tags:
+      - Document
+      x-permission: document.upload
+      x-implementation-status: IMPLEMENTED
+      responses:
+        '201':
+          description: Uploaded system document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /documents/{documentId}/download-url:
     get:
       operationId: document.download_url
@@ -4831,6 +4902,10 @@ paths:
         in: path
         required: true
         schema: {type: string, format: uuid}
+      - name: beforeId
+        in: query
+        required: false
+        schema: {type: string, format: uuid}
       - name: offset
         in: query
         schema: {type: integer, minimum: 0, default: 0}
@@ -4843,6 +4918,188 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/ChatMessageListResponse'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /channels/{channelId}/read:
+    post:
+      operationId: chat.mark_read
+      summary: Mark channel messages as read
+      tags: [Chat]
+      x-permission: chat.view
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: channelId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '204':
+          description: Marked as read
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /channels/{channelId}/attachments:
+    post:
+      operationId: chat.uploadAttachment
+      summary: Upload image, video, or file attachment to chat channel
+      tags: [Chat]
+      x-permission: chat.send
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: channelId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: {type: string, format: binary}
+      responses:
+        '201':
+          description: Uploaded chat attachment metadata
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ChatAttachment'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /chat-attachments/{attachmentId}/stream:
+    get:
+      operationId: chat.streamAttachment
+      summary: Stream or download chat attachment with ETag and HTTP 206 byte-range support
+      tags: [Chat]
+      x-permission: chat.view
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: attachmentId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: download
+        in: query
+        required: false
+        schema: {type: boolean, default: false}
+      responses:
+        '200':
+          description: Full binary stream
+          content:
+            application/octet-stream:
+              schema: {type: string, format: binary}
+        '206':
+          description: Partial byte-range stream for video playback
+          content:
+            application/octet-stream:
+              schema: {type: string, format: binary}
+        '304':
+          description: Not Modified (ETag matched)
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /clubs/{clubId}/quick-replies:
+    get:
+      operationId: chat.listQuickReplies
+      summary: List quick reply templates for a club
+      tags: [Chat]
+      x-permission: chat.view
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Club quick replies
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/ChatQuickReply'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      operationId: chat.createQuickReply
+      summary: Create a quick reply template for a club
+      tags: [Chat]
+      x-permission: chat.send
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ChatQuickReplyRequest'}
+      responses:
+        '201':
+          description: Created quick reply
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ChatQuickReply'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /clubs/{clubId}/quick-replies/{replyId}:
+    put:
+      operationId: chat.updateQuickReply
+      summary: Update a quick reply template
+      tags: [Chat]
+      x-permission: chat.send
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: replyId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ChatQuickReplyRequest'}
+      responses:
+        '200':
+          description: Updated quick reply
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ChatQuickReply'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    delete:
+      operationId: chat.deleteQuickReply
+      summary: Delete a quick reply template
+      tags: [Chat]
+      x-permission: chat.send
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: replyId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '204':
+          description: Quick reply deleted
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
@@ -5611,6 +5868,10 @@ components:
           - string
           - 'null'
           format: email
+        overviewConfig:
+          anyOf:
+          - $ref: '#/components/schemas/ClubOverviewConfig'
+          - type: 'null'
         id:
           type: string
           format: uuid
@@ -7083,9 +7344,71 @@ components:
         createdAt: {type: string, format: date-time}
     SendChatMessageRequest:
       type: object
-      required: [content]
       properties:
-        content: {type: string, maxLength: 4000}
+        content: {type: [string, 'null'], maxLength: 4000}
+        replyToId: {type: [string, 'null'], format: uuid}
+        documentId: {type: [string, 'null'], format: uuid}
+        attachmentIds:
+          type: [array, 'null']
+          maxItems: 8
+          items: {type: string, format: uuid}
+        clientTempId: {type: [string, 'null'], maxLength: 80}
+    ClubOverviewConfig:
+      type: object
+      properties:
+        preset: {type: [string, 'null']}
+        tagline: {type: [string, 'null']}
+        meetingSchedule: {type: [string, 'null']}
+        campusLocations: {type: [string, 'null']}
+        socialUrl: {type: [string, 'null']}
+        visibleBlocks:
+          type: [array, 'null']
+          items: {type: string}
+        selectedMetrics:
+          type: [array, 'null']
+          items: {type: string}
+        highlights:
+          type: [array, 'null']
+          items:
+            type: object
+            properties:
+              label: {type: string}
+              value: {type: string}
+    ChatAttachment:
+      type: object
+      required: [id, channelId, fileName, contentType, mediaKind, sizeBytes, checksumSha256, sortOrder]
+      properties:
+        id: {type: string, format: uuid}
+        channelId: {type: string, format: uuid}
+        messageId: {type: [string, 'null'], format: uuid}
+        fileName: {type: string}
+        contentType: {type: string}
+        mediaKind: {type: string, enum: [IMAGE, VIDEO, FILE]}
+        sizeBytes: {type: integer, format: int64}
+        checksumSha256: {type: string}
+        sortOrder: {type: integer}
+        createdAt: {type: [string, 'null'], format: date-time}
+    ChatQuickReplyRequest:
+      type: object
+      required: [shortcut, title, content]
+      properties:
+        shortcut: {type: string, maxLength: 40}
+        title: {type: string, maxLength: 120}
+        content: {type: string, maxLength: 2000}
+    ChatQuickReply:
+      type: object
+      required: [id, clubId, shortcut, title, content, sortOrder]
+      properties:
+        id: {type: string, format: uuid}
+        clubId: {type: string, format: uuid}
+        shortcut: {type: string}
+        title: {type: string}
+        content: {type: string}
+        sortOrder: {type: integer}
+        createdBy: {type: [string, 'null'], format: uuid}
+        createdByName: {type: [string, 'null']}
+        createdAt: {type: [string, 'null'], format: date-time}
+        updatedAt: {type: [string, 'null'], format: date-time}
     CalendarItem:
       type: object
       required: [id, itemType, clubId, clubName, title, status, startTime, endTime]

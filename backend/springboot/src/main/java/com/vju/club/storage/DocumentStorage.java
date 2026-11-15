@@ -3,10 +3,15 @@ package com.vju.club.storage;
 import java.io.InputStream;
 import java.net.URI;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Optional;
 
 public interface DocumentStorage {
     void put(String key, InputStream content, long size, String contentType);
+
+    default void put(String key, InputStream content, long size, String contentType, Map<String, String> metadata) {
+        put(key, content, size, contentType);
+    }
 
     StoredObject open(String key);
 

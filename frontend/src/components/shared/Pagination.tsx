@@ -19,12 +19,12 @@ export function Pagination({ offset, limit, total, onOffset }: { offset: number;
           <b className="font-mono font-bold text-foreground">{total}</b> {tr("bản ghi")} <span className="mx-1.5 text-border sm:mx-2">|</span> {tr(`Trang ${page} / ${pages}`)}
         </span>
         <div className="flex items-center gap-1">
-          <button aria-label={tr("Trang trước")} disabled={page === 1} onClick={() => onOffset(offset - limit)} className="inline-flex size-7 items-center justify-center rounded-lg hover:bg-muted disabled:opacity-40"><ChevronLeft size={13} /></button>
+          <button type="button" aria-label={tr("Trang trước")} disabled={page === 1} onClick={() => onOffset(offset - limit)} className="inline-flex size-7 items-center justify-center rounded-lg hover:bg-muted disabled:opacity-40"><ChevronLeft size={13} /></button>
           {numbers.map((n) => (
-            <button key={n} onClick={() => onOffset((n - 1) * limit)}
+            <button type="button" key={n} aria-label={`${tr("Trang")} ${n}`} aria-current={n === page ? "page" : undefined} onClick={() => onOffset((n - 1) * limit)}
               className={cn("size-7 rounded-lg font-mono", n === page ? "bg-primary font-bold text-primary-foreground shadow-xs" : "hover:bg-muted")}>{n}</button>
           ))}
-          <button aria-label={tr("Trang sau")} disabled={page === pages} onClick={() => onOffset(offset + limit)} className="inline-flex size-7 items-center justify-center rounded-lg hover:bg-muted disabled:opacity-40"><ChevronRight size={13} /></button>
+          <button type="button" aria-label={tr("Trang sau")} disabled={page === pages} onClick={() => onOffset(offset + limit)} className="inline-flex size-7 items-center justify-center rounded-lg hover:bg-muted disabled:opacity-40"><ChevronRight size={13} /></button>
         </div>
       </div>
     </div>

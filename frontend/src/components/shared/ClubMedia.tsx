@@ -2,11 +2,11 @@
 
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CloudUpload, ImageIcon, Loader2, Sparkles, X } from "lucide-react";
+import { ImageIcon, Loader2, Sparkles, Upload, X } from "lucide-react";
 import { apiModel, Club, describeError } from "@/lib/api";
 import { ClubMediaCatalog, clubSlugFromCode, resolveMediaUrl } from "@/lib/media";
 import { cn } from "@/lib/utils";
-import { FormField, Input } from "@/components/ui/input";
+import { FormField } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 export function useClubMediaCatalog(enabled = true) {
@@ -167,7 +167,7 @@ export function ClubMediaPickerField({
       setPendingFileName(file.name);
       const localUrl = URL.createObjectURL(file);
       onChange(localUrl);
-      setUploadNotice(`Đã chọn file "${file.name}" — ảnh sẽ được tải lên khi tạo CLB.`);
+      setUploadNotice(`Đã chọn ảnh "${file.name}".`);
       return;
     }
     setUploading(true);
@@ -179,11 +179,9 @@ export function ClubMediaPickerField({
       const nextUrl = (kind === "logo" ? updated.logoUrl : updated.coverUrl) || "";
       onChange(nextUrl);
       onUploaded?.(updated);
-      setUploadNotice(
-        kind === "logo"
-          ? "Đã tải logo CLB lên."
-          : "Đã tải ảnh bìa CLB lên."
-      );
+      if (!onUploaded) {
+        setUploadNotice(kind === "logo" ? "Đã cập nhật logo câu lạc bộ." : "Đã cập nhật ảnh bìa câu lạc bộ.");
+      }
       queryClient.invalidateQueries({ queryKey: ["club", clubId] });
       queryClient.invalidateQueries({ queryKey: ["clubs"] });
       queryClient.invalidateQueries({ queryKey: ["home", "public-clubs"] });
@@ -241,68 +239,100 @@ export function ClubMediaPickerField({
     return aMatch - bMatch || a.tag.localeCompare(b.tag);
   });
 
-  const isCloudStored = Boolean(value && value.includes("/api/v1/public/clubs/"));
+  const hasImage = Boolean(previewSrc || value.startsWith("blob:"));
 
   return (
     <div className="min-w-0 space-y-2">
       <FormField label={label}>
-        <div className="flex flex-wrap gap-2">
-          <Input
-            value={value.startsWith("blob:") ? pendingFileName || "" : value}
-            maxLength={500}
-            onChange={(e) => {
-              setPendingFileName(null);
-              onPendingFileChange?.(null);
-              onChange(e.target.value);
-            }}
-            placeholder={
-              kind === "logo"
-                ? "Tải ảnh lên hoặc dán đường link..."
-                : "Tải ảnh lên hoặc dán đường link..."
-            }
-            className="min-w-0 flex-1 sm:min-w-48"
-          />
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                void handleUploadFile(file);
-              }
-              e.target.value = "";
-            }}
-          />
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            disabled={uploading}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {uploading ? <Loader2 size={13} className="animate-spin" /> : <CloudUpload size={13} />}
-            {uploading ? "Đang tải lên…" : "Tải ảnh lên"}
-          </Button>
-          {value && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/25 p-2.5">
+          <div className="flex min-w-0 items-center gap-3">
+            {hasImage ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={value.startsWith("blob:") ? value : previewSrc || ""}
+                alt={label}
+                className={
+                  kind === "logo"
+                    ? "size-12 shrink-0 rounded-lg bg-white object-cover ring-1 ring-border"
+                    : "h-14 w-24 shrink-0 rounded-lg object-cover ring-1 ring-border"
+                }
+              />
+            ) : (
+              <span
+                className={cn(
+                  "flex shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-background text-muted-foreground",
+                  kind === "logo" ? "size-12" : "h-14 w-24"
+                )}
+              >
+                <ImageIcon size={18} />
+              </span>
+            )}
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold text-foreground">
+                {value.startsWith("blob:") && pendingFileName
+                  ? pendingFileName
+                  : hasImage
+                    ? kind === "logo"
+                      ? "Đã thiết lập logo câu lạc bộ"
+                      : "Đã thiết lập ảnh bìa câu lạc bộ"
+                    : kind === "logo"
+                      ? "Chưa có logo câu lạc bộ"
+                      : "Chưa có ảnh bìa câu lạc bộ"}
+              </p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">Hỗ trợ PNG, JPG, WEBP, GIF</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  void handleUploadFile(file);
+                }
+                e.target.value = "";
+              }}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+              {uploading ? "Đang tải lên…" : hasImage ? "Đổi ảnh" : "Tải ảnh lên"}
+            </Button>
             <Button
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => {
-                setPendingFileName(null);
-                onPendingFileChange?.(null);
-                onChange("");
-              }}
-              aria-label={`Xoá ${label}`}
+              disabled={uploading}
+              onClick={() => setPickerOpen((o) => !o)}
             >
-              <X size={14} />
+              <Sparkles size={13} /> Kho ảnh mẫu
             </Button>
-          )}
-          <Button type="button" size="sm" variant="outline" disabled={uploading} onClick={() => setPickerOpen((o) => !o)}>
-            <Sparkles size={13} /> Kho ảnh tách riêng
-          </Button>
+            {value && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setPendingFileName(null);
+                  onPendingFileChange?.(null);
+                  setUploadNotice(null);
+                  onChange("");
+                }}
+                aria-label={`Xoá ${label}`}
+              >
+                <X size={14} />
+              </Button>
+            )}
+          </div>
         </div>
       </FormField>
 
@@ -313,43 +343,11 @@ export function ClubMediaPickerField({
         <p className="text-[11.5px] font-medium text-destructive">{uploadError}</p>
       )}
 
-      {(previewSrc || value.startsWith("blob:")) && (
-        <div className="flex min-w-0 items-center gap-3 rounded-lg border border-border/60 bg-muted/30 p-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={value.startsWith("blob:") ? value : previewSrc || ""}
-            alt={label}
-            className={
-              kind === "logo"
-                ? "size-12 rounded-lg bg-white object-cover ring-1 ring-border"
-                : "h-16 w-28 rounded-lg object-cover ring-1 ring-border"
-            }
-          />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <span
-                className={cn(
-                  "inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold",
-                  isCloudStored
-                    ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20"
-                    : "bg-slate-100 text-slate-700"
-                )}
-              >
-                {isCloudStored ? "Đã lưu trên hệ thống" : value.startsWith("blob:") ? "Chờ tải lên" : "URL"}
-              </span>
-            </div>
-            <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
-              {value.startsWith("blob:") ? pendingFileName : previewSrc}
-            </p>
-          </div>
-        </div>
-      )}
-
       {pickerOpen && (
         <div className="rounded-xl border border-border bg-muted/25 p-3">
           <div className="mb-2 flex items-center justify-between">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-foreground">
-              <ImageIcon size={13} className="text-primary" /> Chọn từ thư viện logo/ảnh bìa CLB
+              <ImageIcon size={13} className="text-primary" /> Chọn từ kho ảnh mẫu
             </span>
             <button
               type="button"

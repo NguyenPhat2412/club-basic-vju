@@ -112,6 +112,24 @@ function translateElementAttributes(element: Element, locale: SupportedLocale) {
     if (nextAttr !== currentAttr) {
       element.setAttribute(attr, nextAttr);
     }
+
+    if (
+      locale !== 'vi' &&
+      nextAttr === baseAttr &&
+      hasVietnameseDiacritics(baseAttr)
+    ) {
+      const capturedBase = baseAttr;
+      queueAutoTranslate(capturedBase, locale, (autoTranslated) => {
+        if (
+          !element.isConnected ||
+          getPresentationLocale() !== locale ||
+          originalAttributeMap.get(element)?.[attr] !== capturedBase
+        ) {
+          return;
+        }
+        element.setAttribute(attr, autoTranslated);
+      });
+    }
   }
 }
 

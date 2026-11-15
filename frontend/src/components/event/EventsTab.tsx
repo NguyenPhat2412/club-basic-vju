@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Calendar, Eye, Pencil, Plus } from "lucide-react";
+import { Calendar, Eye, FilterX, Pencil, Plus } from "lucide-react";
 import { apiModel, ClubEvent, Department, EventRegistration } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
 import { DataTable } from "@/components/shared/DataTable";
+import { StatSummaryStrip } from "@/components/shared/StatCards";
 import { EmptyState, ErrorState, LoadingRows } from "@/components/shared/States";
 import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError } from "@/components/shared/ListPage";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/input";
 import { formatDay } from "@/lib/utils";
 import {
   EMPTY_EVENT_FORM,
@@ -38,6 +40,8 @@ export function EventsTab({
 }) {
   const session = useSession();
   const queryClient = useQueryClient();
+  const [deptFilter, setDeptFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<ClubEvent | null>(null);
   const [form, setForm] = useState<EventFormValues>(EMPTY_EVENT_FORM);
@@ -49,10 +53,33 @@ export function EventsTab({
   const canUpdateEvent = (ev: ClubEvent) => session.canInDepartment("event.update", clubId, ev.departmentId);
 
   const events = useQuery({
-    queryKey: ["club-events", clubId],
-    queryFn: () => apiModel.clubEvents(clubId),
+    queryKey: ["club-events", clubId, deptFilter, statusFilter],
+    queryFn: () =>
+      apiModel.clubEvents(clubId, {
+        departmentId: deptFilter || undefined,
+        status: statusFilter || undefined,
+        limit: 50,
+      }),
     enabled: !!clubId,
   });
+
+  const allClubEvents = useQuery({
+    queryKey: ["club-events", clubId, "summary-counts"],
+    queryFn: () => apiModel.clubEvents(clubId, { limit: 100 }),
+    enabled: !!clubId,
+  });
+
+  const summaryCounts = useMemo(() => {
+    const list = allClubEvents.data?.items ?? [];
+    return {
+      total: allClubEvents.data?.total ?? list.length,
+      draft: list.filter((e) => e.status === "DRAFT").length,
+      open: list.filter((e) => e.status === "OPEN_REGISTRATION").length,
+      closed: list.filter((e) => e.status === "CLOSED_REGISTRATION").length,
+      completed: list.filter((e) => e.status === "COMPLETED").length,
+      cancelled: list.filter((e) => e.status === "CANCELLED").length,
+    };
+  }, [allClubEvents.data]);
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["club-events", clubId] });
@@ -82,8 +109,64 @@ export function EventsTab({
 
   return (
     <div className="space-y-3">
-      {canCreate && (
-        <div className="flex justify-end px-4 pt-2">
+      {allClubEvents.data && (
+        <StatSummaryStrip
+          columnsClassName="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
+          className="px-4 pt-3 sm:px-6"
+          items={[
+            { label: "Tổng sự kiện", value: summaryCounts.total },
+            { label: "Bản nháp", value: summaryCounts.draft },
+            { label: "Đang mở ĐK", value: summaryCounts.open, valueClassName: "text-primary" },
+            { label: "Đã đóng ĐK", value: summaryCounts.closed, valueClassName: "text-amber-700" },
+            { label: "Đã hoàn thành", value: summaryCounts.completed, valueClassName: "text-emerald-700" },
+            { label: "Đã huỷ", value: summaryCounts.cancelled, valueClassName: "text-slate-600" },
+          ]}
+        />
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-2 sm:px-6">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <Select
+            aria-label="Lọc theo ban chuyên môn"
+            value={deptFilter}
+            onChange={(e) => setDeptFilter(e.target.value)}
+            className="h-9 w-full text-xs sm:w-44"
+          >
+            <option value="">Tất cả ban / Toàn CLB</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </Select>
+          <Select
+            aria-label="Lọc theo trạng thái sự kiện"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-9 w-full text-xs sm:w-48"
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="DRAFT">Bản nháp (DRAFT)</option>
+            <option value="OPEN_REGISTRATION">Đang mở đăng ký</option>
+            <option value="CLOSED_REGISTRATION">Đã đóng đăng ký</option>
+            <option value="COMPLETED">Đã hoàn thành</option>
+            <option value="CANCELLED">Đã huỷ</option>
+          </Select>
+          {(deptFilter || statusFilter) && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setDeptFilter("");
+                setStatusFilter("");
+              }}
+            >
+              <FilterX size={13} /> Xoá lọc
+            </Button>
+          )}
+        </div>
+
+        {canCreate && (
           <Button
             size="sm"
             onClick={() => {
@@ -93,8 +176,8 @@ export function EventsTab({
           >
             <Plus size={14} /> Tạo sự kiện / Lịch sinh hoạt
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {events.isPending ? (
         <LoadingRows />
@@ -103,8 +186,8 @@ export function EventsTab({
       ) : !events.data.items.length ? (
         <EmptyState
           icon={<Calendar />}
-          title="Chưa có sự kiện hoặc lịch sinh hoạt"
-          actionLabel={canCreate ? "Tạo sự kiện đầu tiên" : undefined}
+          title={deptFilter || statusFilter ? "Không có sự kiện khớp bộ lọc" : "Chưa có sự kiện hoặc lịch sinh hoạt"}
+          actionLabel={!deptFilter && !statusFilter && canCreate ? "Tạo sự kiện đầu tiên" : undefined}
           onAction={
             canCreate
               ? () => {

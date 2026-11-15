@@ -2,10 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Mail, MapPin, Plus } from "lucide-react";
 import { AuthModalMode } from "@/components/auth/AuthModal";
-import { keepWords } from "@/lib/utils";
+import { HOME_MESSAGES } from "@/i18n/home-messages";
+import { useI18n } from "@/providers/I18nContext";
 import { SessionUser } from "@/types";
+import { formatLocalizedCopy } from "./DbText";
 
 interface HomeOnboardingFooterProps {
   user?: SessionUser;
@@ -13,234 +15,339 @@ interface HomeOnboardingFooterProps {
 }
 
 export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFooterProps) {
+  const { locale } = useI18n();
+  const m = HOME_MESSAGES[locale];
+
   return (
     <>
-      <section id="quy-trinh" className="border-t border-slate-200 bg-white">
-        <div className="mx-auto max-w-[1380px] px-5 py-16 sm:px-8 lg:px-12">
+      <section id="quy-trinh" className="bg-white py-16 sm:py-22">
+        <div className="mx-auto max-w-[1380px] px-5 sm:px-8 lg:px-12">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-primary">LỘ TRÌNH THAM GIA ĐƠN GIẢN</p>
-              <h2 className="mt-2 text-3xl font-bold text-slate-900 sm:text-4xl">
-                {keepWords("4 bước gia nhập Câu lạc bộ tại VJU")}
+              <p className="text-sm font-semibold text-primary">{m.onboarding.kicker}</p>
+              <h2 className="mt-2 font-serif text-3xl font-semibold leading-[1.15] text-slate-900 sm:text-[40px]">
+                {formatLocalizedCopy(m.onboarding.title, locale)}
               </h2>
             </div>
             {!user && (
               <button
                 type="button"
                 onClick={() => openAuthModal("register")}
-                className="inline-flex items-center gap-2 self-start text-sm font-bold text-primary hover:underline sm:self-auto"
+                className="inline-flex items-center gap-2 self-start text-sm font-semibold text-primary hover:underline sm:self-auto"
               >
-                HÃY GIA NHẬP NGAY <ArrowRight size={15} />
+                <span>{m.onboarding.createAccountLink}</span>
+                <ArrowRight size={15} />
               </button>
             )}
           </div>
 
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              {
-                step: "01",
-                title: "Khám phá Câu lạc bộ",
-                desc: "Tìm hiểu hoạt động thực tế, lĩnh vực chuyên môn và các ban trực thuộc của 12+ câu lạc bộ tại VJU.",
-              },
-              {
-                step: "02",
-                title: "Hãy gia nhập hệ thống",
-                desc: "Khởi tạo tài khoản chỉ trong 30 giây hoặc bấm 1 chạm bằng email sinh viên @st.vju.ac.vn ngay trên Popup.",
-              },
-              {
-                step: "03",
-                title: "Nộp đơn ứng tuyển / CTV",
-                desc: "Điền biểu mẫu ứng tuyển trực tuyến, chọn ban nguyện vọng 1 & 2, đính kèm CV hoặc đăng ký làm CTV sự kiện.",
-              },
-              {
-                step: "04",
-                title: "Nhận thông báo & Đồng hành",
-                desc: "Nhận thông báo duyệt đơn tức thời, theo dõi lịch hoạt động, nhiệm vụ và trao đổi trong không gian CLB.",
-              },
-            ].map((item) => (
-              <div
-                key={item.step}
-                className="relative flex flex-col justify-between rounded-2xl border border-slate-200 bg-slate-50/70 p-6 shadow-2xs transition-colors hover:border-primary/40 hover:bg-white"
+          <ol className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {m.onboarding.steps.map((item) => (
+              <li
+                key={item.stage}
+                className="group flex flex-col overflow-hidden rounded-2xl bg-[#f8fafc] transition-colors hover:bg-[#fff1f2]/60"
               >
-                <div>
-                  <span className="inline-flex rounded-lg bg-primary/10 px-3 py-1 font-mono text-xs font-extrabold text-primary">
-                    {`BƯỚC ${item.step}`}
+                <div className="relative h-40 w-full overflow-hidden bg-slate-900">
+                  <div
+                    className="absolute inset-0 bg-cover transition-transform duration-500 group-hover:scale-105"
+                    style={{
+                      backgroundImage: `url('${item.img}')`,
+                      backgroundPosition: item.pos,
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-slate-950/22" />
+                  <span className="absolute left-3.5 top-3.5 inline-flex rounded-full bg-white/95 px-3 py-1 text-xs font-bold text-primary">
+                    {item.stage}
                   </span>
-                  <h3 className="mt-4 text-lg font-bold text-slate-900">{item.title}</h3>
+                </div>
+                <div className="flex flex-1 flex-col p-5">
+                  <h3 className="text-[17px] font-bold leading-snug text-slate-900">{item.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-slate-700">{item.desc}</p>
                 </div>
-              </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section id="khoanh-khac" className="bg-[#f1f5f9] py-16 sm:py-22">
+        <div className="mx-auto max-w-[1380px] px-5 sm:px-8 lg:px-12">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div className="max-w-2xl">
+              <p className="text-sm font-semibold text-primary">{m.galleryFaq.galleryKicker}</p>
+              <h2 className="mt-2 font-serif text-3xl font-semibold leading-[1.15] text-slate-900 sm:text-[40px]">
+                {formatLocalizedCopy(m.galleryFaq.galleryTitle, locale)}
+              </h2>
+              <p className="mt-3 text-base leading-7 text-slate-700">
+                {formatLocalizedCopy(m.galleryFaq.galleryLead, locale)}
+              </p>
+            </div>
+
+            <Link
+              href="/clubs"
+              className="inline-flex shrink-0 items-center gap-2 pb-1 text-sm font-semibold text-primary hover:underline"
+            >
+              <span>{m.galleryFaq.galleryCta}</span>
+              <ArrowRight size={15} />
+            </Link>
+          </div>
+
+          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {m.galleryFaq.photos.map((photo) => (
+              <Link
+                key={photo.src}
+                href="/clubs"
+                className={`group relative overflow-hidden rounded-3xl bg-slate-900 ${
+                  photo.wide
+                    ? "h-64 sm:col-span-2 sm:h-72 lg:col-span-2"
+                    : "h-56 sm:h-64 lg:h-64"
+                }`}
+              >
+                <div
+                  className="absolute inset-0 bg-cover transition-transform duration-500 group-hover:scale-105"
+                  style={{
+                    backgroundImage: `url('${photo.src}')`,
+                    backgroundPosition: photo.pos,
+                  }}
+                />
+                <div className="absolute inset-0 bg-slate-950/25 transition-colors group-hover:bg-slate-950/15" />
+                <span className="absolute left-3.5 top-3.5 rounded-full bg-white/95 px-3 py-1 text-[11px] font-semibold text-slate-900">
+                  {photo.tag}
+                </span>
+                <div className="absolute inset-x-3 bottom-3 rounded-2xl bg-slate-950/75 px-3.5 py-2.5">
+                  <span className="line-clamp-1 text-xs font-semibold text-white sm:text-[13px]">
+                    {photo.label}
+                  </span>
+                </div>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="khoanh-khac" className="border-t border-slate-200 bg-slate-50">
-        <div className="mx-auto max-w-[1380px] px-5 py-16 sm:px-8 lg:px-12">
-          <div className="grid gap-12 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-primary">THƯ VIỆN HOẠT ĐỘNG CÂU LẠC BỘ</p>
-              <h2 className="mt-2 text-3xl font-bold text-slate-900 sm:text-4xl">
-                {keepWords("Khoảnh khắc đáng nhớ tại các CLB VJU")}
-              </h2>
-              <p className="mt-3 text-[15px] leading-7 text-slate-700">
-                {keepWords("Hình ảnh thực tế từ các chương trình tình nguyện, giao lưu văn hóa Việt - Nhật, chế tạo kỹ thuật và giải đấu thể thao của sinh viên Trường Đại học Việt Nhật.")}
-              </p>
+      <section id="hoi-dap" className="bg-white py-16 sm:py-22">
+        <div className="mx-auto grid max-w-[1380px] gap-8 px-5 sm:px-8 lg:grid-cols-12 lg:items-start lg:gap-12 lg:px-12">
+          <div className="lg:col-span-5">
+            <p className="text-sm font-semibold text-primary">{m.galleryFaq.faqKicker}</p>
+            <h2 className="mt-2 font-serif text-3xl font-semibold leading-[1.15] text-slate-900 sm:text-[38px]">
+              {m.galleryFaq.faqTitle}
+            </h2>
+            <p className="mt-3 text-base leading-7 text-slate-700">
+              {formatLocalizedCopy(m.galleryFaq.faqLead, locale)}
+            </p>
 
-              <div className="mt-6 grid grid-cols-2 gap-3.5 sm:grid-cols-3">
-                {[
-                  { src: "/images/clubs/bigheart/gallery-1.jpg", label: "CLB Thiện nguyện BigHeart" },
-                  { src: "/images/clubs/vjua/gallery-1.jpg", label: "CLB Nghệ thuật VJU (VJUA)" },
-                  { src: "/images/clubs/monozukuri/gallery-1.jpg", label: "CLB Sáng tạo Monozukuri" },
-                  { src: "/images/clubs/sunpinkey/gallery-1.jpg", label: "CLB Bóng chuyền Sun Pinkey" },
-                  { src: "/images/clubs/neb/gallery-1.jpg", label: "CLB Văn hoá Việt - Nhật NEB" },
-                  { src: "/images/clubs/vjub/gallery-1.jpg", label: "CLB Bóng rổ VJUB" },
-                ].map((photo) => (
-                  <Link
-                    key={photo.src}
-                    href="/clubs"
-                    className="group relative h-40 overflow-hidden rounded-xl border border-slate-200 bg-slate-900 shadow-2xs sm:h-44"
-                  >
-                    <div
-                      className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                      style={{ backgroundImage: `url('${photo.src}')` }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
-                    <span className="absolute bottom-2.5 left-3 right-3 line-clamp-2 text-xs font-bold leading-snug text-white">
-                      {photo.label}
-                    </span>
-                  </Link>
-                ))}
+            <div className="mt-6 overflow-hidden rounded-3xl bg-[#f8fafc]">
+              <div className="relative h-44 w-full overflow-hidden bg-slate-900">
+                <div
+                  className="absolute inset-0 bg-cover"
+                  style={{
+                    backgroundImage: "url('/images/clubs/vjub/cover.jpg')",
+                    backgroundPosition: "center 38%",
+                  }}
+                />
+                <div className="absolute inset-0 bg-slate-950/28" />
+                <span className="absolute left-4 top-4 rounded-full bg-[#f3d4a6] px-3 py-1 text-xs font-bold text-slate-950">
+                  {m.galleryFaq.faqCardBadge}
+                </span>
               </div>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs sm:p-8">
-              <p className="text-xs font-bold uppercase tracking-wider text-primary">GIẢI ĐÁP NHANH CHO SINH VIÊN</p>
-              <h3 className="mt-2 text-xl font-bold text-slate-900 sm:text-2xl">Câu hỏi thường gặp</h3>
-              <div className="mt-5 divide-y divide-slate-200">
-                {[
-                  {
-                    q: "Một sinh viên có thể ứng tuyển nhiều câu lạc bộ cùng lúc không?",
-                    a: "Có. Bạn có thể nộp đơn vào các câu lạc bộ yêu thích và chọn ban chuyên môn nguyện vọng 1 & 2 theo đúng quy định của hệ thống.",
-                  },
-                  {
-                    q: "Chưa là thành viên CLB có đăng ký tham gia sự kiện hoặc làm CTV được không?",
-                    a: "Hoàn toàn được! Các sự kiện có nhãn 'Tuyển CTV' mở rộng cho toàn bộ sinh viên VJU đăng ký tham gia trực tuyến.",
-                  },
-                  {
-                    q: "Làm sao để biết đơn ứng tuyển CLB của mình đã được duyệt?",
-                    a: "Ngay khi Ban chủ nhiệm CLB xét duyệt, hệ thống sẽ gửi thông báo trực tiếp tới mục 'Thông báo của tôi' và tự động kích hoạt quyền thành viên.",
-                  },
-                ].map((faq) => (
-                  <div key={faq.q} className="py-4 first:pt-0 last:pb-0">
-                    <p className="text-[15px] font-bold text-slate-900">{faq.q}</p>
-                    <p className="mt-1.5 text-sm leading-6 text-slate-700">{faq.a}</p>
-                  </div>
-                ))}
+              <div className="p-5">
+                <p className="text-base font-bold text-slate-900">{m.galleryFaq.faqCardTitle}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-700">
+                  {m.galleryFaq.faqCardDescPrefix}
+                  <mark className="rounded bg-amber-100/90 px-1.5 py-0.5 font-semibold text-amber-950">
+                    {m.galleryFaq.faqCardEmailHighlight}
+                  </mark>
+                  {m.galleryFaq.faqCardDescSuffix}
+                </p>
               </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      <section className="border-t border-slate-200 bg-slate-900 text-white">
-        <div
-          className="bg-cover bg-center"
-          style={{
-            backgroundImage:
-              "linear-gradient(95deg, rgba(15,17,20,0.92) 0%, rgba(142,31,50,0.88) 100%), url('/images/clubs/bigheart/cover.jpg')",
-          }}
-        >
-          <div className="mx-auto flex max-w-[1380px] flex-col items-start justify-between gap-6 px-5 py-12 sm:px-8 sm:py-14 lg:flex-row lg:items-center lg:px-12">
-            <div className="max-w-2xl">
-              <p className="text-xs font-bold uppercase tracking-[.2em] text-[#f3d4a6]">
-                CỘNG ĐỒNG CÂU LẠC BỘ SINH VIÊN VJU
-              </p>
-              <h2 className="mt-2 font-serif text-2xl font-semibold leading-tight text-white sm:text-4xl">
-                {keepWords("Sẵn sàng viết nên thanh xuân rực rỡ cùng chúng mình?")}
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-white/90 sm:text-[15px] sm:leading-7">
-                {keepWords("Hãy gia nhập ngay hôm nay để ứng tuyển vào câu lạc bộ yêu thích, đăng ký làm Cộng tác viên sự kiện và kết nối cùng hàng trăm sinh viên VJU.")}
-              </p>
-            </div>
-            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
-              {user ? (
-                <Link
-                  href="/dashboard"
-                  className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-xl bg-white px-6 text-sm font-extrabold text-primary shadow-md transition-opacity hover:opacity-95 sm:w-auto"
-                >
-                  MỞ BẢNG ĐIỀU KHIỂN <ArrowRight size={16} />
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => openAuthModal("register")}
-                  className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-xl bg-white px-6 text-sm font-extrabold text-primary shadow-md transition-opacity hover:opacity-95 sm:w-auto"
-                >
-                  HÃY GIA NHẬP CÙNG CHÚNG MÌNH <ArrowRight size={16} />
-                </button>
-              )}
-              <Link
-                href="/clubs"
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-white/70 bg-black/25 px-6 text-sm font-bold text-white backdrop-blur-2xs transition-colors hover:bg-white/15 sm:w-auto"
+          <div className="space-y-3 lg:col-span-7">
+            {m.galleryFaq.faqs.map((faq, idx) => (
+              <details
+                key={faq.q}
+                open={idx === 0}
+                className="group rounded-2xl bg-[#f8fafc] px-5 py-4 transition-colors open:bg-[#fff1f2]/55"
               >
-                KHÁM PHÁ 12+ CÂU LẠC BỘ
-              </Link>
-            </div>
+                <summary className="flex cursor-pointer list-none items-start justify-between gap-3 text-[15px] font-bold text-slate-900 [&::-webkit-details-marker]:hidden">
+                  <span>{faq.q}</span>
+                  <Plus
+                    size={18}
+                    className="mt-0.5 shrink-0 text-primary transition-transform duration-200 group-open:rotate-45"
+                  />
+                </summary>
+                <p className="mt-2.5 text-sm leading-6 text-slate-700">{faq.a}</p>
+              </details>
+            ))}
           </div>
         </div>
       </section>
 
-      <footer className="border-t border-slate-200 bg-white text-slate-700">
-        <div className="mx-auto grid max-w-[1380px] gap-10 px-5 py-12 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr] lg:px-12">
+      <section className="bg-primary text-white">
+        <div className="mx-auto flex max-w-[1380px] flex-col items-start justify-between gap-6 px-5 py-14 sm:px-8 sm:py-16 lg:flex-row lg:items-center lg:px-12">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold text-[#f3d4a6]">{m.closing.kicker}</p>
+            <h2 className="mt-2 font-serif text-2xl font-semibold leading-[1.16] text-white sm:text-[36px]">
+              {m.closing.titlePrefix}
+              <span className="italic text-[#f3d4a6]">{m.closing.titleHighlight}</span>
+              {m.closing.titleSuffix}
+            </h2>
+            <p className="mt-3 text-base leading-7 text-white/90">
+              {formatLocalizedCopy(m.closing.lead, locale)}
+            </p>
+          </div>
+
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
+            {user ? (
+              <Link
+                href="/dashboard"
+                className="inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-white px-6 text-sm font-bold text-primary transition-opacity hover:opacity-95 sm:w-auto"
+              >
+                <span>{m.closing.dashboardCta}</span>
+                <ArrowRight size={16} />
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => openAuthModal("register")}
+                className="inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-white px-6 text-sm font-bold text-primary transition-opacity hover:opacity-95 sm:w-auto"
+              >
+                <span>{m.closing.joinCta}</span>
+                <ArrowRight size={16} />
+              </button>
+            )}
+            <Link
+              href="/clubs"
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#681523] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#57111d] sm:w-auto"
+            >
+              {m.closing.clubsCta}
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <footer className="bg-white text-slate-700">
+        <div className="mx-auto grid max-w-[1380px] gap-10 px-5 py-14 sm:px-8 md:grid-cols-2 lg:grid-cols-[1.35fr_0.95fr_0.95fr_1.15fr] lg:px-12">
           <div>
             <div className="flex items-center gap-3">
               <Image
                 src="/images/vju-logo.png"
-                alt="Logo Trường Đại học Việt Nhật (VJU)"
-                width={40}
-                height={40}
-                className="size-10 shrink-0 rounded-full bg-white p-0.5 object-contain ring-1 ring-slate-200"
+                alt={m.topBar.university}
+                width={42}
+                height={42}
+                className="size-10 shrink-0 rounded-full bg-slate-100 p-0.5 object-contain"
               />
-              <span className="text-base font-extrabold tracking-tight text-slate-900">
-                CLUB<span className="text-primary">HUB</span>
-              </span>
+              <div>
+                <span className="block font-display text-lg font-extrabold tracking-tight text-slate-900">
+                  Club<span className="text-primary">Hub</span>
+                </span>
+                <span className="block text-xs font-medium text-slate-500">
+                  {m.topBar.logoSubFull}
+                </span>
+              </div>
             </div>
             <p className="mt-4 max-w-sm text-sm leading-6 text-slate-600">
-              {keepWords("Cổng thông tin câu lạc bộ và hoạt động sinh viên Trường Đại học Việt Nhật (ĐHQGHN).")}
+              {formatLocalizedCopy(m.footer.desc, locale)}
             </p>
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-primary">{keepWords("LIÊN KẾT NHANH")}</p>
-            <div className="mt-3.5 grid gap-2.5 text-sm text-slate-700">
-              <Link className="hover:text-primary" href="/clubs">Khám phá câu lạc bộ</Link>
-              <Link className="hover:text-primary" href="/events">Sự kiện & Cộng tác viên</Link>
-              <Link className="hover:text-primary" href="/applications">Đơn đăng ký</Link>
-              <Link className="hover:text-primary" href="/memberships">CLB đang tham gia</Link>
-              <Link className="hover:text-primary" href="/notifications">Thông báo</Link>
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              {m.footer.pillars.map((pillar) => (
+                <span
+                  key={pillar}
+                  className="rounded-full bg-[#f8fafc] px-2.5 py-1 text-xs font-semibold text-slate-700"
+                >
+                  {pillar}
+                </span>
+              ))}
             </div>
           </div>
+
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-primary">{keepWords("TRƯỜNG ĐẠI HỌC VIỆT NHẬT")}</p>
-            <p className="mt-3.5 text-sm leading-6 text-slate-700">
-              Đại học Quốc gia Hà Nội
-              <br />
-              Hòa Lạc, Hà Nội, Việt Nam
+            <p className="text-sm font-bold text-slate-900">{m.footer.studentColTitle}</p>
+            <div className="mt-3.5 grid gap-2.5 text-sm text-slate-700">
+              <Link className="transition-colors hover:text-primary" href="/clubs">
+                {m.nav.clubsDirectory}
+              </Link>
+              <Link className="transition-colors hover:text-primary" href="/events">
+                {m.nav.eventsRegister}
+              </Link>
+              <Link className="transition-colors hover:text-primary" href="/applications">
+                {m.nav.myApplications}
+              </Link>
+              <Link className="transition-colors hover:text-primary" href="/memberships">
+                {m.nav.myClubs}
+              </Link>
+              <Link className="transition-colors hover:text-primary" href="/notifications">
+                {m.nav.notifications}
+              </Link>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-bold text-slate-900">{m.footer.opsColTitle}</p>
+            <div className="mt-3.5 grid gap-2.5 text-sm text-slate-700">
+              <Link className="transition-colors hover:text-primary" href="/dashboard">
+                {m.nav.dashboard}
+              </Link>
+              <a className="transition-colors hover:text-primary" href="#khong-gian-so">
+                {m.nav.workspaceMobile}
+              </a>
+              <Link className="transition-colors hover:text-primary" href="/documents">
+                {m.footer.opsVaultLink}
+              </Link>
+              <a className="transition-colors hover:text-primary" href="#quy-trinh">
+                {m.footer.opsOnboardingLink}
+              </a>
+              <a className="transition-colors hover:text-primary" href="#hoi-dap">
+                {m.footer.opsFaqLink}
+              </a>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-bold text-slate-900">
+              {formatLocalizedCopy(m.footer.universityTitle, locale)}
             </p>
+            <div className="mt-3.5 space-y-2.5 text-sm leading-6 text-slate-700">
+              <p className="flex items-start gap-2">
+                <MapPin size={15} className="mt-1 shrink-0 text-primary" />
+                <span>
+                  <strong className="font-semibold text-slate-900">
+                    {m.footer.campusMyDinhLabel}
+                  </strong>{" "}
+                  {m.footer.campusMyDinhAddr}
+                </span>
+              </p>
+              <p className="flex items-start gap-2">
+                <MapPin size={15} className="mt-1 shrink-0 text-primary" />
+                <span>
+                  <strong className="font-semibold text-slate-900">
+                    {m.footer.campusHoaLacLabel}
+                  </strong>{" "}
+                  {m.footer.campusHoaLacAddr}
+                </span>
+              </p>
+              <p className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                <Mail size={14} className="shrink-0 text-primary" />
+                <span>{m.footer.studentEmailNote}</span>
+              </p>
+            </div>
             <a
-              className="mt-2.5 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+              className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
               href="https://vju.ac.vn"
               target="_blank"
               rel="noreferrer"
             >
-              vju.ac.vn <ArrowRight size={13} />
+              <span>{m.footer.officialSiteLabel}</span>
+              <ArrowRight size={13} />
             </a>
           </div>
         </div>
-        <div className="border-t border-slate-100 bg-slate-50">
-          <div className="mx-auto flex max-w-[1380px] flex-col gap-2 px-5 py-4 text-xs text-slate-600 sm:px-8 md:flex-row md:justify-between lg:px-12">
-            <span>© 2026 VJU ClubHub · Hệ thống Quản lý Câu lạc bộ Sinh viên</span>
-            <span>Trường Đại học Việt Nhật · ĐHQGHN</span>
+
+        <div className="bg-[#f8fafc]">
+          <div className="mx-auto flex max-w-[1380px] flex-col gap-2 px-5 py-4 text-[13px] text-slate-600 sm:px-8 md:flex-row md:justify-between lg:px-12">
+            <span>{m.footer.copyright}</span>
+            <span>{m.footer.imprintRight}</span>
           </div>
         </div>
       </footer>

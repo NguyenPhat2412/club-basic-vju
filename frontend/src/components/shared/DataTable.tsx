@@ -1,5 +1,13 @@
-import { ReactNode } from "react";
+import { KeyboardEvent, ReactNode } from "react";
 import { cn } from "@/lib/utils";
+
+function handleRowKeyDown<T>(e: KeyboardEvent<HTMLElement>, row: T, onRowClick?: (row: T) => void) {
+  if (!onRowClick || e.target !== e.currentTarget) return;
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    onRowClick(row);
+  }
+}
 
 export type Column<T> = {
   key: string;
@@ -13,7 +21,7 @@ export function DataTable<T>({
   rows,
   rowKey,
   onRowClick,
-  minWidth = "min-w-[680px] lg:min-w-[820px]",
+  minWidth = "min-w-full",
   ariaLabel,
 }: {
   columns: Column<T>[];
@@ -29,67 +37,85 @@ export function DataTable<T>({
   const restCols = dataCols.slice(1);
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto px-4 py-3 sm:px-6 sm:py-4 [scrollbar-gutter:stable]">
-      {/* Giao diện Thẻ dọc (Card List) tự động trên Mobile (< 768px) */}
-      <div role="list" aria-label={ariaLabel} className="space-y-3 md:hidden">
+    <div className="min-h-0 w-full min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-3 sm:px-6 sm:py-4 [scrollbar-gutter:stable]">
+      {/* Giao diện Thẻ (Card Grid) tự động trên Mobile, iPad & Split-screen (< 1280px) */}
+      <div role="list" aria-label={ariaLabel} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:hidden">
         {rows.map((row) => {
           const key = rowKey(row);
           return (
             <div
               key={key}
               role="listitem"
+              tabIndex={onRowClick ? 0 : undefined}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
+              onKeyDown={onRowClick ? (e) => handleRowKeyDown(e, row, onRowClick) : undefined}
               className={cn(
-                "rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs transition-colors",
+                "flex min-w-0 flex-col justify-between rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs transition-colors focus-visible:outline-2 focus-visible:outline-primary",
                 onRowClick && "cursor-pointer active:bg-slate-50"
               )}
             >
-              {primaryCol && (
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <div className="min-w-0">
+                {primaryCol && (
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                       {primaryCol.header}
                     </p>
-                    <div className="mt-1 text-xs text-slate-900">{primaryCol.render(row)}</div>
+                    <div className="mt-1 min-w-0 text-xs text-slate-900">{primaryCol.render(row)}</div>
                   </div>
-                  {actionCol && (
-                    <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                      {actionCol.render(row)}
-                    </div>
-                  )}
-                </div>
-              )}
+                )}
 
-              {restCols.length > 0 && (
-                <dl className="mt-3 grid grid-cols-1 gap-x-4 gap-y-2 border-t border-slate-100 pt-2.5 text-xs sm:grid-cols-2">
-                  {restCols.map((col) => (
-                    <div
-                      key={col.key}
-                      className="flex items-start justify-between gap-3 sm:flex-col sm:justify-start sm:gap-0.5"
-                    >
-                      <dt className="shrink-0 text-[10.5px] font-semibold text-slate-400">{col.header}</dt>
-                      <dd className="min-w-0 text-right text-xs text-slate-800 sm:text-left">
-                        {col.render(row)}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
+                {restCols.length > 0 && (
+                  <dl className="mt-3 grid grid-cols-1 gap-x-4 gap-y-2 border-t border-slate-100 pt-2.5 text-xs sm:grid-cols-2">
+                    {restCols.map((col) => (
+                      <div
+                        key={col.key}
+                        className="flex min-w-0 items-start justify-between gap-3 sm:flex-col sm:justify-start sm:gap-0.5"
+                      >
+                        <dt className="shrink-0 text-[10.5px] font-semibold text-slate-500">{col.header}</dt>
+                        <dd className="min-w-0 text-right text-xs text-slate-800 sm:text-left">
+                          {col.render(row)}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+              </div>
+
+              {actionCol && (
+                <div
+                  className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2.5"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
+                    {actionCol.header}
+                  </span>
+                  <div className="flex flex-wrap items-center justify-end gap-1">
+                    {actionCol.render(row)}
+                  </div>
+                </div>
               )}
             </div>
           );
         })}
       </div>
 
-      {/* Giao diện Bảng đầy đủ trên iPad & Laptop (>= 768px) */}
-      <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs md:block">
+      {/* Giao diện Bảng đầy đủ trên Desktop (>= 1280px) */}
+      <div className="hidden w-full max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs xl:block">
         <table
           aria-label={ariaLabel}
-          className={cn("w-full border-collapse whitespace-normal text-left text-xs lg:whitespace-nowrap", minWidth)}
+          className={cn("w-full border-collapse whitespace-normal text-left text-xs", minWidth)}
         >
           <thead className="sticky top-0 z-10 select-none border-b border-slate-200 bg-slate-50/90 text-[10.5px] font-bold uppercase tracking-[0.08em] text-slate-500 backdrop-blur-xs">
             <tr>
               {columns.map((c) => (
-                <th key={c.key} className={cn("h-11 whitespace-nowrap px-3.5 py-3 first:pl-4 last:pr-4 lg:px-4 lg:first:pl-5 lg:last:pr-5", c.className)}>
+                <th
+                  key={c.key}
+                  className={cn(
+                    "h-11 whitespace-nowrap px-3.5 py-3 first:pl-4 last:pr-4 lg:px-4 lg:first:pl-5 lg:last:pr-5",
+                    c.key === "actions" && "sticky right-0 z-20 bg-slate-50/95",
+                    c.className
+                  )}
+                >
                   {c.header}
                 </th>
               ))}
@@ -99,14 +125,24 @@ export function DataTable<T>({
             {rows.map((row) => (
               <tr
                 key={rowKey(row)}
+                tabIndex={onRowClick ? 0 : undefined}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
+                onKeyDown={onRowClick ? (e) => handleRowKeyDown(e, row, onRowClick) : undefined}
                 className={cn(
-                  "h-14 text-xs text-slate-800 transition-colors hover:bg-slate-50/80",
+                  "group h-14 text-xs text-slate-800 transition-colors hover:bg-slate-50/80 focus-visible:bg-slate-50 focus-visible:outline-hidden",
                   onRowClick && "cursor-pointer"
                 )}
               >
                 {columns.map((c) => (
-                  <td key={c.key} className={cn("px-3.5 py-2.5 first:pl-4 last:pr-4 lg:px-4 lg:first:pl-5 lg:last:pr-5", c.className)}>
+                  <td
+                    key={c.key}
+                    className={cn(
+                      "px-3.5 py-2.5 first:pl-4 last:pr-4 lg:px-4 lg:first:pl-5 lg:last:pr-5",
+                      c.key === "actions" &&
+                        "sticky right-0 bg-white/95 backdrop-blur-xs group-hover:bg-slate-50/95",
+                      c.className
+                    )}
+                  >
                     {c.render(row)}
                   </td>
                 ))}

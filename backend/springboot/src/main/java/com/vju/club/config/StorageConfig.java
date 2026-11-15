@@ -1,6 +1,7 @@
 package com.vju.club.config;
 
 import com.vju.club.storage.DocumentStorage;
+import com.vju.club.storage.impl.GoogleDriveDocumentStorage;
 import com.vju.club.storage.impl.LocalDocumentStorage;
 import com.vju.club.storage.impl.R2DocumentStorage;
 import com.vju.club.storage.impl.RedisCachedDocumentStorage;
@@ -25,6 +26,7 @@ public class StorageConfig {
         DocumentStorage base = switch (properties.getType()) {
             case LOCAL -> new LocalDocumentStorage(properties.getLocal().getRoot());
             case R2 -> R2DocumentStorage.create(properties.getR2());
+            case GDRIVE -> GoogleDriveDocumentStorage.create(properties.getGdrive());
         };
         if ("redis".equalsIgnoreCase(cacheType.strip())) {
             return new RedisCachedDocumentStorage(base, redisConnectionFactory, assetMaxBytes, assetTtl);

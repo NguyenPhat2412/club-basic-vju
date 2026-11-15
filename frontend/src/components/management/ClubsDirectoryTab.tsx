@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Building2,
   ClipboardList,
+  FileText,
   Lock,
   LockOpen,
   Mail,
@@ -108,7 +109,7 @@ export function ClubsDirectoryTab({
           </p>
           <p className="mt-1 text-2xl font-extrabold text-foreground tabular-nums">{clubs.length}</p>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Dữ liệu được cập nhật trực tiếp
+            Danh sách câu lạc bộ thuộc phạm vi quản trị
           </p>
         </div>
         <div className="rounded-xl border border-border/70 bg-background/60 p-3.5">
@@ -278,6 +279,15 @@ export function ClubsDirectoryTab({
                     >
                       <Users size={12} /> Thành viên
                     </Button>
+                    {canInClub("document.view", club.id) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onSelectClubAndTab(club.id, "documents")}
+                      >
+                        <FileText size={12} /> Tài liệu
+                      </Button>
+                    )}
                     {canInClub("application.view", club.id) ||
                     canInClub("application.review", club.id) ||
                     canInClub("application.approve", club.id) ? (

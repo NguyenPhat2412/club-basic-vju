@@ -252,4 +252,37 @@ class ClubServiceTest {
         assertThat(club.getLogoSizeBytes()).isEqualTo((long) pngBytes.length);
         assertThat(updated.logoUrl()).startsWith("http://localhost:8082/api/v1/public/clubs/" + club.getId() + "/logo?v=");
     }
+
+    @Test
+    void updateNormalizesAndPersistsCustomOverviewConfig() {
+        Club club = club("MONOZUKURI");
+        when(clubRepository.findById(club.getId())).thenReturn(Optional.of(club));
+
+        var rawConfig = new com.vju.club.dto.record.ClubOverviewConfig(
+                "  academic_tech ",
+                "  Tinh thần Monozukuri Nhật Bản  ",
+                "  Cơ sở Hòa Lạc & Mỹ Đình ",
+                " Thứ 4 & Thứ 7 ",
+                java.util.List.of("metrics", "INVALID_BLOCK", "highlights", "metrics"),
+                java.util.List.of(
+                        new com.vju.club.dto.record.ClubOverviewConfig.CustomMetric(" Nguyên mẫu ", " 18+ ", " IoT & CAD "),
+                        new com.vju.club.dto.record.ClubOverviewConfig.CustomMetric("  ", "ignored", null)
+                ),
+                java.util.List.of(
+                        new com.vju.club.dto.record.ClubOverviewConfig.HighlightItem(" Ngày hội Sáng tạo ", " Showcase ", " Trình diễn robot ")
+                )
+        );
+
+        var updated = service.update(actor, club.getId(),
+                new ClubPatchRequest(null, null, null, null, null, null, null, rawConfig));
+
+        assertThat(updated.overviewConfig().preset()).isEqualTo("ACADEMIC_TECH");
+        assertThat(updated.overviewConfig().slogan()).isEqualTo("Tinh thần Monozukuri Nhật Bản");
+        assertThat(updated.overviewConfig().campusLocation()).isEqualTo("Cơ sở Hòa Lạc & Mỹ Đình");
+        assertThat(updated.overviewConfig().enabledBlocks()).containsExactly("metrics", "highlights");
+        assertThat(updated.overviewConfig().customMetrics()).hasSize(1);
+        assertThat(updated.overviewConfig().customMetrics().get(0).label()).isEqualTo("Nguyên mẫu");
+        assertThat(updated.overviewConfig().highlights()).hasSize(1);
+        assertThat(updated.overviewConfig().highlights().get(0).title()).isEqualTo("Ngày hội Sáng tạo");
+    }
 }

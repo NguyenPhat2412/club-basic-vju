@@ -297,16 +297,16 @@ export function DashboardView() {
   ];
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-background">
+    <div className="flex min-h-full w-full min-w-0 max-w-full flex-1 flex-col bg-background">
       <BreadcrumbToolbar
         crumbs={[{ label: "Trang chủ", href: "/clubs" }, { label: "Tổng quan hệ thống" }]}
         titleBadge={<CountBadge>Trực tiếp</CountBadge>}
         onRefresh={refreshAll}
       />
 
-      <div className="mx-auto w-full max-w-[1440px] space-y-5 px-4 py-5 sm:px-6">
+      <div className="mx-auto w-full min-w-0 max-w-[1440px] space-y-5 px-4 py-5 sm:px-6">
         <section className="flex flex-col justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-2xs sm:flex-row sm:items-center sm:p-5">
-          <div className="flex items-center gap-3.5">
+          <div className="flex min-w-0 items-center gap-3.5">
             <Image
               src="/images/vju-logo.png"
               alt="Logo VJU"
@@ -322,7 +322,7 @@ export function DashboardView() {
                 <StatusBadge status={session.user.status || "ACTIVE"} />
                 {session.user.studentCode && <Badge tone="primary">{session.user.studentCode}</Badge>}
               </div>
-              <h1 className="mt-1 truncate text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
+              <h1 className="mt-1 line-clamp-2 wrap-break-word text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
                 Xin chào, {session.user.fullName || session.user.email}
               </h1>
               <p className="mt-0.5 text-xs text-slate-500">
@@ -331,10 +331,10 @@ export function DashboardView() {
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-3">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-right">
+          <div className="flex w-full shrink-0 items-center gap-3 sm:w-auto">
+            <div className="flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 sm:block sm:w-auto sm:text-right">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">CLB đang quản lý</p>
-              <p className="mt-0.5 text-base font-extrabold text-primary">{visibleManagedClubs.length} CLB</p>
+              <p className="text-base font-extrabold text-primary sm:mt-0.5">{visibleManagedClubs.length} CLB</p>
             </div>
           </div>
         </section>

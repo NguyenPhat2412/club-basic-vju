@@ -5,13 +5,16 @@ import { apiModel, EffectivePermission } from "@/lib/api";
 export const CLUB_MANAGEMENT_KEYS = [
   "club.create", "club.update", "club.active", "club.inactive",
   "application.view", "application.view_detail", "application.review", "application.approve", "application.reject",
-  "application.manage_form", "application.update",
+  "application.manage_form", "application.update", "application.delete",
   "member.view_detail", "member.add", "member.update", "member.remove",
   "department.create", "department.update", "department.activate", "department.inactive",
   "department.member.add", "department.member.remove",
+  "document.upload", "document.update", "document.delete", "document.restore",
   "event.create", "event.update", "event.attendance", "event.attendance_edit",
   "task.create", "task.update", "task.verify",
+  "chat.summarize",
   "notification.send",
+  "permission.view", "permission.assign", "permission.revoke",
 ];
 
 export const CLUB_WORKSPACE_KEYS = [
@@ -21,10 +24,12 @@ export const CLUB_WORKSPACE_KEYS = [
   "member.view", "member.view_detail", "member.add", "member.update", "member.remove",
   "department.view", "department.create", "department.update", "department.activate", "department.inactive",
   "department.member.view", "department.member.add", "department.member.remove",
+  "document.view", "document.upload", "document.update", "document.delete", "document.restore",
   "event.view", "event.create", "event.update", "event.attendance", "event.attendance_edit",
   "task.view", "task.create", "task.update", "task.verify",
   "chat.view", "chat.send", "chat.summarize",
   "notification.send",
+  "permission.view", "permission.assign", "permission.revoke",
 ];
 
 export function useSession() {
@@ -58,6 +63,7 @@ export function useSession() {
     ready: me.isSuccess && (mustChangePassword || permissions.isSuccess),
     settled: me.isSuccess || me.isError,
     can: (key: string) => list.some((p) => p.permissionKey === key),
+    hasGlobal: (key: string) => list.some((p) => p.permissionKey === key && p.scope === "GLOBAL"),
     canInClub: (key: string, clubId: string) => hasClubPermission(list, key, clubId),
     canClubWide: (key: string, clubId: string) => hasClubWidePermission(list, key, clubId),
     canInDepartment: (key: string, clubId: string, departmentId?: string) =>

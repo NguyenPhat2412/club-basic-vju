@@ -3,14 +3,9 @@ import { Download, ExternalLink, FileSpreadsheet, FileText, Image as ImageIcon, 
 import { apiModel, ApplicationFile, FormFieldDefinition } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { FormField, Input, Select, Textarea } from "@/components/ui/input";
+import { formatSize } from "@/lib/utils";
 
-export function formatBytes(bytes: number) {
-  if (!bytes || bytes <= 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB"];
-  const idx = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  const value = bytes / Math.pow(1024, idx);
-  return `${value.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`;
-}
+export const formatBytes = formatSize;
 
 export function categoryLabel(category: string) {
   switch (category) {
@@ -93,6 +88,7 @@ export function ApplicationFilesList({
                 {onDelete && (
                   <button
                     type="button"
+                    aria-label={`Xoá tệp ${file.originalName}`}
                     disabled={deleting}
                     onClick={() => onDelete(file)}
                     title="Xoá tệp"

@@ -79,7 +79,7 @@ class ContractTest(unittest.TestCase):
     def test_post_creation_and_delete_status_codes(self):
         for path, method, op in self.operations():
             with self.subTest(path=path, method=method):
-                if method == 'post' and '/auth/' not in path and not path.endswith(('/approve', '/reject', '/restore', '/logo', '/cover', '/avatar', '/translate-batch')):
+                if method == 'post' and '/auth/' not in path and not path.endswith(('/approve', '/reject', '/restore', '/logo', '/cover', '/avatar', '/translate-batch', '/read')):
                     self.assertIn('201', op['responses'])
                 if method == 'delete':
                     self.assertIn('204', op['responses'])
@@ -186,7 +186,7 @@ class ContractTest(unittest.TestCase):
         }
         for schema_name, java_path in mapping.items():
             src = (ROOT / 'backend/springboot/src/main/java/com/vju/club' / java_path).read_text()
-            fields = set(re.findall(r'(?:UUID|String|Integer|int|long|boolean|Instant|OffsetDateTime|PermissionScope|List<[^>]+>|Map<String, Object>)\s+(\w+)', src.split('public record', 1)[1].split('{', 1)[0]))
+            fields = set(re.findall(r'(?:UUID|String|Integer|int|long|boolean|Instant|OffsetDateTime|PermissionScope|ClubOverviewConfig|List<[^>]+>|Map<String, Object>)\s+(\w+)', src.split('public record', 1)[1].split('{', 1)[0]))
             with self.subTest(schema=schema_name):
                 self.assertEqual(set(self.doc['components']['schemas'][schema_name]['properties']), fields)
 

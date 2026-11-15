@@ -17,21 +17,17 @@ export interface EventFormValues {
 export type EventFormDraft = EventFormValues;
 
 export const EVENT_TYPE_LABELS: Record<string, string> = {
+  CLUB_EVENT: 'Sự kiện câu lạc bộ',
+  MEETING: 'Lịch sinh hoạt nội bộ CLB',
   WORKSHOP: 'Workshop / Hội thảo',
-  SEMINAR: 'Toạ đàm chuyên đề',
-  COMPETITION: 'Cuộc thi học thuật',
   RECRUITMENT: 'Tuyển thành viên / CTV',
-  CULTURAL: 'Giao lưu văn hoá',
-  VOLUNTEER: 'Hoạt động tình nguyện',
-  INTERNAL: 'Sinh hoạt nội bộ CLB',
-  OTHER: 'Hoạt động khác',
 };
 
 export const EMPTY_EVENT_FORM: EventFormValues = {
   departmentId: '',
   title: '',
   description: '',
-  eventType: 'WORKSHOP',
+  eventType: 'CLUB_EVENT',
   location: '',
   startTime: '',
   endTime: '',
@@ -64,7 +60,7 @@ export function toCreateEventPayload(draft: EventFormValues): CreateEventInput {
     departmentId: draft.departmentId || undefined,
     title: draft.title.trim(),
     description: draft.description.trim() || undefined,
-    eventType: draft.eventType || 'WORKSHOP',
+    eventType: draft.eventType || 'CLUB_EVENT',
     location: draft.location.trim() || undefined,
     startTime: toIso(draft.startTime),
     endTime: toIso(draft.endTime),

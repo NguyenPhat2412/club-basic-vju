@@ -21,6 +21,7 @@ export function SidebarNav({
   onToggleGroup,
   pathname,
   currentTab,
+  currentTier,
   user,
   mustChangePassword,
   onSignOut,
@@ -36,6 +37,7 @@ export function SidebarNav({
   onToggleGroup: (id: string) => void;
   pathname: string;
   currentTab: string | null;
+  currentTier?: string | null;
   user?: User | null;
   mustChangePassword?: boolean;
   onSignOut: () => void;
@@ -174,7 +176,7 @@ export function SidebarNav({
                   {section.groups.map((group) => {
                     const groupOpen = !closedGroups.has(group.id);
                     const hasActiveChild = group.items.some((item) =>
-                      isNavItemActive(item, pathname, currentTab)
+                      isNavItemActive(item, pathname, currentTab, currentTier)
                     );
 
                     if (isCollapsed) {
@@ -186,7 +188,11 @@ export function SidebarNav({
                           onClick={onCloseMobile}
                           {...tipProps(
                             group.label,
-                            group.items.map((i) => ({ href: i.href, label: i.label, active: isNavItemActive(i, pathname, currentTab) }))
+                            group.items.map((i) => ({
+                              href: i.href,
+                              label: i.label,
+                              active: isNavItemActive(i, pathname, currentTab, currentTier),
+                            }))
                           )}
                           className={cn(
                             "flex items-center justify-center rounded-lg p-2 transition-colors",
@@ -225,7 +231,7 @@ export function SidebarNav({
                         {groupOpen && (
                           <ul className="ml-3.5 space-y-0.5 border-l border-border/80 pl-2 pt-0.5">
                             {group.items.map((item) => {
-                              const active = isNavItemActive(item, pathname, currentTab);
+                              const active = isNavItemActive(item, pathname, currentTab, currentTier);
                               return (
                                 <li key={item.href}>
                                   <Link

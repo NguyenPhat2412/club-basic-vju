@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/input";
 import { formatDateTime } from "@/lib/utils";
 import { EMPTY_CREATE_CLUB_FORM, CreateClubFormValues } from "@/forms/club/club-form";
+import { ClubMemberAccessSection } from "@/components/management/ClubMemberAccessSection";
 
 export function AddClubMemberModal({
   clubId,
@@ -212,10 +213,12 @@ export function CreateClubModal({
 
 export function ClubMemberDetailDrawer({
   memberId,
+  clubId,
   clubName,
   onClose,
   memberOf,
   departmentsByMember,
+  activeDepartments = [],
   busy,
   canUpdate,
   canRemove,
@@ -223,10 +226,12 @@ export function ClubMemberDetailDrawer({
   onRequestLeave,
 }: {
   memberId: string | null;
+  clubId?: string;
   clubName?: string;
   onClose: () => void;
   memberOf: (m: Membership) => React.ReactNode;
   departmentsByMember: Record<string, Department[]>;
+  activeDepartments?: Department[];
   busy: boolean;
   canUpdate: boolean;
   canRemove: boolean;
@@ -266,6 +271,14 @@ export function ClubMemberDetailDrawer({
                 ["Ban chuyên môn", departments.length ? departments.map((d) => d.name).join(", ") : "—"],
               ]}
             />
+            {(clubId || membership.clubId) && (
+              <ClubMemberAccessSection
+                clubId={(clubId || membership.clubId)!}
+                userId={membership.userId}
+                membershipStatus={membership.status}
+                departments={activeDepartments}
+              />
+            )}
             {((canUpdate && membership.status !== "LEFT") || (canRemove && membership.status !== "LEFT")) && (
               <Section title="Quản lý trạng thái thành viên" icon={<ShieldCheck />}>
                 <div className="flex flex-wrap gap-2">

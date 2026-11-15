@@ -1,7 +1,11 @@
 package com.vju.club.entity;
 
+import com.vju.club.enums.DocumentScope;
+import com.vju.club.enums.DocumentVisibility;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -17,9 +21,21 @@ import java.util.UUID;
 @Getter
 @Setter
 public class Document extends TimestampedEntity {
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "club_id", nullable = false, updatable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "club_id", updatable = false)
     private Club club;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id", updatable = false)
+    private Department department;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16, updatable = false)
+    private DocumentScope scope = DocumentScope.CLUB;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 24)
+    private DocumentVisibility visibility = DocumentVisibility.MEMBERS;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "owner_id", nullable = false, updatable = false)

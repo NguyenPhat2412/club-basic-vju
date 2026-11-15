@@ -12,13 +12,16 @@ import java.time.Duration;
 @Getter
 @Setter
 public class StorageProperties {
-    public enum Type { LOCAL, R2 }
+    public enum Type { LOCAL, R2, GDRIVE }
+
+    public enum GDriveAuthMode { SERVICE_ACCOUNT, OAUTH_REFRESH_TOKEN }
 
     private Type type = Type.LOCAL;
     private DataSize maxFileSize = DataSize.ofMegabytes(20);
     private Duration downloadUrlTtl = Duration.ofMinutes(5);
     private final Local local = new Local();
     private final R2 r2 = new R2();
+    private final GDrive gdrive = new GDrive();
 
     @Getter
     @Setter
@@ -33,5 +36,19 @@ public class StorageProperties {
         private String bucket;
         private String accessKeyId;
         private String secretAccessKey;
+    }
+
+    @Getter
+    @Setter
+    public static class GDrive {
+        private GDriveAuthMode authMode = GDriveAuthMode.SERVICE_ACCOUNT;
+        private String rootFolderId;
+        private String clientEmail;
+        private String privateKey;
+        private String clientId;
+        private String clientSecret;
+        private String refreshToken;
+        private String tokenUri = "https://oauth2.googleapis.com/token";
+        private String apiBaseUrl = "https://www.googleapis.com";
     }
 }

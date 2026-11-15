@@ -14,6 +14,7 @@ public record ClubRecord(
         String description,
         String activityField,
         String contactEmail,
+        ClubOverviewConfig overviewConfig,
         ClubStatus status,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt

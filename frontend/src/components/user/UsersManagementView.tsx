@@ -198,7 +198,7 @@ export function UsersManagementView() {
             aria-label="Lọc theo trạng thái"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-            className="h-9 w-44 text-xs"
+            className="h-9 w-full text-xs sm:w-44"
           >
             <option value="ALL">Tất cả trạng thái</option>
             <option value="ACTIVE">Đang hoạt động</option>

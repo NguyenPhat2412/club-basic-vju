@@ -1,12 +1,12 @@
 package com.vju.club.service;
 
-import com.vju.club.dto.response.PageResponse;
 import com.vju.club.dto.request.CreateChatChannelRequest;
 import com.vju.club.dto.request.SendChatMessageRequest;
 import com.vju.club.dto.request.SummarizeChatRequest;
 import com.vju.club.dto.response.AiSummaryResponse;
 import com.vju.club.dto.response.ChatChannelResponse;
 import com.vju.club.dto.response.ChatMessageResponse;
+import com.vju.club.dto.response.PageResponse;
 import com.vju.club.security.Actor;
 
 import java.util.List;
@@ -19,7 +19,13 @@ public interface ChatService {
 
     ChatMessageResponse sendMessage(Actor actor, UUID channelId, SendChatMessageRequest request);
 
-    PageResponse<ChatMessageResponse> listMessages(Actor actor, UUID channelId, int offset, int limit);
+    default PageResponse<ChatMessageResponse> listMessages(Actor actor, UUID channelId, int offset, int limit) {
+        return listMessages(actor, channelId, null, offset, limit);
+    }
+
+    PageResponse<ChatMessageResponse> listMessages(Actor actor, UUID channelId, UUID beforeId, int offset, int limit);
+
+    void markChannelRead(Actor actor, UUID channelId, UUID lastReadMessageId);
 
     AiSummaryResponse summarizeChannel(Actor actor, UUID channelId, SummarizeChatRequest request);
 

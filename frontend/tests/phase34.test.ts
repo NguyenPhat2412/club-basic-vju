@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import { ApiError, apiModel } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
 import { CLUB_WORKSPACE_KEYS } from "@/hooks/useSession";
+import { EMPTY_EVENT_FORM, EVENT_TYPE_LABELS } from "@/forms/event/event-form";
+import { buildTaskAssigneeCandidates } from "@/forms/task/task-form";
+import { shortDisplayName } from "@/lib/utils";
 
 test("errorMessage maps Phase 3 and Phase 4 domain error codes to clear Vietnamese guidance", () => {
   assert.match(errorMessage(new ApiError("Expired", 409, "ATTENDANCE_EDIT_WINDOW_EXPIRED")), /thời hạn/i);
@@ -116,4 +119,45 @@ test("apiModel builds exact Phase 3 & Phase 4 endpoints, query params, and paylo
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("Phase 3 event types and CTV task candidate builder match backend enum and registration rules", () => {
+  assert.deepEqual(Object.keys(EVENT_TYPE_LABELS), ["CLUB_EVENT", "MEETING", "WORKSHOP", "RECRUITMENT"]);
+  assert.equal(EMPTY_EVENT_FORM.eventType, "CLUB_EVENT");
+
+  const members = [
+    { id: "m-1", userId: "u-member", clubId: "c-1", status: "ACTIVE", joinedAt: "2026-01-01T00:00:00Z", userFullName: "Thành viên A" },
+  ] as never[];
+  const regs = [
+    {
+      id: "r-1",
+      eventId: "ev-1",
+      userId: "u-ctv-active",
+      userFullName: "CTV Đang ĐK",
+      participantType: "CTV",
+      eventRole: "Check-in",
+      status: "REGISTERED",
+      registeredAt: "2026-01-02T00:00:00Z",
+    },
+    {
+      id: "r-2",
+      eventId: "ev-1",
+      userId: "u-ctv-cancelled",
+      userFullName: "CTV Đã Huỷ",
+      participantType: "CTV",
+      status: "CANCELLED",
+      registeredAt: "2026-01-02T00:00:00Z",
+    },
+  ] as never[];
+
+  assert.equal(buildTaskAssigneeCandidates(members, "", regs).length, 1);
+  const withEvent = buildTaskAssigneeCandidates(members, "ev-1", regs);
+  assert.deepEqual(withEvent.map((c) => c.userId), ["u-member", "u-ctv-active"]);
+  assert.match(withEvent[1].label, /CTV sự kiện · Check-in/);
+
+  assert.equal(shortDisplayName("Local Administrator"), "Admin");
+  assert.equal(shortDisplayName("Nguyễn Thùy Linh"), "Linh");
+  assert.equal(shortDisplayName("Phạm Minh Khôi (CTV Sự kiện)"), "Khôi");
+  assert.equal(shortDisplayName("Nguyễn Văn A"), "Văn A");
+  assert.equal(shortDisplayName("", "phat@vju.local"), "phat");
 });

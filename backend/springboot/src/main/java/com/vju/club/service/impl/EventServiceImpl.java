@@ -125,9 +125,11 @@ public class EventServiceImpl implements EventService {
 
     @Override
     @Transactional
-    @RequirePermission(value = EventConstants.PERMISSION_CREATE, clubId = "clubId")
     @CacheEvict(cacheNames = CacheConfig.CACHE_PUBLIC_EVENTS, allEntries = true)
     public EventResponse create(Actor actor, UUID clubId, CreateEventRequest request) {
+        if (!authorizationService.hasAnyPermission(actor, EventConstants.PERMISSION_CREATE)) {
+            authorizationService.require(actor, EventConstants.PERMISSION_CREATE, clubId, null);
+        }
         Club club = clubRepository.findById(clubId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND", "Club not found"));
         if (club.getStatus() != ClubStatus.ACTIVE) {
@@ -140,6 +142,8 @@ public class EventServiceImpl implements EventService {
                     .filter(d -> d.getClub().getId().equals(clubId))
                     .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "DEPARTMENT_NOT_FOUND", "Department not found in club"));
         }
+        authorizationService.require(actor, EventConstants.PERMISSION_CREATE, clubId,
+                department == null ? null : department.getId());
 
         validateTimes(request.startTime(), request.endTime(), request.registrationDeadline());
         OffsetDateTime createdAt = OffsetDateTime.now(clock);
@@ -179,12 +183,16 @@ public class EventServiceImpl implements EventService {
 
     @Override
     @Transactional
-    @RequirePermission(value = EventConstants.PERMISSION_UPDATE, clubId = "clubId")
     @CacheEvict(cacheNames = CacheConfig.CACHE_PUBLIC_EVENTS, allEntries = true)
     public EventResponse update(Actor actor, UUID clubId, UUID eventId, UpdateEventRequest request) {
+        if (!authorizationService.hasAnyPermission(actor, EventConstants.PERMISSION_UPDATE)) {
+            authorizationService.require(actor, EventConstants.PERMISSION_UPDATE, clubId, null);
+        }
         Event event = eventRepository.findWithRelationsById(eventId)
                 .filter(e -> e.getClub().getId().equals(clubId))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
+        UUID currentDeptId = event.getDepartment() != null ? event.getDepartment().getId() : null;
+        authorizationService.require(actor, EventConstants.PERMISSION_UPDATE, clubId, currentDeptId);
 
         Map<String, Object> before = snapshot(event);
         EventStatus previousStatus = event.getStatus();
@@ -194,6 +202,7 @@ public class EventServiceImpl implements EventService {
             Department department = departmentRepository.findById(request.departmentId())
                     .filter(d -> d.getClub().getId().equals(clubId))
                     .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "DEPARTMENT_NOT_FOUND", "Department not found in club"));
+            authorizationService.require(actor, EventConstants.PERMISSION_UPDATE, clubId, department.getId());
             event.setDepartment(department);
         }
         if (request.title() != null) {
@@ -295,9 +304,10 @@ public class EventServiceImpl implements EventService {
         UUID clubId = event.getClub().getId();
         boolean publiclyVisible = event.getClub().getStatus() == ClubStatus.ACTIVE
                 && DETAIL_VISIBLE_STATUSES.contains(event.getStatus());
+        UUID deptId = event.getDepartment() != null ? event.getDepartment().getId() : null;
         boolean canView = publiclyVisible
                 || registrationRepository.existsByEvent_IdAndUser_Id(eventId, actor.id())
-                || authorizationService.hasPermission(actor, EventConstants.PERMISSION_VIEW, clubId, null)
+                || authorizationService.hasPermission(actor, EventConstants.PERMISSION_VIEW, clubId, deptId)
                 || authorizationService.hasPermission(actor, "club.view", clubId, null)
                 || membershipRepository.existsByUser_IdAndClub_IdAndStatus(actor.id(), clubId, MembershipStatus.ACTIVE);
         if (!canView) {
@@ -421,6 +431,11 @@ public class EventServiceImpl implements EventService {
                 registration.setCancelledAt(now);
                 returnOpenEventTasksToAssigner(event, registration.getUser(), actor.id());
             } else if (request.status() == EventRegistrationStatus.REGISTERED) {
+                event = eventRepository.lockById(eventId)
+                        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
+                if (event.getStatus() == EventStatus.CANCELLED) {
+                    throw new ApiException(HttpStatus.CONFLICT, "EVENT_CANCELLED", "Cannot modify participant registrations of a cancelled event");
+                }
                 if (event.getStatus() == EventStatus.COMPLETED) {
                     throw new ApiException(HttpStatus.CONFLICT, "EVENT_ALREADY_COMPLETED", "Cannot reinstate registration on a completed event");
                 }

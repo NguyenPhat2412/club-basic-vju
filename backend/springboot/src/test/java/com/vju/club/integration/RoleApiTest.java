@@ -322,4 +322,71 @@ class RoleApiTest extends ApiIntegrationTest {
         // 8. Revoke Department Head position
         call(delete("/api/v1/clubs/" + clubA + "/positions/" + id(headAssigned)), adminToken, null, 204);
     }
+
+    @Test
+    void clubPresidentDelegatesRolesAndDirectPermissionsWithinClubOnly() throws Exception {
+        membership(member, clubA);
+        assign(member, "CLUB_PRESIDENT", "CLUB", clubA, null);
+
+        UUID teammate = user("teammate@test.local");
+        UUID teammateMemA = membership(teammate, clubA);
+        membership(teammate, clubB);
+        assign(teammate, "CLUB_MEMBER", "CLUB", clubB, null);
+        call(post("/api/v1/departments/" + depA1 + "/members"), memberToken, Map.of("membershipId", teammateMemA), 201);
+        UUID outsider = user("outsider@test.local");
+
+        call(get("/api/v1/permissions"), memberToken, null, 200);
+        call(get("/api/v1/roles"), memberToken, null, 200);
+
+        JsonNode assignedVice = call(post("/api/v1/users/" + teammate + "/roles"), memberToken,
+                roleAssignment("CLUB_VICE_PRESIDENT", "CLUB", clubA, null), 201);
+        JsonNode visibleRoles = call(get("/api/v1/users/" + teammate + "/roles"), memberToken, null, 200);
+        assertThat(visibleRoles).hasSize(1);
+        assertThat(visibleRoles.get(0).path("clubId").asText()).isEqualTo(clubA.toString());
+
+        UUID docUpload = permission("document.upload");
+        call(post("/api/v1/users/" + teammate + "/permissions"), memberToken,
+                Map.of("permissionId", docUpload, "scope", "DEPARTMENT", "departmentId", depA1), 201);
+        call(delete("/api/v1/users/" + teammate + "/permissions/" + docUpload
+                + "?scope=DEPARTMENT&departmentId=" + depA1), memberToken, null, 204);
+        call(delete("/api/v1/users/" + teammate + "/roles/" + id(assignedVice)), memberToken, null, 204);
+
+        problem(post("/api/v1/users/" + outsider + "/permissions"), memberToken,
+                Map.of("permissionId", docUpload, "scope", "CLUB", "clubId", clubA), 409, "MEMBERSHIP_REQUIRED_FOR_POSITION");
+        problem(post("/api/v1/users/" + teammate + "/permissions"), memberToken,
+                Map.of("permissionId", docUpload, "scope", "CLUB", "clubId", clubB), 403, "PERMISSION_DENIED");
+        problem(post("/api/v1/users/" + teammate + "/permissions"), memberToken,
+                Map.of("permissionId", docUpload, "scope", "GLOBAL"), 403, "PERMISSION_DENIED");
+    }
+
+    @Test
+    void departmentHeadManagesDepartmentEventsAndChatChannelsOnly() throws Exception {
+        UUID memA = membership(member, clubA);
+        call(post("/api/v1/departments/" + depA1 + "/members"), adminToken, Map.of("membershipId", memA), 201);
+        assign(member, "DEPARTMENT_HEAD", "DEPARTMENT", null, depA1);
+
+        String start = java.time.OffsetDateTime.now().plusDays(3).toString();
+        String end = java.time.OffsetDateTime.now().plusDays(3).plusHours(2).toString();
+        String deadline = java.time.OffsetDateTime.now().plusDays(2).toString();
+
+        JsonNode createdEvent = call(post("/api/v1/clubs/" + clubA + "/events"), memberToken,
+                Map.of("departmentId", depA1, "title", "Dept Workshop", "startTime", start,
+                        "endTime", end, "registrationDeadline", deadline), 201);
+        call(patch("/api/v1/clubs/" + clubA + "/events/" + id(createdEvent)), memberToken, Map.of("title", "Dept Workshop v2"), 200);
+        problem(patch("/api/v1/clubs/" + clubA + "/events/" + id(createdEvent)), memberToken,
+                Map.of("departmentId", depA2), 403, "PERMISSION_DENIED");
+        problem(post("/api/v1/clubs/" + clubA + "/events"), memberToken,
+                Map.of("departmentId", depA2, "title", "Other Dept", "startTime", start,
+                        "endTime", end, "registrationDeadline", deadline), 403, "PERMISSION_DENIED");
+        problem(post("/api/v1/clubs/" + clubA + "/events"), memberToken,
+                Map.of("title", "Club Wide", "startTime", start, "endTime", end, "registrationDeadline", deadline),
+                403, "PERMISSION_DENIED");
+
+        call(post("/api/v1/clubs/" + clubA + "/channels"), memberToken,
+                Map.of("departmentId", depA1, "name", "Ban Chuyen Mon", "channelType", "DEPARTMENT"), 201);
+        problem(post("/api/v1/clubs/" + clubA + "/channels"), memberToken,
+                Map.of("departmentId", depA2, "name", "Other Dept", "channelType", "DEPARTMENT"), 403, "PERMISSION_DENIED");
+        problem(post("/api/v1/clubs/" + clubA + "/channels"), memberToken,
+                Map.of("name", "Club General 2"), 403, "PERMISSION_DENIED");
+    }
 }

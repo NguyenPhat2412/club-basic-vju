@@ -1,15 +1,16 @@
 package com.vju.club.controller;
 
 import com.vju.club.common.ApiPaths;
-import com.vju.club.dto.response.PageResponse;
 import com.vju.club.dto.request.CreateChatChannelRequest;
+import com.vju.club.dto.request.MarkChannelReadRequest;
 import com.vju.club.dto.request.SendChatMessageRequest;
 import com.vju.club.dto.request.SummarizeChatRequest;
 import com.vju.club.dto.response.AiSummaryResponse;
 import com.vju.club.dto.response.ChatChannelResponse;
 import com.vju.club.dto.response.ChatMessageResponse;
-import com.vju.club.service.ChatService;
+import com.vju.club.dto.response.PageResponse;
 import com.vju.club.security.Actor;
+import com.vju.club.service.ChatService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -32,7 +33,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping(ApiPaths.API_V1)
 @RequiredArgsConstructor
-@Tag(name = "Chat & AI Assistant", description = "Kênh trao đổi nội bộ CLB/Ban/Sự kiện và AI Bot (9router) tóm tắt thảo luận, quyết định, gợi ý công việc & lịch họp")
+@Tag(name = "Chat & AI Assistant", description = "Kênh trao đổi nội bộ CLB/Ban/Sự kiện qua WebSocket STOMP thời gian thực, đính kèm tài liệu kho tập trung và AI Bot tóm tắt.")
 public class ChatController {
     private final ChatService chatService;
 
@@ -45,13 +46,13 @@ public class ChatController {
     }
 
     @GetMapping(ApiPaths.CLUB_CHANNELS)
-    @Operation(summary = "Danh sách các kênh chat của CLB")
+    @Operation(summary = "Danh sách các kênh chat của CLB kèm số tin chưa đọc (unreadCount)")
     public List<ChatChannelResponse> listChannels(Actor actor, @PathVariable UUID clubId) {
         return chatService.listChannels(actor, clubId);
     }
 
     @PostMapping(ApiPaths.CHANNEL_MESSAGES)
-    @Operation(summary = "Gửi tin nhắn vào kênh chat")
+    @Operation(summary = "Gửi tin nhắn vào kênh chat (hỗ trợ replyToId, đính kèm documentId & đẩy WebSocket tức thì)")
     public ResponseEntity<ChatMessageResponse> sendMessage(Actor actor,
                                                            @PathVariable UUID channelId,
                                                            @Valid @RequestBody SendChatMessageRequest request) {
@@ -59,17 +60,26 @@ public class ChatController {
     }
 
     @GetMapping(ApiPaths.CHANNEL_MESSAGES)
-    @Operation(summary = "Lịch sử tin nhắn trong kênh chat (phân trang offset/limit)")
+    @Operation(summary = "Lịch sử tin nhắn trong kênh chat (hỗ trợ cursor beforeId chống lệch trang hoặc offset/limit)")
     public PageResponse<ChatMessageResponse> listMessages(Actor actor,
                                                           @PathVariable UUID channelId,
+                                                          @RequestParam(required = false) UUID beforeId,
                                                           @RequestParam(defaultValue = "0") @Min(0) int offset,
                                                           @RequestParam(defaultValue = "50") @Min(1) @Max(100) int limit) {
-        return chatService.listMessages(actor, channelId, offset, limit);
+        return chatService.listMessages(actor, channelId, beforeId, offset, limit);
+    }
+
+    @PostMapping(ApiPaths.CHANNEL_READ)
+    @Operation(summary = "Đánh dấu đã đọc tin nhắn trong kênh")
+    public ResponseEntity<Void> markChannelRead(Actor actor,
+                                                @PathVariable UUID channelId,
+                                                @RequestBody(required = false) MarkChannelReadRequest request) {
+        chatService.markChannelRead(actor, channelId, request != null ? request.lastReadMessageId() : null);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping(ApiPaths.CHANNEL_SUMMARIES)
-    @Operation(summary = "Yêu cầu AI Bot (9router) tóm tắt thảo luận trong kênh",
-            description = "Kết nối 9router (router.anhchau.all1.vn) hoặc fallback extractive để trích xuất summary, decisions, suggestedTasks, suggestedEvents và đăng bản tin AI_BOT vào kênh.")
+    @Operation(summary = "Yêu cầu AI Bot tóm tắt thảo luận và phát realtime vào kênh")
     public ResponseEntity<AiSummaryResponse> summarizeChannel(
             Actor actor,
             @PathVariable UUID channelId,

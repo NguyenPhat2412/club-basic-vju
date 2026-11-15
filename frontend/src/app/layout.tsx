@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Libre_Franklin, Source_Serif_4 } from "next/font/google";
 import { AppProviders } from "@/providers/AppProviders";
 import "@/styles/globals.css";
 
@@ -7,6 +7,21 @@ const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin", "vietnamese"],
   weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
+
+const libreFranklin = Libre_Franklin({
+  variable: "--font-libre-franklin",
+  subsets: ["latin", "vietnamese"],
+  weight: ["600", "700", "800"],
+  display: "swap",
+});
+
+const sourceSerif = Source_Serif_4({
+  variable: "--font-source-serif",
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "600", "700"],
+  style: ["normal", "italic"],
   display: "swap",
 });
 
@@ -21,7 +36,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi" className={inter.variable} suppressHydrationWarning>
+    <html
+      lang="vi"
+      className={`${inter.variable} ${libreFranklin.variable} ${sourceSerif.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <script
           dangerouslySetInnerHTML={{

@@ -88,6 +88,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Seeds and enriches the 12 real VJU student clubs, recruitment forms, showcase events,
@@ -244,20 +245,40 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
                 "member.view",
                 "document.view",
                 "event.view",
-                "task.view",
-                "chat.view",
-                "chat.send",
-                "chat.summarize"
+                "task.view"
         ));
         enrichRoleWithPermissions("DEPARTMENT_HEAD", List.of(
                 "department.member.view",
                 "department.member.add",
                 "department.member.remove",
+                "document.view",
+                "document.upload",
+                "document.update",
+                "event.view",
+                "event.create",
+                "event.update",
                 "event.attendance",
                 "event.attendance_edit",
                 "task.view",
                 "task.create",
-                "task.update"
+                "task.update",
+                "task.verify",
+                "chat.view",
+                "chat.send",
+                "chat.summarize",
+                "notification.send"
+        ));
+        enrichRoleWithPermissions("CLUB_PRESIDENT", List.of(
+                "permission.view",
+                "permission.assign",
+                "permission.revoke",
+                "role.view"
+        ));
+        enrichRoleWithPermissions("CLUB_VICE_PRESIDENT", List.of(
+                "department.update",
+                "document.restore",
+                "permission.view",
+                "role.view"
         ));
     }
 
@@ -301,6 +322,8 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
         User svVy = ensureUser("vy.lt@vju.local", "Lê Thảo Vy", "23110064");
         User svNam = ensureUser("nam.tr@vju.local", "Trương Hoài Nam", "23110088");
         User svMai = ensureUser("mai.np@vju.local", "Nguyễn Phương Mai", "23110095");
+        // Pure Phase 3 Event CTV user (0 club memberships, 0 RBAC roles) per Phase 3 baseline
+        User ctvDemo = ensureUser("ctv.demo@gmail.com", "Phạm Minh Khôi (CTV Sự kiện)", "24110108");
 
         User adminUser = userRepository.findByEmailIgnoreCase("admin123@gmail.com")
                 .or(() -> userRepository.findByEmailIgnoreCase("admin@vju.local"))
@@ -421,11 +444,11 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
         if (clubApplicationRepository != null) {
             seedShowcaseApplications(clubsByCode, allStudents, userA, adminUser, now);
         }
+        seedRichEventsAndAttendances(clubsByCode, userA, adminUser, allStudents, ctvDemo, svNam, now);
         if (taskRepository != null) {
-            seedShowcaseTasks(clubsByCode, userA, adminUser, userB, userC, student, svLinh, svMinh, now);
+            seedShowcaseTasks(clubsByCode, userA, adminUser, userB, userC, student, ctvDemo, svLinh, svMinh, now);
         }
-        seedRichEventsAndAttendances(clubsByCode, userA, adminUser, allStudents, now);
-        seedShowcaseChannelsAndNotifications(clubsByCode, userA, adminUser, userB, student, now);
+        seedShowcaseChannelsAndNotifications(clubsByCode, userA, adminUser, userB, student, ctvDemo, now);
         seedShowcaseAuditLogs(clubsByCode, adminUser, userA, userB, svLinh, now);
     }
 
@@ -449,13 +472,33 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
             User userA,
             User adminUser,
             List<User> students,
+            User ctvDemo,
+            User svNam,
             OffsetDateTime now) {
+        Set<String> closedRegClubs = Set.of("VJUA", "ARC", "BIGHEART", "NEB");
+        Set<String> draftClubs = Set.of("VJUA", "HASUKO", "MONOZUKURI", "OUVEVJU");
+        Set<String> cancelledClubs = Set.of("VJUA", "VJUP");
+
         for (Club club : clubsByCode.values()) {
             List<Department> depts = departmentRepository.findByClub_IdOrderByNameAscIdAsc(club.getId());
             Department leadDept = depts.isEmpty() ? null : depts.getFirst();
             Department secondDept = depts.size() > 1 ? depts.get(1) : leadDept;
+            Department thirdDept = depts.size() > 2 ? depts.get(2) : leadDept;
 
-            List<Event> existingEvents = eventRepository.findByClub(club.getId(), null, null, PageRequest.of(0, 20)).getContent();
+            List<Event> existingEvents = eventRepository.findByClub(club.getId(), null, null, PageRequest.of(0, 30)).getContent();
+
+            // Keep flagship upcoming OPEN_REGISTRATION event window fresh so self-register / self-cancel always work
+            for (Event ev : existingEvents) {
+                if (ev.getEventType() == EventType.CLUB_EVENT
+                        && ev.getStatus() == EventStatus.OPEN_REGISTRATION
+                        && ev.getRegistrationDeadline() != null
+                        && ev.getRegistrationDeadline().isBefore(now.plusHours(12))) {
+                    ev.setStartTime(now.plusDays(7).withHour(14).withMinute(0).withSecond(0).withNano(0));
+                    ev.setEndTime(now.plusDays(7).withHour(17).withMinute(30).withSecond(0).withNano(0));
+                    ev.setRegistrationDeadline(now.plusDays(5).withHour(23).withMinute(59).withSecond(0).withNano(0));
+                    eventRepository.save(ev);
+                }
+            }
 
             // 1. Ongoing event (started 1h ago, ends in 2h) so Admin can immediately click "Lưu điểm danh" (recordAttendance) without 409 EVENT_NOT_STARTED
             String ongoingTitle = "Sinh hoạt định kỳ & Điểm danh Ban chuyên môn " + club.getCode();
@@ -514,11 +557,86 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
                 completed = eventRepository.save(completed);
             }
 
-            // Register active club members & CTVs into upcoming, ongoing, and completed events
+            // 3. CLOSED_REGISTRATION event showcase (PB-23: registration closed prior to event start; can reopen, complete, or cancel)
+            if (closedRegClubs.contains(club.getCode())) {
+                String closedTitle = "Tổng duyệt & Chốt danh sách Nhân sự Sự kiện " + club.getCode();
+                existingEvents.stream()
+                        .filter(e -> closedTitle.equalsIgnoreCase(e.getTitle()))
+                        .findFirst()
+                        .orElseGet(() -> {
+                            Event ev = new Event();
+                            ev.setClub(club);
+                            ev.setDepartment(thirdDept);
+                            ev.setTitle(closedTitle);
+                            ev.setDescription("Buổi tổng duyệt sân khấu, âm thanh ánh sáng và phân công vị trí trực sự kiện sau khi chốt danh sách đăng ký của " + club.getName() + ".");
+                            ev.setEventType(EventType.CLUB_EVENT);
+                            ev.setLocation("Hội trường tầng 2 — Cơ sở Hòa Lạc");
+                            ev.setStartTime(now.plusDays(2).withHour(15).withMinute(0).withSecond(0).withNano(0));
+                            ev.setEndTime(now.plusDays(2).withHour(18).withMinute(0).withSecond(0).withNano(0));
+                            ev.setRegistrationDeadline(now.minusHours(4).withSecond(0).withNano(0));
+                            ev.setAllowCtv(true);
+                            ev.setMaxParticipants(45);
+                            ev.setStatus(EventStatus.CLOSED_REGISTRATION);
+                            return eventRepository.save(ev);
+                        });
+            }
+
+            // 4. DRAFT event showcase (PB-21.1 / PB-23: internal draft hidden from public portal, ready to publish -> OPEN_REGISTRATION)
+            if (draftClubs.contains(club.getCode())) {
+                String draftTitle = "[Bản nháp] Đề xuất Ngày hội Tuyển CTV Chuyên đề " + club.getCode();
+                existingEvents.stream()
+                        .filter(e -> draftTitle.equalsIgnoreCase(e.getTitle()))
+                        .findFirst()
+                        .orElseGet(() -> {
+                            Event ev = new Event();
+                            ev.setClub(club);
+                            ev.setDepartment(leadDept);
+                            ev.setTitle(draftTitle);
+                            ev.setDescription("Bản nháp kế hoạch tổ chức ngày hội giới thiệu các ban chuyên môn và tuyển cộng tác viên sự kiện học kỳ tới của " + club.getName() + ".");
+                            ev.setEventType(EventType.RECRUITMENT);
+                            ev.setLocation("Sảnh Tòa nhà VJU — Hòa Lạc");
+                            ev.setStartTime(now.plusDays(18).withHour(9).withMinute(0).withSecond(0).withNano(0));
+                            ev.setEndTime(now.plusDays(18).withHour(16).withMinute(0).withSecond(0).withNano(0));
+                            ev.setRegistrationDeadline(now.plusDays(15).withHour(23).withMinute(59).withSecond(0).withNano(0));
+                            ev.setAllowCtv(true);
+                            ev.setMaxParticipants(120);
+                            ev.setStatus(EventStatus.DRAFT);
+                            return eventRepository.save(ev);
+                        });
+            }
+
+            // 5. CANCELLED event showcase (PB-23: terminal cancelled state preserving historical registration records)
+            if (cancelledClubs.contains(club.getCode())) {
+                String cancelledTitle = "[Đã huỷ] Giao lưu Ngoài trời (Dời lịch do thời tiết) " + club.getCode();
+                existingEvents.stream()
+                        .filter(e -> cancelledTitle.equalsIgnoreCase(e.getTitle()))
+                        .findFirst()
+                        .orElseGet(() -> {
+                            Event ev = new Event();
+                            ev.setClub(club);
+                            ev.setDepartment(secondDept);
+                            ev.setTitle(cancelledTitle);
+                            ev.setDescription("Hoạt động dã ngoại & giao lưu ngoài trời tạm huỷ do dự báo mưa lớn tại Hòa Lạc, giữ nguyên lịch sử đăng ký để thông báo lịch bù.");
+                            ev.setEventType(EventType.CLUB_EVENT);
+                            ev.setLocation("Khuôn viên Hồ trung tâm ĐHQGHN Hòa Lạc");
+                            ev.setStartTime(now.plusDays(5).withHour(8).withMinute(30).withSecond(0).withNano(0));
+                            ev.setEndTime(now.plusDays(5).withHour(11).withMinute(30).withSecond(0).withNano(0));
+                            ev.setRegistrationDeadline(now.plusDays(3).withHour(23).withMinute(59).withSecond(0).withNano(0));
+                            ev.setAllowCtv(true);
+                            ev.setMaxParticipants(80);
+                            ev.setStatus(EventStatus.CANCELLED);
+                            return eventRepository.save(ev);
+                        });
+            }
+
+            // Register active club members & CTVs into club events (skipping DRAFT)
             if (eventRegistrationRepository != null) {
                 List<Membership> clubMembers = membershipRepository
                         .findByClub_IdAndStatusOrderByJoinedAtAsc(club.getId(), MembershipStatus.ACTIVE);
-                for (Event ev : eventRepository.findByClub(club.getId(), null, null, PageRequest.of(0, 10))) {
+                for (Event ev : eventRepository.findByClub(club.getId(), null, null, PageRequest.of(0, 20))) {
+                    if (ev.getStatus() == EventStatus.DRAFT) {
+                        continue;
+                    }
                     int idx = 0;
                     for (Membership m : clubMembers) {
                         if (idx >= 5) {
@@ -526,18 +644,46 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
                         }
                         ensureEventRegistration(ev, m.getUser(), EventParticipantType.MEMBER,
                                 idx == 0 ? "Điều phối viên sự kiện" : "Ban Tổ chức & Hậu cần",
-                                now.minusDays(3));
+                                EventRegistrationStatus.REGISTERED,
+                                now.minusDays(3), null);
                         idx++;
                     }
-                    // Also add 1 CTV registration if allowCtv is true
+                    // Add CTV registrations (including pure CTV ctv.demo@gmail.com) if allowCtv is true
                     if (ev.isAllowCtv()) {
+                        if (ctvDemo != null) {
+                            boolean makeCancelledSample = "NEB".equalsIgnoreCase(club.getCode())
+                                    && ev.getEventType() == EventType.CLUB_EVENT
+                                    && ev.getStatus() == EventStatus.OPEN_REGISTRATION;
+                            ensureEventRegistration(
+                                    ev,
+                                    ctvDemo,
+                                    EventParticipantType.CTV,
+                                    "CTV Truyền thông & Check-in",
+                                    makeCancelledSample ? EventRegistrationStatus.CANCELLED : EventRegistrationStatus.REGISTERED,
+                                    now.minusDays(2),
+                                    makeCancelledSample ? now.minusHours(6) : null);
+                        }
                         for (User candidate : students) {
                             if (!membershipRepository.existsByUser_IdAndClub_IdAndStatus(
                                     candidate.getId(), club.getId(), MembershipStatus.ACTIVE)) {
                                 ensureEventRegistration(ev, candidate, EventParticipantType.CTV,
-                                        "Cộng tác viên hỗ trợ sự kiện", now.minusDays(2));
+                                        "Cộng tác viên hỗ trợ sự kiện",
+                                        EventRegistrationStatus.REGISTERED,
+                                        now.minusDays(2), null);
                                 break;
                             }
+                        }
+                        // Seed 1 CANCELLED CTV registration on VJUA & ARC flagship open events so managers see CANCELLED participant history
+                        if (("VJUA".equalsIgnoreCase(club.getCode()) || "ARC".equalsIgnoreCase(club.getCode()))
+                                && ev.getEventType() == EventType.CLUB_EVENT
+                                && ev.getStatus() == EventStatus.OPEN_REGISTRATION
+                                && svNam != null
+                                && !membershipRepository.existsByUser_IdAndClub_IdAndStatus(
+                                        svNam.getId(), club.getId(), MembershipStatus.ACTIVE)) {
+                            ensureEventRegistration(ev, svNam, EventParticipantType.CTV,
+                                    "CTV Hậu cần (Đã xin rút)",
+                                    EventRegistrationStatus.CANCELLED,
+                                    now.minusDays(3), now.minusHours(10));
                         }
                     }
                 }
@@ -576,6 +722,11 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
                                 i == 0 ? "Đã check-in tại phòng họp CLB" : "Báo đến muộn 5 phút",
                                 now.minusMinutes(30));
                     }
+                    if (ctvDemo != null && "VJUA".equalsIgnoreCase(club.getCode())) {
+                        ensureEventAttendance(ongoing, ctvDemo, checker, AttendanceStatus.PRESENT,
+                                "CTV có mặt hỗ trợ điểm danh & ghi hình buổi sinh hoạt",
+                                now.minusMinutes(25));
+                    }
                 }
             }
         }
@@ -586,7 +737,9 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
             User user,
             EventParticipantType type,
             String role,
-            OffsetDateTime registeredAt) {
+            EventRegistrationStatus status,
+            OffsetDateTime registeredAt,
+            OffsetDateTime cancelledAt) {
         if (event == null || user == null || eventRegistrationRepository == null) {
             return;
         }
@@ -597,10 +750,11 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
         reg.setEvent(event);
         reg.setUser(user);
         reg.setParticipantType(type);
-        reg.setStatus(EventRegistrationStatus.REGISTERED);
+        reg.setStatus(status);
         reg.setEventRole(role);
         reg.setNote("Đăng ký tham gia hoạt động CLB " + event.getClub().getCode());
         reg.setRegisteredAt(registeredAt);
+        reg.setCancelledAt(cancelledAt);
         eventRegistrationRepository.save(reg);
     }
 
@@ -633,6 +787,7 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
             User adminUser,
             User userB,
             User student,
+            User ctvDemo,
             OffsetDateTime now) {
         if (chatChannelRepository != null && chatMessageRepository != null) {
             for (Club club : clubsByCode.values()) {
@@ -747,7 +902,7 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
                         target.getId(),
                         "Hồ sơ ứng tuyển mới đang chờ duyệt tại các CLB",
                         "Có hồ sơ đăng ký gia nhập mới tại các câu lạc bộ VJU. Mở mục Quản lý CLB -> Đơn đăng ký để xét duyệt và phân ban.",
-                        "APPLICATION",
+                        "CLUB_APPLICATION",
                         null,
                         "app-pending-" + prefix + "-2026"
                 );
@@ -758,6 +913,25 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
                         "TASK",
                         null,
                         "task-verify-" + prefix + "-2026"
+                );
+            }
+            if (ctvDemo != null) {
+                String ctvPrefix = ctvDemo.getId().toString().substring(0, 8);
+                notificationRepository.insertIdempotent(
+                        ctvDemo.getId(),
+                        "Xác nhận đăng ký Cộng tác viên Sự kiện VJU",
+                        "Bạn đã được phân công vai trò CTV Truyền thông & Check-in tại các sự kiện mở của CLB VJU. Kiểm tra lịch và nhiệm vụ sự kiện của bạn.",
+                        "EVENT",
+                        null,
+                        "ctv-event-" + ctvPrefix + "-2026"
+                );
+                notificationRepository.insertIdempotent(
+                        ctvDemo.getId(),
+                        "Nhiệm vụ sự kiện mới dành cho Cộng tác viên",
+                        "Ban Tổ chức sự kiện vừa giao nhiệm vụ hỗ trợ bàn Check-in & đón tiếp đại biểu cho bạn.",
+                        "TASK",
+                        null,
+                        "ctv-task-" + ctvPrefix + "-2026"
                 );
             }
         }
@@ -1156,10 +1330,12 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
             User userB,
             User userC,
             User student,
+            User ctvDemo,
             User svLinh,
             User svMinh,
             OffsetDateTime now) {
         User effectiveAdmin = adminUser != null ? adminUser : userA;
+        Set<String> cancelledTaskClubs = Set.of("VJUA", "ARC", "BIGHEART");
 
         for (Club club : clubsByCode.values()) {
             List<Membership> activeMembers = membershipRepository
@@ -1171,33 +1347,102 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
                     .findFirst()
                     .orElse(student);
 
-            // 1. DONE task (100% progress) — ready for Admin to click "Nghiệm thu công việc" (verify) immediately!
-            ensureClubTaskByTitle(club, userA, memberAssignee, 0,
+            // 1. DONE task (100% progress, future deadline) — ready for Admin to click "Nghiệm thu công việc" (verify) immediately!
+            Task doneTask = ensureClubTaskByTitle(club, userA, memberAssignee, 0,
                     "Hoàn thiện ấn phẩm truyền thông & danh sách hậu cần " + club.getCode(),
                     "Đã thiết kế xong bộ banner sự kiện, danh sách phân công ca trực và gửi Ban Chủ nhiệm " + club.getName() + " nghiệm thu.",
-                    TaskPriority.HIGH, TaskStatus.DONE, 100, now.plusDays(2), null, null);
+                    TaskPriority.HIGH, TaskStatus.DONE, 100, now.plusDays(3), null, null, null, null);
+            if (doneTask != null && doneTask.getStatus() == TaskStatus.DONE && doneTask.getDeadline().isBefore(now.plusHours(6))) {
+                doneTask.setDeadline(now.plusDays(3));
+                taskRepository.save(doneTask);
+            }
 
-            // 2. IN_PROGRESS task assigned to Admin — so Admin sees tasks in /dashboard & /schedule and can test updating progress
-            ensureClubTaskByTitle(club, userA, effectiveAdmin, 1,
+            // 2. IN_PROGRESS parent task assigned to Admin (future deadline) — hosts 1-level subtasks (PB-58)
+            Task parentTask = ensureClubTaskByTitle(club, userA, effectiveAdmin, 1,
                     "Phê duyệt kế hoạch hoạt động & dự trù kinh phí " + club.getCode(),
                     "Rà soát nội dung chương trình, danh sách khách mời và kinh phí tổ chức hoạt động học kỳ của " + club.getName() + ".",
-                    TaskPriority.HIGH, TaskStatus.IN_PROGRESS, 65, now.plusDays(4), null, null);
+                    TaskPriority.HIGH, TaskStatus.IN_PROGRESS, 65, now.plusDays(5), null, null, null, null);
+            if (parentTask != null && parentTask.getStatus() == TaskStatus.IN_PROGRESS && parentTask.getDeadline().isBefore(now.plusDays(2))) {
+                parentTask.setDeadline(now.plusDays(5));
+                parentTask.setOverdueNotifiedAt(null);
+                parentTask = taskRepository.save(parentTask);
+            }
 
-            // 3. TODO overdue task — so "Quá hạn" filter and overdueTasks metric are populated
+            // 2a & 2b. 1-level Subtasks under parentTask (PB-58: subtask.deadline <= parent.deadline; blocks parent verification while open)
+            if (parentTask != null) {
+                OffsetDateTime subDeadlineDone = parentTask.getDeadline().minusDays(2).isAfter(now.plusHours(6))
+                        ? parentTask.getDeadline().minusDays(2)
+                        : parentTask.getDeadline().minusHours(6);
+                OffsetDateTime subDeadlineOpen = parentTask.getDeadline().minusDays(1).isAfter(now.plusHours(12))
+                        ? parentTask.getDeadline().minusDays(1)
+                        : parentTask.getDeadline().minusHours(2);
+                ensureClubTaskByTitle(club, effectiveAdmin, memberAssignee, 1,
+                        "Tổng hợp bảng dự trù kinh phí & báo giá thiết bị " + club.getCode(),
+                        "Thu thập báo giá âm thanh, in ấn standee và vật tư hậu cần cho kế hoạch hoạt động của " + club.getCode() + ".",
+                        TaskPriority.MEDIUM, TaskStatus.DONE, 100, subDeadlineDone, null, null, parentTask, null);
+                ensureClubTaskByTitle(club, effectiveAdmin, effectiveAdmin, 1,
+                        "Hoàn thiện kịch bản điều phối & danh sách khách mời " + club.getCode(),
+                        "Chốt timeline chi tiết từng hạng mục và xác nhận khách mời tham dự chương trình của " + club.getCode() + ".",
+                        TaskPriority.MEDIUM, TaskStatus.IN_PROGRESS, 50, subDeadlineOpen, null, null, parentTask, null);
+            }
+
+            // 3. TODO overdue task — populates overdue filter for TODO status
             ensureClubTaskByTitle(club, effectiveAdmin, memberAssignee, 2,
                     "Bổ sung biên bản họp Ban chuyên môn " + club.getCode(),
                     "Tổng hợp ý kiến đóng góp của các thành viên trong buổi họp tuần trước và tải lên kho tài liệu CLB.",
-                    TaskPriority.MEDIUM, TaskStatus.TODO, 25, now.minusDays(1), null, null);
+                    TaskPriority.MEDIUM, TaskStatus.TODO, 0, now.minusDays(1), null, null, null, null);
 
-            // 4. COMPLETED (verified) task — so completedTasks & completionRate statistics in OverviewTab are non-zero
+            // 4. IN_PROGRESS overdue task — explicitly demonstrates PB-29 non-destructive overdue (stays IN_PROGRESS + overdue=true)
+            ensureClubTaskByTitle(club, userA, memberAssignee, 0,
+                    "Cập nhật tiến độ truyền thông & hậu cần đợt 1 " + club.getCode(),
+                    "Đang hoàn thiện bài đăng tổng hợp truyền thông đợt 1 (giữ nguyên trạng thái IN_PROGRESS khi quá hạn theo PB-29).",
+                    TaskPriority.HIGH, TaskStatus.IN_PROGRESS, 55, now.minusHours(16), null, null, null, null);
+
+            // 5. COMPLETED (verified) task — populates completedTasks & completionRate statistics
             ensureClubTaskByTitle(club, userA, memberAssignee, 3,
                     "Báo cáo tổng kết hoạt động tháng trước " + club.getCode(),
                     "Đã hoàn thành báo cáo số liệu thành viên, điểm danh sự kiện và được Ban Chủ nhiệm nghiệm thu.",
-                    TaskPriority.MEDIUM, TaskStatus.COMPLETED, 100, now.minusDays(5), userA, now.minusDays(3));
+                    TaskPriority.MEDIUM, TaskStatus.COMPLETED, 100, now.minusDays(5), userA, now.minusDays(3), null, null);
+
+            // 6. CANCELLED task showcase
+            if (cancelledTaskClubs.contains(club.getCode())) {
+                ensureClubTaskByTitle(club, userA, memberAssignee, 2,
+                        "[Đã huỷ] Đặt in phông nền ngoài trời phương án cũ " + club.getCode(),
+                        "Huỷ hạng mục in phông nền kích thước cũ sau khi chuyển địa điểm vào hội trường trong nhà.",
+                        TaskPriority.LOW, TaskStatus.CANCELLED, 0, now.plusDays(3), null, null, null, null);
+            }
+
+            // 7. Event-linked task assigned to registered CTV (PB-27.1)
+            if (eventRegistrationRepository != null) {
+                Event openCtvEvent = eventRepository.findByClub(club.getId(), EventStatus.OPEN_REGISTRATION, null, PageRequest.of(0, 10))
+                        .getContent().stream()
+                        .filter(ev -> ev.isAllowCtv()
+                                && ev.getEventType() == EventType.CLUB_EVENT
+                                && ev.getStartTime().isAfter(now.plusHours(8)))
+                        .findFirst()
+                        .orElse(null);
+                if (openCtvEvent != null) {
+                    User registeredCtv = eventRegistrationRepository
+                            .findByEvent_IdOrderByRegisteredAtAsc(openCtvEvent.getId(), PageRequest.of(0, 20))
+                            .getContent().stream()
+                            .filter(r -> r.getParticipantType() == EventParticipantType.CTV
+                                    && r.getStatus() == EventRegistrationStatus.REGISTERED)
+                            .map(EventRegistration::getUser)
+                            .findFirst()
+                            .orElse(null);
+                    if (registeredCtv != null) {
+                        ensureClubTaskByTitle(club, userA, registeredCtv, -1,
+                                "Hỗ trợ bàn Check-in & điều phối CTV sự kiện " + club.getCode(),
+                                "Phối hợp đón tiếp sinh viên, hướng dẫn quét mã check-in và phát tài liệu tại sự kiện \"" + openCtvEvent.getTitle() + "\".",
+                                TaskPriority.MEDIUM, TaskStatus.IN_PROGRESS, 60,
+                                openCtvEvent.getStartTime().minusHours(4), null, null, null, openCtvEvent);
+                    }
+                }
+            }
         }
     }
 
-    private void ensureClubTaskByTitle(
+    private Task ensureClubTaskByTitle(
             Club club,
             User assigner,
             User assignee,
@@ -1209,22 +1454,26 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
             int progressPercent,
             OffsetDateTime deadline,
             User verifiedBy,
-            OffsetDateTime verifiedAt) {
+            OffsetDateTime verifiedAt,
+            Task parentTask,
+            Event event) {
         if (club == null || assigner == null || assignee == null) {
-            return;
+            return null;
         }
         List<Task> existing = taskRepository.findAllByClubFiltered(
                 club.getId(), null, null, null, false, false, OffsetDateTime.now(clock));
-        boolean found = existing.stream().anyMatch(t -> title.equalsIgnoreCase(t.getTitle()));
-        if (found) {
-            return;
+        Optional<Task> found = existing.stream().filter(t -> title.equalsIgnoreCase(t.getTitle())).findFirst();
+        if (found.isPresent()) {
+            return found.get();
         }
         List<Department> depts = departmentRepository.findByClub_IdOrderByNameAscIdAsc(club.getId());
         Task task = new Task();
         task.setClub(club);
-        if (!depts.isEmpty()) {
+        if (deptIdx >= 0 && !depts.isEmpty()) {
             task.setDepartment(depts.get(Math.floorMod(deptIdx, depts.size())));
         }
+        task.setParentTask(parentTask);
+        task.setEvent(event);
         task.setTitle(title);
         task.setDescription(description);
         task.setPriority(priority);
@@ -1233,11 +1482,14 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
         task.setDeadline(deadline);
         task.setAssigner(assigner);
         task.setAssignee(assignee);
+        if ((status == TaskStatus.TODO || status == TaskStatus.IN_PROGRESS) && deadline.isBefore(OffsetDateTime.now(clock))) {
+            task.setOverdueNotifiedAt(deadline.plusMinutes(30));
+        }
         if (status == TaskStatus.COMPLETED && verifiedBy != null) {
             task.setVerifiedBy(verifiedBy);
             task.setVerifiedAt(verifiedAt);
         }
-        taskRepository.save(task);
+        return taskRepository.save(task);
     }
 
     private void seedShowcaseAuditLogs(
@@ -1343,6 +1595,11 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
         }
         if (club.getCoverUrl() == null || club.getCoverUrl().isBlank()) {
             club.setCoverUrl(coverUrl);
+        }
+        if (club.getOverviewConfig() == null || club.getOverviewConfig().isBlank()
+                || "{}".equals(club.getOverviewConfig().trim())) {
+            club.setOverviewConfig(com.vju.club.dto.record.ClubOverviewConfig.defaultSeedJson(
+                    spec.code(), spec.activityField()));
         }
         return clubRepository.save(club);
     }

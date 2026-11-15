@@ -18,9 +18,12 @@ import { formatDateTime, formatDay, formatTime } from "@/lib/utils";
 
 const LIMIT = 20;
 
-function targetHrefFor(n: Notification): { href: string; label: string } | null {
-  if (n.referenceType === "CLUB_APPLICATION" && n.referenceId) {
-    return { href: `/applications?applicationId=${n.referenceId}`, label: "Xem đơn đăng ký" };
+export function targetHrefFor(n: Notification): { href: string; label: string } | null {
+  if (n.referenceType === "CLUB_APPLICATION" || n.referenceType === "APPLICATION") {
+    return {
+      href: n.referenceId ? `/applications?applicationId=${n.referenceId}` : "/applications",
+      label: "Xem đơn đăng ký",
+    };
   }
   if (n.referenceType === "CLUB") {
     return { href: n.referenceId ? `/clubs?clubId=${n.referenceId}` : "/clubs", label: "Xem câu lạc bộ" };

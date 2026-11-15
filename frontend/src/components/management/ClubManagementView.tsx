@@ -21,6 +21,7 @@ import {
   computeVisibleClubTabs,
 } from "@/forms/club/club-form";
 import { DepartmentsTab } from "@/components/department/DepartmentsTab";
+import { DocumentsView } from "@/components/document/DocumentsView";
 import { EventsTab } from "@/components/event/EventsTab";
 import { TasksTab } from "@/components/task/TasksTab";
 import { ChatTab } from "@/components/management/ChatTab";
@@ -68,8 +69,12 @@ function ClubManagementViewContent() {
   const [confirmingLeave, setConfirmingLeave] = useState<Membership | null>(null);
   const [addingMember, setAddingMember] = useState(false);
   const [creatingClub, setCreatingClub] = useState(false);
-  const [notice, setNotice] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
+  const [noticeState, setNoticeState] = useState<{ seq: number; text: string }>({ seq: 0, text: "" });
+  const [errorState, setErrorState] = useState<{ seq: number; text: string }>({ seq: 0, text: "" });
+  const notice = noticeState.text;
+  const errorMsg = errorState.text;
+  const setNotice = (text: string) => setNoticeState((prev) => ({ seq: prev.seq + 1, text }));
+  const setErrorMsg = (text: string) => setErrorState((prev) => ({ seq: prev.seq + 1, text }));
 
   const clubs = useQuery({
     queryKey: ["clubs", "manage"],
@@ -231,7 +236,7 @@ function ClubManagementViewContent() {
           <>
             {currentClub && <ClubAvatar name={currentClub.name} code={currentClub.code} logoUrl={currentClub.logoUrl} size="sm" className="hidden sm:flex" />}
             {manageable.length > 0 && (
-              <Select aria-label="Chọn CLB" value={activeClubId} onChange={(e) => navigateClubAndTab(e.target.value, activeTab === "clubs" ? "overview" : activeTab)} className="h-9 w-full text-xs sm:w-64">
+              <Select aria-label="Chọn CLB" value={activeClubId} onChange={(e) => navigateClubAndTab(e.target.value, activeTab === "clubs" ? "overview" : activeTab)} className="h-9 w-full text-xs sm:w-52">
                 {manageable.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}
               </Select>
             )}
@@ -259,15 +264,16 @@ function ClubManagementViewContent() {
           }
           if (activeTab === "events") queryClient.invalidateQueries({ queryKey: ["events", activeClubId] });
           if (activeTab === "tasks") queryClient.invalidateQueries({ queryKey: ["tasks", activeClubId] });
+          if (activeTab === "documents") queryClient.invalidateQueries({ queryKey: ["documents"] });
           if (activeTab === "chat") {
-            queryClient.invalidateQueries({ queryKey: ["chat-channels", activeClubId] });
-            queryClient.invalidateQueries({ queryKey: ["chat-messages", activeClubId] });
-            queryClient.invalidateQueries({ queryKey: ["chat-summaries", activeClubId] });
+            queryClient.invalidateQueries({ queryKey: ["club-channels", activeClubId] });
+            queryClient.invalidateQueries({ queryKey: ["channel-messages"] });
+            queryClient.invalidateQueries({ queryKey: ["channel-summaries"] });
           }
         }}
       />
-      {notice && <Notice tone="success">{notice}</Notice>}
-      {(errorMsg || mutationError) && <Notice tone="error">{errorMsg || describeError(mutationError)}</Notice>}
+      {notice && <Notice key={`ok-${noticeState.seq}`} tone="success">{notice}</Notice>}
+      {(errorMsg || mutationError) && <Notice key={`err-${errorState.seq}`} tone="error">{errorMsg || describeError(mutationError)}</Notice>}
 
       {!session.ready || clubs.isPending ? (
         <LoadingRows />
@@ -282,7 +288,12 @@ function ClubManagementViewContent() {
       ) : activeTab === "clubs" ? (
         <ClubsDirectoryTab clubs={manageable} activeClubId={activeClubId} canCreateClub={canCreateClub} canInClub={session.canInClub} onSelectClubAndTab={(nextClubId, nextTab) => navigateClubAndTab(nextClubId, nextTab)} onOpenCreateClub={() => setCreatingClub(true)} onNotice={setNotice} onError={setErrorMsg} />
       ) : activeTab === "overview" ? (
-        <OverviewTab clubId={activeClubId} />
+        <OverviewTab
+          clubId={activeClubId}
+          club={currentClub}
+          canCustomize={session.canInClub("club.update", activeClubId)}
+          onOpenCustomize={() => navigateClubAndTab(activeClubId, "settings")}
+        />
       ) : activeTab === "applications" ? (
         <ApplicationsTab clubId={activeClubId} clubName={currentClub?.name} activeDepartments={activeDepartments} onNotice={setNotice} onError={setErrorMsg} onRefreshMembers={refreshMembers} />
       ) : activeTab === "forms" ? (
@@ -323,8 +334,10 @@ function ClubManagementViewContent() {
         <EventsTab clubId={activeClubId} departments={activeDepartments} onNotice={setNotice} onError={setErrorMsg} />
       ) : activeTab === "tasks" ? (
         <TasksTab clubId={activeClubId} departments={activeDepartments} members={activeMembersForTasks.data?.items ?? []} onNotice={setNotice} onError={setErrorMsg} />
+      ) : activeTab === "documents" ? (
+        <DocumentsView key={activeClubId} embeddedClubId={activeClubId} />
       ) : activeTab === "chat" ? (
-        <ChatTab clubId={activeClubId} departments={activeDepartments} onNotice={setNotice} onError={setErrorMsg} />
+        <ChatTab key={activeClubId} clubId={activeClubId} departments={activeDepartments} onNotice={setNotice} onError={setErrorMsg} />
       ) : currentClub ? (
         <ClubSettingsTab key={currentClub.id} club={currentClub} departments={activeDepartments} onNotice={setNotice} onError={setErrorMsg} />
       ) : null}
@@ -342,7 +355,7 @@ function ClubManagementViewContent() {
           queryClient.invalidateQueries({ queryKey: ["dashboard", "public-clubs"] });
         }}
       />
-      <ClubMemberDetailDrawer memberId={memberId} clubName={currentClub?.name} onClose={() => setMemberId(null)} memberOf={memberOf} departmentsByMember={departmentsByMember} busy={status.isPending} canUpdate={canUpdateMember} canRemove={canRemoveMember} onStatus={(id, value) => status.mutate({ id, value })} onRequestLeave={setConfirmingLeave} />
+      <ClubMemberDetailDrawer memberId={memberId} clubId={activeClubId} clubName={currentClub?.name} onClose={() => setMemberId(null)} memberOf={memberOf} departmentsByMember={departmentsByMember} activeDepartments={activeDepartments} busy={status.isPending} canUpdate={canUpdateMember} canRemove={canRemoveMember} onStatus={(id, value) => status.mutate({ id, value })} onRequestLeave={setConfirmingLeave} />
       <ConfirmLeaveClubModal confirmingLeave={confirmingLeave} onClose={() => setConfirmingLeave(null)} onRemoved={() => { setNotice("Đã cho thành viên rời CLB (lưu lịch sử trạng thái LEFT và thu hồi quyền tại CLB/Ban)."); setErrorMsg(""); setMemberId(null); refreshMembers(); }} />
     </ListPage>
   );

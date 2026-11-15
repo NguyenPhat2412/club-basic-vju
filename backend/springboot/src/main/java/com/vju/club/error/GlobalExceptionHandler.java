@@ -1,32 +1,37 @@
 package com.vju.club.error;
 
-import com.vju.club.entity.Permission;
-
 import jakarta.persistence.OptimisticLockException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
@@ -46,8 +51,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         CONSTRAINT_CODES.put("uq_user_roles_active_", "ROLE_ALREADY_ASSIGNED");
         CONSTRAINT_CODES.put("uq_roles_code_ci", "ROLE_CODE_ALREADY_EXISTS");
         CONSTRAINT_CODES.put("uq_club_applications_pending", "APPLICATION_ALREADY_PENDING");
+        CONSTRAINT_CODES.put("uq_event_registrations_active", "ALREADY_REGISTERED");
         CONSTRAINT_CODES.put("uq_notifications_user_event_key", "DUPLICATE_NOTIFICATION_EVENT");
+        CONSTRAINT_CODES.put("uq_documents_system_name_live", "DOCUMENT_NAME_ALREADY_EXISTS");
+        CONSTRAINT_CODES.put("uq_documents_club_dept_name_live", "DOCUMENT_NAME_ALREADY_EXISTS");
         CONSTRAINT_CODES.put("uq_documents_club_name_live", "DOCUMENT_NAME_ALREADY_EXISTS");
+        CONSTRAINT_CODES.put("uq_documents_path", "DOCUMENT_VERSION_CONFLICT");
+        CONSTRAINT_CODES.put("uq_document_versions_path", "DOCUMENT_VERSION_CONFLICT");
+        CONSTRAINT_CODES.put("ck_documents_scope_target", "VALIDATION_ERROR");
         CONSTRAINT_CODES.put("uq_document_versions_number", "DOCUMENT_VERSION_CONFLICT");
         CONSTRAINT_CODES.put("ck_document_versions_sequence", "DOCUMENT_VERSION_CONFLICT");
     }
@@ -57,8 +68,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(exception.getStatus(), exception.getCode(), exception.getMessage());
     }
 
-    @ExceptionHandler({ObjectOptimisticLockingFailureException.class, OptimisticLockException.class})
-    ResponseEntity<ProblemDetail> handleOptimisticLock(Exception exception) {
+    @ExceptionHandler({ObjectOptimisticLockingFailureException.class, OptimisticLockException.class, PessimisticLockingFailureException.class})
+    ResponseEntity<ProblemDetail> handleConcurrencyLock(Exception exception) {
         return problem(HttpStatus.CONFLICT, "OPTIMISTIC_LOCK_CONFLICT",
                 "The record was modified concurrently by another user; please reload and try again");
     }
@@ -68,11 +79,22 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         String message = String.valueOf(exception.getMostSpecificCause().getMessage());
         for (Map.Entry<String, String> entry : CONSTRAINT_CODES.entrySet()) {
             if (message.contains(entry.getKey())) {
-                return problem(HttpStatus.CONFLICT, entry.getValue(), "Resource conflicts with existing data");
+                HttpStatus status = "VALIDATION_ERROR".equals(entry.getValue())
+                        ? HttpStatus.BAD_REQUEST : HttpStatus.CONFLICT;
+                return problem(status, entry.getValue(), "Resource conflicts with existing data");
             }
         }
         log.warn("Unmapped data integrity violation: {}", message);
         return problem(HttpStatus.CONFLICT, "DATA_CONFLICT", "Request conflicts with existing data");
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    ResponseEntity<ProblemDetail> handleConstraintViolation(ConstraintViolationException exception) {
+        String detail = exception.getConstraintViolations().stream()
+                .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                .collect(Collectors.joining(", "));
+        return problem(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                detail.isBlank() ? "Invalid request parameter" : detail);
     }
 
     @ExceptionHandler(AuthenticationCredentialsNotFoundException.class)
@@ -90,6 +112,22 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
     }
 
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ProblemDetail> handleTypeMismatch(MethodArgumentTypeMismatchException exception) {
+        return problem(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                "Invalid value for parameter '" + exception.getName() + "'");
+    }
+
+    @ExceptionHandler(MultipartException.class)
+    ResponseEntity<ProblemDetail> handleMultipartException(MultipartException exception, HttpServletRequest request) {
+        if (exception instanceof MaxUploadSizeExceededException) {
+            String code = isMediaUploadUri(request != null ? request.getRequestURI() : null)
+                    ? "IMAGE_TOO_LARGE" : "DOCUMENT_TOO_LARGE";
+            return problem(HttpStatus.PAYLOAD_TOO_LARGE, code, "File is larger than the allowed maximum");
+        }
+        return problem(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Invalid multipart file upload request");
+    }
+
     @ExceptionHandler(Exception.class)
     ResponseEntity<ProblemDetail> handleUnexpectedException(Exception exception) {
         log.error("Unhandled exception", exception);
@@ -99,9 +137,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException exception, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-        String detail = exception.getBindingResult().getFieldErrors().stream()
-                .map(error -> error.getField() + ": " + error.getDefaultMessage())
-                .collect(Collectors.joining(", "));
+        Stream<String> fieldErrors = exception.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage());
+        Stream<String> globalErrors = exception.getBindingResult().getGlobalErrors().stream()
+                .map(error -> error.getObjectName() + ": " + error.getDefaultMessage());
+        String detail = Stream.concat(fieldErrors, globalErrors).collect(Collectors.joining(", "));
         return asObject(problem(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", detail));
     }
 
@@ -118,7 +158,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleMaxUploadSizeExceededException(
             MaxUploadSizeExceededException exception, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-        return asObject(problem(HttpStatus.PAYLOAD_TOO_LARGE, "DOCUMENT_TOO_LARGE", "File is larger than the allowed maximum"));
+        String uri = request instanceof ServletWebRequest swr ? swr.getRequest().getRequestURI() : null;
+        String code = isMediaUploadUri(uri) ? "IMAGE_TOO_LARGE" : "DOCUMENT_TOO_LARGE";
+        return asObject(problem(HttpStatus.PAYLOAD_TOO_LARGE, code, "File is larger than the allowed maximum"));
+    }
+
+    private static boolean isMediaUploadUri(String uri) {
+        return uri != null && (uri.endsWith("/logo") || uri.endsWith("/cover"));
     }
 
     @Override

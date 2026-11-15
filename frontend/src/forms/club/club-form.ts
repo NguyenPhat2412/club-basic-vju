@@ -69,6 +69,7 @@ export type ClubManagementTabKey =
   | 'departments'
   | 'events'
   | 'tasks'
+  | 'documents'
   | 'chat'
   | 'settings';
 
@@ -81,6 +82,7 @@ export const CLUB_MANAGEMENT_TAB_KEYS: ClubManagementTabKey[] = [
   'departments',
   'events',
   'tasks',
+  'documents',
   'chat',
   'settings',
 ];
@@ -109,7 +111,18 @@ export function computeVisibleClubTabs(
   if (hasAny(['application.manage_form', 'application.review', 'application.approve'])) {
     list.push({ value: 'forms', label: 'Biểu mẫu' });
   }
-  if (hasAny(['member.view', 'member.view_detail', 'member.add', 'member.update', 'member.remove'])) {
+  if (
+    hasAny([
+      'member.view',
+      'member.view_detail',
+      'member.add',
+      'member.update',
+      'member.remove',
+      'permission.view',
+      'permission.assign',
+      'permission.revoke',
+    ])
+  ) {
     list.push({ value: 'members', label: 'Thành viên' });
   }
   if (
@@ -122,6 +135,7 @@ export function computeVisibleClubTabs(
       'department.member.view',
       'department.member.add',
       'department.member.remove',
+      'permission.assign',
     ])
   ) {
     list.push({ value: 'departments', label: 'Ban chuyên môn' });
@@ -131,6 +145,9 @@ export function computeVisibleClubTabs(
   }
   if (hasAny(['task.view', 'task.create', 'task.update', 'task.verify'])) {
     list.push({ value: 'tasks', label: 'Công việc' });
+  }
+  if (hasAny(['document.view', 'document.upload', 'document.update', 'document.delete', 'document.restore'])) {
+    list.push({ value: 'documents', label: 'Tài liệu CLB' });
   }
   if (hasAny(['chat.view', 'chat.send', 'chat.summarize'])) {
     list.push({ value: 'chat', label: 'Chat & AI' });

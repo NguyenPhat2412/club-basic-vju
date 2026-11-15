@@ -13,6 +13,7 @@ import { ChangePasswordModal } from "./ChangePasswordModal";
 import { FirstLoginPassword } from "./FirstLoginPassword";
 import { SidebarNav } from "./SidebarNav";
 import { Topbar } from "./Topbar";
+import { WorkspaceTabBar } from "./WorkspaceTabBar";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -26,6 +27,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentTab = searchParams.get("tab");
+  const currentTier = searchParams.get("tier");
   const authParam = searchParams.get("auth");
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -93,9 +95,13 @@ function AppShellInner({ children }: { children: ReactNode }) {
     authenticated: Boolean(session.user),
     mustChangePassword: Boolean(session.mustChangePassword),
     can: session.can,
+    hasGlobal: session.hasGlobal,
   });
 
-  const activeNavMeta = resolveActiveNavMeta(sections, pathname, currentTab);
+  const activeNavMeta = resolveActiveNavMeta(sections, pathname, currentTab, currentTier);
+  const canManageWorkspace = sections.some((s) =>
+    s.groups.some((g) => g.items.some((i) => i.href.startsWith("/management")))
+  );
 
   const signOut = async () => {
     await queryClient.cancelQueries();
@@ -138,6 +144,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
           onToggleGroup={toggleGroup}
           pathname={pathname}
           currentTab={currentTab}
+          currentTier={currentTier}
           user={session.user}
           mustChangePassword={session.mustChangePassword}
           onSignOut={signOut}
@@ -174,6 +181,9 @@ function AppShellInner({ children }: { children: ReactNode }) {
         <Topbar
           groupLabel={activeNavMeta.groupLabel}
           pageTitle={activeNavMeta.pageTitle}
+          pathname={pathname}
+          sections={sections}
+          canManageWorkspace={canManageWorkspace}
           onMenu={() => setMobileOpen(true)}
           authenticated={!!session.user}
           name={session.user?.fullName || session.user?.email}
@@ -185,6 +195,17 @@ function AppShellInner({ children }: { children: ReactNode }) {
           onRegister={() => openAuthModal("register")}
           notificationsActive={pathname === "/notifications"}
         />
+
+        {!session.mustChangePassword && (session.user || publicClubRoute) && (
+          <WorkspaceTabBar
+            sections={sections}
+            pathname={pathname}
+            currentTab={currentTab}
+            currentTier={currentTier}
+            authenticated={Boolean(session.user)}
+            userId={session.user?.id}
+          />
+        )}
 
         <main
           key={locale}

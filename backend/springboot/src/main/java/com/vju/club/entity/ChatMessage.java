@@ -31,4 +31,12 @@ public class ChatMessage extends TimestampedEntity {
 
     @Column(nullable = false, length = 4000)
     private String content;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reply_to_id")
+    private ChatMessage replyTo;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "document_id")
+    private Document document;
 }

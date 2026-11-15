@@ -93,17 +93,33 @@ export function TasksTab({
     [members, activeEventIdForCandidates, eventRegsForTask.data?.items]
   );
 
+  const hasActiveFilter = Boolean(deptFilter || statusFilter || overdueOnly);
+
+  const allTasksForHierarchy = useQuery({
+    queryKey: ["club-tasks", clubId, "", "", false],
+    queryFn: () => apiModel.clubTasks(clubId, { limit: 100 }),
+    enabled: !!clubId && hasActiveFilter && (creating || !!selected),
+  });
+
+  const hierarchySource = useMemo(
+    () =>
+      hasActiveFilter
+        ? (allTasksForHierarchy.data?.items ?? tasks.data?.items ?? [])
+        : (tasks.data?.items ?? []),
+    [hasActiveFilter, allTasksForHierarchy.data?.items, tasks.data?.items]
+  );
+
   const parentTaskCandidates = useMemo(
     () =>
-      (tasks.data?.items ?? []).filter(
+      hierarchySource.filter(
         (t) => !t.parentTaskId && t.status !== "COMPLETED" && t.status !== "CANCELLED"
       ),
-    [tasks.data?.items]
+    [hierarchySource]
   );
 
   const subtasksOfSelected = useMemo(
-    () => (selected ? (tasks.data?.items ?? []).filter((t) => t.parentTaskId === selected.id) : []),
-    [selected, tasks.data?.items]
+    () => (selected ? hierarchySource.filter((t) => t.parentTaskId === selected.id) : []),
+    [selected, hierarchySource]
   );
 
   const refresh = () => {

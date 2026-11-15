@@ -112,13 +112,32 @@ public class StatisticsServiceImpl implements StatisticsService {
 
         Map<String, Object> clubBase = jdbc.queryForMap("""
                 SELECT (SELECT COUNT(*) FROM memberships m WHERE m.club_id = :clubId AND m.status = 'ACTIVE') AS active_members,
+                       (SELECT COUNT(*) FROM memberships m WHERE m.club_id = :clubId AND m.status = 'SUSPENDED') AS suspended_members,
+                       (SELECT COUNT(*) FROM memberships m WHERE m.club_id = :clubId AND m.status = 'LEFT') AS left_members,
                        (SELECT COUNT(*) FROM departments d WHERE d.club_id = :clubId AND d.status = 'ACTIVE') AS active_departments,
-                       (SELECT COUNT(*) FROM club_applications a WHERE a.club_id = :clubId AND a.status = 'PENDING') AS pending_applications
+                       (SELECT COUNT(*) FROM club_applications a WHERE a.club_id = :clubId AND a.status = 'PENDING') AS pending_applications,
+                       (SELECT COUNT(*) FROM documents doc WHERE doc.club_id = :clubId AND doc.deleted = FALSE) AS live_documents,
+                       (SELECT COALESCE(SUM(doc.size_bytes), 0) FROM documents doc WHERE doc.club_id = :clubId AND doc.deleted = FALSE) AS total_document_bytes,
+                       (SELECT COUNT(*) FROM chat_channels ch WHERE ch.club_id = :clubId) AS chat_channels
+                """, params);
+
+        Map<String, Object> applicationCounts = jdbc.queryForMap("""
+                SELECT COUNT(*) AS applications_submitted,
+                       COUNT(*) FILTER (WHERE a.status = 'PENDING') AS period_pending,
+                       COUNT(*) FILTER (WHERE a.status = 'APPROVED') AS approved_applications,
+                       COUNT(*) FILTER (WHERE a.status = 'REJECTED') AS rejected_applications,
+                       COUNT(*) FILTER (WHERE a.status = 'CANCELLED') AS cancelled_applications
+                FROM club_applications a
+                WHERE a.club_id = :clubId
+                  AND (:hasFrom = FALSE OR a.created_at >= :fromTime)
+                  AND (:hasTo = FALSE OR a.created_at <= :toTime)
                 """, params);
 
         Map<String, Object> eventCounts = jdbc.queryForMap("""
-                SELECT COUNT(*) AS total_events,
+                SELECT COUNT(*) FILTER (WHERE e.status <> 'DRAFT') AS total_events,
+                       COUNT(*) FILTER (WHERE e.status = 'DRAFT') AS draft_events,
                        COUNT(*) FILTER (WHERE e.status = 'OPEN_REGISTRATION') AS open_events,
+                       COUNT(*) FILTER (WHERE e.status = 'CLOSED_REGISTRATION') AS closed_registration_events,
                        COUNT(*) FILTER (WHERE e.status = 'COMPLETED') AS completed_events,
                        COUNT(*) FILTER (WHERE e.status = 'CANCELLED') AS cancelled_events
                 FROM events e
@@ -128,9 +147,11 @@ public class StatisticsServiceImpl implements StatisticsService {
                 """, params);
 
         Map<String, Object> registrationCounts = jdbc.queryForMap("""
-                SELECT COUNT(DISTINCT r.user_id) FILTER (WHERE r.status = 'REGISTERED' AND e.status <> 'CANCELLED') AS unique_participants,
-                       COUNT(r.id) FILTER (WHERE r.status = 'REGISTERED' AND e.status <> 'CANCELLED') AS active_registrations,
-                       COUNT(r.id) FILTER (WHERE r.status = 'CANCELLED') AS cancelled_registrations
+                SELECT COUNT(DISTINCT r.user_id) FILTER (WHERE r.status = 'REGISTERED' AND e.status NOT IN ('DRAFT', 'CANCELLED')) AS unique_participants,
+                       COUNT(r.id) FILTER (WHERE r.status = 'REGISTERED' AND e.status NOT IN ('DRAFT', 'CANCELLED')) AS active_registrations,
+                       COUNT(r.id) FILTER (WHERE r.status = 'REGISTERED' AND r.participant_type = 'MEMBER' AND e.status NOT IN ('DRAFT', 'CANCELLED')) AS member_registrations,
+                       COUNT(r.id) FILTER (WHERE r.status = 'REGISTERED' AND r.participant_type = 'CTV' AND e.status NOT IN ('DRAFT', 'CANCELLED')) AS ctv_registrations,
+                       COUNT(r.id) FILTER (WHERE r.status = 'CANCELLED' AND e.status <> 'DRAFT') AS cancelled_registrations
                 FROM events e
                 LEFT JOIN event_registrations r ON r.event_id = e.id
                 WHERE e.club_id = :clubId
@@ -140,12 +161,23 @@ public class StatisticsServiceImpl implements StatisticsService {
 
         Map<String, Object> attendanceCounts = jdbc.queryForMap("""
                 SELECT COUNT(a.id) FILTER (
-                           WHERE e.status <> 'CANCELLED'
+                           WHERE e.status NOT IN ('DRAFT', 'CANCELLED')
                              AND a.status IN ('PRESENT', 'LATE')
                              AND (r.id IS NULL OR r.status = 'REGISTERED')
                        ) AS attended_count,
                        COUNT(a.id) FILTER (
-                           WHERE e.status <> 'CANCELLED'
+                           WHERE e.status NOT IN ('DRAFT', 'CANCELLED')
+                             AND a.status IN ('PRESENT', 'LATE')
+                             AND (r.id IS NULL OR (r.status = 'REGISTERED' AND r.participant_type = 'MEMBER'))
+                       ) AS member_attended,
+                       COUNT(a.id) FILTER (
+                           WHERE e.status NOT IN ('DRAFT', 'CANCELLED')
+                             AND a.status IN ('PRESENT', 'LATE')
+                             AND r.status = 'REGISTERED'
+                             AND r.participant_type = 'CTV'
+                       ) AS ctv_attended,
+                       COUNT(a.id) FILTER (
+                           WHERE e.status NOT IN ('DRAFT', 'CANCELLED')
                              AND a.status IN ('ABSENT', 'EXCUSED')
                              AND (r.id IS NULL OR r.status = 'REGISTERED')
                        ) AS absent_or_excused_count
@@ -158,14 +190,81 @@ public class StatisticsServiceImpl implements StatisticsService {
                 """, params);
 
         Map<String, Object> taskCounts = jdbc.queryForMap("""
-                SELECT COUNT(*) FILTER (WHERE t.status IN ('TODO', 'IN_PROGRESS')) AS open_tasks,
-                       COUNT(*) FILTER (WHERE t.status IN ('TODO', 'IN_PROGRESS') AND t.deadline < :now) AS overdue_tasks,
-                       COUNT(*) FILTER (WHERE t.status = 'COMPLETED') AS completed_tasks
+                SELECT COUNT(*) FILTER (WHERE t.status IN ('TODO', 'IN_PROGRESS', 'DONE', 'OVERDUE')) AS open_tasks,
+                       COUNT(*) FILTER (WHERE t.status = 'TODO') AS todo_tasks,
+                       COUNT(*) FILTER (WHERE t.status = 'IN_PROGRESS') AS in_progress_tasks,
+                       COUNT(*) FILTER (WHERE t.status = 'DONE') AS review_pending_tasks,
+                       COUNT(*) FILTER (
+                           WHERE t.status = 'OVERDUE'
+                              OR (t.status IN ('TODO', 'IN_PROGRESS') AND t.deadline < :now)
+                       ) AS overdue_tasks,
+                       COUNT(*) FILTER (WHERE t.status = 'COMPLETED') AS completed_tasks,
+                       COUNT(*) FILTER (WHERE t.status = 'CANCELLED') AS cancelled_tasks
                 FROM tasks t
                 WHERE t.club_id = :clubId
                   AND (:hasFrom = FALSE OR t.created_at >= :fromTime)
                   AND (:hasTo = FALSE OR t.created_at <= :toTime)
                 """, params);
+
+        List<ClubStatisticsResponse.DepartmentStatsItem> departmentBreakdown = jdbc.query("""
+                SELECT d.id AS department_id,
+                       d.name AS department_name,
+                       d.status AS department_status,
+                       (SELECT COUNT(*)
+                        FROM department_members dm
+                        JOIN memberships m ON m.id = dm.membership_id AND m.club_id = dm.club_id
+                        WHERE dm.department_id = d.id AND m.status = 'ACTIVE') AS active_members,
+                       (SELECT COUNT(*)
+                        FROM club_applications ca
+                        WHERE ca.club_id = :clubId
+                          AND ca.preferred_department_id = d.id
+                          AND (:hasFrom = FALSE OR ca.created_at >= :fromTime)
+                          AND (:hasTo = FALSE OR ca.created_at <= :toTime)) AS first_choice_applications,
+                       (SELECT COUNT(*)
+                        FROM club_applications ca
+                        WHERE ca.club_id = :clubId
+                          AND ca.secondary_department_id = d.id
+                          AND (:hasFrom = FALSE OR ca.created_at >= :fromTime)
+                          AND (:hasTo = FALSE OR ca.created_at <= :toTime)) AS second_choice_applications,
+                       (SELECT COUNT(*)
+                        FROM tasks t
+                        WHERE t.club_id = :clubId
+                          AND t.department_id = d.id
+                          AND t.status IN ('TODO', 'IN_PROGRESS', 'DONE', 'OVERDUE')
+                          AND (:hasFrom = FALSE OR t.created_at >= :fromTime)
+                          AND (:hasTo = FALSE OR t.created_at <= :toTime)) AS open_tasks,
+                       (SELECT COUNT(*)
+                        FROM tasks t
+                        WHERE t.club_id = :clubId
+                          AND t.department_id = d.id
+                          AND t.status = 'COMPLETED'
+                          AND (:hasFrom = FALSE OR t.created_at >= :fromTime)
+                          AND (:hasTo = FALSE OR t.created_at <= :toTime)) AS completed_tasks
+                FROM departments d
+                WHERE d.club_id = :clubId
+                ORDER BY (d.status = 'ACTIVE') DESC, active_members DESC, d.name ASC
+                """, params, (rs, rowNum) -> new ClubStatisticsResponse.DepartmentStatsItem(
+                UUID.fromString(rs.getString("department_id")),
+                rs.getString("department_name"),
+                rs.getString("department_status"),
+                rs.getLong("active_members"),
+                rs.getLong("first_choice_applications"),
+                rs.getLong("second_choice_applications"),
+                rs.getLong("open_tasks"),
+                rs.getLong("completed_tasks")
+        ));
+
+        long approvedApps = asLong(applicationCounts.get("approved_applications"));
+        long rejectedApps = asLong(applicationCounts.get("rejected_applications"));
+        int approvalRate = percent(approvedApps, approvedApps + rejectedApps);
+
+        long attendedCount = asLong(attendanceCounts.get("attended_count"));
+        long absentOrExcusedCount = asLong(attendanceCounts.get("absent_or_excused_count"));
+        int attendanceRate = percent(attendedCount, attendedCount + absentOrExcusedCount);
+
+        long openTasks = asLong(taskCounts.get("open_tasks"));
+        long completedTasks = asLong(taskCounts.get("completed_tasks"));
+        int taskCompletionRate = percent(completedTasks, openTasks + completedTasks);
 
         return new ClubStatisticsResponse(
                 club.getId(),
@@ -174,25 +273,54 @@ public class StatisticsServiceImpl implements StatisticsService {
                 from,
                 to,
                 asLong(clubBase.get("active_members")),
+                asLong(clubBase.get("suspended_members")),
+                asLong(clubBase.get("left_members")),
                 asLong(clubBase.get("active_departments")),
                 asLong(clubBase.get("pending_applications")),
+                asLong(applicationCounts.get("applications_submitted")),
+                asLong(applicationCounts.get("period_pending")),
+                approvedApps,
+                rejectedApps,
+                asLong(applicationCounts.get("cancelled_applications")),
+                approvalRate,
                 asLong(eventCounts.get("total_events")),
+                asLong(eventCounts.get("draft_events")),
                 asLong(eventCounts.get("open_events")),
+                asLong(eventCounts.get("closed_registration_events")),
                 asLong(eventCounts.get("completed_events")),
                 asLong(eventCounts.get("cancelled_events")),
                 asLong(registrationCounts.get("unique_participants")),
                 asLong(registrationCounts.get("active_registrations")),
+                asLong(registrationCounts.get("member_registrations")),
+                asLong(registrationCounts.get("ctv_registrations")),
                 asLong(registrationCounts.get("cancelled_registrations")),
-                asLong(attendanceCounts.get("attended_count")),
-                asLong(attendanceCounts.get("absent_or_excused_count")),
-                asLong(taskCounts.get("open_tasks")),
+                attendedCount,
+                asLong(attendanceCounts.get("member_attended")),
+                asLong(attendanceCounts.get("ctv_attended")),
+                absentOrExcusedCount,
+                attendanceRate,
+                openTasks,
+                asLong(taskCounts.get("todo_tasks")),
+                asLong(taskCounts.get("in_progress_tasks")),
+                asLong(taskCounts.get("review_pending_tasks")),
                 asLong(taskCounts.get("overdue_tasks")),
-                asLong(taskCounts.get("completed_tasks")),
+                completedTasks,
+                asLong(taskCounts.get("cancelled_tasks")),
+                taskCompletionRate,
+                asLong(clubBase.get("live_documents")),
+                asLong(clubBase.get("total_document_bytes")),
+                asLong(clubBase.get("chat_channels")),
+                departmentBreakdown,
                 now
         );
     }
 
     private static long asLong(Object value) {
         return value instanceof Number n ? n.longValue() : 0L;
+    }
+
+    private static int percent(long numerator, long denominator) {
+        if (denominator <= 0 || numerator <= 0) return 0;
+        return (int) Math.round(numerator * 100.0 / denominator);
     }
 }

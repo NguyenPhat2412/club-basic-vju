@@ -9,6 +9,7 @@ import com.vju.club.dto.response.ChatMessageResponse;
 import com.vju.club.entity.AiSummary;
 import com.vju.club.entity.ChatChannel;
 import com.vju.club.entity.ChatMessage;
+import com.vju.club.entity.Document;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
@@ -25,6 +26,8 @@ public interface ChatMapper {
     @Mapping(target = "departmentName", source = "department.name")
     @Mapping(target = "eventId", source = "event.id")
     @Mapping(target = "eventTitle", source = "event.title")
+    @Mapping(target = "unreadCount", constant = "0L")
+    @Mapping(target = "lastMessageAt", ignore = true)
     ChatChannelResponse toChannelResponse(ChatChannel channel);
 
     @Mapping(target = "clubId", source = "club.id")
@@ -35,6 +38,16 @@ public interface ChatMapper {
     @Mapping(target = "channelId", source = "channel.id")
     @Mapping(target = "senderId", source = "sender.id")
     @Mapping(target = "senderFullName", source = "sender.fullName")
+    @Mapping(target = "replyToId", source = "replyTo.id")
+    @Mapping(target = "replyToSenderName", source = "replyTo.sender.fullName")
+    @Mapping(target = "replyToPreview", expression = "java(snippetOf(message.getReplyTo()))")
+    @Mapping(target = "documentId", expression = "java(liveDocId(message.getDocument()))")
+    @Mapping(target = "documentName", expression = "java(liveDocName(message.getDocument()))")
+    @Mapping(target = "documentContentType", expression = "java(liveDocType(message.getDocument()))")
+    @Mapping(target = "documentSizeBytes", expression = "java(liveDocSize(message.getDocument()))")
+    @Mapping(target = "documentPreviewable", expression = "java(liveDocPreviewable(message.getDocument()))")
+    @Mapping(target = "attachments", expression = "java(java.util.List.of())")
+    @Mapping(target = "clientTempId", ignore = true)
     ChatMessageResponse toMessageResponse(ChatMessage message);
 
     @Mapping(target = "channelId", source = "channel.id")
@@ -54,5 +67,34 @@ public interface ChatMapper {
         } catch (Exception e) {
             return Collections.emptyList();
         }
+    }
+
+    default String snippetOf(ChatMessage replyTo) {
+        if (replyTo == null) return null;
+        String text = replyTo.getContent() == null ? "" : replyTo.getContent().strip();
+        if (text.isEmpty()) return "[Đính kèm đa phương tiện]";
+        return text.length() <= 100 ? text : text.substring(0, 99) + "…";
+    }
+
+    default java.util.UUID liveDocId(Document doc) {
+        return doc != null && !doc.isDeleted() ? doc.getId() : null;
+    }
+
+    default String liveDocName(Document doc) {
+        return doc != null && !doc.isDeleted() ? doc.getName() : null;
+    }
+
+    default String liveDocType(Document doc) {
+        return doc != null && !doc.isDeleted() ? doc.getContentType() : null;
+    }
+
+    default Long liveDocSize(Document doc) {
+        return doc != null && !doc.isDeleted() ? doc.getSizeBytes() : null;
+    }
+
+    default Boolean liveDocPreviewable(Document doc) {
+        if (doc == null || doc.isDeleted() || doc.getContentType() == null) return null;
+        String ct = doc.getContentType();
+        return ct.equals("application/pdf") || ct.startsWith("image/") || ct.startsWith("text/");
     }
 }

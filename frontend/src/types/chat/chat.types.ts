@@ -1,3 +1,37 @@
+export type ChatAttachmentKind = 'IMAGE' | 'VIDEO' | 'FILE';
+
+export type ChatAttachment = {
+  id: string;
+  channelId: string;
+  messageId?: string | null;
+  fileName: string;
+  contentType: string;
+  mediaKind: ChatAttachmentKind;
+  sizeBytes: number;
+  checksumSha256: string;
+  sortOrder: number;
+  localPreviewUrl?: string;
+};
+
+export type StagedChatMedia = {
+  localId: string;
+  file: File;
+  previewUrl: string;
+  mediaKind: ChatAttachmentKind;
+};
+
+export type ChatQuickReply = {
+  id: string;
+  clubId: string;
+  createdBy?: string | null;
+  creatorName?: string | null;
+  shortcut: string;
+  title: string;
+  content: string;
+  sortOrder: number;
+  updatedAt: string;
+};
+
 export type ChatChannel = {
   id: string;
   clubId: string;
@@ -7,6 +41,8 @@ export type ChatChannel = {
   eventTitle?: string;
   name: string;
   channelType: string;
+  unreadCount?: number;
+  lastMessageAt?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -17,8 +53,30 @@ export type ChatMessage = {
   senderId?: string;
   senderFullName?: string;
   senderType: 'USER' | 'AI_BOT';
+  replyToId?: string;
+  replyToSenderName?: string;
+  replyToPreview?: string;
+  documentId?: string;
+  documentName?: string;
+  documentContentType?: string;
+  documentSizeBytes?: number;
+  documentPreviewable?: boolean;
+  attachments?: ChatAttachment[];
+  clientTempId?: string;
+  optimistic?: boolean;
   content: string;
   createdAt: string;
+};
+
+export type ChatRealtimeEvent = {
+  type: 'MESSAGE_CREATED' | 'SUMMARY_POSTED' | 'TYPING' | 'CHANNEL_CREATED';
+  clubId: string;
+  channelId: string;
+  actorId?: string;
+  actorName?: string;
+  message?: ChatMessage;
+  channel?: ChatChannel;
+  occurredAt: string;
 };
 
 export type AiSummary = {

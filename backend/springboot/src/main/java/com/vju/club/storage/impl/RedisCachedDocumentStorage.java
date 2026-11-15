@@ -15,6 +15,8 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -42,6 +44,11 @@ public class RedisCachedDocumentStorage implements DocumentStorage, AutoCloseabl
 
     @Override
     public void put(String key, InputStream content, long size, String contentType) {
+        put(key, content, size, contentType, Collections.emptyMap());
+    }
+
+    @Override
+    public void put(String key, InputStream content, long size, String contentType, Map<String, String> metadata) {
         if (size > 0 && size <= maxCachedBytes) {
             byte[] bytes;
             try {
@@ -49,11 +56,11 @@ public class RedisCachedDocumentStorage implements DocumentStorage, AutoCloseabl
             } catch (IOException e) {
                 throw new DocumentStorageException("Could not read stream for caching", e);
             }
-            delegate.put(key, new ByteArrayInputStream(bytes), bytes.length, contentType);
+            delegate.put(key, new ByteArrayInputStream(bytes), bytes.length, contentType, metadata);
             putInRedis(key, bytes);
             return;
         }
-        delegate.put(key, content, size, contentType);
+        delegate.put(key, content, size, contentType, metadata);
     }
 
     @Override

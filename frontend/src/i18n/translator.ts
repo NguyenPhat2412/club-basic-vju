@@ -154,6 +154,21 @@ const DYNAMIC_PATTERNS: PatternRule[] = [
     ja: (_, club) => `定例ミーティング＆専門部署出席確認 — ${club}`,
   },
   {
+    pattern: /^Tổng duyệt\s*&\s*Chốt danh sách Nhân sự Sự kiện\s+(.+)$/i,
+    en: (_, club) => `Final Rehearsal & Event Staffing — ${club}`,
+    ja: (_, club) => `最終リハーサル＆イベントスタッフ確定 — ${club}`,
+  },
+  {
+    pattern: /^\[Đã huỷ\]\s*Giao lưu Ngoài trời\s*\(Dời lịch do thời tiết\)\s+(.+)$/i,
+    en: (_, club) => `[Cancelled] Outdoor Meetup (Weather Postponed) — ${club}`,
+    ja: (_, club) => `【中止】屋外交流会（悪天候のため順延） — ${club}`,
+  },
+  {
+    pattern: /^\[Bản nháp\]\s*Đề xuất Ngày hội Tuyển CTV Chuyên đề\s+(.+)$/i,
+    en: (_, club) => `[Draft] Proposed Thematic Volunteer Recruitment Day — ${club}`,
+    ja: (_, club) => `【下書き】テーマ別サポーター募集デー企画案 — ${club}`,
+  },
+  {
     pattern: /^Không thể tải danh sách câu lạc bộ:\s*(.+)$/i,
     en: (_, err) => `Unable to load clubs list: ${err}`,
     ja: (_, err) => `クラブ一覧を読み込めませんでした: ${err}`,

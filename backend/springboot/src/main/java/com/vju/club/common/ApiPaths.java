@@ -117,6 +117,7 @@ public final class ApiPaths {
     public static final String TASK_NOTIFICATIONS = "/tasks/{taskId}/notifications";
 
     // Documents
+    public static final String SYSTEM_DOCUMENTS = "/system/documents";
     public static final String CLUB_DOCUMENTS = "/clubs/{clubId}/documents";
     public static final String CLUB_DOCUMENTS_COUNT = "/clubs/{clubId}/documents/count";
     public static final String CLUB_DOCUMENTS_NAMES = "/clubs/{clubId}/documents/names";
@@ -124,6 +125,7 @@ public final class ApiPaths {
     public static final String DOCUMENT_RESTORE = "/documents/{documentId}/restore";
     public static final String DOCUMENT_VERSIONS = "/documents/{documentId}/versions";
     public static final String DOCUMENT_DOWNLOAD = "/documents/{documentId}/download";
+    public static final String DOCUMENT_PREVIEW = "/documents/{documentId}/preview";
     public static final String DOCUMENT_DOWNLOAD_URL = "/documents/{documentId}/download-url";
 
     // Events & Calendar
@@ -153,8 +155,14 @@ public final class ApiPaths {
     public static final String CLUB_STATISTICS = "/clubs/{clubId}/statistics";
 
     // Chat & AI Summaries
+    public static final String WS_ENDPOINT = API_V1 + "/ws";
     public static final String CLUB_CHANNELS = "/clubs/{clubId}/channels";
     public static final String CHANNEL_MESSAGES = "/channels/{channelId}/messages";
+    public static final String CHANNEL_ATTACHMENTS = "/channels/{channelId}/attachments";
+    public static final String CHAT_ATTACHMENT_STREAM = "/chat-attachments/{attachmentId}/stream";
+    public static final String CLUB_QUICK_REPLIES = "/clubs/{clubId}/quick-replies";
+    public static final String CLUB_QUICK_REPLY_BY_ID = "/clubs/{clubId}/quick-replies/{replyId}";
+    public static final String CHANNEL_READ = "/channels/{channelId}/read";
     public static final String CHANNEL_SUMMARIES = "/channels/{channelId}/summaries";
 
     // System Settings & Audit Logs

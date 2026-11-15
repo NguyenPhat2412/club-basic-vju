@@ -28,7 +28,10 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID>, J
 
     boolean existsByUser_IdAndClub_IdAndStatus(UUID userId, UUID clubId, MembershipStatus status);
 
-    @Query("SELECT m.user.id FROM Membership m WHERE m.club.id = :clubId AND m.status = com.vju.club.enums.MembershipStatus.ACTIVE")
+    @Query("SELECT m.user.id FROM Membership m WHERE m.club.id = :clubId "
+            + "AND m.status = com.vju.club.enums.MembershipStatus.ACTIVE "
+            + "AND m.user.status = com.vju.club.enums.UserStatus.ACTIVE "
+            + "AND m.user.anonymizedAt IS NULL")
     List<UUID> findActiveUserIdsByClubId(@Param("clubId") UUID clubId);
 
     @Query("SELECT m.club.id FROM Membership m WHERE m.user.id = :userId AND m.status = com.vju.club.enums.MembershipStatus.ACTIVE")

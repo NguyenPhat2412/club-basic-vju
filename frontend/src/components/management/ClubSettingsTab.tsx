@@ -16,6 +16,7 @@ import { describeError } from "@/components/shared/ListPage";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/input";
+import { ClubOverviewCustomizer } from "@/components/management/ClubOverviewCustomizer";
 
 export function ClubSettingsTab({
   club,
@@ -181,7 +182,7 @@ export function ClubSettingsTab({
                 clubCode={club.code}
                 onUploaded={(updated) => {
                   setLogoUrl(updated.logoUrl ?? "");
-                  onNotice("Đã cập nhật logo CLB.");
+                  onNotice("Đã cập nhật logo câu lạc bộ.");
                   onError("");
                 }}
               />
@@ -195,7 +196,7 @@ export function ClubSettingsTab({
                 clubCode={club.code}
                 onUploaded={(updated) => {
                   setCoverUrl(updated.coverUrl ?? "");
-                  onNotice("Đã cập nhật ảnh bìa CLB.");
+                  onNotice("Đã cập nhật ảnh bìa câu lạc bộ.");
                   onError("");
                 }}
               />
@@ -280,6 +281,16 @@ export function ClubSettingsTab({
             </Button>
           </div>
         </section>
+      )}
+
+      {canUpdateClub && (
+        <ClubOverviewCustomizer
+          key={`customizer-${club.id}`}
+          club={club}
+          onSaved={refreshClubs}
+          onNotice={onNotice}
+          onError={onError}
+        />
       )}
     </div>
   );

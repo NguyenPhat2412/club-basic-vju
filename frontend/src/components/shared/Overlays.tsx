@@ -1,16 +1,35 @@
 "use client";
-import { FormEvent, ReactNode, useEffect } from "react";
+import { FormEvent, ReactNode, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-function useEscape(open: boolean, onClose: () => void) {
+const escapeStack: Array<() => void> = [];
+
+function useOverlayBehavior(open: boolean, onClose: () => void) {
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
   useEffect(() => {
     if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const entry = () => closeRef.current();
+    escapeStack.push(entry);
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && escapeStack[escapeStack.length - 1] === entry) {
+        e.stopPropagation();
+        entry();
+      }
+    };
     window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
+    return () => {
+      window.removeEventListener("keydown", handler);
+      const idx = escapeStack.lastIndexOf(entry);
+      if (idx >= 0) escapeStack.splice(idx, 1);
+      previousFocus?.focus?.();
+    };
+  }, [open]);
 }
 
 const sizes = { sm: "max-w-[480px]", md: "max-w-[520px]", lg: "max-w-[640px]" } as const;
@@ -21,7 +40,7 @@ type ModalProps = {
 };
 
 export function ModalShell({ open, onClose, title, icon, size = "md", children, onSubmit, submitLabel = "Lưu", submitLoading, submitDanger, submitDisabled }: ModalProps) {
-  useEscape(open, onClose);
+  useOverlayBehavior(open, onClose);
   if (!open) return null;
   const submit = (e: FormEvent) => { e.preventDefault(); onSubmit?.(); };
   return (
@@ -47,18 +66,18 @@ export function ModalShell({ open, onClose, title, icon, size = "md", children, 
 export function EntityDrawer({ open, onClose, title, subtitle, icon, children, footer }: {
   open: boolean; onClose: () => void; title: string; subtitle?: string; icon?: ReactNode; children: ReactNode; footer?: ReactNode;
 }) {
-  useEscape(open, onClose);
+  useOverlayBehavior(open, onClose);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-xs" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex justify-end overflow-x-hidden bg-black/50 backdrop-blur-xs" onMouseDown={onClose}>
       <aside role="dialog" aria-modal="true" aria-label={title} onMouseDown={(e) => e.stopPropagation()}
-        className="flex h-full w-full flex-col border-l border-border/80 bg-card shadow-2xl sm:max-w-xl md:max-w-2xl fade-in">
+        className="flex h-full w-full max-w-full flex-col border-l border-border/80 bg-card shadow-2xl sm:max-w-xl md:max-w-2xl slide-in-right">
         <div className="flex min-h-15 items-center justify-between gap-3 border-b border-border/60 bg-muted/20 px-4 py-3.5 sm:min-h-16 sm:px-5 sm:py-4">
           <div className="flex min-w-0 items-center gap-3">
             {icon && <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary [&_svg]:size-4">{icon}</span>}
             <div className="min-w-0"><h3 className="truncate text-[15px] font-bold">{title}</h3>{subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}</div>
           </div>
-          <button aria-label="Đóng" onClick={onClose} className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-muted"><X size={16} /></button>
+          <button type="button" aria-label="Đóng" onClick={onClose} className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-muted"><X size={16} /></button>
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">{children}</div>
         {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3.5 sm:px-5 sm:py-4">{footer}</div>}

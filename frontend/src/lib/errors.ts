@@ -75,6 +75,12 @@ const MESSAGES: Record<string, string> = {
   INVALID_FORM_WINDOW: "Thời điểm đóng đơn phải sau thời điểm mở đơn.",
   APPLICATION_ALREADY_REVIEWED: "Đơn này đã được xét duyệt.",
   APPLICATION_CANNOT_BE_CANCELLED: "Đơn này không thể huỷ nữa.",
+  APPLICATION_CANNOT_BE_UPDATED: "Đơn này không còn ở trạng thái cho phép chỉnh sửa.",
+  APPLICATION_FILE_NOT_FOUND: "Không tìm thấy tệp đính kèm của đơn đăng ký.",
+  APPLICATION_FORM_NOT_FOUND: "Không tìm thấy biểu mẫu tuyển thành viên.",
+  APPLICATION_NOT_PENDING: "Đơn đăng ký không còn ở trạng thái chờ duyệt.",
+  ATTACHMENTS_DISABLED: "Biểu mẫu này không cho phép đính kèm tệp.",
+  MAX_ATTACHMENTS_EXCEEDED: "Đã vượt quá số lượng tệp đính kèm tối đa cho phép.",
   APPLICATION_STATUS_TRANSITION_NOT_ALLOWED: "Không được đổi trạng thái đơn qua màn hình chỉnh sửa; hãy dùng chức năng Duyệt, Từ chối hoặc Huỷ đơn.",
   CLUB_APPLICATION_NOT_FOUND: "Không tìm thấy đơn đăng ký.",
   ALREADY_CLUB_MEMBER: "Bạn đã là thành viên của câu lạc bộ này.",
@@ -85,7 +91,13 @@ const MESSAGES: Record<string, string> = {
   MEMBERSHIP_ALREADY_LEFT: "Thành viên đã rời câu lạc bộ.",
   INVALID_MEMBERSHIP_STATUS_TRANSITION: "Không thể chuyển trạng thái thành viên theo chiều này.",
   NOTIFICATION_NOT_FOUND: "Không tìm thấy thông báo hoặc thông báo không thuộc tài khoản của bạn.",
+  DUPLICATE_NOTIFICATION_EVENT: "Thông báo này đã được gửi trước đó.",
   POSITION_HOLDER_LIMIT_REACHED: "Chức danh này đã đủ số người giữ tối đa.",
+  POSITION_LIMIT_REACHED: "Chức danh này đã đủ số người giữ tối đa.",
+  NOT_ORGANIZATIONAL_POSITION: "Vai trò này không phải chức danh tổ chức trong câu lạc bộ.",
+  MEMBERSHIP_REQUIRED_FOR_POSITION: "Người được bổ nhiệm phải là thành viên đang hoạt động của câu lạc bộ.",
+  DEPARTMENT_MEMBERSHIP_REQUIRED: "Người được bổ nhiệm Trưởng ban phải đang thuộc ban chuyên môn này.",
+  DEPARTMENT_CLUB_MISMATCH: "Ban chuyên môn không thuộc câu lạc bộ đã chọn.",
   MEMBER_NOT_IN_DEPARTMENT: "Thành viên chưa thuộc ban chuyên môn này.",
   DEPARTMENT_NOT_FOUND: "Không tìm thấy ban.",
   DEPARTMENT_INACTIVE: "Ban đang tạm ngừng hoạt động.",
@@ -138,6 +150,40 @@ const MESSAGES: Record<string, string> = {
   DOCUMENT_VERSION_NOT_FOUND: "Không tìm thấy phiên bản này.",
   INVALID_DOCUMENT_VERSION: "Số phiên bản không hợp lệ.",
   INVALID_APP_DETAIL_KEY: "appDetailKey chỉ gồm chữ thường, số, dấu gạch dưới và dấu chấm (ví dụ club.rules).",
+  DOCUMENT_NOT_PREVIEWABLE: "Định dạng file này không hỗ trợ xem trực tiếp trên trình duyệt. Vui lòng bấm Tải xuống.",
+  DOCUMENT_CLUB_MISMATCH: "Tài liệu đính kèm phải thuộc câu lạc bộ này hoặc Kho văn bản Hệ thống.",
+  DOCUMENT_CHANNEL_SCOPE_MISMATCH: "Tài liệu nội bộ của Ban chủ nhiệm hoặc Ban chuyên môn khác không thể chia sẻ vào kênh này.",
+  CHANNEL_NOT_FOUND: "Không tìm thấy kênh trao đổi.",
+  MESSAGE_NOT_FOUND: "Không tìm thấy tin nhắn được phản hồi trong kênh này.",
+  EMPTY_CHANNEL: "Kênh chưa có tin nhắn thảo luận của thành viên để tóm tắt.",
+  CLUB_LOGO_NOT_FOUND: "Câu lạc bộ chưa cập nhật ảnh biểu trưng (logo).",
+  CLUB_COVER_NOT_FOUND: "Câu lạc bộ chưa cập nhật ảnh bìa.",
+  EMPTY_IMAGE: "Tệp hình ảnh rỗng.",
+  IMAGE_TOO_LARGE: "Hình ảnh vượt quá dung lượng cho phép (tối đa 10 MB).",
+  INVALID_IMAGE_STREAM: "Không đọc được dữ liệu hình ảnh. Vui lòng chọn tệp khác.",
+  UNSUPPORTED_IMAGE_TYPE: "Định dạng ảnh không hỗ trợ (chỉ nhận PNG, JPG, GIF, WEBP).",
+  CROSS_CLUB_DEPARTMENT: "Ban chuyên môn không thuộc câu lạc bộ của đợt tuyển này.",
+  INVALID_FILE_CATEGORY: "Loại tệp đính kèm không phù hợp với biểu mẫu ứng tuyển.",
+  INVALID_FORM_STATUS: "Trạng thái biểu mẫu tuyển thành viên không hợp lệ.",
+  INVALID_MESSAGE: "Nội dung thông báo không hợp lệ.",
+  MISSING_REQUIRED_FORM_FIELD: "Vui lòng điền đầy đủ các trường thông tin bắt buộc của biểu mẫu.",
+  EVENT_NOT_FOUND: "Không tìm thấy sự kiện.",
+  EVENT_ALREADY_COMPLETED: "Sự kiện đã hoàn thành.",
+  EVENT_CANCELLED: "Sự kiện đã bị huỷ.",
+  INVALID_EVENT_STATUS: "Trạng thái sự kiện không hợp lệ.",
+  INVALID_EVENT_TITLE: "Tên sự kiện không hợp lệ.",
+  TASK_NOT_FOUND: "Không tìm thấy công việc.",
+  TASK_ALREADY_COMPLETED: "Công việc đã được nghiệm thu hoàn thành.",
+  TASK_CANCELLED: "Công việc đã bị huỷ.",
+  TASK_CLOSED: "Công việc đã đóng nên không thể thao tác thêm.",
+  TASK_EVENT_MISMATCH: "Công việc không khớp với sự kiện đã chọn.",
+  EVENT_CLOSED_FOR_TASKS: "Sự kiện đã đóng hoặc huỷ nên không thể gắn công việc mới.",
+  PARENT_TASK_CLOSED: "Công việc cha đã đóng hoặc huỷ.",
+  PARENT_TASK_NOT_FOUND: "Không tìm thấy công việc cha.",
+  INVALID_TASK_DEADLINE: "Hạn hoàn thành công việc không hợp lệ.",
+  INVALID_TASK_STATUS: "Trạng thái công việc không hợp lệ.",
+  INVALID_TASK_TITLE: "Tiêu đề công việc không hợp lệ.",
+  SYSTEM_SETTINGS_MISSING: "Chưa khởi tạo cấu hình hệ thống. Vui lòng liên hệ quản trị viên.",
   DOCUMENT_STORAGE_ERROR: "Kho lưu trữ đang gặp sự cố. Vui lòng thử lại sau.",
   DATA_CONFLICT: "Dữ liệu bị trùng hoặc vừa thay đổi. Vui lòng tải lại.",
   INTERNAL_ERROR: "Hệ thống đang gặp sự cố. Vui lòng thử lại sau.",
@@ -155,6 +201,9 @@ const BY_STATUS: Record<number, string> = {
 
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
+    if (error.code === "MISSING_REQUIRED_FORM_FIELD" && error.message && /[^\x00-\x7F]/.test(error.message)) {
+      return error.message;
+    }
     if (error.code && MESSAGES[error.code]) return MESSAGES[error.code];
     if (BY_STATUS[error.status]) return BY_STATUS[error.status];
     return error.status >= 500 ? MESSAGES.INTERNAL_ERROR : "Đã có lỗi xảy ra. Vui lòng thử lại.";
@@ -163,6 +212,4 @@ export function errorMessage(error: unknown): string {
   return "Đã có lỗi xảy ra. Vui lòng thử lại.";
 }
 
-export function describeError(error: unknown): string {
-  return errorMessage(error);
-}
+export { errorMessage as describeError };

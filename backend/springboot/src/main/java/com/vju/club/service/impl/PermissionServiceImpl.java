@@ -71,8 +71,8 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional(readOnly = true)
-    @RequirePermission(PermissionConstants.PERMISSION_VIEW)
     public List<PermissionResponse> list(Actor actor) {
+        requireAnyOrGlobal(actor, PermissionConstants.PERMISSION_VIEW);
         return permissionRepository.findAllByActiveTrueOrderByModuleAscActionAsc().stream()
                 .map(permissionMapper::toResponse)
                 .toList();
@@ -80,8 +80,8 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional(readOnly = true)
-    @RequirePermission(PermissionConstants.PERMISSION_VIEW)
     public List<PermissionGroupResponse> listGroups(Actor actor) {
+        requireAnyOrGlobal(actor, PermissionConstants.PERMISSION_VIEW);
         Map<String, List<PermissionResponse>> byModule = new TreeMap<>();
         permissionRepository.findAllByActiveTrueOrderByModuleAscActionAsc().forEach(permission ->
                 byModule.computeIfAbsent(permission.getModule(), module -> new ArrayList<>())
@@ -93,47 +93,46 @@ public class PermissionServiceImpl implements PermissionService {
     @Override
     @Transactional(readOnly = true)
     public List<UserPermissionResponse> listUserPermissions(Actor actor, UUID targetUserId) {
-        if (!targetUserId.equals(actor.id())) {
-            authorizationService.require(actor, "permission.view", null, null);
-        }
+        Set<UUID> scopedClubs = permittedClubsForTarget(actor, targetUserId);
         findUser(targetUserId);
         return userPermissionRepository.findByUser_IdAndRevokedAtIsNullOrderByGrantedAtDesc(targetUserId).stream()
+                .filter(grant -> scopedClubs == null || (clubOf(grant.getClub(), grant.getDepartment()) != null
+                        && scopedClubs.contains(clubOf(grant.getClub(), grant.getDepartment()))))
                 .map(permissionMapper::toUserPermissionResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<EffectivePermissionResponse> listEffective(Actor actor, UUID targetUserId) {
-        if (!targetUserId.equals(actor.id())) {
-            authorizationService.require(actor, "permission.view", null, null);
-        }
+        Set<UUID> scopedClubs = permittedClubsForTarget(actor, targetUserId);
         findUser(targetUserId);
         return userPermissionRepository.findEffective(targetUserId).stream()
+                .filter(row -> scopedClubs == null || (row.getClubId() != null && scopedClubs.contains(row.getClubId())))
                 .map(permissionMapper::toEffectiveResponse).toList();
     }
 
     @Override
     @Transactional
-    @RequirePermission(PermissionConstants.PERMISSION_ASSIGN)
     public UserPermissionResponse grant(Actor actor, UUID targetUserId, GrantPermissionRequest request) {
+        boolean preCheckedGlobal = preCheckGlobalWhenUnscopedOrNone(actor, PermissionConstants.PERMISSION_ASSIGN,
+                request.clubId() == null && request.departmentId() == null);
         User actorUser = findUser(actor.id());
         User target = findUser(targetUserId);
         Permission permission = permissionRepository.findById(request.permissionId())
                 .orElseThrow(() -> notFound("PERMISSION_NOT_FOUND", "Permission not found"));
-        if (!permission.isActive()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "PERMISSION_INACTIVE", "Permission is inactive");
-        }
+        if (!permission.isActive()) throw new ApiException(HttpStatus.BAD_REQUEST, "PERMISSION_INACTIVE", "Permission is inactive");
         validateScope(permission, request);
 
-        List<UserPermission> existing = userPermissionRepository
-                .findByUser_IdAndPermission_IdAndRevokedAtIsNullOrderByGrantedAtDesc(
-                        targetUserId, permission.getId());
-        if (existing.stream().anyMatch(grant -> sameScope(grant, request))) {
+        if (userPermissionRepository.findByUser_IdAndPermission_IdAndRevokedAtIsNullOrderByGrantedAtDesc(targetUserId, permission.getId())
+                .stream().anyMatch(grant -> sameScope(grant, request))) {
             throw new ApiException(HttpStatus.CONFLICT, "PERMISSION_ALREADY_GRANTED", "Permission is already granted");
         }
-
         Club club = request.clubId() == null ? null : findClub(request.clubId());
         Department department = request.departmentId() == null ? null : findDepartment(request.departmentId());
+        UUID targetClubId = clubOf(club, department);
+        boolean scopedOnly = !preCheckedGlobal && requireScopedOrGlobal(actor, PermissionConstants.PERMISSION_ASSIGN,
+                targetClubId, department == null ? null : department.getId());
+        if (scopedOnly) requireClubMemberWhenClubOfficer(targetUserId, targetClubId);
         requireNotSuspendedInClub(targetUserId, club, department);
         grantGuard.requireCanGrant(actor, List.of(permission), request.scope(), request.clubId(), department);
         return permissionMapper.toUserPermissionResponse(
@@ -142,8 +141,9 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional
-    @RequirePermission(PermissionConstants.PERMISSION_ASSIGN)
     public List<UserPermissionResponse> replace(Actor actor, UUID targetUserId, ReplacePermissionsRequest request) {
+        boolean preCheckedGlobal = preCheckGlobalWhenUnscopedOrNone(actor, PermissionConstants.PERMISSION_ASSIGN,
+                request.clubId() == null && request.departmentId() == null);
         if (!ScopeRules.targetMatches(request.scope(), request.clubId(), request.departmentId())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PERMISSION_SCOPE", "Scope target is invalid");
         }
@@ -151,9 +151,10 @@ public class PermissionServiceImpl implements PermissionService {
         User target = findUser(targetUserId);
         Club club = request.clubId() == null ? null : findClub(request.clubId());
         Department department = request.departmentId() == null ? null : findDepartment(request.departmentId());
-        if (!request.permissionKeys().isEmpty()) {
-            requireNotSuspendedInClub(targetUserId, club, department);
-        }
+        UUID targetClubId = clubOf(club, department);
+        UUID targetDeptId = department == null ? null : department.getId();
+        boolean scopedOnly = !preCheckedGlobal
+                && requireScopedOrGlobal(actor, PermissionConstants.PERMISSION_ASSIGN, targetClubId, targetDeptId);
 
         List<Permission> wanted = request.permissionKeys().isEmpty()
                 ? List.of() : permissionRepository.findByPermissionKeyIn(request.permissionKeys());
@@ -172,6 +173,10 @@ public class PermissionServiceImpl implements PermissionService {
                         permission.getPermissionKey() + " cannot be granted at " + request.scope() + " scope");
             }
         }
+        if (!wanted.isEmpty()) {
+            if (scopedOnly) requireClubMemberWhenClubOfficer(targetUserId, targetClubId);
+            requireNotSuspendedInClub(targetUserId, club, department);
+        }
 
         List<UserPermission> current = userPermissionRepository.findByUser_IdAndRevokedAtIsNullOrderByGrantedAtDesc(targetUserId)
                 .stream().filter(grant -> sameTarget(grant, request.scope(), request.clubId(), request.departmentId()))
@@ -181,7 +186,7 @@ public class PermissionServiceImpl implements PermissionService {
         List<UserPermission> toRevoke = current.stream()
                 .filter(grant -> !wantedIds.contains(grant.getPermission().getId())).toList();
         if (!toRevoke.isEmpty()) {
-            authorizationService.require(actor, "permission.revoke", null, null);
+            requireScopedOrGlobal(actor, PermissionConstants.PERMISSION_REVOKE, targetClubId, targetDeptId);
         }
         Set<UUID> held = new HashSet<>();
         current.forEach(grant -> held.add(grant.getPermission().getId()));
@@ -205,9 +210,9 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional
-    @RequirePermission(PermissionConstants.PERMISSION_REVOKE)
     public void revoke(Actor actor, UUID targetUserId, UUID permissionId,
                        PermissionScope scope, UUID clubId, UUID departmentId) {
+        boolean preCheckedGlobal = preCheckGlobalWhenUnscopedOrNone(actor, PermissionConstants.PERMISSION_REVOKE, false);
         User actorUser = findUser(actor.id());
         User target = findUser(targetUserId);
         Permission permission = permissionRepository.findById(permissionId)
@@ -220,10 +225,13 @@ public class PermissionServiceImpl implements PermissionService {
                 .filter(grant -> departmentId == null || (grant.getDepartment() != null && departmentId.equals(grant.getDepartment().getId())))
                 .toList();
         if (grants.isEmpty()) throw notFound("PERMISSION_GRANT_NOT_FOUND", "Permission grant not found");
-        if (grants.size() > 1) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "AMBIGUOUS_PERMISSION_GRANT", "Specify scope and target to revoke this permission");
-        }
+        if (grants.size() > 1) throw new ApiException(HttpStatus.BAD_REQUEST, "AMBIGUOUS_PERMISSION_GRANT", "Specify scope and target to revoke this permission");
         UserPermission grant = grants.get(0);
+        if (!preCheckedGlobal) {
+            requireScopedOrGlobal(actor, PermissionConstants.PERMISSION_REVOKE,
+                    clubOf(grant.getClub(), grant.getDepartment()),
+                    grant.getDepartment() == null ? null : grant.getDepartment().getId());
+        }
         grantGuard.requireCanGrant(actor, List.of(permission), grant.getScope(),
                 grant.getClub() == null ? null : grant.getClub().getId(), grant.getDepartment());
         revokeGrant(actorUser, target, grant);
@@ -231,9 +239,9 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional
-    @RequirePermission(PermissionConstants.PERMISSION_REVOKE)
     public void revokeByKey(Actor actor, UUID targetUserId, String permissionKey,
                             PermissionScope scope, UUID clubId, UUID departmentId) {
+        preCheckGlobalWhenUnscopedOrNone(actor, PermissionConstants.PERMISSION_REVOKE, false);
         Permission permission = permissionRepository.findByPermissionKey(permissionKey)
                 .orElseThrow(() -> notFound("PERMISSION_NOT_FOUND", "Permission not found"));
         revoke(actor, targetUserId, permission.getId(), scope, clubId, departmentId);
@@ -318,8 +326,56 @@ public class PermissionServiceImpl implements PermissionService {
         auditLogRepository.saveAndFlush(log);
     }
 
+    private boolean preCheckGlobalWhenUnscopedOrNone(Actor actor, String permissionKey, boolean unscoped) {
+        if (unscoped || !authorizationService.hasAnyPermission(actor, permissionKey)) {
+            authorizationService.require(actor, permissionKey, null, null);
+            return true;
+        }
+        return false;
+    }
+
+    private void requireAnyOrGlobal(Actor actor, String permissionKey) {
+        if (authorizationService.hasAnyPermission(actor, permissionKey)) return;
+        authorizationService.require(actor, permissionKey, null, null);
+    }
+
+    private boolean requireScopedOrGlobal(Actor actor, String permissionKey, UUID clubId, UUID departmentId) {
+        if ((clubId != null || departmentId != null)
+                && authorizationService.hasPermission(actor, permissionKey, clubId, departmentId)) {
+            return !authorizationService.hasGlobalPermission(actor, permissionKey);
+        }
+        authorizationService.require(actor, permissionKey, null, null);
+        return false;
+    }
+
+    private Set<UUID> permittedClubsForTarget(Actor actor, UUID targetUserId) {
+        if (targetUserId.equals(actor.id()) || authorizationService.hasGlobalPermission(actor, PermissionConstants.PERMISSION_VIEW)) {
+            return null;
+        }
+        Set<UUID> shared = new HashSet<>();
+        if (membershipRepository != null) {
+            for (UUID cid : authorizationService.getPermittedClubIds(actor, PermissionConstants.PERMISSION_VIEW)) {
+                if (membershipRepository.existsByUser_IdAndClub_IdAndStatus(targetUserId, cid, MembershipStatus.ACTIVE)
+                        || membershipRepository.existsByUser_IdAndClub_IdAndStatus(targetUserId, cid, MembershipStatus.SUSPENDED)) {
+                    shared.add(cid);
+                }
+            }
+        }
+        if (!shared.isEmpty()) return shared;
+        authorizationService.require(actor, PermissionConstants.PERMISSION_VIEW, null, null);
+        return null;
+    }
+
+    private void requireClubMemberWhenClubOfficer(UUID userId, UUID targetClubId) {
+        if (targetClubId != null && membershipRepository != null
+                && !membershipRepository.existsByUser_IdAndClub_IdAndStatus(userId, targetClubId, MembershipStatus.ACTIVE)) {
+            throw new ApiException(HttpStatus.CONFLICT, "MEMBERSHIP_REQUIRED_FOR_POSITION",
+                    "Target user must be an active member of the club before receiving club or department permissions");
+        }
+    }
+
     private void requireNotSuspendedInClub(UUID userId, Club club, Department department) {
-        UUID targetClubId = club != null ? club.getId() : (department != null ? department.getClub().getId() : null);
+        UUID targetClubId = clubOf(club, department);
         if (targetClubId != null && membershipRepository != null
                 && membershipRepository.existsByUser_IdAndClub_IdAndStatus(userId, targetClubId, MembershipStatus.SUSPENDED)) {
             throw new ApiException(HttpStatus.CONFLICT, "MEMBERSHIP_NOT_ACTIVE",
@@ -327,19 +383,8 @@ public class PermissionServiceImpl implements PermissionService {
         }
     }
 
-    private User findUser(UUID id) {
-        return userRepository.findById(id).orElseThrow(() -> notFound("USER_NOT_FOUND", "User not found"));
-    }
-
-    private Club findClub(UUID id) {
-        return clubRepository.findById(id).orElseThrow(() -> notFound("CLUB_NOT_FOUND", "Club not found"));
-    }
-
-    private Department findDepartment(UUID id) {
-        return departmentRepository.findById(id).orElseThrow(() -> notFound("DEPARTMENT_NOT_FOUND", "Department not found"));
-    }
-
-    private ApiException notFound(String code, String message) {
-        return new ApiException(HttpStatus.NOT_FOUND, code, message);
-    }
+    private User findUser(UUID id) { return userRepository.findById(id).orElseThrow(() -> notFound("USER_NOT_FOUND", "User not found")); }
+    private Club findClub(UUID id) { return clubRepository.findById(id).orElseThrow(() -> notFound("CLUB_NOT_FOUND", "Club not found")); }
+    private Department findDepartment(UUID id) { return departmentRepository.findById(id).orElseThrow(() -> notFound("DEPARTMENT_NOT_FOUND", "Department not found")); }
+    private ApiException notFound(String code, String message) { return new ApiException(HttpStatus.NOT_FOUND, code, message); }
 }

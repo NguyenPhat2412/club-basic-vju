@@ -25,6 +25,8 @@ import { DetailList, EntityDrawer, Section } from "@/components/shared/Overlays"
 import { describeError } from "@/components/shared/ListPage";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ClubOverviewShowcase } from "@/components/club/ClubOverviewShowcase";
+import { normalizeClubOverviewConfig } from "@/forms/club/club-overview-config";
 import {
   ApplicationSummary,
   ClubApplicationForm,
@@ -125,55 +127,62 @@ export function ClubRecruitmentDrawer({
                 fallbackUrl={selectedMedia?.cover}
                 className="h-44 w-full"
               >
-                <div className="absolute bottom-3 left-3.5 right-3.5 flex items-end justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <ClubAvatar
-                      name={activeSelected.name}
-                      code={activeSelected.code}
-                      logoUrl={activeSelected.logoUrl}
-                      fallbackUrl={selectedMedia?.logo}
-                      size="lg"
-                    />
-                    <div className="min-w-0 text-white drop-shadow-xs">
-                      <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-white/85">
-                        {activeSelected.code}
-                      </p>
-                      <p className="line-clamp-1 text-base font-extrabold">{activeSelected.name}</p>
-                    </div>
-                  </div>
+                <div className="absolute right-3 top-3">
                   <StatusBadge status={activeSelected.status} />
+                </div>
+                <div className="absolute bottom-3 left-3.5 right-3.5 flex items-end gap-3">
+                  <ClubAvatar
+                    name={activeSelected.name}
+                    code={activeSelected.code}
+                    logoUrl={activeSelected.logoUrl}
+                    fallbackUrl={selectedMedia?.logo}
+                    size="lg"
+                  />
+                  <div className="min-w-0 flex-1 text-white drop-shadow-xs">
+                    <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-white/85">
+                      {activeSelected.code}
+                    </p>
+                    <p className="line-clamp-2 text-sm font-extrabold leading-snug sm:text-base">
+                      {activeSelected.name}
+                    </p>
+                  </div>
                 </div>
               </ClubCoverBanner>
             </div>
 
-            <DetailList
-              rows={[
-                ["Mã CLB", <span key="code" className="font-mono font-semibold text-primary">{activeSelected.code}</span>],
-                ["Lĩnh vực", activeSelected.activityField || "—"],
-                [
-                  "Liên hệ",
-                  activeSelected.contactEmail ? (
-                    <a
-                      key="mail"
-                      className="inline-flex items-center gap-1 text-primary hover:underline"
-                      href={`mailto:${activeSelected.contactEmail}`}
-                    >
-                      <Mail size={13} /> {activeSelected.contactEmail}
-                    </a>
-                  ) : (
-                    "—"
-                  ),
-                ],
-                [
-                  "Giới thiệu",
-                  <p key="desc" className="whitespace-pre-line leading-6 text-muted-foreground">
-                    {activeSelected.description || "CLB đang cập nhật giới thiệu."}
-                  </p>,
-                ],
-              ]}
-            />
+            <ClubOverviewShowcase club={activeSelected} variant="drawer" />
 
-            {selectedGallery.length > 0 && (
+            <div className="mt-4">
+              <DetailList
+                rows={[
+                  ["Mã CLB", <span key="code" className="font-mono font-semibold text-primary">{activeSelected.code}</span>],
+                  ["Lĩnh vực", activeSelected.activityField || "—"],
+                  [
+                    "Liên hệ",
+                    activeSelected.contactEmail ? (
+                      <a
+                        key="mail"
+                        className="inline-flex items-center gap-1 break-all text-primary hover:underline"
+                        href={`mailto:${activeSelected.contactEmail}`}
+                      >
+                        <Mail size={13} className="shrink-0" /> {activeSelected.contactEmail}
+                      </a>
+                    ) : (
+                      "—"
+                    ),
+                  ],
+                  [
+                    "Giới thiệu",
+                    <p key="desc" className="whitespace-pre-line leading-6 text-muted-foreground">
+                      {activeSelected.description || "CLB đang cập nhật giới thiệu."}
+                    </p>,
+                  ],
+                ]}
+              />
+            </div>
+
+            {selectedGallery.length > 0 &&
+              normalizeClubOverviewConfig(activeSelected.overviewConfig).enabledBlocks.includes("gallery") && (
               <Section title={`Hình ảnh hoạt động thực tế (${selectedGallery.length})`} icon={<Images />}>
                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                   {selectedGallery.map((imgSrc, idx) => (

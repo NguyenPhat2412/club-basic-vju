@@ -32,6 +32,13 @@ public interface DepartmentMemberRepository extends JpaRepository<DepartmentMemb
     boolean isUserInDepartment(@Param("departmentId") UUID departmentId, @Param("userId") UUID userId);
 
     @Query("SELECT dm.membership.user.id FROM DepartmentMember dm WHERE dm.department.id = :departmentId "
-            + "AND dm.membership.status = com.vju.club.enums.MembershipStatus.ACTIVE")
+            + "AND dm.membership.status = com.vju.club.enums.MembershipStatus.ACTIVE "
+            + "AND dm.membership.user.status = com.vju.club.enums.UserStatus.ACTIVE "
+            + "AND dm.membership.user.anonymizedAt IS NULL")
     List<UUID> findActiveUserIdsByDepartmentId(@Param("departmentId") UUID departmentId);
+
+    @Query("SELECT dm.department.id FROM DepartmentMember dm WHERE dm.department.club.id = :clubId "
+            + "AND dm.membership.user.id = :userId "
+            + "AND dm.membership.status = com.vju.club.enums.MembershipStatus.ACTIVE")
+    List<UUID> findActiveDepartmentIdsInClub(@Param("clubId") UUID clubId, @Param("userId") UUID userId);
 }

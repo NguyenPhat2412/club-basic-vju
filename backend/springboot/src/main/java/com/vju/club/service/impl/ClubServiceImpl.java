@@ -222,6 +222,7 @@ public class ClubServiceImpl implements ClubService {
         if (club.getName() != null) texts.add(club.getName());
         if (club.getActivityField() != null) texts.add(club.getActivityField());
         if (club.getDescription() != null) texts.add(club.getDescription());
+        texts.addAll(com.vju.club.dto.record.ClubOverviewConfig.fromJson(club.getOverviewConfig()).translatableTexts());
         aiTranslationService.warmTranslateAsync(texts);
     }
 
@@ -393,6 +394,7 @@ public class ClubServiceImpl implements ClubService {
         if (club.getCoverStorageKey() != null) {
             values.put("coverStorageKey", club.getCoverStorageKey());
         }
+        values.put("overviewConfig", com.vju.club.dto.record.ClubOverviewConfig.fromJson(club.getOverviewConfig()));
         values.put("status", club.getStatus());
         return values;
     }
@@ -404,6 +406,9 @@ public class ClubServiceImpl implements ClubService {
         club.setDescription(request.description());
         club.setActivityField(request.activityField());
         club.setContactEmail(request.contactEmail());
+        if (request.overviewConfig() != null) {
+            club.setOverviewConfig(com.vju.club.dto.record.ClubOverviewConfig.toJson(request.overviewConfig()));
+        }
     }
 
     private void applyPatch(Club club, ClubPatchRequest request) {
@@ -420,6 +425,9 @@ public class ClubServiceImpl implements ClubService {
         if (request.description() != null) club.setDescription(request.description());
         if (request.activityField() != null) club.setActivityField(request.activityField());
         if (request.contactEmail() != null) club.setContactEmail(request.contactEmail());
+        if (request.overviewConfig() != null) {
+            club.setOverviewConfig(com.vju.club.dto.record.ClubOverviewConfig.toJson(request.overviewConfig()));
+        }
     }
 
     private Club findClub(UUID id) {

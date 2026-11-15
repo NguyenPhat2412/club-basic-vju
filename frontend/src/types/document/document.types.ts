@@ -1,6 +1,15 @@
+export type DocumentScope = 'SYSTEM' | 'CLUB' | 'DEPARTMENT';
+
+export type DocumentVisibility = 'PUBLIC_INTERNAL' | 'MEMBERS' | 'OFFICERS' | 'DEPARTMENT_ONLY';
+
 export type DocumentItem = {
   id: string;
-  clubId: string;
+  scope?: DocumentScope;
+  clubId?: string | null;
+  departmentId?: string;
+  departmentName?: string;
+  visibility?: DocumentVisibility;
+  previewable?: boolean;
   ownerId: string;
   name: string;
   path: string;
