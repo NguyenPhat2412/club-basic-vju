@@ -53,7 +53,7 @@ class SprintThreeEventAcceptanceTest extends ApiIntegrationTest {
                 "endTime", startTime.toString(),
                 "registrationDeadline", regDeadline.toString(),
                 "status", "DRAFT"
-        ), 400, "INVALID_ARGUMENT");
+        ), 400, "INVALID_EVENT_TIME");
 
         // 2. Validation error: registrationDeadline > startTime
         problem(post(clubEvents(clubA)), adminToken, Map.of(
@@ -63,7 +63,7 @@ class SprintThreeEventAcceptanceTest extends ApiIntegrationTest {
                 "endTime", endTime.toString(),
                 "registrationDeadline", startTime.plusHours(1).toString(),
                 "status", "DRAFT"
-        ), 400, "INVALID_ARGUMENT");
+        ), 400, "INVALID_EVENT_TIME");
 
         // 3. PB-21.1: Valid event creation
         JsonNode created = call(post(clubEvents(clubA)), adminToken, Map.of(
@@ -107,11 +107,11 @@ class SprintThreeEventAcceptanceTest extends ApiIntegrationTest {
         ), 200);
         assertThat(cancelled.path("status").asText()).isEqualTo("CANCELLED");
 
-        // Trying to register for CANCELLED event is rejected (409 EVENT_CANCELLED or NOT_OPEN)
+        // Trying to register for CANCELLED event is rejected (400 REGISTRATION_CLOSED)
         UUID student = user("student.cancelled@vju.test");
         String studentToken = token(student);
         membership(student, clubA);
-        problem(post(eventRegistrations(eventId)), studentToken, Map.of(), 409, null);
+        problem(post(eventRegistrations(eventId)), studentToken, Map.of(), 400, "REGISTRATION_CLOSED");
     }
 
     @Test
@@ -150,8 +150,8 @@ class SprintThreeEventAcceptanceTest extends ApiIntegrationTest {
         assertThat(reg1.path("status").asText()).isEqualTo("REGISTERED");
         assertThat(reg1.path("participantType").asText()).isEqualTo("MEMBER");
 
-        // Duplicate registration attempt by member1 is rejected (409)
-        problem(post(eventRegistrations(eventId)), member1Token, Map.of(), 409, "DUPLICATE_REGISTRATION");
+        // Duplicate registration attempt by member1 is rejected (409 ALREADY_REGISTERED)
+        problem(post(eventRegistrations(eventId)), member1Token, Map.of(), 409, "ALREADY_REGISTERED");
 
         // Capacity full limit: member2 registration exceeds maxParticipants=1 -> 409 EVENT_FULL
         problem(post(eventRegistrations(eventId)), member2Token, Map.of(), 409, "EVENT_FULL");
@@ -174,7 +174,7 @@ class SprintThreeEventAcceptanceTest extends ApiIntegrationTest {
 
         UUID member3 = user("event.member3@vju.test");
         membership(member3, clubA);
-        problem(post(eventRegistrations(eventId)), token(member3), Map.of(), 409, null);
+        problem(post(eventRegistrations(eventId)), token(member3), Map.of(), 400, "REGISTRATION_CLOSED");
     }
 
     @Test
