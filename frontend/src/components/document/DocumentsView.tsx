@@ -1,25 +1,29 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Eye, FileText, Pencil, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
+import { FileText, Trash2 } from "lucide-react";
 import { apiModel, DocumentItem, DocumentVisibility } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
-import { DocumentDetailDrawer, visibilityMeta } from "@/components/document/DocumentDetailDrawer";
+import {
+  collectDocumentCategoryOptions,
+  type DocumentFormatFilter,
+  type DocumentSortOption,
+  filterAndSortDocuments,
+} from "@/forms/document/document-filter-meta";
+import { DocumentDetailDrawer } from "@/components/document/DocumentDetailDrawer";
+import { DocumentFilterBar } from "@/components/document/DocumentFilterBar";
 import { DocumentPreviewModal, PreviewTarget } from "@/components/document/DocumentPreviewModal";
+import { DocumentTable } from "@/components/document/DocumentTable";
 import { DocumentUploadModal } from "@/components/document/DocumentUploadModal";
 import { BreadcrumbToolbar, SegmentedTabs } from "@/components/shared/BreadcrumbToolbar";
-import { DataTable } from "@/components/shared/DataTable";
 import { ModalShell } from "@/components/shared/Overlays";
 import { Pagination } from "@/components/shared/Pagination";
 import { EmptyState, ErrorState, LoadingRows, Notice } from "@/components/shared/States";
-import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError, ListPage } from "@/components/shared/ListPage";
-import { Badge, CountBadge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui/input";
-import { fileExtension, formatDay, formatSize, saveBlob, validateVaultFile } from "@/lib/utils";
+import { CountBadge } from "@/components/ui/badge";
+import { fileExtension, saveBlob, validateVaultFile } from "@/lib/utils";
 
 const LIMIT = 20;
 
@@ -40,8 +44,11 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
   const isEmbedded = Boolean(embeddedClubId);
   const tier: "club" | "system" = isEmbedded ? "club" : searchParams.get("tier") === "system" ? "system" : "club";
   const [clubId, setClubId] = useState("");
-  const [filterDeptId, setFilterDeptId] = useState("");
+  const [scopeFilter, setScopeFilter] = useState("");
   const [filterVisibility, setFilterVisibility] = useState<string>("");
+  const [formatFilter, setFormatFilter] = useState<DocumentFormatFilter>("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [sortBy, setSortBy] = useState<DocumentSortOption>("newest");
   const [trash, setTrash] = useState(false);
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
@@ -94,12 +101,32 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
   const canDelete = isSystemTier ? hasGlobal("document.delete") : session.canInClub("document.delete", activeClubId);
   const effectiveTrash = trash && canRestore;
 
+  const hasClientRefine = scopeFilter === "__CLUB_ONLY__" || Boolean(formatFilter) || sortBy !== "newest";
+  const serverDeptId = scopeFilter && scopeFilter !== "__CLUB_ONLY__" ? scopeFilter : undefined;
+  const queryOffset = hasClientRefine ? 0 : offset;
+  const queryLimit = hasClientRefine ? 100 : LIMIT;
+
   const documents = useQuery({
-    queryKey: ["documents", effectiveTier, activeClubId, filterDeptId, filterVisibility, search, effectiveTrash, offset],
+    queryKey: ["documents", effectiveTier, activeClubId, serverDeptId ?? "", filterVisibility, categoryFilter, search, effectiveTrash, queryOffset, queryLimit],
     queryFn: () =>
       isSystemTier
-        ? apiModel.systemDocuments({ name: search, visibility: (filterVisibility || undefined) as DocumentVisibility | undefined, deleted: effectiveTrash, offset, limit: LIMIT })
-        : apiModel.documents(activeClubId, { departmentId: filterDeptId || undefined, visibility: (filterVisibility || undefined) as DocumentVisibility | undefined, name: search, deleted: effectiveTrash, offset, limit: LIMIT }),
+        ? apiModel.systemDocuments({
+            name: search || undefined,
+            appDetailKey: categoryFilter || undefined,
+            visibility: (filterVisibility || undefined) as DocumentVisibility | undefined,
+            deleted: effectiveTrash,
+            offset: queryOffset,
+            limit: queryLimit,
+          })
+        : apiModel.documents(activeClubId, {
+            departmentId: serverDeptId,
+            visibility: (filterVisibility || undefined) as DocumentVisibility | undefined,
+            name: search || undefined,
+            appDetailKey: categoryFilter || undefined,
+            deleted: effectiveTrash,
+            offset: queryOffset,
+            limit: queryLimit,
+          }),
     enabled: session.ready && (isSystemTier || !!activeClubId),
     placeholderData: keepPreviousData,
   });
@@ -116,9 +143,27 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
   const detail = useQuery({ queryKey: ["document", detailId], queryFn: () => apiModel.documentDetail(detailId!), enabled: !!detailId });
   const versions = useQuery({ queryKey: ["document", detailId, "versions"], queryFn: () => apiModel.documentVersions(detailId!), enabled: !!detailId && !detail.data?.deleted });
 
+  const rawItems = useMemo(() => documents.data?.items ?? [], [documents.data?.items]);
+  const categoryOptions = useMemo(
+    () => collectDocumentCategoryOptions(rawItems, categoryFilter, isSystemTier),
+    [rawItems, categoryFilter, isSystemTier]
+  );
+  const refinedItems = useMemo(
+    () => filterAndSortDocuments(rawItems, { scopeFilter, formatFilter, sortBy }),
+    [rawItems, scopeFilter, formatFilter, sortBy]
+  );
+  const visibleRows = hasClientRefine ? refinedItems.slice(offset, offset + LIMIT) : refinedItems;
+  const effectiveTotal = hasClientRefine ? refinedItems.length : (documents.data?.total ?? 0);
+
+  const resetFiltersOnly = () => {
+    setSearch(""); setScopeFilter(""); setFilterVisibility("");
+    setFormatFilter(""); setCategoryFilter(""); setSortBy("newest"); setOffset(0);
+  };
+
   const resetScopeOverlays = () => {
-    setFilterDeptId(""); setFilterVisibility(""); setTrash(false); setOffset(0);
-    setDetailId(null); setPreviewTarget(null); setConfirmDeleteDoc(null); setNotice(""); setError("");
+    resetFiltersOnly();
+    setTrash(false); setDetailId(null); setPreviewTarget(null);
+    setConfirmDeleteDoc(null); setNotice(""); setError("");
   };
 
   const run = async (action: () => Promise<unknown>, success: string) => {
@@ -192,10 +237,7 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
   const uploadVersion = async (doc: DocumentItem) => {
     if (!versionFile) return;
     const err = validateVaultFile(versionFile, fileExtension(doc.name, doc.contentType));
-    if (err) {
-      setError(err);
-      return;
-    }
+    if (err) { setError(err); return; }
     if (await run(() => apiModel.uploadDocumentVersion(doc.id, versionFile, doc.version), `Đã thêm phiên bản v${doc.version + 1}.`)) {
       setVersionFile(null);
       setVersionInput((k) => k + 1);
@@ -207,8 +249,7 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
       {!isEmbedded && (
         <BreadcrumbToolbar
           crumbs={[{ label: "Trang chủ", href: "/clubs" }, { label: "Tài liệu & Quy chế" }, { label: isSystemTier ? "Quy chế & Biểu mẫu Trường" : "Kho tài liệu CLB & Ban" }]}
-          titleBadge={<CountBadge>{documents.data?.total ?? 0}</CountBadge>}
-          search={{ value: search, onChange: (v) => { setSearch(v); setOffset(0); }, placeholder: "Tìm theo tên tài liệu…" }}
+          titleBadge={<CountBadge>{effectiveTotal}</CountBadge>}
           extraActions={
             <SegmentedTabs
               value={effectiveTier}
@@ -222,56 +263,20 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
         />
       )}
 
-      <div className="flex flex-wrap items-center gap-2 border-b border-border/60 bg-card px-4 py-1.5 sm:px-6">
-        {isEmbedded && (
-          <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-            <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(e) => { setSearch(e.target.value); setOffset(0); }} placeholder="Tìm theo tên tài liệu…" className="h-8 pl-8 text-xs" />
-          </div>
-        )}
-        {!isSystemTier && (
-          <>
-            {!isEmbedded && (
-              <Select aria-label="Chọn CLB" value={activeClubId} onChange={(e) => { setClubId(e.target.value); resetScopeOverlays(); }} className="h-8 w-full text-xs sm:w-52">
-                {allowed.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}
-              </Select>
-            )}
-            {viewableDepts.length > 0 && (
-              <Select aria-label="Lọc theo Ban" value={filterDeptId} onChange={(e) => { setFilterDeptId(e.target.value); setOffset(0); }} className="h-8 w-full text-xs sm:w-36">
-                <option value="">Tất cả phạm vi</option>
-                {viewableDepts.map((dep) => <option key={dep.id} value={dep.id}>Ban: {dep.name}</option>)}
-              </Select>
-            )}
-          </>
-        )}
-        <Select aria-label="Lọc mức hiển thị" value={filterVisibility} onChange={(e) => { setFilterVisibility(e.target.value); setOffset(0); }} className="h-8 w-full text-xs sm:w-36">
-          <option value="">Mọi mức hiển thị</option>
-          {isSystemTier ? (
-            <>
-              <option value="PUBLIC_INTERNAL">Toàn trường</option>
-              <option value="OFFICERS">Ban chủ nhiệm</option>
-            </>
-          ) : (
-            <>
-              <option value="MEMBERS">Thành viên CLB</option>
-              <option value="OFFICERS">Ban chủ nhiệm</option>
-              <option value="DEPARTMENT_ONLY">Nội bộ Ban</option>
-            </>
-          )}
-        </Select>
-        <div className="flex items-center gap-2 sm:ml-auto">
-          {canRestore && (
-            <SegmentedTabs
-              value={effectiveTrash ? "trash" : "live"}
-              onChange={(v) => { setTrash(v === "trash"); setOffset(0); }}
-              options={[{ value: "live", label: "Đang dùng" }, { value: "trash", label: isSystemTier ? "Thùng rác" : `Thùng rác (${counts.data?.deleted ?? 0})` }]}
-            />
-          )}
-          {isEmbedded && canUpload && !effectiveTrash && (
-            <Button size="sm" onClick={openUploadModal} className="h-8"><Plus size={14} /> Tải lên</Button>
-          )}
-        </div>
-      </div>
+      <DocumentFilterBar
+        isEmbedded={isEmbedded} isSystemTier={isSystemTier} allowedClubs={allowed} activeClubId={activeClubId}
+        onChangeClub={(nextId) => { setClubId(nextId); resetScopeOverlays(); }} viewableDepts={viewableDepts}
+        scopeFilter={scopeFilter} onChangeScope={(v) => { setScopeFilter(v); setOffset(0); }}
+        visibilityFilter={filterVisibility} onChangeVisibility={(v) => { setFilterVisibility(v); setOffset(0); }}
+        formatFilter={formatFilter} onChangeFormat={(v) => { setFormatFilter(v); setOffset(0); }}
+        categoryFilter={categoryFilter} categoryOptions={categoryOptions} onChangeCategory={(v) => { setCategoryFilter(v); setOffset(0); }}
+        sortBy={sortBy} onChangeSort={(v) => { setSortBy(v); setOffset(0); }}
+        search={search} onChangeSearch={(v) => { setSearch(v); setOffset(0); }}
+        canRestore={canRestore} effectiveTrash={effectiveTrash} deletedCount={counts.data?.deleted ?? 0}
+        onChangeTrash={(nextTrash) => { setTrash(nextTrash); setOffset(0); }}
+        canUpload={canUpload} onOpenUpload={openUploadModal}
+        shownCount={visibleRows.length} totalCount={effectiveTotal} onResetFilters={resetFiltersOnly}
+      />
 
       {notice && <Notice tone="success">{notice}</Notice>}
       {error && <Notice tone="error">{error}</Notice>}
@@ -280,67 +285,23 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
         <LoadingRows />
       ) : documents.isError ? (
         <ErrorState message={describeError(documents.error)} onRetry={() => documents.refetch()} />
-      ) : !documents.data.items.length ? (
+      ) : !visibleRows.length ? (
         <EmptyState
           icon={<FileText />}
-          title={effectiveTrash ? "Thùng rác trống" : "Chưa có tài liệu nào"}
-          description={effectiveTrash ? undefined : "Mọi tệp tải lên được sở hữu tập trung bởi kho lưu trữ hệ thống, chống thất lạc qua các nhiệm kỳ Ban chủ nhiệm."}
-          actionLabel={!effectiveTrash && canUpload ? "Tải lên tài liệu" : undefined}
-          onAction={openUploadModal}
+          title={effectiveTrash ? "Thùng rác trống" : rawItems.length > 0 ? "Không tìm thấy tài liệu khớp bộ lọc" : "Chưa có tài liệu nào"}
+          description={effectiveTrash ? undefined : rawItems.length > 0 ? "Hãy thử xoá bớt điều kiện lọc định dạng hoặc từ khoá tìm kiếm." : "Mọi tệp tải lên được sở hữu tập trung bởi kho lưu trữ hệ thống, chống thất lạc qua các nhiệm kỳ Ban chủ nhiệm."}
+          actionLabel={!effectiveTrash && rawItems.length > 0 ? "Xoá bộ lọc" : !effectiveTrash && canUpload ? "Tải lên tài liệu" : undefined}
+          onAction={rawItems.length > 0 ? resetFiltersOnly : openUploadModal}
         />
       ) : (
-        <DataTable
-          ariaLabel="Tài liệu"
-          minWidth="min-w-[820px]"
-          rows={documents.data.items}
-          rowKey={(x) => x.id}
-          onRowClick={openDetail}
-          columns={[
-            { key: "date", header: "Ngày tải lên", render: (x) => <span className="font-mono font-bold text-primary">{formatDay(x.createdAt)}</span> },
-            { key: "name", header: "Tên tài liệu", className: "max-w-[260px]", render: (x) => <p className="truncate font-bold">{x.name}</p> },
-            { key: "visibility", header: "Phạm vi", render: (x) => { const vis = visibilityMeta(x); return <Badge tone={vis.tone}>{vis.label}</Badge>; } },
-            {
-              key: "type",
-              header: "Định dạng",
-              render: (x) => (
-                <div className="flex items-center gap-1.5">
-                  <span className="rounded-md bg-secondary px-2 py-0.5 font-mono text-[10.5px] font-bold uppercase">{fileExtension(x.name, x.contentType)}</span>
-                  <span className="font-mono text-xs font-bold text-primary">v{x.version}</span>
-                </div>
-              ),
-            },
-            { key: "size", header: "Kích thước", render: (x) => <span className="font-mono">{formatSize(x.sizeBytes)}</span> },
-            { key: "key", header: "Phân loại", render: (x) => x.appDetailKey ? <Badge tone="primary" dot={false}>{x.appDetailKey}</Badge> : <span className="text-muted-foreground">—</span> },
-            {
-              key: "actions",
-              header: "Thao tác",
-              className: "text-right",
-              render: (x) => (
-                <TableRowActions
-                  actions={
-                    x.deleted
-                      ? [
-                          { icon: <Eye />, label: "Xem chi tiết", onClick: () => openDetail(x) },
-                          ...(canRestore ? [{ icon: <RotateCcw />, label: "Khôi phục", onClick: () => restore(x) }] : []),
-                        ]
-                      : [
-                          ...(x.previewable !== false
-                            ? [{ icon: <Eye />, label: "Xem trực tuyến", onClick: () => setPreviewTarget({ id: x.id, name: x.name, contentType: x.contentType }) }]
-                            : []),
-                          { icon: <Download />, label: "Tải xuống", onClick: () => download(x) },
-                          { icon: <Pencil />, label: canUpdate ? "Chi tiết & Sửa" : "Chi tiết", onClick: () => openDetail(x) },
-                          ...(canDelete || x.ownerId === session.user?.id
-                            ? [{ icon: <Trash2 />, label: "Xoá mềm", danger: true, onClick: () => setConfirmDeleteDoc(x) }]
-                            : []),
-                        ]
-                  }
-                />
-              ),
-            },
-          ]}
+        <DocumentTable
+          rows={visibleRows} offset={offset} currentUserId={session.user?.id}
+          canUpdate={canUpdate} canDelete={canDelete} canRestore={canRestore}
+          onOpenDetail={openDetail} onPreview={setPreviewTarget} onDownload={download}
+          onSoftDelete={setConfirmDeleteDoc} onRestore={restore}
         />
       )}
-      {documents.data && documents.data.total > 0 && <Pagination offset={offset} limit={LIMIT} total={documents.data.total} onOffset={setOffset} />}
+      {effectiveTotal > 0 && <Pagination offset={offset} limit={LIMIT} total={effectiveTotal} onOffset={setOffset} />}
 
       <DocumentUploadModal
         open={uploading} submitting={busy} isSystemTier={isSystemTier} clubCode={club?.code}

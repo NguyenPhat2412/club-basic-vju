@@ -23,6 +23,7 @@ export function DataTable<T>({
   onRowClick,
   minWidth = "min-w-full",
   ariaLabel,
+  alwaysTable = false,
 }: {
   columns: Column<T>[];
   rows: T[];
@@ -30,6 +31,7 @@ export function DataTable<T>({
   onRowClick?: (row: T) => void;
   minWidth?: string;
   ariaLabel: string;
+  alwaysTable?: boolean;
 }) {
   const actionCol = columns.find((c) => c.key === "actions");
   const dataCols = columns.filter((c) => c.key !== "actions");
@@ -38,7 +40,8 @@ export function DataTable<T>({
 
   return (
     <div className="min-h-0 w-full min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-3 sm:px-6 sm:py-4 [scrollbar-gutter:stable]">
-      {/* Giao diện Thẻ (Card Grid) tự động trên Mobile, iPad & Split-screen (< 1280px) */}
+      {/* Giao diện Thẻ (Card Grid) tự động trên Mobile, iPad & Split-screen (< 1280px) khi không bật alwaysTable */}
+      {!alwaysTable && (
       <div role="list" aria-label={ariaLabel} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:hidden">
         {rows.map((row) => {
           const key = rowKey(row);
@@ -98,9 +101,15 @@ export function DataTable<T>({
           );
         })}
       </div>
+      )}
 
-      {/* Giao diện Bảng đầy đủ trên Desktop (>= 1280px) */}
-      <div className="hidden w-full max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs xl:block">
+      {/* Giao diện Bảng đầy đủ */}
+      <div
+        className={cn(
+          "w-full max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs",
+          alwaysTable ? "block" : "hidden xl:block"
+        )}
+      >
         <table
           aria-label={ariaLabel}
           className={cn("w-full border-collapse whitespace-normal text-left text-xs", minWidth)}
@@ -111,7 +120,9 @@ export function DataTable<T>({
                 <th
                   key={c.key}
                   className={cn(
-                    "h-11 whitespace-nowrap px-3.5 py-3 first:pl-4 last:pr-4 lg:px-4 lg:first:pl-5 lg:last:pr-5",
+                    alwaysTable
+                      ? "h-10 whitespace-nowrap px-2.5 py-2.5 first:pl-3.5 last:pr-3.5"
+                      : "h-11 whitespace-nowrap px-3.5 py-3 first:pl-4 last:pr-4 lg:px-4 lg:first:pl-5 lg:last:pr-5",
                     c.key === "actions" && "sticky right-0 z-20 bg-slate-50/95",
                     c.className
                   )}
@@ -137,7 +148,9 @@ export function DataTable<T>({
                   <td
                     key={c.key}
                     className={cn(
-                      "px-3.5 py-2.5 first:pl-4 last:pr-4 lg:px-4 lg:first:pl-5 lg:last:pr-5",
+                      alwaysTable
+                        ? "px-2.5 py-2.5 first:pl-3.5 last:pr-3.5"
+                        : "px-3.5 py-2.5 first:pl-4 last:pr-4 lg:px-4 lg:first:pl-5 lg:last:pr-5",
                       c.key === "actions" &&
                         "sticky right-0 bg-white/95 backdrop-blur-xs group-hover:bg-slate-50/95",
                       c.className

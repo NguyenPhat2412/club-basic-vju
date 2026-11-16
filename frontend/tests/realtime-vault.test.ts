@@ -152,6 +152,9 @@ test("all Realtime Chat & Centralized Vault modules strictly obey the < 400 line
     "frontend/src/components/management/ChatQuickReplyPopover.tsx",
     "frontend/src/components/management/ChatDocumentPickerModal.tsx",
     "frontend/src/components/document/DocumentsView.tsx",
+    "frontend/src/components/document/DocumentFilterBar.tsx",
+    "frontend/src/components/document/DocumentTable.tsx",
+    "frontend/src/forms/document/document-filter-meta.ts",
     "frontend/src/components/document/DocumentDetailDrawer.tsx",
     "frontend/src/components/document/DocumentUploadModal.tsx",
     "frontend/src/components/document/DocumentPreviewModal.tsx",
@@ -223,4 +226,71 @@ test("Option 1 document module navigation and club management tabs wire dedicate
   const visibleTabs = computeVisibleClubTabs("club-1", (k) => officerPerms.has(k));
   assert.ok(visibleTabs.some((t) => t.value === "documents"), "Expected documents tab in computeVisibleClubTabs");
   assert.ok(visibleTabs.some((t) => t.value === "members"), "Expected members tab when holding permission.assign");
+});
+
+test("document-filter-meta classifies file formats, maps VJU category labels, filters Club-only vs Dept, and sorts", async () => {
+  const {
+    classifyDocumentFormat,
+    filterAndSortDocuments,
+    formatDocumentCategoryLabel,
+  } = await import("@/forms/document/document-filter-meta");
+
+  assert.equal(formatDocumentCategoryLabel("semester_plan"), "Kế hoạch học kỳ");
+  assert.equal(formatDocumentCategoryLabel("club_charter"), "Quy chế hoạt động");
+  assert.equal(formatDocumentCategoryLabel("custom.tag"), "custom.tag");
+  assert.equal(classifyDocumentFormat({ name: "Plan.pdf", contentType: "application/pdf" }), "pdf");
+  assert.equal(classifyDocumentFormat({ name: "Budget.xlsx", contentType: "application/octet-stream" }), "sheet");
+
+  const sample = [
+    {
+      id: "d-1",
+      ownerId: "u-1",
+      name: "B-Quy-che.pdf",
+      path: "/a",
+      version: 1,
+      contentType: "application/pdf",
+      sizeBytes: 500,
+      checksumSha256: "x",
+      appDetailKey: "club_charter",
+      deleted: false,
+      createdAt: "2026-11-10T00:00:00Z",
+      updatedAt: "2026-11-10T00:00:00Z",
+    },
+    {
+      id: "d-2",
+      ownerId: "u-1",
+      departmentId: "dep-1",
+      name: "A-Ngan-sach.xlsx",
+      path: "/b",
+      version: 2,
+      contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      sizeBytes: 2048,
+      checksumSha256: "y",
+      appDetailKey: "budget.report",
+      deleted: false,
+      createdAt: "2026-11-12T00:00:00Z",
+      updatedAt: "2026-11-12T00:00:00Z",
+    },
+  ];
+
+  const clubOnly = filterAndSortDocuments(sample, {
+    scopeFilter: "__CLUB_ONLY__",
+    formatFilter: "",
+    sortBy: "newest",
+  });
+  assert.deepEqual(clubOnly.map((d) => d.id), ["d-1"]);
+
+  const sortedByName = filterAndSortDocuments(sample, {
+    scopeFilter: "",
+    formatFilter: "",
+    sortBy: "name_asc",
+  });
+  assert.deepEqual(sortedByName.map((d) => d.id), ["d-2", "d-1"]);
+
+  const sheetsOnly = filterAndSortDocuments(sample, {
+    scopeFilter: "",
+    formatFilter: "sheet",
+    sortBy: "size_desc",
+  });
+  assert.deepEqual(sheetsOnly.map((d) => d.id), ["d-2"]);
 });
