@@ -118,6 +118,36 @@ const DYNAMIC_PATTERNS: PatternRule[] = [
     ja: (_, ext) => `新バージョンファイル (.${ext})`,
   },
   {
+    pattern: /^Đã xem\s*\((\d+)\)$/i,
+    en: (_, count) => `Seen (${count})`,
+    ja: (_, count) => `既読 (${count})`,
+  },
+  {
+    pattern: /^Đã xem\s*·\s*(.+)$/i,
+    en: (_, name) => `Seen · ${name}`,
+    ja: (_, name) => `既読 · ${name}`,
+  },
+  {
+    pattern: /^Gửi lỗi:\s*(.+)$/i,
+    en: (_, err) => `Failed: ${translateUiText(err, 'en')}`,
+    ja: (_, err) => `送信失敗: ${translateUiText(err, 'ja')}`,
+  },
+  {
+    pattern: /^Đã gửi lên máy chủ lúc\s+(.+)$/i,
+    en: (_, when) => `Sent to server at ${when}`,
+    ja: (_, when) => `サーバー送信日時: ${when}`,
+  },
+  {
+    pattern: /^Đã nhận lúc\s+(.+)$/i,
+    en: (_, when) => `Delivered at ${when}`,
+    ja: (_, when) => `受信日時: ${when}`,
+  },
+  {
+    pattern: /^Đã xem bởi\s+(.+?)(?:\s+lúc\s+(.+))?$/i,
+    en: (_, who, when) => (when ? `Seen by ${who} at ${when}` : `Seen by ${who}`),
+    ja: (_, who, when) => (when ? `${who} が既読 (${when})` : `${who} が既読`),
+  },
+  {
     pattern: /^XEM TẤT CẢ CÂU LẠC BỘ(?:\s*\((\d+)\))?$/i,
     en: (_, count) => (count ? `VIEW ALL CLUBS (${count})` : 'VIEW ALL CLUBS'),
     ja: (_, count) => (count ? `すべてのクラブを見る (${count})` : 'すべてのクラブを見る'),

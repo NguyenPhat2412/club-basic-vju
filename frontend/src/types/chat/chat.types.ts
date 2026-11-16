@@ -47,7 +47,13 @@ export type ChatChannel = {
   updatedAt: string;
 };
 
-export type ChatMessageDeliveryStatus = 'sending' | 'failed';
+export type ChatMessageDeliveryStatus =
+  | 'uploading'
+  | 'sending'
+  | 'sent'
+  | 'delivered'
+  | 'seen'
+  | 'failed';
 
 export type ChatMessage = {
   id: string;
@@ -69,7 +75,11 @@ export type ChatMessage = {
   pinnedByName?: string | null;
   clientTempId?: string;
   optimistic?: boolean;
-  deliveryStatus?: ChatMessageDeliveryStatus;
+  deliveryStatus?: ChatMessageDeliveryStatus | 'SENT' | 'DELIVERED' | 'SEEN';
+  deliveredAt?: string | null;
+  seenCount?: number;
+  seenByNames?: string[];
+  lastSeenAt?: string | null;
   deliveryError?: string;
   content: string;
   createdAt: string;
@@ -81,6 +91,8 @@ export type ChatRealtimeEvent = {
     | 'SUMMARY_POSTED'
     | 'MESSAGE_PINNED'
     | 'MESSAGE_UNPINNED'
+    | 'CHANNEL_DELIVERED'
+    | 'CHANNEL_READ'
     | 'TYPING'
     | 'CHANNEL_CREATED';
   clubId: string;

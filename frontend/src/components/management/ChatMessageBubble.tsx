@@ -1,8 +1,24 @@
 "use client";
 
-import { AlertCircle, Bot, Download, Eye, FileText, Pin, PinOff, Reply, RotateCcw, X } from "lucide-react";
+import {
+  AlertCircle,
+  Bot,
+  Check,
+  CheckCheck,
+  Clock,
+  Download,
+  Eye,
+  FileText,
+  Loader2,
+  Pin,
+  PinOff,
+  Reply,
+  RotateCcw,
+  X,
+} from "lucide-react";
 import type { ChatMessage } from "@/lib/api";
 import type { PreviewTarget } from "@/components/document/DocumentPreviewModal";
+import { resolveChatMessageStatusMeta } from "@/forms/chat/chat-status-meta";
 import { formatChatTimeCompact } from "@/lib/chat-message-cache";
 import { ChatMediaCollage } from "@/components/management/ChatMediaCollage";
 import { cn, formatDateTime, formatSize } from "@/lib/utils";
@@ -15,9 +31,40 @@ function senderInitials(name: string): string {
     : `${parts[0][0] ?? ""}${parts.at(-1)?.[0] ?? ""}`.toUpperCase();
 }
 
+function DeliveryStatusIcon({
+  status,
+  bareMedia = false,
+}: {
+  status: ReturnType<typeof resolveChatMessageStatusMeta>["status"];
+  bareMedia?: boolean;
+}) {
+  if (status === "uploading") {
+    return <Loader2 size={11} className="shrink-0 animate-spin text-primary" />;
+  }
+  if (status === "sending") {
+    return <Clock size={10.5} className="shrink-0 opacity-80" />;
+  }
+  if (status === "seen") {
+    return (
+      <CheckCheck
+        size={12}
+        className={cn("shrink-0", bareMedia ? "text-emerald-300" : "text-primary")}
+      />
+    );
+  }
+  if (status === "delivered") {
+    return <CheckCheck size={12} className="shrink-0 opacity-85" />;
+  }
+  if (status === "sent") {
+    return <Check size={11.5} className="shrink-0 opacity-80" />;
+  }
+  return <AlertCircle size={11} className="shrink-0 text-destructive" />;
+}
+
 export function ChatMessageBubble({
   message: m,
   currentUserId,
+  isLatestOwn = false,
   groupedPrev,
   groupedNext,
   highlighted,
@@ -33,6 +80,7 @@ export function ChatMessageBubble({
 }: {
   message: ChatMessage;
   currentUserId?: string;
+  isLatestOwn?: boolean;
   groupedPrev: boolean;
   groupedNext: boolean;
   highlighted?: boolean;
@@ -48,9 +96,14 @@ export function ChatMessageBubble({
 }) {
   const isBot = m.senderType === "AI_BOT";
   const isMine = !isBot && Boolean(currentUserId) && m.senderId === currentUserId;
-  const isFailed = m.deliveryStatus === "failed";
+  const statusMeta = isMine ? resolveChatMessageStatusMeta(m) : null;
+  const isFailed = statusMeta?.status === "failed";
+  const isPending = statusMeta?.status === "uploading" || statusMeta?.status === "sending";
   const showSender = !isMine && !groupedPrev;
-  const showTime = !groupedNext || Boolean(m.optimistic);
+  const showTime = !groupedNext || Boolean(m.optimistic) || isMine;
+  const showExplicitReceiptFooter = Boolean(
+    isMine && statusMeta && !isFailed && (isLatestOwn || isPending)
+  );
   const attachments = m.attachments ?? [];
   const mediaCount = attachments.filter((a) => a.mediaKind === "IMAGE" || a.mediaKind === "VIDEO").length;
   const hasText = Boolean(m.content?.trim());
@@ -61,6 +114,7 @@ export function ChatMessageBubble({
   return (
     <div
       id={`chat-msg-${m.id}`}
+      data-delivery-status={statusMeta?.status}
       className={cn(
         "group flex w-full max-w-[min(560px,86%)] items-end gap-2 rounded-xl transition-colors first:mt-0",
         groupedPrev ? "mt-0.5" : "mt-2.5",
@@ -104,12 +158,14 @@ export function ChatMessageBubble({
                 : cn(
                     "w-fit rounded-2xl border px-3 py-1.5",
                     isFailed
-                      ? "border-destructive/40 bg-destructive/[0.05] text-foreground"
-                      : isMine
-                        ? "border-primary/20 bg-primary/[0.09] text-foreground"
-                        : isBot
-                          ? "border-primary/25 bg-primary/[0.05] text-foreground"
-                          : "border-border/60 bg-card text-foreground shadow-2xs"
+                      ? "border-destructive/45 bg-destructive/[0.06] text-foreground"
+                      : isPending
+                        ? "border-primary/15 bg-primary/[0.06] text-foreground opacity-90"
+                        : isMine
+                          ? "border-primary/20 bg-primary/[0.09] text-foreground"
+                          : isBot
+                            ? "border-primary/25 bg-primary/[0.05] text-foreground"
+                            : "border-border/60 bg-card text-foreground shadow-2xs"
                   )
             )}
           >
@@ -173,7 +229,7 @@ export function ChatMessageBubble({
                   )}
                   <button
                     type="button"
-                    onClick={() => onDownloadDoc(m.documentId!, m.documentId ? m.documentName || "document" : "document")}
+                    onClick={() => onDownloadDoc(m.documentId!, m.documentName || "document")}
                     className="inline-flex items-center gap-1 rounded border border-border bg-card px-1.5 py-0.5 text-[10.5px] font-semibold hover:bg-muted"
                   >
                     <Download size={11} /> Tải
@@ -184,20 +240,21 @@ export function ChatMessageBubble({
 
             {showTime && !isFailed && (
               <div
-                title={formatDateTime(m.createdAt)}
+                title={statusMeta ? statusMeta.tooltip : formatDateTime(m.createdAt)}
                 className={cn(
                   "mt-0.5 flex items-center gap-1 whitespace-nowrap text-[10px] leading-none text-muted-foreground",
                   isMine && "justify-end",
-                  isBareMedia && "w-fit rounded-full bg-black/50 px-2 py-0.5 text-white",
+                  isBareMedia && "mt-1 w-fit rounded-full bg-black/55 px-2 py-0.5 text-white",
                   isBareMedia && isMine && "ml-auto"
                 )}
               >
-                {m.optimistic ? "Đang gửi…" : formatChatTimeCompact(m.createdAt)}
+                <span>{formatChatTimeCompact(m.createdAt)}</span>
+                {statusMeta && <DeliveryStatusIcon status={statusMeta.status} bareMedia={isBareMedia} />}
               </div>
             )}
           </div>
 
-          {canSend && !m.optimistic && (
+          {canSend && !m.optimistic && !isFailed && (
             <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
               <button
                 type="button"
@@ -224,25 +281,48 @@ export function ChatMessageBubble({
           )}
         </div>
 
-        {isFailed && m.clientTempId && (
-          <div className="mt-1 flex items-center gap-1.5 px-1 text-[10.5px] text-destructive">
-            <AlertCircle size={11} />
-            <span>Chưa gửi được</span>
-            <button
-              type="button"
-              onClick={() => onRetryMessage(m.clientTempId!)}
-              className="inline-flex items-center gap-0.5 font-semibold underline hover:opacity-80"
-            >
-              <RotateCcw size={10} /> Thử lại
-            </button>
-            <button
-              type="button"
-              onClick={() => onDismissFailed(m.channelId, m.clientTempId!)}
-              aria-label="Xóa tin lỗi"
-              className="inline-flex items-center text-muted-foreground hover:text-foreground"
-            >
-              <X size={11} />
-            </button>
+        {showExplicitReceiptFooter && statusMeta && (
+          <div
+            title={statusMeta.tooltip}
+            className={cn(
+              "mt-0.5 flex items-center gap-1 px-1 text-[10.5px] font-medium",
+              statusMeta.status === "seen" ? "text-primary" : "text-muted-foreground"
+            )}
+          >
+            <DeliveryStatusIcon status={statusMeta.status} />
+            <span>{statusMeta.detailLabel}</span>
+          </div>
+        )}
+
+        {isFailed && (
+          <div
+            role="alert"
+            title={statusMeta?.tooltip}
+            className="mt-1 flex flex-wrap items-center justify-end gap-1.5 px-1 text-[10.5px] text-destructive"
+          >
+            <span className="inline-flex items-center gap-1 font-semibold">
+              <AlertCircle size={11} />
+              <span className="max-w-[260px] truncate">{statusMeta?.detailLabel || "Gửi lỗi"}</span>
+            </span>
+            {m.clientTempId && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onRetryMessage(m.clientTempId!)}
+                  className="inline-flex items-center gap-0.5 rounded bg-destructive/10 px-1.5 py-0.5 font-semibold text-destructive hover:bg-destructive/15"
+                >
+                  <RotateCcw size={10} /> Thử lại
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDismissFailed(m.channelId, m.clientTempId!)}
+                  aria-label="Xóa tin lỗi"
+                  className="inline-flex items-center text-muted-foreground hover:text-foreground"
+                >
+                  <X size={11} />
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

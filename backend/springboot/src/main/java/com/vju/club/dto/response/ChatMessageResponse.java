@@ -23,6 +23,11 @@ public record ChatMessageResponse(
         boolean pinned,
         OffsetDateTime pinnedAt,
         String pinnedByName,
+        String deliveryStatus,
+        OffsetDateTime deliveredAt,
+        int seenCount,
+        List<String> seenByNames,
+        OffsetDateTime lastSeenAt,
         String clientTempId,
         OffsetDateTime createdAt
 ) {
@@ -46,8 +51,48 @@ public record ChatMessageResponse(
                 pinned,
                 pinnedAt,
                 pinnedByName,
+                deliveryStatus != null ? deliveryStatus : "SENT",
+                deliveredAt,
+                seenCount,
+                seenByNames == null ? List.of() : seenByNames,
+                lastSeenAt,
                 tempId,
                 createdAt
+        );
+    }
+
+    public static ChatMessageResponse enrichReceipt(ChatMessageResponse base,
+                                                    String resolvedStatus,
+                                                    OffsetDateTime resolvedDeliveredAt,
+                                                    int seenCount,
+                                                    List<String> seenByNames,
+                                                    OffsetDateTime lastSeenAt) {
+        return new ChatMessageResponse(
+                base.id(),
+                base.channelId(),
+                base.senderId(),
+                base.senderFullName(),
+                base.senderType(),
+                base.content(),
+                base.replyToId(),
+                base.replyToSenderName(),
+                base.replyToPreview(),
+                base.documentId(),
+                base.documentName(),
+                base.documentContentType(),
+                base.documentSizeBytes(),
+                base.documentPreviewable(),
+                base.attachments() == null ? List.of() : base.attachments(),
+                base.pinned(),
+                base.pinnedAt(),
+                base.pinnedByName(),
+                resolvedStatus != null ? resolvedStatus : "SENT",
+                resolvedDeliveredAt,
+                seenCount,
+                seenByNames == null ? List.of() : seenByNames,
+                lastSeenAt,
+                base.clientTempId(),
+                base.createdAt()
         );
     }
 }

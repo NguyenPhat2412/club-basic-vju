@@ -1,5 +1,6 @@
 import { chatApi } from '@/api/chat/chat.api';
 import { fileExtension } from '@/lib/utils';
+import { mergeConfirmedDeliveryReceipt } from '@/forms/chat/chat-status-meta';
 import type { Page } from '@/types/common.types';
 import type { ChatAttachment, ChatAttachmentKind, ChatMessage } from '@/types/chat/chat.types';
 
@@ -114,21 +115,16 @@ export function reconcileIncomingChatMessage(
   const cleanIncoming: ChatMessage = {
     ...incoming,
     optimistic: false,
-    deliveryStatus: undefined,
+    deliveryStatus: incoming.deliveryStatus && incoming.deliveryStatus !== 'sending' && incoming.deliveryStatus !== 'uploading' && incoming.deliveryStatus !== 'failed' ? incoming.deliveryStatus : 'sent',
     deliveryError: undefined,
   };
-  if (!oldPage) {
-    return {
-      page: { items: [cleanIncoming], total: 1, offset: 0, limit },
-      insertedNew: true,
-    };
-  }
+  if (!oldPage) return { page: { items: [cleanIncoming], total: 1, offset: 0, limit }, insertedNew: true };
   const channelItems = oldPage.items.filter((m) => m.channelId === incoming.channelId);
 
   const existingByIdIdx = channelItems.findIndex((m) => m.id === incoming.id);
   if (existingByIdIdx >= 0) {
     const nextItems = [...channelItems];
-    nextItems[existingByIdIdx] = { ...nextItems[existingByIdIdx], ...cleanIncoming };
+    nextItems[existingByIdIdx] = mergeConfirmedDeliveryReceipt(nextItems[existingByIdIdx], cleanIncoming);
     return { page: { ...oldPage, items: nextItems }, insertedNew: false };
   }
 

@@ -1,5 +1,6 @@
 package com.vju.club.entity;
 
+import com.vju.club.enums.ChatMessageStatus;
 import com.vju.club.enums.ChatSenderType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -51,4 +52,11 @@ public class ChatMessage extends TimestampedEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pinned_by")
     private User pinnedBy;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "delivery_status", nullable = false, length = 16)
+    private ChatMessageStatus deliveryStatus = ChatMessageStatus.SENT;
+
+    @Column(name = "delivered_at")
+    private OffsetDateTime deliveredAt;
 }

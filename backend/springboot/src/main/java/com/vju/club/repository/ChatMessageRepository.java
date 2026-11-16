@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -35,6 +36,33 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
     List<ChatMessage> findPinnedByChannelId(@Param("channelId") UUID channelId);
 
     long countByChannel_Id(UUID channelId);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            UPDATE chat_messages
+            SET delivery_status = 'DELIVERED',
+                delivered_at = COALESCE(delivered_at, :deliveredAt)
+            WHERE channel_id = :channelId
+              AND delivery_status = 'SENT'
+              AND (sender_id IS NULL OR sender_id <> :viewerId)
+            """, nativeQuery = true)
+    int markPendingChannelMessagesDelivered(@Param("channelId") UUID channelId,
+                                            @Param("viewerId") UUID viewerId,
+                                            @Param("deliveredAt") OffsetDateTime deliveredAt);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            UPDATE chat_messages
+            SET delivery_status = 'SEEN',
+                delivered_at = COALESCE(delivered_at, :readAt)
+            WHERE channel_id = :channelId
+              AND delivery_status <> 'SEEN'
+              AND created_at <= :readAt
+              AND (sender_id IS NULL OR sender_id <> :readerId)
+            """, nativeQuery = true)
+    int markChannelMessagesSeenUpTo(@Param("channelId") UUID channelId,
+                                    @Param("readerId") UUID readerId,
+                                    @Param("readAt") OffsetDateTime readAt);
 
     @EntityGraph(attributePaths = {"channel", "sender", "replyTo", "replyTo.sender", "document", "pinnedBy"})
     @Query("""

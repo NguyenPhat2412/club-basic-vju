@@ -102,6 +102,8 @@ public class ChatServiceImpl implements ChatService {
     private SystemSettingsService settingsService;
     @Autowired(required = false)
     private ChatAndVaultNotifier notifier;
+    @Autowired(required = false)
+    private ChatDeliveryReceiptService deliveryReceiptService;
 
     @Override
     @Transactional
@@ -111,25 +113,14 @@ public class ChatServiceImpl implements ChatService {
         }
         Club club = clubRepository.findById(clubId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND", "Club not found"));
-        if (club.getStatus() != ClubStatus.ACTIVE) {
-            throw new ApiException(HttpStatus.CONFLICT, "CLUB_INACTIVE", "Club is inactive");
-        }
-
-        Department department = null;
-        if (request.departmentId() != null) {
-            department = departmentRepository.findById(request.departmentId())
-                    .filter(d -> d.getClub().getId().equals(clubId))
-                    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "DEPARTMENT_NOT_FOUND", "Department not found in club"));
-        }
-        authorizationService.require(actor, ChatConstants.PERMISSION_SEND, clubId,
-                department == null ? null : department.getId());
-
-        Event event = null;
-        if (request.eventId() != null) {
-            event = eventRepository.findById(request.eventId())
-                    .filter(e -> e.getClub().getId().equals(clubId))
-                    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found in club"));
-        }
+        if (club.getStatus() != ClubStatus.ACTIVE) throw new ApiException(HttpStatus.CONFLICT, "CLUB_INACTIVE", "Club is inactive");
+        Department department = request.departmentId() == null ? null : departmentRepository.findById(request.departmentId())
+                .filter(d -> d.getClub().getId().equals(clubId))
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "DEPARTMENT_NOT_FOUND", "Department not found in club"));
+        authorizationService.require(actor, ChatConstants.PERMISSION_SEND, clubId, department == null ? null : department.getId());
+        Event event = request.eventId() == null ? null : eventRepository.findById(request.eventId())
+                .filter(e -> e.getClub().getId().equals(clubId))
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found in club"));
 
         ChatChannel channel = new ChatChannel();
         channel.setClub(club);
@@ -245,6 +236,12 @@ public class ChatServiceImpl implements ChatService {
         message.setContent(content);
         message.setReplyTo(replyTo);
         message.setDocument(attachment);
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        Set<UUID> recipients = new LinkedHashSet<>(channelRecipients(channel));
+        if (replyTo != null && replyTo.getSender() != null) recipients.add(replyTo.getSender().getId());
+        if (deliveryReceiptService != null) {
+            deliveryReceiptService.initializeMessageDelivery(message, actor.id(), recipients, now);
+        }
         ChatMessage saved = messageRepository.saveAndFlush(message);
         List<ChatAttachmentResponse> attached = chatMediaService.bindAttachments(actor, channel, saved, request.attachmentIds());
         String tempId = request.clientTempId() != null && !request.clientTempId().isBlank() ? request.clientTempId().strip() : null;
@@ -252,15 +249,13 @@ public class ChatServiceImpl implements ChatService {
         channelReadRepository.upsertRead(channelId, actor.id(), saved.getId(), saved.getCreatedAt());
         ChatMessageResponse response = chatMapper.toMessageResponse(saved).withAttachments(attached, tempId);
         ChatChannelResponse channelResp = chatMapper.toChannelResponse(channel);
-        Set<UUID> recipients = new LinkedHashSet<>(channelRecipients(channel));
-        if (replyTo != null && replyTo.getSender() != null) recipients.add(replyTo.getSender().getId());
         if (notifier != null) {
             notifier.notifyChatInteractions(channel, sender, saved, content, replyTo, recipients, attachment != null || !attached.isEmpty());
         }
         eventPublisher.publishEvent(new ChatRealtimeEvent(
                 "MESSAGE_CREATED", channel.getClub().getId(), channelId,
                 actor.id(), sender.getFullName(), response, channelResp,
-                List.copyOf(recipients), OffsetDateTime.now(clock)
+                List.copyOf(recipients), now
         ));
         return response;
     }
@@ -273,33 +268,37 @@ public class ChatServiceImpl implements ChatService {
             ChatMessage cursor = messageRepository.findById(beforeId)
                     .filter(m -> m.getChannel().getId().equals(channelId))
                     .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "MESSAGE_NOT_FOUND", "Cursor message not found"));
-            List<ChatMessageResponse> items = chatMediaService.enrichMessages(messageRepository.findBeforeCursor(
-                    channelId, cursor.getCreatedAt(), cursor.getId(), PageRequest.of(0, limit))
-                    .stream().map(chatMapper::toMessageResponse).toList());
+            List<ChatMessageResponse> items = enrich(channelId, messageRepository.findBeforeCursor(
+                    channelId, cursor.getCreatedAt(), cursor.getId(), PageRequest.of(0, limit)));
             return new PageResponse<>(items, messageRepository.countByChannel_Id(channelId), 0, limit);
         }
         var page = messageRepository.findByChannel_IdOrderByCreatedAtDesc(
                 channelId, new OffsetLimitRequest(offset, limit, MESSAGE_SORT));
+        return new PageResponse<>(enrich(channelId, page.getContent()), page.getTotalElements(), offset, limit);
+    }
+
+    private List<ChatMessageResponse> enrich(UUID channelId, List<ChatMessage> entities) {
         List<ChatMessageResponse> items = chatMediaService.enrichMessages(
-                page.getContent().stream().map(chatMapper::toMessageResponse).toList());
-        return new PageResponse<>(items, page.getTotalElements(), offset, limit);
+                entities.stream().map(chatMapper::toMessageResponse).toList());
+        return deliveryReceiptService != null ? deliveryReceiptService.enrichReceipts(channelId, items) : items;
     }
 
     @Override
     @Transactional
     public void markChannelRead(Actor actor, UUID channelId, UUID lastReadMessageId) {
-        chatAccessPolicy.requireChannelAccessById(actor, channelId, ChatConstants.PERMISSION_VIEW, false);
+        ChatChannel channel = chatAccessPolicy.requireChannelAccessById(actor, channelId, ChatConstants.PERMISSION_VIEW, false);
         OffsetDateTime readAt = OffsetDateTime.now(clock);
-        UUID resolvedMsgId = lastReadMessageId;
-        if (resolvedMsgId != null) {
-            ChatMessage target = messageRepository.findById(resolvedMsgId)
+        if (lastReadMessageId != null) {
+            ChatMessage target = messageRepository.findById(lastReadMessageId)
                     .filter(m -> m.getChannel().getId().equals(channelId))
                     .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "MESSAGE_NOT_FOUND", "Message not found in channel"));
-            if (target.getCreatedAt().isAfter(readAt)) {
-                readAt = target.getCreatedAt();
-            }
+            if (target.getCreatedAt().isAfter(readAt)) readAt = target.getCreatedAt();
         }
-        channelReadRepository.upsertRead(channelId, actor.id(), resolvedMsgId, readAt);
+        if (deliveryReceiptService != null) {
+            deliveryReceiptService.markChannelReadAndBroadcast(channel, actor.id(), lastReadMessageId, readAt, channelRecipients(channel));
+        } else {
+            channelReadRepository.upsertRead(channelId, actor.id(), lastReadMessageId, readAt);
+        }
     }
 
     @Override

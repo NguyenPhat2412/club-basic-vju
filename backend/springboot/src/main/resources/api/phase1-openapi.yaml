@@ -7529,6 +7529,13 @@ components:
         pinned: {type: boolean}
         pinnedAt: {type: [string, 'null'], format: date-time}
         pinnedByName: {type: [string, 'null']}
+        deliveryStatus: {type: string, enum: [SENT, DELIVERED, SEEN]}
+        deliveredAt: {type: [string, 'null'], format: date-time}
+        seenCount: {type: integer}
+        seenByNames:
+          type: array
+          items: {type: string}
+        lastSeenAt: {type: [string, 'null'], format: date-time}
         createdAt: {type: string, format: date-time}
     ChatMessageListResponse:
       type: object

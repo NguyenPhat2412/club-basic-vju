@@ -131,6 +131,22 @@ export function useChatMessageSender({
 
       void enqueueChannelCommit(job.targetChannelId, async () => {
         const uploaded = await uploadPromise;
+        if (job.stagedSnapshot.length > 0) {
+          queryClient.setQueryData<Page<ChatMessage>>(
+            ["channel-messages", job.targetChannelId],
+            (old) =>
+              old
+                ? {
+                    ...old,
+                    items: old.items.map((m) =>
+                      m.id === job.clientTempId || m.clientTempId === job.clientTempId
+                        ? { ...m, deliveryStatus: "sending" }
+                        : m
+                    ),
+                  }
+                : old
+          );
+        }
         return apiModel.sendMessage(job.targetChannelId, {
           content: job.text,
           replyToId: job.replySnapshot?.id,
@@ -210,7 +226,7 @@ export function useChatMessageSender({
       id: job.clientTempId,
       clientTempId: job.clientTempId,
       optimistic: true,
-      deliveryStatus: "sending",
+      deliveryStatus: job.stagedSnapshot.length > 0 ? "uploading" : "sending",
       channelId: job.targetChannelId,
       senderId: userId,
       senderFullName: userFullName || "Bạn",
@@ -261,7 +277,12 @@ export function useChatMessageSender({
                 ...old,
                 items: old.items.map((m) =>
                   m.id === clientTempId || m.clientTempId === clientTempId
-                    ? { ...m, optimistic: true, deliveryStatus: "sending", deliveryError: undefined }
+                    ? {
+                        ...m,
+                        optimistic: true,
+                        deliveryStatus: job.stagedSnapshot.length > 0 ? "uploading" : "sending",
+                        deliveryError: undefined,
+                      }
                     : m
                 ),
               }

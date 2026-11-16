@@ -6,6 +6,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { API_BASE } from '@/lib/api/client';
 import { chatApi } from '@/api/chat/chat.api';
 import {
+  applyChannelDeliveredReceipt,
+  applyChannelReadReceipt,
+} from '@/forms/chat/chat-status-meta';
+import {
   canApplyActiveChannelMessage,
   getCachedChannelWindow,
   getCachedPinnedMessages,
@@ -108,6 +112,44 @@ export function useChatRealtime({
             },
           }));
         }
+        return;
+      }
+
+      if (
+        (event.type === 'CHANNEL_DELIVERED' || event.type === 'CHANNEL_READ') &&
+        event.channelId
+      ) {
+        queryClient.setQueryData<Page<ChatMessage>>(
+          ['channel-messages', event.channelId],
+          (old) => {
+            const base = old ?? getCachedChannelWindow(event.channelId, userIdRef.current)?.page;
+            if (!base) return old;
+            const nextItems =
+              event.type === 'CHANNEL_READ'
+                ? applyChannelReadReceipt(
+                    base.items,
+                    event.actorId,
+                    event.actorName,
+                    userIdRef.current,
+                    event.occurredAt
+                  )
+                : applyChannelDeliveredReceipt(
+                    base.items,
+                    event.actorId,
+                    userIdRef.current,
+                    event.occurredAt
+                  );
+            if (nextItems === base.items) return old;
+            const nextPage = { ...base, items: nextItems };
+            saveCachedChannelWindow(
+              event.channelId,
+              nextPage,
+              userIdRef.current,
+              activeChannelRef.current || event.channelId
+            );
+            return nextPage;
+          }
+        );
         return;
       }
 

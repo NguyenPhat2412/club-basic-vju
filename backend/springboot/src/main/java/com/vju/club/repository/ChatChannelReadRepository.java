@@ -15,6 +15,23 @@ import java.util.UUID;
 public interface ChatChannelReadRepository extends JpaRepository<ChatChannelRead, ChatChannelReadId> {
     List<ChatChannelRead> findByUserIdAndChannelIdIn(UUID userId, Collection<UUID> channelIds);
 
+    @Query(value = """
+            SELECT r.user_id AS userId,
+                   u.full_name AS fullName,
+                   r.last_read_at AS lastReadAt
+            FROM chat_channel_reads r
+            JOIN users u ON u.id = r.user_id
+            WHERE r.channel_id = :channelId
+            ORDER BY r.last_read_at DESC
+            """, nativeQuery = true)
+    List<ChannelReaderRow> findReadersByChannelId(@Param("channelId") UUID channelId);
+
+    interface ChannelReaderRow {
+        UUID getUserId();
+        String getFullName();
+        java.time.Instant getLastReadAt();
+    }
+
     @Modifying(flushAutomatically = true)
     @Query(value = """
             INSERT INTO chat_channel_reads (channel_id, user_id, last_read_message_id, last_read_at)

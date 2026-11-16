@@ -48,6 +48,10 @@ public interface ChatMapper {
     @Mapping(target = "documentPreviewable", expression = "java(liveDocPreviewable(message.getDocument()))")
     @Mapping(target = "attachments", expression = "java(java.util.List.of())")
     @Mapping(target = "pinnedByName", source = "pinnedBy.fullName")
+    @Mapping(target = "deliveryStatus", expression = "java(message.getDeliveryStatus() != null ? message.getDeliveryStatus().name() : \"SENT\")")
+    @Mapping(target = "seenCount", constant = "0")
+    @Mapping(target = "seenByNames", expression = "java(java.util.List.of())")
+    @Mapping(target = "lastSeenAt", ignore = true)
     @Mapping(target = "clientTempId", ignore = true)
     ChatMessageResponse toMessageResponse(ChatMessage message);
 

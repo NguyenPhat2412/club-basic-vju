@@ -25,7 +25,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mapstruct.factory.Mappers;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.messaging.simp.user.SimpUser;
+import org.springframework.messaging.simp.user.SimpUserRegistry;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -233,5 +236,68 @@ class ChatMediaAndQuickReplyTest {
         var unpinnedRes = pinService.unpinMessage(actor, channelId, messageId);
         assertThat(unpinnedRes.pinned()).isFalse();
         assertThat(unpinnedRes.pinnedAt()).isNull();
+    }
+
+    @Test
+    void deliveryReceiptServiceTracksSentDeliveredAndSeenWithReaderNames() {
+        var readRepo = mock(com.vju.club.repository.ChatChannelReadRepository.class);
+        var msgRepo = mock(ChatMessageRepository.class);
+        var channelRepo = mock(com.vju.club.repository.ChatChannelRepository.class);
+        var userRepo = mock(UserRepository.class);
+        var publisher = mock(ApplicationEventPublisher.class);
+        var userRegistry = mock(SimpUserRegistry.class);
+        Clock fixedClock = Clock.fixed(java.time.Instant.parse("2026-11-16T10:00:00Z"), java.time.ZoneOffset.UTC);
+
+        ChatDeliveryReceiptService receiptService = new ChatDeliveryReceiptService(
+                readRepo, msgRepo, channelRepo, userRepo, publisher, fixedClock);
+        ReflectionTestUtils.setField(receiptService, "simpUserRegistry", userRegistry);
+
+        UUID senderId = UUID.randomUUID();
+        UUID bobId = UUID.randomUUID();
+        UUID channelId = UUID.randomUUID();
+        UUID clubId = UUID.randomUUID();
+        java.time.OffsetDateTime now = java.time.OffsetDateTime.now(fixedClock);
+
+        // 1. Offline recipients -> SENT
+        ChatMessage offlineMsg = new ChatMessage();
+        receiptService.initializeMessageDelivery(offlineMsg, senderId, List.of(senderId, bobId), now);
+        assertThat(offlineMsg.getDeliveryStatus().name()).isEqualTo("SENT");
+        assertThat(offlineMsg.getDeliveredAt()).isNull();
+
+        // 2. Online recipient in SimpUserRegistry -> DELIVERED immediately
+        when(userRegistry.getUser(bobId.toString())).thenReturn(mock(SimpUser.class));
+        ChatMessage onlineMsg = new ChatMessage();
+        receiptService.initializeMessageDelivery(onlineMsg, senderId, List.of(senderId, bobId), now);
+        assertThat(onlineMsg.getDeliveryStatus().name()).isEqualTo("DELIVERED");
+        assertThat(onlineMsg.getDeliveredAt()).isEqualTo(now);
+
+        // 3. Reader row in chat_channel_reads -> enriches SEEN, seenCount=1, seenByNames=["Trần Văn Bob"]
+        com.vju.club.repository.ChatChannelReadRepository.ChannelReaderRow readerRow =
+                new com.vju.club.repository.ChatChannelReadRepository.ChannelReaderRow() {
+                    @Override public UUID getUserId() { return bobId; }
+                    @Override public String getFullName() { return "Trần Văn Bob"; }
+                    @Override public java.time.Instant getLastReadAt() { return now.plusSeconds(5).toInstant(); }
+                };
+        when(readRepo.findReadersByChannelId(channelId)).thenReturn(List.of(readerRow));
+
+        Club club = new Club();
+        club.setId(clubId);
+        ChatChannel channel = new ChatChannel();
+        channel.setId(channelId);
+        channel.setClub(club);
+        onlineMsg.setId(UUID.randomUUID());
+        onlineMsg.setChannel(channel);
+        User sender = new User();
+        sender.setId(senderId);
+        onlineMsg.setSender(sender);
+        onlineMsg.setContent("Báo cáo tiến độ");
+        ReflectionTestUtils.setField(onlineMsg, "createdAt", now);
+
+        ChatMapper mapper = Mappers.getMapper(ChatMapper.class);
+        var enriched = receiptService.enrichReceipts(channelId, List.of(mapper.toMessageResponse(onlineMsg)));
+        assertThat(enriched).hasSize(1);
+        assertThat(enriched.getFirst().deliveryStatus()).isEqualTo("SEEN");
+        assertThat(enriched.getFirst().seenCount()).isEqualTo(1);
+        assertThat(enriched.getFirst().seenByNames()).containsExactly("Trần Văn Bob");
     }
 }

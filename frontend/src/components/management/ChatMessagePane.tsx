@@ -250,11 +250,7 @@ export function ChatMessagePane(props: ChatMessagePaneProps) {
                 <span className="inline-flex items-center gap-1.5">
                   <Bot size={13} /> Tóm tắt AI ({formatDateTime(latestSummary.createdAt)})
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setSummaryChannelId("")}
-                  className="text-[11px] text-muted-foreground hover:text-foreground"
-                >
+                <button type="button" onClick={() => setSummaryChannelId("")} className="text-[11px] text-muted-foreground hover:text-foreground">
                   Đóng
                 </button>
               </div>
@@ -264,12 +260,7 @@ export function ChatMessagePane(props: ChatMessagePaneProps) {
         </div>
       </header>
 
-      <ChatPinnedBar
-        pinnedMessages={pinnedMessages}
-        canPin={canSend}
-        onJumpToMessage={jumpToMessage}
-        onUnpin={onUnpinById}
-      />
+      <ChatPinnedBar pinnedMessages={pinnedMessages} canPin={canSend} onJumpToMessage={jumpToMessage} onUnpin={onUnpinById} />
 
       {(wsError || wsStatus === "disconnected") && (
         <div
@@ -323,25 +314,33 @@ export function ChatMessagePane(props: ChatMessagePaneProps) {
             Chưa có tin nhắn. Hãy gửi lời chào đầu tiên tới kênh!
           </div>
         ) : (
-          orderedMessages.map((m, idx) => (
-            <ChatMessageBubble
-              key={m.id}
-              message={m}
-              currentUserId={currentUserId}
-              groupedPrev={areMessagesInSameDisplayGroup(orderedMessages[idx - 1], m)}
-              groupedNext={areMessagesInSameDisplayGroup(m, orderedMessages[idx + 1])}
-              highlighted={highlightedId === m.id}
-              canSend={canSend}
-              onReply={onReply}
-              onTogglePin={onTogglePin}
-              onJumpToMessage={jumpToMessage}
-              onRetryMessage={onRetryMessage}
-              onDismissFailed={onDismissFailed}
-              onPreviewDoc={onPreviewDoc}
-              onDownloadDoc={onDownloadDoc}
-              onError={onError}
-            />
-          ))
+          (() => {
+            const latestOwnId = currentUserId
+              ? [...orderedMessages]
+                  .reverse()
+                  .find((item) => item.senderType !== "AI_BOT" && item.senderId === currentUserId)?.id
+              : undefined;
+            return orderedMessages.map((m, idx) => (
+              <ChatMessageBubble
+                key={m.id}
+                message={m}
+                currentUserId={currentUserId}
+                isLatestOwn={Boolean(latestOwnId && m.id === latestOwnId)}
+                groupedPrev={areMessagesInSameDisplayGroup(orderedMessages[idx - 1], m)}
+                groupedNext={areMessagesInSameDisplayGroup(m, orderedMessages[idx + 1])}
+                highlighted={highlightedId === m.id}
+                canSend={canSend}
+                onReply={onReply}
+                onTogglePin={onTogglePin}
+                onJumpToMessage={jumpToMessage}
+                onRetryMessage={onRetryMessage}
+                onDismissFailed={onDismissFailed}
+                onPreviewDoc={onPreviewDoc}
+                onDownloadDoc={onDownloadDoc}
+                onError={onError}
+              />
+            ));
+          })()
         )}
       </div>
 
