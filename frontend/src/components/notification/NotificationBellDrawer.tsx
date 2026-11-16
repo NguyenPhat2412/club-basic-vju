@@ -17,36 +17,23 @@ import {
 } from "lucide-react";
 import { apiModel, Notification } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
-import { Badge, CountBadge, Tone } from "@/components/ui/badge";
+import {
+  UNREAD_SUMMARY_QUERY_KEY,
+  useUnreadNotificationSummary,
+} from "@/hooks/notification/useGlobalRealtimeNotifications";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  notificationReferenceMeta as referenceMeta,
+  targetHrefForNotification as targetHrefFor,
+} from "@/forms/notification/notification-links";
 import { cn, formatDateTime } from "@/lib/utils";
 import { useI18n } from "@/providers/I18nContext";
-import { targetHrefFor } from "./NotificationsView";
 
 const emptySubscribe = () => () => {};
 const APP_REVIEW_PERMS = ["application.view", "application.review", "application.approve", "application.reject"];
 
-type NotifFilter = "all" | "unread" | "club" | "ops";
-
-function referenceMeta(refType?: string | null): { label: string; tone: Tone; group: "club" | "ops" | "sys" } {
-  switch (refType) {
-    case "CLUB_APPLICATION":
-    case "APPLICATION":
-      return { label: "Đơn ứng tuyển", tone: "primary", group: "club" };
-    case "CLUB":
-      return { label: "Câu lạc bộ", tone: "primary", group: "club" };
-    case "MEMBERSHIP":
-      return { label: "Thành viên", tone: "neutral", group: "club" };
-    case "DEPARTMENT":
-      return { label: "Ban chuyên môn", tone: "neutral", group: "club" };
-    case "EVENT":
-      return { label: "Sự kiện", tone: "pending", group: "ops" };
-    case "TASK":
-      return { label: "Công việc", tone: "pending", group: "ops" };
-    default:
-      return { label: "Hệ thống", tone: "neutral", group: "sys" };
-  }
-}
+type NotifFilter = "all" | "unread" | "chat" | "club" | "ops";
 
 export function NotificationBellDrawer({
   active = false,
@@ -67,10 +54,13 @@ export function NotificationBellDrawer({
   const [search, setSearch] = useState("");
 
   const canReviewApps = APP_REVIEW_PERMS.some(session.can);
+  const canQuery = Boolean(session.user && !session.mustChangePassword);
+  const unreadSummary = useUnreadNotificationSummary(canQuery);
 
   const list = useQuery({
     queryKey: ["notifications", 0, "bell-drawer"],
     queryFn: () => apiModel.notifications(0, 40),
+    enabled: canQuery,
     staleTime: 15_000,
   });
 
@@ -85,6 +75,7 @@ export function NotificationBellDrawer({
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    queryClient.invalidateQueries({ queryKey: UNREAD_SUMMARY_QUERY_KEY });
     queryClient.invalidateQueries({ queryKey: ["dashboard", "notifications"] });
   };
 
@@ -99,13 +90,15 @@ export function NotificationBellDrawer({
   });
 
   const items = useMemo(() => list.data?.items ?? [], [list.data?.items]);
-  const unreadCount = useMemo(() => items.filter((n) => !n.read).length, [items]);
+  const pageUnreadCount = useMemo(() => items.filter((n) => !n.read).length, [items]);
+  const unreadCount = unreadSummary.data?.unreadNotifications ?? pageUnreadCount;
 
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase();
     return items.filter((n) => {
       const meta = referenceMeta(n.referenceType);
       if (filter === "unread" && n.read) return false;
+      if (filter === "chat" && meta.group !== "chat") return false;
       if (filter === "club" && meta.group !== "club") return false;
       if (filter === "ops" && meta.group !== "ops") return false;
       if (!q) return true;
@@ -174,8 +167,10 @@ export function NotificationBellDrawer({
                     <Bell size={16} />
                   </span>
                   <div className="flex min-w-0 items-center gap-2">
-                    <h3 className="truncate text-sm font-bold text-slate-900">Trung tâm thông báo</h3>
-                    <CountBadge>{unreadCount} chưa đọc</CountBadge>
+                    <h3 className="truncate whitespace-nowrap text-sm font-bold text-slate-900">Thông báo</h3>
+                    <span className="shrink-0 whitespace-nowrap rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">
+                      {unreadCount} chưa đọc
+                    </span>
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
@@ -218,8 +213,9 @@ export function NotificationBellDrawer({
                     [
                       { key: "all", label: `Tất cả (${items.length})` },
                       { key: "unread", label: `Chưa đọc (${unreadCount})` },
+                      { key: "chat", label: "Tin nhắn" },
                       { key: "club", label: "CLB & Đơn" },
-                      { key: "ops", label: "Sự kiện & Việc" },
+                      { key: "ops", label: "Hoạt động" },
                     ] as const
                   ).map((tab) => (
                     <button

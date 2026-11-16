@@ -4,6 +4,7 @@ import com.vju.club.dto.request.BroadcastNotificationRequest;
 import com.vju.club.dto.request.ResourceNotificationRequest;
 import com.vju.club.dto.response.NotificationBroadcastResponse;
 import com.vju.club.dto.response.NotificationResponse;
+import com.vju.club.dto.response.NotificationUnreadSummaryResponse;
 import com.vju.club.dto.response.PageResponse;
 import com.vju.club.dto.response.ResourceNotificationResponse;
 import com.vju.club.security.Actor;
@@ -18,6 +19,8 @@ public interface NotificationService {
     void create(UUID userId, String title, String message, String referenceType, UUID referenceId, String eventKey);
 
     PageResponse<NotificationResponse> list(Actor actor, int offset, int limit);
+
+    NotificationUnreadSummaryResponse unreadSummary(Actor actor);
 
     NotificationResponse get(Actor actor, UUID id);
 

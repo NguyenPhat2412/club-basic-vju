@@ -5,6 +5,10 @@ import { ReactNode, Suspense, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { authApi } from "@/api/auth/auth.api";
 import { buildNavigationSections, resolveActiveNavMeta } from "@/config/navigation";
+import {
+  useGlobalRealtimeNotifications,
+  useUnreadNotificationSummary,
+} from "@/hooks/notification/useGlobalRealtimeNotifications";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { useI18n } from "@/providers/I18nContext";
 import { AuthModal, AuthModalMode } from "@/components/auth/AuthModal";
@@ -102,6 +106,12 @@ function AppShellInner({ children }: { children: ReactNode }) {
   const canManageWorkspace = sections.some((s) =>
     s.groups.some((g) => g.items.some((i) => i.href.startsWith("/management")))
   );
+  const realtimeReady = Boolean(session.user && !session.mustChangePassword);
+  useGlobalRealtimeNotifications({
+    enabled: realtimeReady,
+    currentUserId: session.user?.id,
+  });
+  const unreadSummary = useUnreadNotificationSummary(realtimeReady);
 
   const signOut = async () => {
     await queryClient.cancelQueries();
@@ -147,6 +157,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
           currentTier={currentTier}
           user={session.user}
           mustChangePassword={session.mustChangePassword}
+          unreadSummary={unreadSummary.data}
           onSignOut={signOut}
         />
       </div>
@@ -169,8 +180,10 @@ function AppShellInner({ children }: { children: ReactNode }) {
               onToggleGroup={toggleGroup}
               pathname={pathname}
               currentTab={currentTab}
+              currentTier={currentTier}
               user={session.user}
               mustChangePassword={session.mustChangePassword}
+              unreadSummary={unreadSummary.data}
               onSignOut={signOut}
             />
           </div>

@@ -59,6 +59,7 @@ import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -99,6 +100,8 @@ public class ChatServiceImpl implements ChatService {
     // optional so hand-built unit tests keep working; absent means the built-in defaults
     @Autowired(required = false)
     private SystemSettingsService settingsService;
+    @Autowired(required = false)
+    private ChatAndVaultNotifier notifier;
 
     @Override
     @Transactional
@@ -248,11 +251,16 @@ public class ChatServiceImpl implements ChatService {
 
         channelReadRepository.upsertRead(channelId, actor.id(), saved.getId(), saved.getCreatedAt());
         ChatMessageResponse response = chatMapper.toMessageResponse(saved).withAttachments(attached, tempId);
-
+        ChatChannelResponse channelResp = chatMapper.toChannelResponse(channel);
+        Set<UUID> recipients = new LinkedHashSet<>(channelRecipients(channel));
+        if (replyTo != null && replyTo.getSender() != null) recipients.add(replyTo.getSender().getId());
+        if (notifier != null) {
+            notifier.notifyChatInteractions(channel, sender, saved, content, replyTo, recipients, attachment != null || !attached.isEmpty());
+        }
         eventPublisher.publishEvent(new ChatRealtimeEvent(
                 "MESSAGE_CREATED", channel.getClub().getId(), channelId,
-                actor.id(), sender.getFullName(), response, null,
-                channelRecipients(channel), OffsetDateTime.now(clock)
+                actor.id(), sender.getFullName(), response, channelResp,
+                List.copyOf(recipients), OffsetDateTime.now(clock)
         ));
         return response;
     }

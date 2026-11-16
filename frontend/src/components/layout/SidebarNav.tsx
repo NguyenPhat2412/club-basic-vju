@@ -7,6 +7,7 @@ import { ChevronDown, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X 
 import { isNavItemActive, NavSection } from "@/config/navigation";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/I18nContext";
+import type { NotificationUnreadSummary } from "@/types/notification/notification.types";
 import type { User } from "@/types/user/user.types";
 
 export function SidebarNav({
@@ -24,6 +25,7 @@ export function SidebarNav({
   currentTier,
   user,
   mustChangePassword,
+  unreadSummary,
   onSignOut,
 }: {
   isMobile?: boolean;
@@ -40,11 +42,31 @@ export function SidebarNav({
   currentTier?: string | null;
   user?: User | null;
   mustChangePassword?: boolean;
+  unreadSummary?: NotificationUnreadSummary;
   onSignOut: () => void;
 }) {
   const { t, tr } = useI18n();
   const isCollapsed = !isMobile && collapsed;
   const isOverviewActive = pathname === "/dashboard";
+
+  const badgeCountForHref = (href: string): number => {
+    if (href === "/notifications") return unreadSummary?.unreadNotifications ?? 0;
+    if (href === "/management?tab=chat") return unreadSummary?.unreadChatMessages ?? 0;
+    return 0;
+  };
+
+  const resolveItemHref = (href: string): string => {
+    if (
+      href === "/management?tab=chat" &&
+      (unreadSummary?.unreadChatMessages ?? 0) > 0 &&
+      unreadSummary?.latestUnreadClubId
+    ) {
+      const params = new URLSearchParams({ tab: "chat", clubId: unreadSummary.latestUnreadClubId });
+      if (unreadSummary.latestUnreadChannelId) params.set("channelId", unreadSummary.latestUnreadChannelId);
+      return `/management?${params.toString()}`;
+    }
+    return href;
+  };
   // fixed-position flyout: the nav scrolls (overflow clips absolute children), so it can't live inside it
   type Tip = { label: string; items?: { href: string; label: string; active: boolean }[]; top: number; left: number };
   const [tip, setTip] = useState<Tip | null>(null);
@@ -178,9 +200,13 @@ export function SidebarNav({
                     const hasActiveChild = group.items.some((item) =>
                       isNavItemActive(item, pathname, currentTab, currentTier)
                     );
+                    const groupBadgeTotal = group.items.reduce(
+                      (sum, item) => sum + badgeCountForHref(item.href),
+                      0
+                    );
 
                     if (isCollapsed) {
-                      const firstHref = group.items[0]?.href ?? "/dashboard";
+                      const firstHref = resolveItemHref(group.items[0]?.href ?? "/dashboard");
                       return (
                         <Link
                           key={group.id}
@@ -189,19 +215,25 @@ export function SidebarNav({
                           {...tipProps(
                             group.label,
                             group.items.map((i) => ({
-                              href: i.href,
-                              label: i.label,
+                              href: resolveItemHref(i.href),
+                              label:
+                                badgeCountForHref(i.href) > 0
+                                  ? `${i.label} (${badgeCountForHref(i.href)})`
+                                  : i.label,
                               active: isNavItemActive(i, pathname, currentTab, currentTier),
                             }))
                           )}
                           className={cn(
-                            "flex items-center justify-center rounded-lg p-2 transition-colors",
+                            "relative flex items-center justify-center rounded-lg p-2 transition-colors",
                             hasActiveChild
                               ? "bg-primary/10 text-primary"
                               : "text-primary/85 hover:bg-sidebar-accent"
                           )}
                         >
                           {group.icon}
+                          {groupBadgeTotal > 0 && (
+                            <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary ring-2 ring-sidebar" />
+                          )}
                         </Link>
                       );
                     }
@@ -232,27 +264,35 @@ export function SidebarNav({
                           <ul className="ml-3.5 space-y-0.5 border-l border-border/80 pl-2 pt-0.5">
                             {group.items.map((item) => {
                               const active = isNavItemActive(item, pathname, currentTab, currentTier);
+                              const badge = badgeCountForHref(item.href);
                               return (
                                 <li key={item.href}>
                                   <Link
-                                    href={item.href}
+                                    href={resolveItemHref(item.href)}
                                     onClick={onCloseMobile}
                                     className={cn(
-                                      "flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors",
+                                      "flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors",
                                       active
                                         ? "bg-primary/10 font-semibold text-primary"
                                         : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                                     )}
                                   >
-                                    <span
-                                      className={cn(
-                                        "size-1 shrink-0 rounded-full border transition-colors",
-                                        active
-                                          ? "border-primary bg-primary"
-                                          : "border-muted-foreground/70 bg-transparent"
-                                      )}
-                                    />
-                                    <span className="truncate">{item.label}</span>
+                                    <span className="flex min-w-0 items-center gap-2">
+                                      <span
+                                        className={cn(
+                                          "size-1 shrink-0 rounded-full border transition-colors",
+                                          active
+                                            ? "border-primary bg-primary"
+                                            : "border-muted-foreground/70 bg-transparent"
+                                        )}
+                                      />
+                                      <span className="truncate">{item.label}</span>
+                                    </span>
+                                    {badge > 0 && (
+                                      <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-white">
+                                        {badge > 99 ? "99+" : badge}
+                                      </span>
+                                    )}
                                   </Link>
                                 </li>
                               );

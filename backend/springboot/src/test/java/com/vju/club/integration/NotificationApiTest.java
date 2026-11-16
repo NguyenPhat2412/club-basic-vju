@@ -91,5 +91,46 @@ class NotificationApiTest extends ApiIntegrationTest {
         assertThat(inbox.at("/items/0/referenceType").asText()).isEqualTo("CLUB_APPLICATION");
         assertThat(inbox.at("/items/0/referenceId").asText()).isEqualTo(id(app).toString());
     }
+
+    @Test
+    void chatReplyMentionPinAndUnreadSummaryDeliverNotificationsAndDeepLinkClubId() throws Exception {
+        UUID alice = user("alice-chat-notif@test.local");
+        UUID bob = user("bob-chat-notif@test.local");
+        String aliceToken = token(alice);
+        String bobToken = token(bob);
+        membership(alice, clubA);
+        membership(bob, clubA);
+
+        JsonNode channel = call(post("/api/v1/clubs/" + clubA + "/channels"), adminToken,
+                Map.of("name", "thong-bao-chung", "channelType", "CLUB_GENERAL"), 201);
+        UUID channelId = id(channel);
+
+        // Alice sends first message -> Bob's unreadChatMessages becomes 1
+        JsonNode msg1 = call(post("/api/v1/channels/" + channelId + "/messages"), aliceToken,
+                Map.of("content", "Chào mọi người nhé!"), 201);
+        UUID msg1Id = id(msg1);
+
+        JsonNode bobSummary1 = call(get("/api/v1/users/me/notifications/unread-summary"), bobToken, null, 200);
+        assertThat(bobSummary1.path("unreadChatMessages").asLong()).isGreaterThanOrEqualTo(1L);
+        assertThat(bobSummary1.path("latestUnreadClubId").asText()).isEqualTo(clubA.toString());
+        assertThat(bobSummary1.path("latestUnreadChannelId").asText()).isEqualTo(channelId.toString());
+
+        // Bob replies to Alice's message -> Alice receives a CHAT bell notification with resolved clubId
+        call(post("/api/v1/channels/" + channelId + "/messages"), bobToken,
+                Map.of("content", "Mình nhận thông tin rồi nhé!", "replyToId", msg1Id.toString()), 201);
+
+        JsonNode aliceInbox = call(get("/api/v1/users/me/notifications"), aliceToken, null, 200);
+        assertThat(aliceInbox.path("total").asInt()).isGreaterThanOrEqualTo(1);
+        JsonNode chatNotif = aliceInbox.at("/items/0");
+        assertThat(chatNotif.path("referenceType").asText()).isEqualTo("CHAT");
+        assertThat(chatNotif.path("referenceId").asText()).isEqualTo(channelId.toString());
+        assertThat(chatNotif.path("clubId").asText()).isEqualTo(clubA.toString());
+
+        // Admin pins msg1 -> Bob & Alice receive pinned CHAT notification idempotently
+        call(post("/api/v1/channels/" + channelId + "/messages/" + msg1Id + "/pin"), adminToken, null, 200);
+        JsonNode bobInboxAfterPin = call(get("/api/v1/users/me/notifications"), bobToken, null, 200);
+        assertThat(bobInboxAfterPin.at("/items/0/referenceType").asText()).isEqualTo("CHAT");
+        assertThat(bobInboxAfterPin.at("/items/0/title").asText()).contains("Ghim tin nhắn");
+    }
 }
 

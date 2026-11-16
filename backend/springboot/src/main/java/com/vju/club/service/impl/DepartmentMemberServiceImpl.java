@@ -5,6 +5,7 @@ import com.vju.club.dto.response.PageResponse;
 import com.vju.club.error.ApiException;
 import com.vju.club.enums.AuditAction;
 import com.vju.club.service.AuditService;
+import com.vju.club.service.NotificationService;
 import com.vju.club.entity.Department;
 import com.vju.club.enums.DepartmentStatus;
 import com.vju.club.repository.DepartmentRepository;
@@ -23,6 +24,7 @@ import com.vju.club.repository.UserRoleRepository;
 import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +47,9 @@ public class DepartmentMemberServiceImpl implements DepartmentMemberService {
     private final DepartmentMemberMapper departmentMemberMapper;
     private final UserRoleRepository userRoleRepository;
     private final UserPermissionRepository userPermissionRepository;
+
+    @Autowired(required = false)
+    private NotificationService notificationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -77,6 +82,16 @@ public class DepartmentMemberServiceImpl implements DepartmentMemberService {
         DepartmentMember saved = departmentMemberRepository.saveAndFlush(member);
         auditService.record(actor.id(), AuditAction.DEPARTMENT_MEMBER_ADDED, saved.getId(), saved.getClubId(), null,
                 Map.of("departmentId", departmentId, "membershipId", membership.getId()));
+        if (notificationService != null && membership.getUser() != null && !membership.getUser().getId().equals(actor.id())) {
+            notificationService.create(
+                    membership.getUser().getId(),
+                    "Phân công vào " + department.getName(),
+                    "Bạn đã được phân công tham gia " + department.getName() + " thuộc " + department.getClub().getName() + ".",
+                    "DEPARTMENT",
+                    saved.getClubId(),
+                    "DEPT_ADD:" + saved.getId()
+            );
+        }
         return departmentMemberMapper.toResponse(saved);
     }
 
@@ -142,6 +157,16 @@ public class DepartmentMemberServiceImpl implements DepartmentMemberService {
         after.put("revokedPermissions", revokedPermissions);
         auditService.record(actor.id(), AuditAction.DEPARTMENT_MEMBER_MOVED, saved.getId(), saved.getClubId(),
                 Map.of("departmentId", departmentId, "membershipId", membershipId), after);
+        if (notificationService != null && targetUserId != null && !targetUserId.equals(actor.id())) {
+            notificationService.create(
+                    targetUserId,
+                    "Chuyển ban chuyên môn sang " + target.getName(),
+                    "Bạn đã được điều chuyển từ " + source.getName() + " sang " + target.getName() + ".",
+                    "DEPARTMENT",
+                    saved.getClubId(),
+                    null
+            );
+        }
         return departmentMemberMapper.toResponse(saved);
     }
 

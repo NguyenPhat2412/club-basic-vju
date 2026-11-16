@@ -1,0 +1,208 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
+import { Client, IMessage } from "@stomp/stompjs";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiModel } from "@/lib/api";
+import { toast } from "@/components/ui/toast";
+import { targetHrefForNotification } from "@/forms/notification/notification-links";
+import { resolveWsBrokerUrl } from "@/hooks/chat/useChatRealtime";
+import type { ChatChannel, ChatRealtimeEvent } from "@/types/chat/chat.types";
+import type { Page } from "@/types/common.types";
+import type {
+  Notification,
+  NotificationRealtimeEvent,
+  NotificationUnreadSummary,
+} from "@/types/notification/notification.types";
+
+export const UNREAD_SUMMARY_QUERY_KEY = ["notifications", "unread-summary"] as const;
+
+let activeViewedChatChannelId: string | null = null;
+const seenNotificationIds = new Set<string>();
+const seenChatMessageIds = new Set<string>();
+let lastChatToastAt = 0;
+
+export function setActiveViewedChatChannel(channelId: string | null) {
+  activeViewedChatChannelId = channelId || null;
+}
+
+export function getActiveViewedChatChannel(): string | null {
+  return activeViewedChatChannelId;
+}
+
+function rememberId(set: Set<string>, id: string): boolean {
+  if (!id || set.has(id)) return false;
+  set.add(id);
+  if (set.size > 300) {
+    const oldest = set.values().next().value;
+    if (oldest) set.delete(oldest);
+  }
+  return true;
+}
+
+export function useUnreadNotificationSummary(enabled: boolean) {
+  return useQuery({
+    queryKey: UNREAD_SUMMARY_QUERY_KEY,
+    queryFn: apiModel.unreadNotificationSummary,
+    enabled,
+    staleTime: 20_000,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useGlobalRealtimeNotifications({
+  enabled,
+  currentUserId,
+}: {
+  enabled: boolean;
+  currentUserId?: string;
+}) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const userIdRef = useRef(currentUserId);
+  const routerRef = useRef(router);
+
+  useEffect(() => {
+    userIdRef.current = currentUserId;
+    routerRef.current = router;
+  }, [currentUserId, router]);
+
+  useEffect(() => {
+    if (!enabled || !currentUserId || typeof window === "undefined") return;
+
+    const handleNotificationFrame = (frame: IMessage) => {
+      let event: NotificationRealtimeEvent;
+      try {
+        event = JSON.parse(frame.body) as NotificationRealtimeEvent;
+      } catch {
+        return;
+      }
+
+      queryClient.setQueryData<NotificationUnreadSummary>(UNREAD_SUMMARY_QUERY_KEY, (prev) => ({
+        unreadNotifications: event.unreadCount,
+        unreadChatMessages: prev?.unreadChatMessages ?? 0,
+        latestUnreadClubId: prev?.latestUnreadClubId ?? null,
+        latestUnreadChannelId: prev?.latestUnreadChannelId ?? null,
+      }));
+
+      if (event.type === "NOTIFICATION_READ_SYNC") {
+        queryClient.invalidateQueries({ queryKey: ["notifications"] });
+        return;
+      }
+
+      const notif = event.notification;
+      if (!notif || !rememberId(seenNotificationIds, notif.id)) return;
+
+      queryClient.setQueriesData<Page<Notification>>({ queryKey: ["notifications"] }, (old) => {
+        if (!old?.items || old.offset !== 0) return old;
+        if (old.items.some((item) => item.id === notif.id)) return old;
+        return {
+          ...old,
+          items: [notif, ...old.items],
+          total: old.total + 1,
+        };
+      });
+
+      const target = targetHrefForNotification(notif);
+      const isViewingSameChat =
+        notif.referenceType === "CHAT" &&
+        notif.referenceId &&
+        getActiveViewedChatChannel() === notif.referenceId;
+      const suppressDuplicateChatToast =
+        notif.referenceType === "CHAT" && Date.now() - lastChatToastAt < 2_500;
+
+      if (!isViewingSameChat && !suppressDuplicateChatToast) {
+        toast.info(notif.message, {
+          title: notif.title,
+          onClick: target ? () => routerRef.current.push(target.href) : undefined,
+        });
+      }
+    };
+
+    const handleChatFrame = (frame: IMessage) => {
+      let event: ChatRealtimeEvent;
+      try {
+        event = JSON.parse(frame.body) as ChatRealtimeEvent;
+      } catch {
+        return;
+      }
+
+      if (
+        (event.type !== "MESSAGE_CREATED" && event.type !== "SUMMARY_POSTED") ||
+        !event.message ||
+        !event.channelId ||
+        !event.clubId
+      ) {
+        return;
+      }
+
+      const incoming = event.message;
+      if (incoming.senderId && incoming.senderId === userIdRef.current) return;
+      if (event.actorId && event.actorId === userIdRef.current && incoming.senderType !== "AI_BOT") return;
+      if (getActiveViewedChatChannel() === event.channelId) return;
+      if (!rememberId(seenChatMessageIds, incoming.id)) return;
+
+      queryClient.setQueryData<NotificationUnreadSummary>(UNREAD_SUMMARY_QUERY_KEY, (prev) => ({
+        unreadNotifications: prev?.unreadNotifications ?? 0,
+        unreadChatMessages: (prev?.unreadChatMessages ?? 0) + 1,
+        latestUnreadClubId: event.clubId,
+        latestUnreadChannelId: event.channelId,
+      }));
+
+      queryClient.setQueryData<ChatChannel[]>(["club-channels", event.clubId], (channels) => {
+        if (!channels) return channels;
+        return channels.map((ch) => {
+          if (ch.id !== event.channelId) return ch;
+          if (ch.lastMessageAt === incoming.createdAt) return ch;
+          return {
+            ...ch,
+            lastMessageAt: incoming.createdAt,
+            unreadCount: (ch.unreadCount ?? 0) + 1,
+          };
+        });
+      });
+
+      const senderLabel = event.actorName || incoming.senderFullName || "Tin nhắn mới";
+      const channelLabel = event.channel?.name ? ` · #${event.channel.name}` : "";
+      const preview = incoming.content?.trim()
+        ? incoming.content.trim()
+        : incoming.documentName
+          ? `📎 ${incoming.documentName}`
+          : "📷 Đã gửi hình ảnh / tệp đính kèm";
+      const href = `/management?tab=chat&clubId=${event.clubId}&channelId=${event.channelId}`;
+
+      lastChatToastAt = Date.now();
+      toast.chat(preview, {
+        title: `${senderLabel}${channelLabel}`,
+        onClick: () => routerRef.current.push(href),
+      });
+    };
+
+    let reconnected = false;
+    const client = new Client({
+      brokerURL: resolveWsBrokerUrl(),
+      reconnectDelay: 4_000,
+      heartbeatIncoming: 20_000,
+      heartbeatOutgoing: 20_000,
+      onConnect: () => {
+        client.subscribe("/user/queue/notifications", handleNotificationFrame, {
+          id: "global-user-notifications",
+        });
+        client.subscribe("/user/queue/chat-events", handleChatFrame, {
+          id: "global-user-chat-events",
+        });
+        if (reconnected) {
+          queryClient.invalidateQueries({ queryKey: UNREAD_SUMMARY_QUERY_KEY });
+          queryClient.invalidateQueries({ queryKey: ["notifications"] });
+        }
+        reconnected = true;
+      },
+    });
+
+    client.activate();
+    return () => {
+      client.deactivate();
+    };
+  }, [currentUserId, enabled, queryClient]);
+}

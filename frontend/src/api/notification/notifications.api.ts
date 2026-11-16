@@ -3,6 +3,7 @@ import { API_ROUTES } from '@/lib/api/routes';
 import type { Page } from '@/types/common.types';
 import type {
   Notification,
+  NotificationUnreadSummary,
   ResourceNotificationInput,
   ResourceNotificationResult,
 } from '@/types/notification/notification.types';
@@ -10,6 +11,8 @@ import type {
 export const notificationsApi = {
   notifications: (offset = 0, limit = 30) =>
     api<Page<Notification>>(`${API_ROUTES.users.myNotifications}?${cleanParams({ offset, limit })}`),
+  unreadNotificationSummary: () =>
+    api<NotificationUnreadSummary>(API_ROUTES.users.myNotificationsUnreadSummary),
   notificationDetail: (id: string) => api<Notification>(API_ROUTES.users.myNotificationDetail(id)),
   markNotificationRead: (id: string) =>
     api<void>(API_ROUTES.users.myNotificationRead(id), { method: 'PATCH' }),

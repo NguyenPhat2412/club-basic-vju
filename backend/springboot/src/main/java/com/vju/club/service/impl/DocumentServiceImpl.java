@@ -46,6 +46,7 @@ import com.vju.club.service.DocumentFileInspector.InspectedFile;
 import com.vju.club.service.DocumentService;
 import com.vju.club.storage.DocumentStorage;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
@@ -85,6 +86,8 @@ public class DocumentServiceImpl implements DocumentService {
     private final PermissionAuthorizationService authorizationService;
     private final DocumentAccessPolicy accessPolicy;
     private final DocumentMapper documentMapper;
+    @Autowired(required = false)
+    private ChatAndVaultNotifier notifier;
 
     @Override
     @Transactional(readOnly = true)
@@ -248,6 +251,7 @@ public class DocumentServiceImpl implements DocumentService {
         Document saved = documentRepository.saveAndFlush(document);
         versionRepository.saveAndFlush(vaultWriter.buildVersion(saved, inspected, file.originalName(), actor));
         auditService.record(actor.id(), AuditAction.DOCUMENT_UPLOADED, saved.getId(), clubId, null, vaultWriter.snapshot(saved));
+        if (notifier != null) notifier.notifyClubDocumentUploaded(actor.id(), club, department, resolvedVisibility, saved);
         return documentMapper.toResponse(saved);
     }
 

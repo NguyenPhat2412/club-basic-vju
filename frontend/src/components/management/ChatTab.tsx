@@ -1,25 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Hash, MessageSquare, Plus } from "lucide-react";
 import { apiModel, ChatChannel, ChatMessage, Department, Page } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
-import {
-  useChannelMessages,
-  useChannelPinnedMessages,
-  useClubChannels,
-  useClubQuickReplies,
-  useWarmClubChannels,
-} from "@/hooks/chat/useClubChat";
+import { setActiveViewedChatChannel, UNREAD_SUMMARY_QUERY_KEY } from "@/hooks/notification/useGlobalRealtimeNotifications";
+import { useChannelMessages, useChannelPinnedMessages, useClubChannels, useClubQuickReplies, useWarmClubChannels } from "@/hooks/chat/useClubChat";
 import { useChatMessageSender } from "@/hooks/chat/useChatMessageSender";
 import { useChatRealtime } from "@/hooks/chat/useChatRealtime";
-import {
-  filterChannelMessages,
-  reconcilePinnedChatMessage,
-  saveCachedChannelWindow,
-  saveCachedPinnedMessages,
-} from "@/lib/chat-message-cache";
+import { filterChannelMessages, reconcilePinnedChatMessage, saveCachedChannelWindow, saveCachedPinnedMessages } from "@/lib/chat-message-cache";
 import { DocumentPreviewModal, PreviewTarget } from "@/components/document/DocumentPreviewModal";
 import { ChatDocumentPickerModal } from "@/components/management/ChatDocumentPickerModal";
 import { ChatMessagePane } from "@/components/management/ChatMessagePane";
@@ -42,6 +33,7 @@ export function ChatTab({
 }) {
   const session = useSession();
   const queryClient = useQueryClient();
+  const urlChannelId = useSearchParams().get("channelId") ?? "";
   const [channelId, setChannelId] = useState("");
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -64,9 +56,15 @@ export function ChatTab({
 
   const channels = useClubChannels(clubId, Boolean(clubId));
   const quickReplies = useClubQuickReplies(clubId, Boolean(clubId));
-  const activeChannel = (channels.data ?? []).find((c) => c.id === channelId) ?? channels.data?.[0];
+  const preferredChannelId = channelId || urlChannelId;
+  const activeChannel = (channels.data ?? []).find((c) => c.id === preferredChannelId) ?? channels.data?.[0];
   const activeChannelId = activeChannel?.id ?? "";
   const userId = session.user?.id;
+
+  useEffect(() => {
+    setActiveViewedChatChannel(activeChannelId || null);
+    return () => setActiveViewedChatChannel(null);
+  }, [activeChannelId]);
 
   const { warmChannel } = useWarmClubChannels(channels.data, activeChannelId, userId, 50);
 
@@ -97,7 +95,10 @@ export function ChatTab({
   useEffect(() => {
     if (!activeChannelId || !activeChannel?.unreadCount) return;
     const newestId = filterChannelMessages(messages.data?.items, activeChannelId).find((m) => !m.optimistic)?.id;
-    apiModel.markChannelRead(activeChannelId, newestId).catch(() => {});
+    apiModel
+      .markChannelRead(activeChannelId, newestId)
+      .then(() => queryClient.invalidateQueries({ queryKey: UNREAD_SUMMARY_QUERY_KEY }))
+      .catch(() => {});
     queryClient.setQueryData<ChatChannel[]>(["club-channels", clubId], (old) =>
       old?.map((ch) => (ch.id === activeChannelId ? { ...ch, unreadCount: 0 } : ch))
     );

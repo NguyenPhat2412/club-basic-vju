@@ -109,6 +109,7 @@ public final class ApiPaths {
 
     // Notifications
     public static final String MY_NOTIFICATIONS = "/users/me/notifications";
+    public static final String MY_NOTIFICATIONS_UNREAD_SUMMARY = "/users/me/notifications/unread-summary";
     public static final String MY_NOTIFICATION_BY_ID = "/users/me/notifications/{notificationId}";
     public static final String MY_NOTIFICATION_READ = "/users/me/notifications/{notificationId}/read";
     public static final String MY_NOTIFICATIONS_READ_ALL = "/users/me/notifications/read-all";

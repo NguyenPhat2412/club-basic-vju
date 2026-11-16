@@ -57,7 +57,8 @@ public class ChatStompChannelInterceptor implements ChannelInterceptor {
                 } catch (RuntimeException ex) {
                     throw new MessagingException("PERMISSION_DENIED: Cannot subscribe to channel " + channelId, ex);
                 }
-            } else if (!destination.equals("/user/queue/chat-events")) {
+            } else if (!destination.equals("/user/queue/chat-events")
+                    && !destination.equals("/user/queue/notifications")) {
                 throw new MessagingException("PERMISSION_DENIED: Unsupported destination " + destination);
             }
             return message;

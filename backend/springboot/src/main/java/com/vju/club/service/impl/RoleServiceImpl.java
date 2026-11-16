@@ -44,7 +44,9 @@ import com.vju.club.security.Actor;
 import com.vju.club.security.GrantGuard;
 import com.vju.club.security.PermissionAuthorizationService;
 import com.vju.club.security.ScopeRules;
+import com.vju.club.service.NotificationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,6 +79,9 @@ public class RoleServiceImpl implements RoleService {
     private final AuditService auditService;
     private final RoleMapper roleMapper;
     private final GrantGuard grantGuard;
+
+    @Autowired(required = false)
+    private NotificationService notificationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -450,6 +455,17 @@ public class RoleServiceImpl implements RoleService {
         audit(actorUser, saved, PermissionAuditAction.GRANT, request.reason());
         auditService.record(actorUser.getId(), AuditAction.ROLE_ASSIGNED, saved.getId(), clubId, null,
                 assignmentValues(saved, request.reason()));
+        if (notificationService != null && !target.getId().equals(actor.id())) {
+            String unit = department != null ? department.getName() + " · " + club.getName() : club.getName();
+            notificationService.create(
+                    target.getId(),
+                    "Bổ nhiệm chức vụ: " + role.getName(),
+                    "Bạn đã được bổ nhiệm giữ chức vụ " + role.getName() + " tại " + unit + ".",
+                    "CLUB",
+                    clubId,
+                    "POSITION_ASSIGNED:" + saved.getId()
+            );
+        }
         return roleMapper.toUserRoleResponse(saved);
     }
 

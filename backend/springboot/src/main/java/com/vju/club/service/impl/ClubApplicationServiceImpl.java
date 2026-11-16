@@ -311,6 +311,23 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         ClubApplication saved = applicationRepository.saveAndFlush(application);
         auditService.record(actor.id(), AuditAction.CLUB_APPLICATION_CREATED, saved.getId(), clubId, null,
                 Map.of("applicantId", targetApplicantId, "clubId", clubId, "status", saved.getStatus()));
+        if (!createdByManager && notificationService != null && userRoleRepository != null) {
+            Set<UUID> leaderIds = new java.util.LinkedHashSet<>();
+            for (var ur : userRoleRepository.findActiveLeadershipInClub(clubId)) {
+                if (ur.getDepartment() == null
+                        || ur.getDepartment().getId().equals(request.preferredDepartmentId())
+                        || ur.getDepartment().getId().equals(request.secondaryDepartmentId())) {
+                    leaderIds.add(ur.getUser().getId());
+                }
+            }
+            leaderIds.remove(targetApplicantId);
+            String title = "Đơn ứng tuyển mới vào " + club.getName();
+            String msg = applicant.getFullName() + " vừa nộp đơn đăng ký gia nhập " + club.getName() + ".";
+            String eventKey = "APPLICATION_CREATED:" + saved.getId();
+            for (UUID leaderId : leaderIds) {
+                notificationService.create(leaderId, title, msg, "CLUB_APPLICATION_REVIEW", clubId, eventKey);
+            }
+        }
         List<ClubApplicationFileResponse> attachments = filesForApplication(saved.getId());
         return createdByManager
                 ? clubApplicationMapper.toResponse(saved, null, attachments)

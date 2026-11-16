@@ -3,6 +3,7 @@ package com.vju.club.service.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.vju.club.dto.response.ChatRealtimeEvent;
+import com.vju.club.dto.response.NotificationRealtimeEvent;
 import com.vju.club.security.websocket.ActorPrincipal;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -30,6 +31,7 @@ import java.util.UUID;
 public class ChatRealtimeBroker implements MessageListener {
     private static final Logger log = LoggerFactory.getLogger(ChatRealtimeBroker.class);
     private static final String REDIS_TOPIC = "club:chat:realtime";
+    private static final String REDIS_NOTIF_TOPIC = "club:notif:realtime";
     private static final ObjectMapper JSON = JsonMapper.builder().findAndAddModules().build();
 
     private final SimpMessagingTemplate messagingTemplate;
@@ -58,6 +60,7 @@ public class ChatRealtimeBroker implements MessageListener {
             listenerContainer = new RedisMessageListenerContainer();
             listenerContainer.setConnectionFactory(redisConnectionFactory);
             listenerContainer.addMessageListener(this, new ChannelTopic(REDIS_TOPIC));
+            listenerContainer.addMessageListener(this, new ChannelTopic(REDIS_NOTIF_TOPIC));
             listenerContainer.afterPropertiesSet();
             listenerContainer.start();
         } catch (RuntimeException ex) {
@@ -79,6 +82,11 @@ public class ChatRealtimeBroker implements MessageListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onChatEvent(ChatRealtimeEvent event) {
         publish(event);
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onNotificationEvent(NotificationRealtimeEvent event) {
+        publishNotification(event);
     }
 
     public void publishTyping(UUID channelId, ActorPrincipal principal) {
@@ -107,13 +115,37 @@ public class ChatRealtimeBroker implements MessageListener {
         dispatchLocally(event);
     }
 
+    public void publishNotification(NotificationRealtimeEvent event) {
+        if (event == null || event.userId() == null) return;
+        if (redisRelayEnabled && listenerContainer != null && redisTemplate != null) {
+            try {
+                redisTemplate.convertAndSend(REDIS_NOTIF_TOPIC, JSON.writeValueAsString(event));
+                return;
+            } catch (Exception ex) {
+                log.warn("Redis Pub/Sub notification publish failed, dispatching locally: {}", ex.getMessage());
+            }
+        }
+        dispatchNotificationLocally(event);
+    }
+
     @Override
     public void onMessage(Message message, byte[] pattern) {
         try {
+            String channel = new String(message.getChannel(), StandardCharsets.UTF_8);
             String raw = new String(message.getBody(), StandardCharsets.UTF_8);
-            dispatchLocally(JSON.readValue(raw, ChatRealtimeEvent.class));
+            if (REDIS_NOTIF_TOPIC.equals(channel)) {
+                dispatchNotificationLocally(JSON.readValue(raw, NotificationRealtimeEvent.class));
+            } else {
+                dispatchLocally(JSON.readValue(raw, ChatRealtimeEvent.class));
+            }
         } catch (Exception ex) {
-            log.warn("Failed to decode Redis chat event: {}", ex.getMessage());
+            log.warn("Failed to decode Redis realtime event: {}", ex.getMessage());
+        }
+    }
+
+    private void dispatchNotificationLocally(NotificationRealtimeEvent event) {
+        if (event.userId() != null) {
+            messagingTemplate.convertAndSendToUser(event.userId().toString(), "/queue/notifications", event);
         }
     }
 

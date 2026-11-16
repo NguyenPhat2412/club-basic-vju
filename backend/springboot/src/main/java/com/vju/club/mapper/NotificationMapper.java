@@ -8,6 +8,7 @@ import org.mapstruct.Mapping;
 
 @Mapper
 public interface NotificationMapper {
+    @Mapping(target = "clubId", ignore = true)
     NotificationResponse toResponse(Notification notification);
 
     @Mapping(target = "userId", source = "user.id")

@@ -643,6 +643,13 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: document.view
+- method: GET
+  path: /api/v1/users/me/notifications/unread-summary
+  module: notification
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
 - method: PATCH
   path: /api/v1/users/me/notifications/read-all
   module: notification

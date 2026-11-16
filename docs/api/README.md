@@ -1,4 +1,4 @@
-# VJU Club Management System — Swagger / OpenAPI Inventory (156 Endpoints)
+# VJU Club Management System — Swagger / OpenAPI Inventory (157 Endpoints)
 
 The backend assigned to this system is `backend/springboot` (Spring Boot 4.1.1 / Java 21 / PostgreSQL 16).
 
@@ -12,7 +12,7 @@ The backend assigned to this system is `backend/springboot` (Spring Boot 4.1.1 /
 
 - **Source catalog:** [`docs/api/catalog.yml`](catalog.yml) (synced with `backend/springboot/src/main/resources/api/catalog.yml`)
 - **Source OpenAPI contract:** [`docs/api/openapi.yaml`](openapi.yaml) (synced with `backend/springboot/src/main/resources/api/phase1-openapi.yaml`)
-- **All 156 endpoints** across **21 modules** are marked `IMPLEMENTED` and verified by automated PostgreSQL integration tests and static OpenAPI 3.1 contract checks (`16/16 Pass`).
+- **All 157 endpoints** across **21 modules** are marked `IMPLEMENTED` and verified by automated PostgreSQL integration tests and static OpenAPI 3.1 contract checks (`16/16 Pass`).
 
 ## Authentication, Realtime WebSocket & Conventions
 
@@ -27,7 +27,7 @@ The backend assigned to this system is `backend/springboot` (Spring Boot 4.1.1 /
 
 ---
 
-## Complete Swagger API Endpoint List (156 Endpoints)
+## Complete Swagger API Endpoint List (157 Endpoints)
 
 | # | Module | Operation ID | Method | Path | Permission / Auth | Summary | Status |
 |---:|---|---|---|---|---|---|---|
@@ -187,6 +187,7 @@ The backend assigned to this system is `backend/springboot` (Spring Boot 4.1.1 /
 | 154 | `chat-realtime` | `chat.createQuickReply` | **POST** | `/api/v1/clubs/{clubId}/quick-replies` | `chat.send` | Create a quick reply template for a club | `IMPLEMENTED` |
 | 155 | `chat-realtime` | `chat.updateQuickReply` | **PUT** | `/api/v1/clubs/{clubId}/quick-replies/{replyId}` | `chat.send` | Update a quick reply template | `IMPLEMENTED` |
 | 156 | `chat-realtime` | `chat.deleteQuickReply` | **DELETE** | `/api/v1/clubs/{clubId}/quick-replies/{replyId}` | `chat.send` | Delete a quick reply template | `IMPLEMENTED` |
+| 157 | `notification` | `notification.unreadSummary` | **GET** | `/api/v1/users/me/notifications/unread-summary` | `AUTHENTICATED` | Get total unread notifications and unread chat messages across clubs | `IMPLEMENTED` |
 
 ---
 

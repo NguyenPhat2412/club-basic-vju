@@ -4033,6 +4033,21 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
       description: 'Link R2 ký sẵn, hết hạn sau 5 phút; storage local trả đường dẫn /download.'
+  /users/me/notifications/unread-summary:
+    get:
+      operationId: notification.unreadSummary
+      summary: Get total unread notifications and unread chat messages across clubs
+      tags: [Notification]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      responses:
+        '200':
+          description: Unread notification and chat message summary
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/NotificationUnreadSummary'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
   /users/me/notifications/read-all:
     patch:
       operationId: notification.markAllRead
@@ -5574,9 +5589,18 @@ components:
         title: {type: string, maxLength: 160}
         message: {type: string, maxLength: 2000}
         read: {type: boolean}
-        referenceType: {type: [string, 'null'], maxLength: 40, description: Loại thực thể liên kết như CLUB_APPLICATION}
+        referenceType: {type: [string, 'null'], maxLength: 40, description: Loại thực thể liên kết như CLUB_APPLICATION, CHAT, DOCUMENT}
         referenceId: {type: [string, 'null'], format: uuid}
+        clubId: {type: [string, 'null'], format: uuid}
         createdAt: {type: string, format: date-time}
+    NotificationUnreadSummary:
+      type: object
+      required: [unreadNotifications, unreadChatMessages]
+      properties:
+        unreadNotifications: {type: integer, format: int64}
+        unreadChatMessages: {type: integer, format: int64}
+        latestUnreadClubId: {type: [string, 'null'], format: uuid}
+        latestUnreadChannelId: {type: [string, 'null'], format: uuid}
     NotificationListResponse:
       type: object
       required: [items, total, offset, limit]

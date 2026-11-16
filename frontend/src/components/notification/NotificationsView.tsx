@@ -14,34 +14,13 @@ import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError, ListPage } from "@/components/shared/ListPage";
 import { Badge, CountBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { targetHrefForNotification } from "@/forms/notification/notification-links";
+import { UNREAD_SUMMARY_QUERY_KEY } from "@/hooks/notification/useGlobalRealtimeNotifications";
 import { formatDateTime, formatDay, formatTime } from "@/lib/utils";
 
 const LIMIT = 20;
 
-export function targetHrefFor(n: Notification): { href: string; label: string } | null {
-  if (n.referenceType === "CLUB_APPLICATION" || n.referenceType === "APPLICATION") {
-    return {
-      href: n.referenceId ? `/applications?applicationId=${n.referenceId}` : "/applications",
-      label: "Xem đơn đăng ký",
-    };
-  }
-  if (n.referenceType === "CLUB") {
-    return { href: n.referenceId ? `/clubs?clubId=${n.referenceId}` : "/clubs", label: "Xem câu lạc bộ" };
-  }
-  if (n.referenceType === "EVENT") {
-    return { href: "/events", label: "Xem sự kiện & đăng ký" };
-  }
-  if (n.referenceType === "TASK") {
-    return { href: "/schedule", label: "Xem công việc & tiến độ" };
-  }
-  if (n.referenceType === "MEMBERSHIP") {
-    return { href: "/memberships", label: "Xem tư cách thành viên" };
-  }
-  if (n.referenceType === "DEPARTMENT") {
-    return { href: "/management?tab=departments", label: "Xem ban chuyên môn" };
-  }
-  return null;
-}
+export const targetHrefFor = targetHrefForNotification;
 
 export function NotificationsView() {
   const router = useRouter();
@@ -63,6 +42,7 @@ export function NotificationsView() {
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    queryClient.invalidateQueries({ queryKey: UNREAD_SUMMARY_QUERY_KEY });
     queryClient.invalidateQueries({ queryKey: ["dashboard", "notifications"] });
   };
 

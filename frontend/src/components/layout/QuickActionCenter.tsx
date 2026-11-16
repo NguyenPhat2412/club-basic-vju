@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { apiModel } from "@/lib/api";
+import { useUnreadNotificationSummary } from "@/hooks/notification/useGlobalRealtimeNotifications";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { CLUB_MANAGEMENT_KEYS } from "@/hooks/useSession";
 import { Badge, CountBadge } from "@/components/ui/badge";
@@ -58,6 +59,8 @@ export function QuickActionCenter() {
     staleTime: 30_000,
   });
 
+  const unreadSummary = useUnreadNotificationSummary(canQuery);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -74,11 +77,21 @@ export function QuickActionCenter() {
     (t) => t.status === "TODO" || t.status === "IN_PROGRESS" || t.status === "DONE" || t.overdue
   );
   const overdueTasks = tasks.filter((t) => t.overdue);
-  const totalActionCount = pendingApps + openTasks.length;
+  const unreadChatCount = unreadSummary.data?.unreadChatMessages ?? 0;
+  const totalActionCount = pendingApps + openTasks.length + unreadChatCount;
+  const chatShortcutHref =
+    unreadChatCount > 0 && unreadSummary.data?.latestUnreadClubId
+      ? `/management?tab=chat&clubId=${unreadSummary.data.latestUnreadClubId}${
+          unreadSummary.data.latestUnreadChannelId
+            ? `&channelId=${unreadSummary.data.latestUnreadChannelId}`
+            : ""
+        }`
+      : "/management?tab=chat";
 
   const withClub = (baseHref: string) => {
     if (!currentClubId || !baseHref.startsWith("/management?")) return baseHref;
     const params = new URLSearchParams(baseHref.split("?")[1] ?? "");
+    if (params.has("clubId")) return baseHref;
     params.set("clubId", currentClubId);
     return `/management?${params.toString()}`;
   };
@@ -103,7 +116,12 @@ export function QuickActionCenter() {
           { label: tr("Thành viên & Ban"), sub: tr("Nhân sự & phân quyền"), icon: UsersRound, href: "/management?tab=members" },
           { label: tr("Sự kiện & Điểm danh"), sub: tr("Tổ chức & CTV"), icon: CalendarCheck2, href: "/management?tab=events" },
           { label: tr("Giao & Duyệt việc"), sub: tr("Tiến độ ban/CLB"), icon: ClipboardCheck, href: "/management?tab=tasks" },
-          { label: tr("Chat & Trợ lý AI"), sub: tr("Trao đổi trực tuyến"), icon: MessageSquare, href: "/management?tab=chat" },
+          {
+            label: tr("Chat & Trợ lý AI"),
+            sub: unreadChatCount > 0 ? `${unreadChatCount} ${tr("tin nhắn mới")}` : tr("Trao đổi trực tuyến"),
+            icon: MessageSquare,
+            href: chatShortcutHref,
+          },
         ]
       : [
           { label: tr("Sự kiện & CTV"), sub: tr("Đăng ký tham gia"), icon: CalendarCheck2, href: "/events" },

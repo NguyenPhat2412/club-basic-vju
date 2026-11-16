@@ -6,6 +6,7 @@ import com.vju.club.error.ApiException;
 import com.vju.club.enums.AuditAction;
 import com.vju.club.enums.ClubApplicationStatus;
 import com.vju.club.service.AuditService;
+import com.vju.club.service.NotificationService;
 import com.vju.club.service.SystemSettingsService;
 import com.vju.club.entity.Club;
 import com.vju.club.entity.ClubApplication;
@@ -33,6 +34,7 @@ import com.vju.club.repository.UserRepository;
 import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -66,6 +68,9 @@ public class MembershipServiceImpl implements MembershipService {
     private final UserPermissionRepository userPermissionRepository;
     private final SystemSettingsService settingsService;
     private final ClubApplicationRepository applicationRepository;
+
+    @Autowired(required = false)
+    private NotificationService notificationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -180,6 +185,17 @@ public class MembershipServiceImpl implements MembershipService {
             auditService.record(actor.id(), AuditAction.CLUB_APPLICATION_CANCELLED, app.getId(), clubId, beforeApp, afterApp);
         }
 
+        if (notificationService != null && !user.getId().equals(actor.id())) {
+            notificationService.create(
+                    user.getId(),
+                    "Chào mừng gia nhập " + club.getName(),
+                    "Bạn đã được kết nạp làm thành viên chính thức của " + club.getName() + ".",
+                    "MEMBERSHIP",
+                    clubId,
+                    "MEMBERSHIP_CREATED:" + saved.getId()
+            );
+        }
+
         return membershipMapper.toResponse(saved);
     }
 
@@ -247,6 +263,20 @@ public class MembershipServiceImpl implements MembershipService {
         auditService.record(actor.id(), status == MembershipStatus.LEFT ? AuditAction.MEMBER_REMOVED
                         : AuditAction.MEMBER_STATUS_CHANGED, membership.getId(), membership.getClub().getId(),
                 Map.of("status", previous), after);
+        if (notificationService != null && !membership.getUser().getId().equals(actor.id())) {
+            String clubName = membership.getClub().getName();
+            String title = status == MembershipStatus.SUSPENDED
+                    ? "Tạm đình chỉ sinh hoạt tại " + clubName
+                    : status == MembershipStatus.ACTIVE
+                    ? "Khôi phục tư cách thành viên tại " + clubName
+                    : "Kết thúc tư cách thành viên tại " + clubName;
+            String body = status == MembershipStatus.SUSPENDED
+                    ? "Tư cách thành viên của bạn tại " + clubName + " hiện đang tạm đình chỉ."
+                    : status == MembershipStatus.ACTIVE
+                    ? "Tư cách thành viên của bạn tại " + clubName + " đã được kích hoạt trở lại."
+                    : "Tư cách thành viên của bạn tại " + clubName + " đã kết thúc.";
+            notificationService.create(membership.getUser().getId(), title, body, "MEMBERSHIP", membership.getClub().getId(), null);
+        }
     }
 
     private static boolean isValidTransition(MembershipStatus previous, MembershipStatus target) {

@@ -281,4 +281,11 @@ export const PHRASES_JA_CORE: Record<string, string> = {
   'Phím tắt': 'ショートカット',
   'Tiêu đề ngắn': '短いタイトル',
   'Nội dung tin nhắn nhanh': 'クイック返信内容',
+  'Tin nhắn': 'メッセージ',
+  'Tin nhắn CLB': 'クラブチャット',
+  'tin nhắn mới': '件の新着メッセージ',
+  'Mở kênh thảo luận': 'チャットチャンネルを開く',
+  'Duyệt đơn mới': '新規応募審査',
+  'Duyệt đơn ứng tuyển': '応募書類を審査',
+  'Mở kho tài liệu': '資料保管庫を開く',
 };

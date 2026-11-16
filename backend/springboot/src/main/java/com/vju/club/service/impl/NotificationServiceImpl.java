@@ -6,9 +6,12 @@ import com.vju.club.common.TaskConstants;
 import com.vju.club.dto.request.BroadcastNotificationRequest;
 import com.vju.club.dto.request.ResourceNotificationRequest;
 import com.vju.club.dto.response.NotificationBroadcastResponse;
+import com.vju.club.dto.response.NotificationRealtimeEvent;
 import com.vju.club.dto.response.NotificationResponse;
+import com.vju.club.dto.response.NotificationUnreadSummaryResponse;
 import com.vju.club.dto.response.PageResponse;
 import com.vju.club.dto.response.ResourceNotificationResponse;
+import com.vju.club.entity.ChatChannel;
 import com.vju.club.entity.Club;
 import com.vju.club.entity.Department;
 import com.vju.club.entity.Event;
@@ -20,6 +23,8 @@ import com.vju.club.enums.ClubStatus;
 import com.vju.club.enums.TaskStatus;
 import com.vju.club.error.ApiException;
 import com.vju.club.mapper.NotificationMapper;
+import com.vju.club.repository.ChatChannelRepository;
+import com.vju.club.repository.ChatMessageRepository;
 import com.vju.club.repository.ClubRepository;
 import com.vju.club.repository.DepartmentMemberRepository;
 import com.vju.club.repository.DepartmentRepository;
@@ -34,17 +39,23 @@ import com.vju.club.security.PermissionAuthorizationService;
 import com.vju.club.service.AuditService;
 import com.vju.club.service.NotificationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -64,6 +75,18 @@ public class NotificationServiceImpl implements NotificationService {
     private final AuditService auditService;
     private final NotificationMapper notificationMapper;
 
+    @Autowired(required = false)
+    private ApplicationEventPublisher eventPublisher;
+
+    @Autowired(required = false)
+    private ChatChannelRepository chatChannelRepository;
+
+    @Autowired(required = false)
+    private ChatMessageRepository chatMessageRepository;
+
+    @Autowired(required = false)
+    private Clock clock;
+
     @Override
     @Transactional
     public void create(UUID userId, String title, String message, String referenceType, UUID referenceId, String eventKey) {
@@ -76,7 +99,11 @@ public class NotificationServiceImpl implements NotificationService {
             if (!users.existsById(userId)) {
                 throw new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User not found");
             }
-            notifications.insertIdempotent(userId, safeTitle, safeMessage, normalizedRefType, referenceId, normalizedEventKey);
+            int inserted = notifications.insertIdempotent(userId, safeTitle, safeMessage, normalizedRefType, referenceId, normalizedEventKey);
+            if (inserted > 0 && eventPublisher != null) {
+                notifications.findFirstByUser_IdAndEventKey(userId, normalizedEventKey)
+                        .ifPresent(saved -> publishCreated(userId, saved));
+            }
             return;
         }
 
@@ -88,7 +115,8 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setReferenceType(normalizedRefType);
         notification.setReferenceId(referenceId);
         notification.setRead(false);
-        notifications.save(notification);
+        Notification saved = notifications.saveAndFlush(notification);
+        publishCreated(userId, saved);
     }
 
     @Override
@@ -96,8 +124,28 @@ public class NotificationServiceImpl implements NotificationService {
     public PageResponse<NotificationResponse> list(Actor actor, int offset, int limit) {
         var page = notifications.findByUser_IdOrderByCreatedAtDesc(actor.id(),
                 new OffsetLimitRequest(offset, limit, Sort.by(Sort.Direction.DESC, "createdAt")));
-        return new PageResponse<>(page.getContent().stream().map(notificationMapper::toResponse).toList(),
-                page.getTotalElements(), offset, limit);
+        List<NotificationResponse> items = enrichClubIds(
+                page.getContent().stream().map(notificationMapper::toResponse).toList());
+        return new PageResponse<>(items, page.getTotalElements(), offset, limit);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public NotificationUnreadSummaryResponse unreadSummary(Actor actor) {
+        long unreadNotifs = notifications.countByUser_IdAndReadFalse(actor.id());
+        if (chatMessageRepository == null) {
+            return new NotificationUnreadSummaryResponse(unreadNotifs, 0L, null, null);
+        }
+        var chatRow = chatMessageRepository.summarizeUserUnreadAcrossClubs(actor.id());
+        if (chatRow == null) {
+            return new NotificationUnreadSummaryResponse(unreadNotifs, 0L, null, null);
+        }
+        return new NotificationUnreadSummaryResponse(
+                unreadNotifs,
+                chatRow.getUnreadCount(),
+                chatRow.getLatestClubId(),
+                chatRow.getLatestChannelId()
+        );
     }
 
     @Override
@@ -105,7 +153,7 @@ public class NotificationServiceImpl implements NotificationService {
     public NotificationResponse get(Actor actor, UUID id) {
         Notification notification = notifications.findByIdAndUser_Id(id, actor.id())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOTIFICATION_NOT_FOUND", "Notification not found"));
-        return notificationMapper.toResponse(notification);
+        return enrichSingle(notificationMapper.toResponse(notification));
     }
 
     @Override
@@ -115,14 +163,18 @@ public class NotificationServiceImpl implements NotificationService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOTIFICATION_NOT_FOUND", "Notification not found"));
         if (!notification.isRead()) {
             notification.setRead(true);
-            notifications.save(notification);
+            notifications.saveAndFlush(notification);
+            publishReadSync(actor.id());
         }
     }
 
     @Override
     @Transactional
     public void markAllRead(Actor actor) {
-        notifications.markAllReadByUserId(actor.id());
+        int updated = notifications.markAllReadByUserId(actor.id());
+        if (updated > 0) {
+            publishReadSync(actor.id());
+        }
     }
 
     @Override
@@ -247,13 +299,68 @@ public class NotificationServiceImpl implements NotificationService {
         int delivered = 0;
         for (UUID recipientId : recipientIds) {
             if (eventKey != null) {
-                delivered += notifications.insertIdempotent(recipientId, title, message, referenceType, referenceId, eventKey);
+                int inserted = notifications.insertIdempotent(recipientId, title, message, referenceType, referenceId, eventKey);
+                if (inserted > 0) {
+                    delivered += inserted;
+                    if (eventPublisher != null) {
+                        notifications.findFirstByUser_IdAndEventKey(recipientId, eventKey)
+                                .ifPresent(saved -> publishCreated(recipientId, saved));
+                    }
+                }
             } else {
                 create(recipientId, title, message, referenceType, referenceId, null);
                 delivered++;
             }
         }
         return delivered;
+    }
+
+    private void publishCreated(UUID userId, Notification saved) {
+        if (eventPublisher == null) return;
+        long unread = notifications.countByUser_IdAndReadFalse(userId);
+        NotificationResponse response = enrichSingle(notificationMapper.toResponse(saved));
+        eventPublisher.publishEvent(new NotificationRealtimeEvent(
+                "NOTIFICATION_CREATED", userId, response, unread, now()
+        ));
+    }
+
+    private void publishReadSync(UUID userId) {
+        if (eventPublisher == null) return;
+        long unread = notifications.countByUser_IdAndReadFalse(userId);
+        eventPublisher.publishEvent(new NotificationRealtimeEvent(
+                "NOTIFICATION_READ_SYNC", userId, null, unread, now()
+        ));
+    }
+
+    private NotificationResponse enrichSingle(NotificationResponse resp) {
+        if (resp == null || !"CHAT".equals(resp.referenceType()) || resp.referenceId() == null || chatChannelRepository == null) {
+            return resp;
+        }
+        return chatChannelRepository.findById(resp.referenceId())
+                .map(ch -> NotificationResponse.withClub(resp, ch.getClub().getId()))
+                .orElse(resp);
+    }
+
+    private List<NotificationResponse> enrichClubIds(List<NotificationResponse> items) {
+        if (items.isEmpty() || chatChannelRepository == null) return items;
+        Set<UUID> channelIds = items.stream()
+                .filter(n -> "CHAT".equals(n.referenceType()) && n.referenceId() != null)
+                .map(NotificationResponse::referenceId)
+                .collect(Collectors.toSet());
+        if (channelIds.isEmpty()) return items;
+        Map<UUID, UUID> clubByChannel = chatChannelRepository.findAllById(channelIds).stream()
+                .filter(ch -> ch.getClub() != null)
+                .collect(Collectors.toMap(ChatChannel::getId, ch -> ch.getClub().getId()));
+        return items.stream()
+                .map(n -> "CHAT".equals(n.referenceType()) && n.referenceId() != null
+                        ? NotificationResponse.withClub(n, clubByChannel.get(n.referenceId()))
+                        : n)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    private OffsetDateTime now() {
+        return clock != null ? OffsetDateTime.now(clock) : OffsetDateTime.now();
     }
 
     static String fit(String text, int max) {

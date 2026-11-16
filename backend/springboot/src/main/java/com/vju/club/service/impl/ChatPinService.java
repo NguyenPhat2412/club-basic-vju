@@ -13,7 +13,9 @@ import com.vju.club.repository.DepartmentMemberRepository;
 import com.vju.club.repository.MembershipRepository;
 import com.vju.club.repository.UserRepository;
 import com.vju.club.security.Actor;
+import com.vju.club.service.NotificationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -21,7 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -38,6 +42,9 @@ public class ChatPinService {
     private final ChatMapper chatMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
+
+    @Autowired(required = false)
+    private NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public List<ChatMessageResponse> listPinnedMessages(Actor actor, UUID channelId) {
@@ -78,16 +85,36 @@ public class ChatPinService {
             }
         }
 
+        boolean wasPinned = target.isPinned();
         target.setPinned(true);
         target.setPinnedAt(now);
         target.setPinnedBy(pinner);
         ChatMessage saved = messageRepository.saveAndFlush(target);
         ChatMessageResponse response = enrichSingle(saved);
+        Set<UUID> recipients = new LinkedHashSet<>(channelRecipients(channel));
+        if (saved.getSender() != null) {
+            recipients.add(saved.getSender().getId());
+        }
+
+        if (!wasPinned && notificationService != null) {
+            String raw = saved.getContent() == null ? "" : saved.getContent().strip();
+            String preview = !raw.isEmpty()
+                    ? (raw.length() <= 200 ? raw : raw.substring(0, 199) + "…")
+                    : "[Đính kèm hình ảnh / tệp tin]";
+            String title = "Ghim tin nhắn tại #" + channel.getName() + " (" + channel.getClub().getCode() + ")";
+            String body = pinner.getFullName() + " đã ghim: " + preview;
+            String eventKey = "CHAT_PIN:" + saved.getId();
+            for (UUID uid : recipients) {
+                if (!uid.equals(actor.id())) {
+                    notificationService.create(uid, title, body, "CHAT", channelId, eventKey);
+                }
+            }
+        }
 
         eventPublisher.publishEvent(new ChatRealtimeEvent(
                 "MESSAGE_PINNED", channel.getClub().getId(), channelId,
-                actor.id(), pinner.getFullName(), response, null,
-                channelRecipients(channel), now
+                actor.id(), pinner.getFullName(), response, chatMapper.toChannelResponse(channel),
+                List.copyOf(recipients), now
         ));
         return response;
     }

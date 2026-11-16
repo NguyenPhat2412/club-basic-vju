@@ -5,6 +5,7 @@ import com.vju.club.dto.request.BroadcastNotificationRequest;
 import com.vju.club.dto.request.ResourceNotificationRequest;
 import com.vju.club.dto.response.NotificationBroadcastResponse;
 import com.vju.club.dto.response.NotificationResponse;
+import com.vju.club.dto.response.NotificationUnreadSummaryResponse;
 import com.vju.club.dto.response.PageResponse;
 import com.vju.club.dto.response.ResourceNotificationResponse;
 import com.vju.club.security.Actor;
@@ -43,6 +44,13 @@ public class NotificationController {
                                                    @RequestParam(defaultValue = "0") @Min(0) int offset,
                                                    @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
         return service.list(actor, offset, limit);
+    }
+
+    @GetMapping(ApiPaths.MY_NOTIFICATIONS_UNREAD_SUMMARY)
+    @Operation(summary = "Tổng hợp số lượng thông báo & tin nhắn chat chưa đọc của tôi")
+    @ApiResponse(responseCode = "200", description = "Số lượng thông báo chưa đọc và số tin nhắn chat chưa đọc trên toàn bộ CLB")
+    public NotificationUnreadSummaryResponse unreadSummary(Actor actor) {
+        return service.unreadSummary(actor);
     }
 
     @GetMapping(ApiPaths.MY_NOTIFICATION_BY_ID)

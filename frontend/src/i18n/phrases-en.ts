@@ -281,4 +281,11 @@ export const PHRASES_EN_CORE: Record<string, string> = {
   'Phím tắt': 'Shortcut',
   'Tiêu đề ngắn': 'Short Title',
   'Nội dung tin nhắn nhanh': 'Quick Reply Content',
+  'Tin nhắn': 'Messages',
+  'Tin nhắn CLB': 'Club Chat',
+  'tin nhắn mới': 'new messages',
+  'Mở kênh thảo luận': 'Open Chat Channel',
+  'Duyệt đơn mới': 'New Application',
+  'Duyệt đơn ứng tuyển': 'Review Application',
+  'Mở kho tài liệu': 'Open Document Vault',
 };

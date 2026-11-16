@@ -32,6 +32,7 @@ export const API_ROUTES = {
     myCalendar: '/users/me/calendar',
     myTasks: '/users/me/tasks',
     myNotifications: '/users/me/notifications',
+    myNotificationsUnreadSummary: '/users/me/notifications/unread-summary',
     myNotificationDetail: (id: string) => `/users/me/notifications/${id}`,
     myNotificationRead: (id: string) => `/users/me/notifications/${id}/read`,
     myNotificationsReadAll: '/users/me/notifications/read-all',
