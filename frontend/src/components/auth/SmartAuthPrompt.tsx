@@ -66,20 +66,20 @@ export function SmartAuthPrompt({
     <aside
       data-no-i18n="true"
       aria-label={copy.ariaLabel}
-      className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full bg-slate-900 py-2 pl-4 pr-2 text-white fade-in sm:bottom-5 sm:right-5"
+      className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full border border-border bg-card/95 py-2 pl-4 pr-2 text-foreground shadow-lg backdrop-blur-xs fade-in sm:bottom-5 sm:right-5"
     >
       <button
         type="button"
         onClick={() => onOpenAuth("register")}
-        className="inline-flex items-center gap-2 text-xs font-semibold text-white transition-opacity hover:opacity-90 sm:text-[13px]"
+        className="inline-flex items-center gap-2 text-xs font-semibold text-foreground transition-colors hover:text-primary sm:text-[13px]"
       >
-        <UserPlus size={14} className="text-[#f3d4a6]" />
+        <UserPlus size={14} className="text-primary" />
         <span>{copy.ctaText}</span>
       </button>
       <button
         type="button"
         onClick={() => onOpenAuth("login")}
-        className="rounded-full bg-[#8e1f32] px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-[#741828]"
+        className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
       >
         {copy.signIn}
       </button>
@@ -87,7 +87,7 @@ export function SmartAuthPrompt({
         type="button"
         aria-label={copy.dismissAria}
         onClick={dismiss}
-        className="grid size-6 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/15 hover:text-white"
+        className="grid size-6 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
         <X size={13} />
       </button>

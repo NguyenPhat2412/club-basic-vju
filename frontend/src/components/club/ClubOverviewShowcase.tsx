@@ -103,7 +103,7 @@ export function ClubOverviewShowcase({
                 )}
                 {cfg.operatingSchedule && (
                   <div className="flex items-start gap-2">
-                    <Clock size={13} className="mt-0.5 shrink-0 text-amber-700" />
+                    <Clock size={13} className="mt-0.5 shrink-0 text-muted-foreground" />
                     <span className="min-w-0 break-words">{cfg.operatingSchedule}</span>
                   </div>
                 )}
@@ -136,7 +136,7 @@ export function ClubOverviewShowcase({
         {showHighlights && (
           <div className="space-y-2">
             <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-foreground">
-              <Award size={14} className="text-amber-700" />
+              <Award size={14} className="text-primary" />
               <span>Dấu ấn & Hoạt động đặc trưng</span>
             </div>
             <div className="grid gap-2">
@@ -148,7 +148,7 @@ export function ClubOverviewShowcase({
                   <div className="flex flex-wrap items-center justify-between gap-1.5">
                     <p className="text-xs font-bold text-foreground">{h.title}</p>
                     {h.tag && (
-                      <span className="rounded-md border border-amber-300/70 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-900">
+                      <span className="rounded-md border border-border bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">
                         {h.tag}
                       </span>
                     )}
@@ -224,7 +224,7 @@ export function ClubOverviewShowcase({
           )}
           {cfg.operatingSchedule && (
             <div className="flex min-w-0 items-start gap-2">
-              <Clock size={14} className="mt-0.5 shrink-0 text-amber-700" />
+              <Clock size={14} className="mt-0.5 shrink-0 text-muted-foreground" />
               <div className="min-w-0">
                 <span className="font-semibold text-foreground">Lịch sinh hoạt định kỳ: </span>
                 <span className="text-muted-foreground">{cfg.operatingSchedule}</span>
@@ -262,14 +262,14 @@ export function ClubOverviewShowcase({
               key={`${h.title}-${idx}`}
               className="flex min-w-0 items-start gap-3 rounded-xl border border-border/75 bg-background/85 px-3.5 py-3"
             >
-              <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-amber-500/15 text-amber-800">
+              <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                 <Award size={14} />
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-xs font-bold text-foreground">{h.title}</p>
                   {h.tag && (
-                    <span className="rounded-md border border-amber-300/70 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-900">
+                    <span className="rounded-md border border-border bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">
                       {h.tag}
                     </span>
                   )}

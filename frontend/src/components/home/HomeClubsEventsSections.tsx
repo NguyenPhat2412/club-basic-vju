@@ -136,7 +136,7 @@ export function HomeClubsEventsSections({
             <p className="text-sm font-semibold text-primary">{m.clubsSection.kicker}</p>
             <h2 className="mt-2 font-serif text-3xl font-semibold leading-[1.15] text-slate-900 sm:text-[40px]">
               {m.clubsSection.titlePrefix}
-              <mark className="rounded-lg bg-amber-100/90 px-2 py-0.5 text-slate-900">
+              <mark className="rounded-lg bg-accent px-2 py-0.5 text-primary">
                 {m.clubsSection.titleHighlight}
               </mark>
             </h2>
@@ -167,7 +167,7 @@ export function HomeClubsEventsSections({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={m.clubsSection.searchPlaceholder}
                 aria-label={m.clubsSection.searchAria}
-                className="h-11 w-full rounded-xl bg-[#f8fafc] pl-10 pr-9 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-2 focus:outline-primary"
+                className="h-11 w-full rounded-xl bg-background pl-10 pr-9 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-2 focus:outline-primary"
               />
               {searchQuery && (
                 <button
@@ -188,7 +188,7 @@ export function HomeClubsEventsSections({
                   setSelectedCategory("");
                   setSearchQuery("");
                 }}
-                className="h-11 shrink-0 rounded-xl bg-[#fff1f2] px-4 text-xs font-semibold text-primary transition-colors hover:bg-rose-100 sm:text-sm"
+                className="h-11 shrink-0 rounded-xl bg-accent px-4 text-xs font-semibold text-primary transition-colors hover:bg-rose-100 sm:text-sm"
               >
                 {m.clubsSection.resetFilter}
               </button>
@@ -203,7 +203,7 @@ export function HomeClubsEventsSections({
                 className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors sm:text-[13px] ${
                   selectedCategory === ""
                     ? "bg-primary text-white"
-                    : "bg-[#f1f5f9] text-slate-700 hover:bg-slate-200/80 hover:text-slate-900"
+                    : "bg-secondary text-slate-700 hover:bg-slate-200/80 hover:text-slate-900"
                 }`}
               >
                 {m.clubsSection.allCategories(allClubs.length)}
@@ -216,7 +216,7 @@ export function HomeClubsEventsSections({
                   className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors sm:text-[13px] ${
                     selectedCategory === cat
                       ? "bg-primary text-white"
-                      : "bg-[#f1f5f9] text-slate-700 hover:bg-slate-200/80 hover:text-slate-900"
+                      : "bg-secondary text-slate-700 hover:bg-slate-200/80 hover:text-slate-900"
                   }`}
                 >
                   <DbText value={cat} />
@@ -253,7 +253,7 @@ export function HomeClubsEventsSections({
                   setSelectedCategory("");
                   setSearchQuery("");
                 }}
-                className="mt-4 inline-flex h-10 items-center rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:bg-[#741828]"
+                className="mt-4 inline-flex h-10 items-center rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-hover"
               >
                 {m.clubsSection.showAllBtn}
               </button>
@@ -287,7 +287,7 @@ export function HomeClubsEventsSections({
                           </span>
                         </div>
                         {clubEvents.length > 0 && (
-                          <span className="absolute right-3.5 top-3.5 rounded-full bg-[#f3d4a6] px-2.5 py-1 text-xs font-bold text-slate-950 tabular-nums">
+                          <span className="absolute right-3.5 top-3.5 rounded-full bg-card/95 px-2.5 py-1 text-xs font-bold text-primary shadow-xs backdrop-blur-2xs tabular-nums">
                             {m.clubsSection.openEventsBadge(clubEvents.length)}
                           </span>
                         )}
@@ -322,7 +322,7 @@ export function HomeClubsEventsSections({
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between gap-2 bg-[#f8fafc] px-5 py-3.5">
+                  <div className="flex items-center justify-between gap-2 bg-background px-5 py-3.5">
                     <button
                       type="button"
                       onClick={() => setPreviewClub(club)}
@@ -354,11 +354,11 @@ export function HomeClubsEventsSections({
             </h2>
             <p className="mt-4 max-w-lg text-base leading-7 text-slate-700">
               {m.campusLife.bodyPart1}
-              <mark className="rounded bg-amber-100/90 px-1.5 py-0.5 font-semibold text-amber-950">
+              <mark className="rounded bg-accent px-1.5 py-0.5 font-semibold text-primary">
                 {m.campusLife.campusMyDinh}
               </mark>
               {m.campusLife.bodyPart2}
-              <mark className="rounded bg-amber-100/90 px-1.5 py-0.5 font-semibold text-amber-950">
+              <mark className="rounded bg-accent px-1.5 py-0.5 font-semibold text-primary">
                 {m.campusLife.campusHoaLac}
               </mark>
               {m.campusLife.bodyPart3}
@@ -366,14 +366,14 @@ export function HomeClubsEventsSections({
             <div className="mt-7 flex flex-wrap gap-3">
               <Link
                 href="/clubs"
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-[#741828]"
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
               >
                 <span>{m.campusLife.exploreClubsCta}</span>
                 <ArrowRight size={15} />
               </Link>
               <Link
                 href="/events"
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#f1f5f9] px-5 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-200/80 hover:text-primary"
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-secondary px-5 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-200/80 hover:text-primary"
               >
                 {m.campusLife.openEventsCta}
               </Link>
@@ -381,7 +381,7 @@ export function HomeClubsEventsSections({
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="overflow-hidden rounded-2xl bg-[#f8fafc] sm:col-span-2">
+            <div className="overflow-hidden rounded-2xl bg-background sm:col-span-2">
               <div
                 className="h-52 w-full bg-cover bg-center sm:h-68"
                 style={{ backgroundImage: "url('/images/clubs/vjua/gallery-2.jpg')" }}
@@ -393,7 +393,7 @@ export function HomeClubsEventsSections({
                 </p>
               </div>
             </div>
-            <div className="overflow-hidden rounded-2xl bg-[#f8fafc]">
+            <div className="overflow-hidden rounded-2xl bg-background">
               <div
                 className="h-40 w-full bg-cover bg-center"
                 style={{ backgroundImage: "url('/images/clubs/monozukuri/gallery-2.jpg')" }}
@@ -403,7 +403,7 @@ export function HomeClubsEventsSections({
                 <p className="mt-1 text-sm leading-6 text-slate-600">{m.campusLife.card1Desc}</p>
               </div>
             </div>
-            <div className="overflow-hidden rounded-2xl bg-[#f8fafc]">
+            <div className="overflow-hidden rounded-2xl bg-background">
               <div
                 className="h-40 w-full bg-cover bg-center"
                 style={{ backgroundImage: "url('/images/clubs/ouvevju/cover.jpg')" }}
@@ -481,7 +481,7 @@ export function HomeClubsEventsSections({
                 <Link
                   href={`/events?eventId=${ev.id}`}
                   key={ev.id}
-                  className="group grid gap-3 rounded-2xl bg-white p-4 transition-colors hover:bg-[#fff1f2]/65 sm:p-5 lg:grid-cols-[160px_220px_1fr_auto] lg:items-center lg:gap-6"
+                  className="group grid gap-3 rounded-2xl bg-white p-4 transition-colors hover:bg-accent/65 sm:p-5 lg:grid-cols-[160px_220px_1fr_auto] lg:items-center lg:gap-6"
                 >
                   <div className="tabular-nums">
                     <p className="text-sm font-bold text-slate-900">{formatDate(ev.startTime)}</p>
@@ -531,11 +531,11 @@ export function HomeClubsEventsSections({
 
                   <div className="flex items-center justify-between gap-3 lg:justify-end">
                     {ev.allowCtv ? (
-                      <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-950">
+                      <span className="rounded-full border border-primary/20 bg-accent px-3 py-1 text-xs font-bold text-primary">
                         {m.eventsSection.ctvOpenBadge}
                       </span>
                     ) : (
-                      <span className="rounded-full bg-[#f1f5f9] px-3 py-1 text-xs font-semibold text-slate-700">
+                      <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-slate-700">
                         {m.eventsSection.clubEventBadge}
                       </span>
                     )}
@@ -618,7 +618,7 @@ export function HomeClubsEventsSections({
               </p>
 
               {(eventsByClubId.get(previewClub.id) ?? []).length > 0 && (
-                <div className="mt-5 rounded-2xl bg-[#f8fafc] p-4">
+                <div className="mt-5 rounded-2xl bg-background p-4">
                   <p className="text-xs font-semibold text-primary">
                     {m.clubsSection.previewUpcomingTitle}
                   </p>
@@ -627,7 +627,7 @@ export function HomeClubsEventsSections({
                       <Link
                         key={ev.id}
                         href={`/events?eventId=${ev.id}`}
-                        className="flex items-center justify-between gap-2 rounded-xl bg-white px-3.5 py-2.5 text-xs transition-colors hover:bg-[#fff1f2]/70"
+                        className="flex items-center justify-between gap-2 rounded-xl bg-white px-3.5 py-2.5 text-xs transition-colors hover:bg-accent/70"
                       >
                         <div className="min-w-0">
                           <p className="truncate font-bold text-slate-900">
@@ -650,13 +650,13 @@ export function HomeClubsEventsSections({
                 <button
                   type="button"
                   onClick={() => setPreviewClub(null)}
-                  className="inline-flex h-11 items-center justify-center rounded-xl bg-[#f1f5f9] px-5 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-200"
+                  className="inline-flex h-11 items-center justify-center rounded-xl bg-secondary px-5 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-200"
                 >
                   {m.clubsSection.previewClose}
                 </button>
                 <Link
                   href={`/clubs?clubId=${previewClub.id}`}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-[#741828]"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
                 >
                   <span>{m.clubsSection.previewApplyCta}</span>
                   <ArrowRight size={15} />

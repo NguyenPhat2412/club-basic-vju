@@ -137,7 +137,7 @@ export function QuickActionCenter() {
       >
         <ListChecks size={15} />
         {totalActionCount > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-600 px-1 text-[9.5px] font-bold leading-none text-white shadow-2xs">
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-secondary-foreground px-1 text-[9.5px] font-bold leading-none text-white shadow-2xs">
             {totalActionCount > 99 ? "99+" : totalActionCount}
           </span>
         )}

@@ -267,7 +267,7 @@ export function OverviewTab({
         <section className="min-w-0 rounded-xl border border-border bg-card p-4">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2.5">
             <div className="flex items-center gap-2">
-              <span className="grid size-7 place-items-center rounded-lg bg-emerald-500/10 text-emerald-700">
+              <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
                 <CheckCheck size={15} />
               </span>
               <div>

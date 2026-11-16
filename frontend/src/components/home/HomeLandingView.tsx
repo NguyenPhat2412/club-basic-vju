@@ -15,7 +15,7 @@ import { HomeOnboardingFooter } from "./HomeOnboardingFooter";
 
 export function HomeLandingView({ initialAuthMode }: { initialAuthMode?: AuthModalMode } = {}) {
   return (
-    <Suspense fallback={<main className="min-h-svh bg-[#f8fafc]" />}>
+    <Suspense fallback={<main className="min-h-svh bg-background" />}>
       <HomeLandingContent initialAuthMode={initialAuthMode} />
     </Suspense>
   );
@@ -114,7 +114,7 @@ function HomeLandingContent({ initialAuthMode }: { initialAuthMode?: AuthModalMo
   };
 
   return (
-    <main className="min-h-svh overflow-x-clip bg-[#f8fafc] text-slate-900">
+    <main className="min-h-svh overflow-x-clip bg-background text-foreground">
       <div data-no-i18n="true">
         <HomeHeaderHero
           user={session.user}

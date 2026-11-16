@@ -103,7 +103,7 @@ export function ClubCoverBanner({
   return (
     <div
       className={cn(
-        "relative overflow-hidden bg-linear-to-br from-[#8e1f32] via-[#512535] to-[#1e293b]",
+        "relative overflow-hidden bg-linear-to-br from-primary via-primary-hover to-secondary-foreground",
         className
       )}
     >

@@ -68,7 +68,7 @@ export function HomeWorkspaceShowcase({
   };
 
   return (
-    <section id="khong-gian-so" className="bg-[#f1f5f9] py-16 sm:py-22">
+    <section id="khong-gian-so" className="bg-secondary py-16 sm:py-22">
       <div className="mx-auto max-w-[1380px] px-5 sm:px-8 lg:px-12">
         <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
           <div className="max-w-2xl">
@@ -85,7 +85,7 @@ export function HomeWorkspaceShowcase({
             {user ? (
               <Link
                 href="/dashboard"
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-[#741828]"
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
               >
                 <span>{w.openWorkspaceCta}</span>
                 <ArrowRight size={15} />
@@ -94,7 +94,7 @@ export function HomeWorkspaceShowcase({
               <button
                 type="button"
                 onClick={() => openAuthModal("register")}
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-[#741828]"
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
               >
                 <span>{w.tryStudentCta}</span>
                 <ArrowRight size={15} />
@@ -120,7 +120,7 @@ export function HomeWorkspaceShowcase({
                 }}
               />
               <div className="absolute inset-0 bg-slate-950/32" />
-              <span className="absolute left-4 top-4 rounded-full bg-[#f3d4a6] px-3 py-1 text-xs font-bold text-slate-950">
+              <span className="absolute left-4 top-4 rounded-full bg-card/95 px-3 py-1 text-xs font-bold text-foreground shadow-xs backdrop-blur-2xs">
                 {w.photoBadge}
               </span>
               <div className="absolute inset-x-3.5 bottom-3.5 rounded-2xl bg-slate-950/75 px-4 py-2.5">
@@ -136,7 +136,7 @@ export function HomeWorkspaceShowcase({
                 </div>
                 <p className="mt-1.5 text-sm leading-6 text-slate-600">
                   {w.studentPart1}
-                  <mark className="rounded bg-amber-100/90 px-1.5 py-0.5 font-semibold text-amber-950">
+                  <mark className="rounded bg-accent px-1.5 py-0.5 font-semibold text-primary">
                     {w.studentHighlight}
                   </mark>
                   {w.studentPart2}
@@ -150,7 +150,7 @@ export function HomeWorkspaceShowcase({
                 </div>
                 <p className="mt-1.5 text-sm leading-6 text-slate-600">
                   {w.boardPart1}
-                  <mark className="rounded bg-amber-100/90 px-1.5 py-0.5 font-semibold text-amber-950">
+                  <mark className="rounded bg-accent px-1.5 py-0.5 font-semibold text-primary">
                     {w.boardHighlight}
                   </mark>
                   {w.boardPart2}
@@ -165,7 +165,7 @@ export function HomeWorkspaceShowcase({
           >
             <div>
               <div
-                className="grid grid-cols-1 gap-1.5 rounded-2xl bg-[#f1f5f9] p-1.5 sm:grid-cols-3"
+                className="grid grid-cols-1 gap-1.5 rounded-2xl bg-secondary p-1.5 sm:grid-cols-3"
                 role="tablist"
                 aria-label={w.tabsAria}
               >
@@ -214,7 +214,7 @@ export function HomeWorkspaceShowcase({
             {activeTab === "recruitment" && (
               <div className="mt-5 flex flex-1 flex-col justify-between gap-4 fade-in" data-ui="panel-recruitment">
                 <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-[#f8fafc] px-4 py-3.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-background px-4 py-3.5">
                     <div>
                       <p className="text-xs font-semibold text-primary">{w.recFormLabel}</p>
                       <p className="mt-0.5 text-[15px] font-bold text-slate-900">
@@ -227,19 +227,19 @@ export function HomeWorkspaceShowcase({
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl bg-[#f8fafc] p-4">
+                    <div className="rounded-2xl bg-background p-4">
                       <p className="text-xs font-medium text-slate-500">{w.recChoice1Label}</p>
                       <p className="mt-1 text-sm font-bold text-slate-900">{w.recChoice1Title}</p>
                       <p className="mt-1 text-xs leading-5 text-slate-600">{w.recChoice1Desc}</p>
                     </div>
-                    <div className="rounded-2xl bg-[#f8fafc] p-4">
+                    <div className="rounded-2xl bg-background p-4">
                       <p className="text-xs font-medium text-slate-500">{w.recChoice2Label}</p>
                       <p className="mt-1 text-sm font-bold text-slate-900">{w.recChoice2Title}</p>
                       <p className="mt-1 text-xs leading-5 text-slate-600">{w.recChoice2Desc}</p>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl bg-[#fff1f2]/75 p-4">
+                  <div className="rounded-2xl bg-accent/75 p-4">
                     <p className="text-xs font-semibold text-primary">{w.recPipelineLabel}</p>
                     <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs font-semibold">
                       <div className="rounded-xl bg-white px-2.5 py-2.5 text-slate-900">{w.recStep1}</div>
@@ -265,7 +265,7 @@ export function HomeWorkspaceShowcase({
             {activeTab === "events" && (
               <div className="mt-5 flex flex-1 flex-col justify-between gap-4 fade-in" data-ui="panel-events">
                 <div className="space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-[#f8fafc] px-4 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-background px-4 py-3">
                     <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
                       <CalendarCheck2 size={17} className="shrink-0 text-primary" />
                       <span>{w.evHeaderTitle}</span>
@@ -280,7 +280,7 @@ export function HomeWorkspaceShowcase({
                         <Link
                           key={ev.id}
                           href={`/events?eventId=${ev.id}`}
-                          className="group flex flex-col justify-between gap-2 rounded-2xl bg-[#f8fafc] p-4 transition-colors hover:bg-[#fff1f2]/65 sm:flex-row sm:items-center"
+                          className="group flex flex-col justify-between gap-2 rounded-2xl bg-background p-4 transition-colors hover:bg-accent/65 sm:flex-row sm:items-center"
                         >
                           <div className="min-w-0">
                             <p className="text-xs font-semibold text-primary">
@@ -308,7 +308,7 @@ export function HomeWorkspaceShowcase({
                       );
                     })
                   ) : (
-                    <div className="rounded-2xl bg-[#f8fafc] p-5 text-sm text-slate-600">
+                    <div className="rounded-2xl bg-background p-5 text-sm text-slate-600">
                       {w.evSyncing}
                     </div>
                   )}
@@ -333,7 +333,7 @@ export function HomeWorkspaceShowcase({
             {activeTab === "operations" && (
               <div className="mt-5 flex flex-1 flex-col justify-between gap-4 fade-in" data-ui="panel-operations">
                 <div className="space-y-3.5">
-                  <div className="rounded-2xl bg-[#f8fafc] p-4">
+                  <div className="rounded-2xl bg-background p-4">
                     <div className="flex items-center justify-between gap-2">
                       <span className="inline-flex items-center gap-2 text-sm font-bold text-slate-900">
                         <MessageSquareText size={16} className="shrink-0 text-primary" />
@@ -344,13 +344,13 @@ export function HomeWorkspaceShowcase({
                       </span>
                     </div>
                     <p className="mt-2 text-sm leading-6 text-slate-700">{w.opsQuote}</p>
-                    <div className="mt-3 rounded-xl bg-amber-50/90 p-3 text-xs leading-5 text-slate-800">
-                      <span className="font-bold text-amber-950">{w.opsAiLabel}</span>
+                    <div className="mt-3 rounded-xl border border-primary/15 bg-accent/70 p-3 text-xs leading-5 text-foreground">
+                      <span className="font-bold text-primary">{w.opsAiLabel}</span>
                       {w.opsAiSummary}
                     </div>
                   </div>
 
-                  <div className="rounded-2xl bg-[#f8fafc] p-4">
+                  <div className="rounded-2xl bg-background p-4">
                     <p className="inline-flex items-center gap-2 text-sm font-bold text-slate-900">
                       <FileText size={16} className="shrink-0 text-primary" />
                       {w.opsVaultTitle}

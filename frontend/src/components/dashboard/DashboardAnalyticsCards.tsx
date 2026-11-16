@@ -92,7 +92,7 @@ export function DashboardAnalyticsCards({
       <div className="min-w-0 rounded-xl border border-border bg-card p-4 sm:p-5">
         <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
           <div className="flex items-center gap-2">
-            <span className="grid size-7 place-items-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+            <span className="grid size-7 place-items-center rounded-lg bg-secondary text-secondary-foreground">
               <ClipboardList size={15} />
             </span>
             <div>
@@ -157,7 +157,7 @@ export function DashboardAnalyticsCards({
                   title={`Chờ duyệt: ${pendingAppsCount}`}
                 />
                 <div
-                  className="bg-rose-500 transition-all"
+                  className="bg-destructive transition-all"
                   style={{ width: `${(rejectedAppsCount / relevantAppsCount) * 100}%` }}
                   title={`Từ chối: ${rejectedAppsCount}`}
                 />
@@ -174,7 +174,7 @@ export function DashboardAnalyticsCards({
       <div className="min-w-0 rounded-xl border border-border bg-card p-4 sm:p-5">
         <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
           <div className="flex items-center gap-2">
-            <span className="grid size-7 place-items-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+            <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
               <Activity size={15} />
             </span>
             <div>

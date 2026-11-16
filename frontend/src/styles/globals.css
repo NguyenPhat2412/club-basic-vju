@@ -10,6 +10,9 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  --color-primary-on-dark: var(--primary-on-dark);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -44,8 +47,11 @@
   --card-foreground: #0f172a;
   --popover: #ffffff;
   --popover-foreground: #0f172a;
-  /* VJU Crimson primary and clean Light Academic Slate neutrals */
+  /* VJU Crimson primary and clean Light Academic Slate neutrals (60/30/10) */
   --primary: #8e1f32;
+  --primary-hover: #741828;
+  --primary-active: #681523;
+  --primary-on-dark: #fecdd3;
   --primary-foreground: #ffffff;
   --secondary: #f1f5f9;
   --secondary-foreground: #1e293b;

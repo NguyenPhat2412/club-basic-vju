@@ -309,7 +309,7 @@ export function DashboardActivitySection({
         <div className="min-w-0 rounded-xl border border-border bg-card p-4 sm:p-5">
           <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
             <div className="flex items-center gap-2">
-              <span className="grid size-7 place-items-center rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400">
+              <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
                 <Calendar size={15} />
               </span>
               <div>

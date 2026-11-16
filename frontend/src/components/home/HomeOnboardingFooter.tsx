@@ -45,7 +45,7 @@ export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFoot
             {m.onboarding.steps.map((item) => (
               <li
                 key={item.stage}
-                className="group flex flex-col overflow-hidden rounded-2xl bg-[#f8fafc] transition-colors hover:bg-[#fff1f2]/60"
+                className="group flex flex-col overflow-hidden rounded-2xl bg-background transition-colors hover:bg-accent/60"
               >
                 <div className="relative h-40 w-full overflow-hidden bg-slate-900">
                   <div
@@ -70,7 +70,7 @@ export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFoot
         </div>
       </section>
 
-      <section id="khoanh-khac" className="bg-[#f1f5f9] py-16 sm:py-22">
+      <section id="khoanh-khac" className="bg-secondary py-16 sm:py-22">
         <div className="mx-auto max-w-[1380px] px-5 sm:px-8 lg:px-12">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div className="max-w-2xl">
@@ -136,7 +136,7 @@ export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFoot
               {formatLocalizedCopy(m.galleryFaq.faqLead, locale)}
             </p>
 
-            <div className="mt-6 overflow-hidden rounded-3xl bg-[#f8fafc]">
+            <div className="mt-6 overflow-hidden rounded-3xl bg-background">
               <div className="relative h-44 w-full overflow-hidden bg-slate-900">
                 <div
                   className="absolute inset-0 bg-cover"
@@ -146,7 +146,7 @@ export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFoot
                   }}
                 />
                 <div className="absolute inset-0 bg-slate-950/28" />
-                <span className="absolute left-4 top-4 rounded-full bg-[#f3d4a6] px-3 py-1 text-xs font-bold text-slate-950">
+                <span className="absolute left-4 top-4 rounded-full bg-card/95 px-3 py-1 text-xs font-bold text-foreground shadow-xs backdrop-blur-2xs">
                   {m.galleryFaq.faqCardBadge}
                 </span>
               </div>
@@ -154,7 +154,7 @@ export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFoot
                 <p className="text-base font-bold text-slate-900">{m.galleryFaq.faqCardTitle}</p>
                 <p className="mt-2 text-sm leading-6 text-slate-700">
                   {m.galleryFaq.faqCardDescPrefix}
-                  <mark className="rounded bg-amber-100/90 px-1.5 py-0.5 font-semibold text-amber-950">
+                  <mark className="rounded bg-accent px-1.5 py-0.5 font-semibold text-primary">
                     {m.galleryFaq.faqCardEmailHighlight}
                   </mark>
                   {m.galleryFaq.faqCardDescSuffix}
@@ -168,7 +168,7 @@ export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFoot
               <details
                 key={faq.q}
                 open={idx === 0}
-                className="group rounded-2xl bg-[#f8fafc] px-5 py-4 transition-colors open:bg-[#fff1f2]/55"
+                className="group rounded-2xl bg-background px-5 py-4 transition-colors open:bg-accent/55"
               >
                 <summary className="flex cursor-pointer list-none items-start justify-between gap-3 text-[15px] font-bold text-slate-900 [&::-webkit-details-marker]:hidden">
                   <span>{faq.q}</span>
@@ -184,45 +184,47 @@ export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFoot
         </div>
       </section>
 
-      <section className="bg-primary text-white">
-        <div className="mx-auto flex max-w-[1380px] flex-col items-start justify-between gap-6 px-5 py-14 sm:px-8 sm:py-16 lg:flex-row lg:items-center lg:px-12">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold text-[#f3d4a6]">{m.closing.kicker}</p>
-            <h2 className="mt-2 font-serif text-2xl font-semibold leading-[1.16] text-white sm:text-[36px]">
-              {m.closing.titlePrefix}
-              <span className="italic text-[#f3d4a6]">{m.closing.titleHighlight}</span>
-              {m.closing.titleSuffix}
-            </h2>
-            <p className="mt-3 text-base leading-7 text-white/90">
-              {formatLocalizedCopy(m.closing.lead, locale)}
-            </p>
-          </div>
+      <section className="border-y border-border bg-secondary/70 py-12 sm:py-16">
+        <div className="mx-auto max-w-[1380px] px-5 sm:px-8 lg:px-12">
+          <div className="flex flex-col items-start justify-between gap-6 rounded-3xl border border-border border-l-4 border-l-primary bg-card p-6 shadow-xs sm:p-10 lg:flex-row lg:items-center">
+            <div className="max-w-2xl">
+              <p className="text-sm font-semibold text-primary">{m.closing.kicker}</p>
+              <h2 className="mt-2 font-serif text-2xl font-semibold leading-[1.16] text-foreground sm:text-[36px]">
+                {m.closing.titlePrefix}
+                <span className="italic text-primary">{m.closing.titleHighlight}</span>
+                {m.closing.titleSuffix}
+              </h2>
+              <p className="mt-3 text-base leading-7 text-muted-foreground">
+                {formatLocalizedCopy(m.closing.lead, locale)}
+              </p>
+            </div>
 
-          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
-            {user ? (
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
+              {user ? (
+                <Link
+                  href="/dashboard"
+                  className="inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-hover sm:w-auto"
+                >
+                  <span>{m.closing.dashboardCta}</span>
+                  <ArrowRight size={16} />
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => openAuthModal("register")}
+                  className="inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-hover sm:w-auto"
+                >
+                  <span>{m.closing.joinCta}</span>
+                  <ArrowRight size={16} />
+                </button>
+              )}
               <Link
-                href="/dashboard"
-                className="inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-white px-6 text-sm font-bold text-primary transition-opacity hover:opacity-95 sm:w-auto"
+                href="/clubs"
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-secondary px-6 text-sm font-semibold text-secondary-foreground transition-colors hover:bg-muted hover:text-primary sm:w-auto"
               >
-                <span>{m.closing.dashboardCta}</span>
-                <ArrowRight size={16} />
+                {m.closing.clubsCta}
               </Link>
-            ) : (
-              <button
-                type="button"
-                onClick={() => openAuthModal("register")}
-                className="inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-white px-6 text-sm font-bold text-primary transition-opacity hover:opacity-95 sm:w-auto"
-              >
-                <span>{m.closing.joinCta}</span>
-                <ArrowRight size={16} />
-              </button>
-            )}
-            <Link
-              href="/clubs"
-              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#681523] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#57111d] sm:w-auto"
-            >
-              {m.closing.clubsCta}
-            </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -254,7 +256,7 @@ export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFoot
               {m.footer.pillars.map((pillar) => (
                 <span
                   key={pillar}
-                  className="rounded-full bg-[#f8fafc] px-2.5 py-1 text-xs font-semibold text-slate-700"
+                  className="rounded-full bg-background px-2.5 py-1 text-xs font-semibold text-slate-700"
                 >
                   {pillar}
                 </span>
@@ -344,7 +346,7 @@ export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFoot
           </div>
         </div>
 
-        <div className="bg-[#f8fafc]">
+        <div className="bg-background">
           <div className="mx-auto flex max-w-[1380px] flex-col gap-2 px-5 py-4 text-[13px] text-slate-600 sm:px-8 md:flex-row md:justify-between lg:px-12">
             <span>{m.footer.copyright}</span>
             <span>{m.footer.imprintRight}</span>

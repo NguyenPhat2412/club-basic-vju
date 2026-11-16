@@ -270,8 +270,8 @@ function ClubsDiscoveryContent() {
         {notice && <div role="status" className="rounded-lg border border-primary/20 bg-primary/8 px-4 py-3 text-xs font-medium text-primary">{notice}</div>}
 
         {session.settled && !session.user && (
-          <section aria-label="Hướng dẫn 3 bước gia nhập Câu lạc bộ" className="overflow-hidden rounded-2xl border border-rose-200/80 bg-gradient-to-br from-white via-rose-50/40 to-amber-50/30 p-4 shadow-2xs sm:p-5">
-            <div className="flex flex-col justify-between gap-3 border-b border-rose-100/80 pb-4 lg:flex-row lg:items-center">
+          <section aria-label="Hướng dẫn 3 bước gia nhập Câu lạc bộ" className="overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card via-card to-accent/55 p-4 shadow-2xs sm:p-5">
+            <div className="flex flex-col justify-between gap-3 border-b border-border/70 pb-4 lg:flex-row lg:items-center">
               <div className="min-w-0">
                 <p className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-wider text-primary">
                   <Sparkles size={13} /> Cổng tuyển thành viên trực tuyến · VJU ClubHub

@@ -54,11 +54,11 @@ export function HomeHeaderHero({
 
   return (
     <>
-      <div className="bg-primary px-4 py-2 text-center text-[13px] font-medium text-white">
+      <div className="bg-primary px-4 py-2 text-center text-[13px] font-medium text-primary-foreground">
         <span>{m.topBar.university}</span>
         <span className="hidden sm:inline">
           {" · "}
-          <span className="font-semibold text-[#f3d4a6]">{m.topBar.campuses}</span>
+          <span className="font-semibold text-primary-on-dark">{m.topBar.campuses}</span>
         </span>
       </div>
 
@@ -142,7 +142,7 @@ export function HomeHeaderHero({
                   <button
                     type="button"
                     onClick={signOut}
-                    className="shrink-0 whitespace-nowrap rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#741828] xl:px-4 xl:text-sm"
+                    className="shrink-0 whitespace-nowrap rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-hover xl:px-4 xl:text-sm"
                   >
                     {m.nav.signOut}
                   </button>
@@ -159,7 +159,7 @@ export function HomeHeaderHero({
                   <button
                     type="button"
                     onClick={() => openAuthModal("register")}
-                    className="shrink-0 whitespace-nowrap rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#741828] lg:px-4 lg:text-sm"
+                    className="shrink-0 whitespace-nowrap rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-hover lg:px-4 lg:text-sm"
                   >
                     {m.nav.joinNow}
                   </button>
@@ -262,14 +262,14 @@ export function HomeHeaderHero({
         <div className="mx-auto flex min-h-[520px] max-w-[1380px] flex-col justify-between px-5 pb-7 pt-12 sm:min-h-[590px] sm:px-8 sm:pb-8 sm:pt-16 lg:min-h-[640px] lg:px-12 lg:pb-9 lg:pt-20">
           <div className="my-auto max-w-[680px]">
             <div key={`${locale}-${currentSlide.src}`} className="fade-in" aria-live="polite">
-              <p className="text-sm font-semibold text-[#f3d4a6] sm:text-[15px]">
+              <p className="text-sm font-semibold text-primary-on-dark sm:text-[15px]">
                 {currentSlide.kicker}
               </p>
               <h1 className="mt-3 font-serif text-[30px] font-semibold leading-[1.12] tracking-[-0.02em] text-white sm:text-[46px] lg:text-[54px]">
                 {currentSlide.titleLine1}
                 <br />
                 {currentSlide.titleLine2Prefix}
-                <span className="italic text-[#f3d4a6]">{currentSlide.titleLine2Highlight}</span>
+                <span className="italic text-primary-on-dark">{currentSlide.titleLine2Highlight}</span>
               </h1>
               <p className="mt-4 min-h-[84px] max-w-[56ch] text-base font-normal leading-7 text-white/95 sm:mt-5 sm:text-[17px] sm:leading-8">
                 {formatLocalizedCopy(currentSlide.lead, locale)}
@@ -279,7 +279,7 @@ export function HomeHeaderHero({
             <div className="mt-6 flex flex-col gap-3 sm:mt-7 sm:flex-row sm:flex-wrap">
               <a
                 href="#cau-lac-bo"
-                className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-primary px-6 text-[15px] font-semibold text-white transition-colors hover:bg-[#741828] sm:w-auto"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-primary px-6 text-[15px] font-semibold text-white transition-colors hover:bg-primary-hover sm:w-auto"
               >
                 <span>{m.hero.primaryCta}</span>
                 <ArrowRight size={16} />
@@ -332,7 +332,7 @@ export function HomeHeaderHero({
                     <span
                       className={`h-2 rounded-full transition-colors ${
                         i === activeSlide
-                          ? "w-4 bg-[#f3d4a6]"
+                          ? "w-4 bg-primary-on-dark"
                           : "w-2 bg-white/55 group-hover:bg-white/90"
                       }`}
                     />
@@ -353,11 +353,11 @@ export function HomeHeaderHero({
         </div>
       </section>
 
-      <section aria-label={m.facts.sectionAria} className="bg-[#f1f5f9] py-6 sm:py-8">
+      <section aria-label={m.facts.sectionAria} className="bg-secondary py-6 sm:py-8">
         <div className="mx-auto grid max-w-[1380px] gap-3.5 px-5 sm:grid-cols-2 sm:px-8 lg:grid-cols-4 lg:px-12">
           <Link
             href="/clubs"
-            className="group rounded-2xl bg-white p-5 transition-colors hover:bg-[#fff1f2]/75"
+            className="group rounded-2xl bg-card p-5 transition-colors hover:bg-accent/75"
           >
             <p className="font-serif text-2xl font-semibold text-primary tabular-nums sm:text-[26px]">
               {m.facts.clubsTitle(totalClubs)}
@@ -367,7 +367,7 @@ export function HomeHeaderHero({
 
           <Link
             href="/events"
-            className="group rounded-2xl bg-white p-5 transition-colors hover:bg-[#fff1f2]/75"
+            className="group rounded-2xl bg-card p-5 transition-colors hover:bg-accent/75"
           >
             <p className="font-serif text-2xl font-semibold text-slate-900 tabular-nums sm:text-[26px]">
               {m.facts.eventsTitle(totalEvents)}
@@ -376,7 +376,7 @@ export function HomeHeaderHero({
               {ctvEventsCount > 0 ? (
                 <>
                   {m.facts.eventsCtvPrefix}
-                  <mark className="rounded bg-amber-100/90 px-1.5 py-0.5 font-semibold text-amber-950">
+                  <mark className="rounded bg-accent px-1.5 py-0.5 font-semibold text-primary">
                     {m.facts.eventsCtvHighlight(ctvEventsCount)}
                   </mark>
                   {m.facts.eventsCtvSuffix}
@@ -389,14 +389,14 @@ export function HomeHeaderHero({
 
           <Link
             href="/applications"
-            className="group rounded-2xl bg-white p-5 transition-colors hover:bg-[#fff1f2]/75"
+            className="group rounded-2xl bg-card p-5 transition-colors hover:bg-accent/75"
           >
             <p className="font-serif text-2xl font-semibold text-slate-900 sm:text-[26px]">
               {m.facts.deptsTitle}
             </p>
             <p className="mt-1 text-sm leading-6 text-slate-700">
               {m.facts.deptsPrefix}
-              <mark className="rounded bg-amber-100/90 px-1.5 py-0.5 font-semibold text-amber-950">
+              <mark className="rounded bg-accent px-1.5 py-0.5 font-semibold text-primary">
                 {m.facts.deptsHighlight}
               </mark>
               {m.facts.deptsSuffix}
@@ -405,7 +405,7 @@ export function HomeHeaderHero({
 
           <a
             href="#khong-gian-so"
-            className="group rounded-2xl bg-white p-5 transition-colors hover:bg-[#fff1f2]/75"
+            className="group rounded-2xl bg-card p-5 transition-colors hover:bg-accent/75"
           >
             <p className="font-serif text-2xl font-semibold text-slate-900 sm:text-[26px]">
               {m.facts.opsTitle}

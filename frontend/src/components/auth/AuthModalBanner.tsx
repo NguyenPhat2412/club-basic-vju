@@ -35,7 +35,7 @@ export function AuthModalBanner({ mode, onClose }: AuthModalBannerProps) {
             className="size-9 shrink-0 rounded-full bg-white p-0.5 object-contain shadow-xs"
           />
           <div className="min-w-0">
-            <p className="truncate text-[10px] font-bold uppercase tracking-wider text-[#f3d4a6]">
+            <p className="truncate text-[10px] font-bold uppercase tracking-wider text-primary-on-dark">
               CỘNG ĐỒNG CLB SINH VIÊN VJU
             </p>
             <p className="truncate text-sm font-extrabold text-white">
@@ -75,14 +75,14 @@ export function AuthModalBanner({ mode, onClose }: AuthModalBannerProps) {
               Vietnam Japan University
             </p>
             <p className="text-sm font-extrabold tracking-tight text-white lg:text-base">
-              CLUB<span className="text-[#f3d4a6]">HUB</span>
+              CLUB<span className="text-primary-on-dark">HUB</span>
             </p>
           </div>
         </div>
 
         <div className="my-auto py-4 lg:py-6">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#f3d4a6]/40 bg-black/30 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.12em] text-[#f3d4a6] backdrop-blur-2xs lg:px-3 lg:text-[11px]">
-            <Sparkles size={12} /> Cộng đồng CLB VJU
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.12em] text-white backdrop-blur-2xs lg:px-3 lg:text-[11px]">
+            <Sparkles size={12} className="text-primary-on-dark" /> Cộng đồng CLB VJU
           </span>
           <h3 className="mt-3 font-serif text-2xl font-semibold leading-tight text-white lg:mt-4 lg:text-3xl">
             {mode === "login"
@@ -97,15 +97,15 @@ export function AuthModalBanner({ mode, onClose }: AuthModalBannerProps) {
 
           <ul className="mt-4 space-y-2 text-[11px] font-medium text-white/95 lg:mt-6 lg:space-y-2.5 lg:text-xs">
             <li className="flex items-start gap-2">
-              <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#f3d4a6]" />
+              <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-primary-on-dark" />
               <span>Khám phá 12+ CLB văn hóa, học thuật, nghệ thuật & thể thao</span>
             </li>
             <li className="flex items-start gap-2">
-              <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#f3d4a6]" />
+              <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-primary-on-dark" />
               <span>Ứng tuyển thành viên & Cộng tác viên sự kiện trực tuyến</span>
             </li>
             <li className="flex items-start gap-2">
-              <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#f3d4a6]" />
+              <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-primary-on-dark" />
               <span>Nhận thông báo duyệt đơn, lịch họp và nhiệm vụ tức thời</span>
             </li>
           </ul>

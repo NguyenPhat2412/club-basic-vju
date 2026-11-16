@@ -167,7 +167,7 @@ export function ProfileView() {
                 {profileNotice && (
                   <p
                     role="status"
-                    className="rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-green-700 dark:text-green-300"
+                    className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800"
                   >
                     {profileNotice}
                   </p>
@@ -224,7 +224,7 @@ export function ProfileView() {
                 {notice && (
                   <p
                     role="status"
-                    className="rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-green-700 dark:text-green-300"
+                    className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800"
                   >
                     {notice}
                   </p>
