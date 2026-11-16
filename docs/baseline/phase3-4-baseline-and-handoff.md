@@ -1,7 +1,7 @@
 # Hồ sơ Nghiệm thu Bảo mật, Truy vết Toàn hệ thống & Bàn giao Cuối kỳ (`PB-49`, `PB-51`)
 
-- **Ngày chốt hồ sơ:** `2026-11-12`
-- **Phạm vi bao phủ:** Toàn bộ 4 giai đoạn phát triển (`Phase 1`..`Phase 4` — `104/104 PBI`, `394/394 TC-PB-*`, `67/67 DoD`)
+- **Ngày chốt hồ sơ:** `2026-11-12` *(cập nhật đồng bộ mở rộng `V25..V29`: `2026-11-16`)*
+- **Phạm vi bao phủ:** Toàn bộ 4 giai đoạn phát triển & phân hệ mở rộng (`Phase 1`..`Phase 4` — `112/112 PBI` (`PB-01`..`PB-69`), `426/426 TC-PB-*`, `67/67 DoD`)
 - **Nhãn phát hành & Môi trường vận hành:** Production `v1.0.0` (`https://vju-club.all1.vn`, `https://api.vju-club.all1.vn`) và Stagging `v1.0.1-stagging.1` (`https://stagging.vju-club.all1.vn`)
 
 ---
@@ -10,10 +10,10 @@
 
 | Tầng kiểm định | Lệnh xác minh | Kết quả thực tế |
 |---|---|---|
-| **Backend Unit, Integration, Concurrency & E2E** | `cd backend/springboot && ./mvnw test` | **590+ Pass** (`0 Failures, 0 Errors`, 69 lớp test trên PostgreSQL 16 Testcontainers) |
-| **OpenAPI 3.1 & API Catalog Contract** | `python3 -m unittest discover -s docs/api/tests -v` | **16 / 16 Pass** (khớp tuyệt đối **143 HTTP operations** giữa `openapi.yaml`, `catalog.yml` và `ApiPaths.java`) |
-| **Frontend Lint, TypeScript, Unit Tests & Production Build** | `pnpm --dir frontend run lint && pnpm --dir frontend run typecheck && pnpm --dir frontend test && pnpm --dir frontend run build` | **0 warnings/errors**, **10 / 10 unit tests Pass**, **21 / 21 Next.js routes built** (tuân thủ ngưỡng kiến trúc `≤ 400` dòng/tệp) |
-| **Database Schema & Migrations** | Flyway `V1`..`V24` trên PostgreSQL 16 | **24 / 24 migrations applied (`success = true`)** |
+| **Backend Unit, Integration, Concurrency & E2E** | `cd backend/springboot && ./mvnw test` | **590+ Pass** (`0 Failures, 0 Errors`, trên PostgreSQL 16 Testcontainers) |
+| **OpenAPI 3.1 & API Catalog Contract** | `python3 -m unittest discover -s docs/api/tests -v` | **16 / 16 Pass** (khớp tuyệt đối **156 HTTP operations** trên **21 module** giữa `openapi.yaml`, `catalog.yml` và `ApiPaths.java`) |
+| **Frontend Lint, TypeScript, Unit Tests & Production Build** | `pnpm --dir frontend run lint && pnpm --dir frontend run typecheck && pnpm --dir frontend test && pnpm --dir frontend run build` | **0 warnings/errors**, **36 / 36 unit tests Pass**, **21+ Next.js routes built** (tuân thủ ngưỡng kiến trúc `≤ 400` dòng/tệp & bảng màu 60/30/10) |
+| **Database Schema & Migrations** | Flyway `V1`..`V29` trên PostgreSQL 16 | **29 / 29 migrations applied (`success = true`)** |
 | **Đo tải tham chiếu (`20` luồng đồng thời)** | `python3 docs/baseline/run_load_benchmark.py` | **600 / 600 HTTP 200 OK** (`0.0%` lỗi, `p95` `11.20 ms`..`240.93 ms`) |
 
 ---
@@ -58,7 +58,7 @@
 | **Điểm danh, Sửa sau COMPLETED & Lịch sử cá nhân** (`PB-30`..`PB-32`, `PB-35.2`, `PB-60`) | `V14`, `V21` (`event_attendances.edit_reason`, `version`) | `EventServiceImpl#recordAttendance`, `listMyRegistrations` | `/events` (Tab 2), `EventsTab.tsx` | `PhaseFourAcceptanceTest`, `PhaseThreeOperationsApiTest` |
 | **Thông báo In-App CLB / Ban / Sự kiện / Task** (`PB-33.1`..`PB-33.4`) | `V8`, `V20` (`notifications`, `uq_notifications_user_event_key`) | `NotificationServiceImpl` (`/clubs/{id}/notifications`, `/events/{id}/notifications`, `/tasks/{id}/notifications`) | `/notifications`, `EventsTab.tsx`, `TasksTab.tsx` | `NotificationApiTest`, `PhaseFourAcceptanceTest` |
 | **Thống kê Hệ thống & Thống kê CLB** (`PB-36.1`, `PB-36.2`, `PB-61`) | `V1`..`V23` (truy vấn tổng hợp khử trùng lặp) | `StatisticsServiceImpl` (`/statistics/system`, `/clubs/{id}/statistics`) | `/dashboard`, `OverviewTab.tsx` | `PhaseFourAcceptanceTest`, `phase34.test.ts` |
-| **Tài liệu CLB, Kênh Chat, Trợ lý AI & Đa ngôn ngữ AI** | `V10`, `V14`, `V23` (`documents`, `chat_channels`, `ai_summaries`, `i18n_translations`) | `DocumentServiceImpl`, `ChatServiceImpl`, `I18nTranslationServiceImpl` (`/public/i18n/*`) | `/documents`, `DocumentsTab.tsx`, `ChatTab.tsx`, `I18nProvider.tsx` | `DocumentApiTest`, `PhaseThreeOperationsApiTest` |
+| **Kho Tài liệu 3 tầng, Chat Realtime STOMP, Tùy biến Tổng quan CLB & Đa ngôn ngữ AI** (`PB-62`..`PB-69`) | `V10`, `V14`, `V22`..`V29` (`documents`, `chat_channels`, `chat_messages`, `chat_message_attachments`, `chat_quick_replies`, `ai_summaries`, `i18n_translations`, `clubs.overview_config`) | `DocumentServiceImpl`, `ChatWsController`, `ChatMediaService`, `ChatQuickReplyService`, `ChatPinService`, `I18nTranslationServiceImpl` | `/documents`, `DocumentsTab.tsx`, `ChatTab.tsx`, `ChatPinnedBar.tsx`, `ClubOverviewCustomizer.tsx`, `WorkspaceTabBar`, `I18nContext.tsx` | `DocumentThreeTierAccessTest`, `ChatWebSocketIntegrationTest`, `ChatMediaAndQuickReplyTest`, `realtime-vault.test.ts`, `chat-tta-media-cache.test.ts`, `club-overview-config.test.ts`, `form-field-meta.test.ts` |
 
 ---
 
@@ -94,7 +94,7 @@
 
 ## 5. Chỉ mục Phạm vi Đã xác minh vs Ngoài phạm vi Release (`PB-51` AC03–AC04)
 
-- **Đã xác minh 100% (`Hoàn thành`):** Toàn bộ `104/104 PBI` (`Phase 1`..`Phase 4`), `394/394 TC-PB-*`, `67/67 DoD`, `24` bản migration Flyway (`V1`..`V24`), `143` HTTP operations trong OpenAPI 3.1, giao diện đa ngôn ngữ (VI/EN/JA) kèm 12 logo/cover CLB VJU & tải ảnh đại diện không dùng dữ liệu giả lập (zero mock data).
+- **Đã xác minh 100% (`Hoàn thành`):** Toàn bộ `112/112 PBI` (`PB-01`..`PB-69` qua `Phase 1`..`Phase 4` & mở rộng), `426/426 TC-PB-*`, `67/67 DoD`, `29` bản migration Flyway (`V1`..`V29`), `156` HTTP operations trên `21` module trong OpenAPI 3.1 + STOMP WebSocket, kho tài liệu 3 tầng, chat thời gian thực kèm ghim tin nhắn, tùy biến tổng quan CLB, giao diện đa ngôn ngữ (`VI`/`EN`/`JA`) và 12 logo/cover CLB VJU không dùng dữ liệu giả lập (*zero mock data*).
 - **Ngoài phạm vi bản phát hành hiện tại (Out of Scope theo quyết định PO `PB-57`..`PB-61`):**
   - Không phát hành vé QR / thanh toán lệ phí sự kiện hoặc quy trình duyệt từng lượt đăng ký sự kiện.
   - Không gửi thông báo qua cổng Email SMTP / SMS / Mobile Push bên ngoài (tập trung 100% vào kênh In-App khử trùng lặp chuẩn).

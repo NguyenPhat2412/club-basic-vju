@@ -185,27 +185,37 @@ Mở trình duyệt:
 - Danh mục API: <http://localhost:8080/api/v1/api-catalog>
 
 Cách thử trên Swagger:
-1. Gọi `POST /api/v1/auth/login` với email và mật khẩu admin trong `.env.local`.
-2. Copy giá trị `tokens.accessToken` trong kết quả.
-3. Bấm **Authorize**, dán token vào. Sau đó mọi route khác đều gọi được.
+1. Gọi `GET /api/v1/auth/csrf` để trình duyệt nhận cookie `XSRF-TOKEN`.
+2. Gọi `POST /api/v1/auth/login` với email và mật khẩu admin trong `.env.local` (kèm header `X-XSRF-TOKEN` khớp giá trị cookie `XSRF-TOKEN`) để nhận cookie phiên `CLUB_SESSION` (`HttpOnly`).
+3. Từ đó mọi route bảo vệ trong cùng phiên trình duyệt đều gọi được (xem chi tiết tại [ADR-001](../../docs/decisions/ADR-001-postgresql-stateful-sessions-and-csrf.md)).
 
-Đăng nhập từ terminal:
+Đăng nhập từ terminal (lưu cookie phiên + CSRF vào `jar.txt`):
 
 **macOS**:
 
 ```bash
-curl -s -X POST http://localhost:8080/api/v1/auth/login -H "Content-Type: application/json" -d '{"email":"admin123@gmail.com","password":"Admin123@"}'
+curl -s -c jar.txt http://localhost:8080/api/v1/auth/csrf
+curl -s -b jar.txt -c jar.txt -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -H "X-XSRF-TOKEN: $(awk '/XSRF-TOKEN/{print $7}' jar.txt)" \
+  -d '{"email":"admin123@gmail.com","password":"Admin123@"}'
+curl -s -b jar.txt http://localhost:8080/api/v1/auth/me
 ```
 
 **Windows – PowerShell**:
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/v1/auth/login -ContentType "application/json" -Body '{"email":"admin123@gmail.com","password":"Admin123@"}'
+$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+Invoke-RestMethod -Uri http://localhost:8080/api/v1/auth/csrf -WebSession $session | Out-Null
+$xsrf = ($session.Cookies.GetCookies("http://localhost:8080") | Where-Object Name -eq "XSRF-TOKEN").Value
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/v1/auth/login -WebSession $session `
+  -Headers @{ "X-XSRF-TOKEN" = $xsrf } -ContentType "application/json" `
+  -Body '{"email":"admin123@gmail.com","password":"Admin123@"}'
 ```
 
 Trên Windows PowerShell 5, lệnh `curl` thực chất là `Invoke-WebRequest`. Nếu muốn dùng curl thật, gõ `curl.exe`.
 
-Ngoài ra có thể chạy bộ kiểm tra auth/refresh token bằng Postman CLI (`npm install -g postman-cli`), xem `docs/api/postman/`.
+Ngoài ra có thể chạy bộ kiểm tra phiên đăng nhập & CSRF bằng Postman CLI (`npm install -g postman-cli`), xem `docs/api/postman/`.
 
 ## 6. Chạy test
 
