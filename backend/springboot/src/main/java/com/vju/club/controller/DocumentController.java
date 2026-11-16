@@ -173,7 +173,7 @@ public class DocumentController {
     public ResponseEntity<InputStreamResource> download(
             Actor actor,
             @PathVariable UUID documentId,
-            @RequestParam(required = false) @Min(1) Integer version,
+            @RequestParam(required = false) Integer version,
             WebRequest webRequest) {
         DocumentService.DocumentMeta meta = documentService.resolveMetadata(actor, documentId, version, false);
         if (webRequest.checkNotModified(meta.checksumSha256())) {
@@ -188,7 +188,7 @@ public class DocumentController {
     public ResponseEntity<InputStreamResource> preview(
             Actor actor,
             @PathVariable UUID documentId,
-            @RequestParam(required = false) @Min(1) Integer version,
+            @RequestParam(required = false) Integer version,
             WebRequest webRequest) {
         DocumentService.DocumentMeta meta = documentService.resolveMetadata(actor, documentId, version, true);
         if (webRequest.checkNotModified(meta.checksumSha256())) {
@@ -213,7 +213,7 @@ public class DocumentController {
     public DocumentDownloadUrlResponse downloadUrl(
             Actor actor,
             @PathVariable UUID documentId,
-            @RequestParam(required = false) @Min(1) Integer version) {
+            @RequestParam(required = false) Integer version) {
         return documentService.downloadUrl(actor, documentId, version);
     }
 

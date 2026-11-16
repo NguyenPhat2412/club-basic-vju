@@ -127,7 +127,7 @@ class NotificationApiTest extends ApiIntegrationTest {
         assertThat(chatNotif.path("clubId").asText()).isEqualTo(clubA.toString());
 
         // Admin pins msg1 -> Bob & Alice receive pinned CHAT notification idempotently
-        call(post("/api/v1/channels/" + channelId + "/messages/" + msg1Id + "/pin"), adminToken, null, 200);
+        call(post("/api/v1/channels/" + channelId + "/messages/" + msg1Id + "/pin"), adminToken, null, 201);
         JsonNode bobInboxAfterPin = call(get("/api/v1/users/me/notifications"), bobToken, null, 200);
         assertThat(bobInboxAfterPin.at("/items/0/referenceType").asText()).isEqualTo("CHAT");
         assertThat(bobInboxAfterPin.at("/items/0/title").asText()).contains("Ghim tin nhắn");

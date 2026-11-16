@@ -57,14 +57,16 @@ class PhaseTwoAcceptanceTest extends ApiIntegrationTest {
                 + "AND actor_user_id = ? AND resource_id = ? AND club_id = ?", member, id(assignment), clubA)).isEqualTo(1);
 
         JsonNode notifications = call(get("/api/v1/users/me/notifications"), studentToken, null, 200);
-        assertThat(notifications.path("total").asInt()).isEqualTo(1);
-        assertThat(notifications.at("/items/0/title").asText()).contains("duyệt");
+        assertThat(notifications.path("total").asInt()).isEqualTo(2);
+        assertThat(notifications.at("/items/0/title").asText()).contains("Phân công vào Ban Truyền thông");
+        assertThat(notifications.at("/items/1/title").asText()).contains("duyệt");
         UUID notificationId = id(notifications.at("/items/0"));
         db.update("INSERT INTO notifications(user_id, title, message, created_at, updated_at) VALUES (?, 'Older result', 'older', now() - interval '2 minutes', now() - interval '2 minutes')", student);
         db.update("INSERT INTO notifications(user_id, title, message, created_at, updated_at) VALUES (?, 'Newest result', 'newest', now() + interval '1 minute', now() + interval '1 minute')", student);
         JsonNode offsetPage = call(get("/api/v1/users/me/notifications").param("offset", "1").param("limit", "2"), studentToken, null, 200);
-        assertThat(offsetPage.path("total").asInt()).isEqualTo(3);
-        assertThat(offsetPage.at("/items/0/title").asText()).contains("Đơn đăng ký được duyệt");
+        assertThat(offsetPage.path("total").asInt()).isEqualTo(4);
+        assertThat(offsetPage.at("/items/0/title").asText()).contains("Phân công vào Ban Truyền thông");
+        assertThat(offsetPage.at("/items/1/title").asText()).contains("Đơn đăng ký được duyệt");
         call(patch("/api/v1/users/me/notifications/" + notificationId + "/read"), studentToken, null, 204);
         assertThat(db.queryForObject("SELECT read FROM notifications WHERE id = ?", Boolean.class, notificationId)).isTrue();
     }
