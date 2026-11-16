@@ -31,9 +31,21 @@ export const clubsApi = {
     api<Page<Membership>>(
       `${API_ROUTES.users.myMemberships}?${cleanParams({ status: q.status, offset: q.offset ?? 0, limit: q.limit ?? 50 })}`
     ),
-  clubMemberships: (clubId: string, status = '', offset = 0, limit = 100) =>
+  clubMemberships: (
+    clubId: string,
+    status = '',
+    offset = 0,
+    limit = 100,
+    opts?: { departmentId?: string; search?: string }
+  ) =>
     api<Page<Membership>>(
-      `${API_ROUTES.clubs.memberships(clubId)}?${cleanParams({ status: status || undefined, offset, limit })}`
+      `${API_ROUTES.clubs.memberships(clubId)}?${cleanParams({
+        status: status || undefined,
+        departmentId: opts?.departmentId || undefined,
+        search: opts?.search || undefined,
+        offset,
+        limit,
+      })}`
     ),
   addClubMember: (clubId: string, userId: string) =>
     api<Membership>(API_ROUTES.clubs.memberships(clubId), { method: 'POST', body: JSON.stringify({ userId }) }),

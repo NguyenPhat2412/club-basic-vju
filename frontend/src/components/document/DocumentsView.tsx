@@ -52,6 +52,7 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
   const [trash, setTrash] = useState(false);
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
+  const [pageLimit, setPageLimit] = useState(LIMIT);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -104,7 +105,7 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
   const hasClientRefine = scopeFilter === "__CLUB_ONLY__" || Boolean(formatFilter) || sortBy !== "newest";
   const serverDeptId = scopeFilter && scopeFilter !== "__CLUB_ONLY__" ? scopeFilter : undefined;
   const queryOffset = hasClientRefine ? 0 : offset;
-  const queryLimit = hasClientRefine ? 100 : LIMIT;
+  const queryLimit = hasClientRefine ? 100 : pageLimit;
 
   const documents = useQuery({
     queryKey: ["documents", effectiveTier, activeClubId, serverDeptId ?? "", filterVisibility, categoryFilter, search, effectiveTrash, queryOffset, queryLimit],
@@ -152,7 +153,7 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
     () => filterAndSortDocuments(rawItems, { scopeFilter, formatFilter, sortBy }),
     [rawItems, scopeFilter, formatFilter, sortBy]
   );
-  const visibleRows = hasClientRefine ? refinedItems.slice(offset, offset + LIMIT) : refinedItems;
+  const visibleRows = hasClientRefine ? refinedItems.slice(offset, offset + pageLimit) : refinedItems;
   const effectiveTotal = hasClientRefine ? refinedItems.length : (documents.data?.total ?? 0);
 
   const resetFiltersOnly = () => {
@@ -301,7 +302,7 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
           onSoftDelete={setConfirmDeleteDoc} onRestore={restore}
         />
       )}
-      {effectiveTotal > 0 && <Pagination offset={offset} limit={LIMIT} total={effectiveTotal} onOffset={setOffset} />}
+      {effectiveTotal > 0 && <Pagination offset={offset} limit={pageLimit} total={effectiveTotal} onOffset={setOffset} onLimit={setPageLimit} />}
 
       <DocumentUploadModal
         open={uploading} submitting={busy} isSystemTier={isSystemTier} clubCode={club?.code}

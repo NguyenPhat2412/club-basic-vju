@@ -6,25 +6,33 @@ import {
   Building2,
   ClipboardList,
   FileText,
+  FilterX,
+  LayoutGrid,
   Lock,
   LockOpen,
-  Mail,
   MessageSquare,
   Plus,
   Search,
   Settings,
   Sparkles,
+  Table2,
   Users,
+  X,
 } from "lucide-react";
 import { apiModel, Club } from "@/lib/api";
 import { clubSlugFromCode } from "@/lib/media";
-import { ClubAvatar, ClubCoverBanner, useClubMediaCatalog } from "@/components/shared/ClubMedia";
+import { ClubAvatar, useClubMediaCatalog } from "@/components/shared/ClubMedia";
+import { ClubsDirectoryCards } from "@/components/management/ClubsDirectoryCards";
+import { DataTable } from "@/components/shared/DataTable";
 import { describeError } from "@/components/shared/ListPage";
+import { Pagination } from "@/components/shared/Pagination";
 import { EmptyState } from "@/components/shared/States";
+import { TableRowActions } from "@/components/shared/TableRowActions";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { ClubManagementTabKey } from "@/forms/club/club-form";
+import { cn } from "@/lib/utils";
 
 interface ClubsDirectoryTabProps {
   clubs: Club[];
@@ -53,13 +61,14 @@ export function ClubsDirectoryTab({
   const [search, setSearch] = useState("");
   const [fieldFilter, setFieldFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"" | "ACTIVE" | "INACTIVE">("");
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+  const [offset, setOffset] = useState(0);
+  const [limit, setLimit] = useState(20);
 
   const activityFields = useMemo(() => {
     const set = new Set<string>();
     clubs.forEach((c) => {
-      if (c.activityField?.trim()) {
-        set.add(c.activityField.trim());
-      }
+      if (c.activityField?.trim()) set.add(c.activityField.trim());
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b, "vi"));
   }, [clubs]);
@@ -80,8 +89,21 @@ export function ClubsDirectoryTab({
     });
   }, [clubs, search, fieldFilter, statusFilter]);
 
+  const pagedClubs = useMemo(
+    () => filteredClubs.slice(offset, offset + limit),
+    [filteredClubs, offset, limit]
+  );
+
   const activeCount = useMemo(() => clubs.filter((c) => c.status === "ACTIVE").length, [clubs]);
   const inactiveCount = clubs.length - activeCount;
+  const hasFilters = Boolean(search.trim() || fieldFilter || statusFilter);
+
+  const resetFilters = () => {
+    setSearch("");
+    setFieldFilter("");
+    setStatusFilter("");
+    setOffset(0);
+  };
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: "ACTIVE" | "INACTIVE" }) =>
@@ -90,7 +112,7 @@ export function ClubsDirectoryTab({
       onNotice(
         updated.status === "ACTIVE"
           ? `Đã kích hoạt câu lạc bộ "${updated.name}" (${updated.code}).`
-          : `Đã tạm ngừng hoạt động câu lạc bộ "${updated.name}" (${updated.code}).`,
+          : `Đã tạm ngừng hoạt động câu lạc bộ "${updated.name}" (${updated.code}).`
       );
       onError("");
       queryClient.invalidateQueries({ queryKey: ["clubs"] });
@@ -101,87 +123,60 @@ export function ClubsDirectoryTab({
   });
 
   return (
-    <div className="space-y-4 p-4">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-border/70 bg-background/60 p-3.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="flex flex-1 flex-col">
+      <div className="grid gap-2.5 border-b border-border/60 bg-muted/20 px-4 py-3 sm:grid-cols-3 sm:px-6">
+        <div className="rounded-xl border border-border/70 bg-card px-3.5 py-2.5">
+          <p className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
             Tổng số CLB quản lý
           </p>
-          <p className="mt-1 text-2xl font-extrabold text-foreground tabular-nums">{clubs.length}</p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Danh sách câu lạc bộ thuộc phạm vi quản trị
-          </p>
+          <p className="mt-0.5 text-xl font-extrabold text-foreground tabular-nums">{clubs.length}</p>
         </div>
-        <div className="rounded-xl border border-border/70 bg-background/60 p-3.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="rounded-xl border border-border/70 bg-card px-3.5 py-2.5">
+          <p className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
             Đang hoạt động
           </p>
-          <p className="mt-1 text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
-            {activeCount}
-          </p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Hiển thị công khai trên Trang chủ & Khám phá CLB
-          </p>
+          <p className="mt-0.5 text-xl font-extrabold text-primary tabular-nums">{activeCount}</p>
         </div>
-        <div className="rounded-xl border border-border/70 bg-background/60 p-3.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Lĩnh vực & Trạng thái khác
+        <div className="rounded-xl border border-border/70 bg-card px-3.5 py-2.5">
+          <p className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Lĩnh vực & Tạm ngừng
           </p>
-          <p className="mt-1 text-2xl font-extrabold text-primary tabular-nums">
+          <p className="mt-0.5 text-xl font-extrabold text-foreground tabular-nums">
             {activityFields.length} lĩnh vực · {inactiveCount} tạm ngừng
-          </p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Chọn CLB bên dưới để điều phối nhân sự, sự kiện và biểu mẫu
           </p>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-border/70 bg-background/50 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-card px-4 py-2.5 sm:px-6">
         <div className="flex flex-1 flex-wrap items-center gap-2">
-          <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
-            <Search
-              size={14}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm theo mã, tên CLB, lĩnh vực, email…"
-              className="h-9 pl-8 text-xs"
-            />
+          <div className="relative min-w-[210px] flex-1 sm:max-w-xs">
+            <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(e) => { setSearch(e.target.value); setOffset(0); }} placeholder="Tìm theo mã, tên CLB, lĩnh vực, email…" className="h-8 pl-8 pr-7 text-xs" />
+            {search && (
+              <button type="button" aria-label="Xoá tìm kiếm" onClick={() => { setSearch(""); setOffset(0); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X size={13} />
+              </button>
+            )}
           </div>
-
-          <Select
-            aria-label="Lọc lĩnh vực"
-            value={fieldFilter}
-            onChange={(e) => setFieldFilter(e.target.value)}
-            className="h-9 w-full text-xs sm:w-52"
-          >
+          <Select aria-label="Lọc lĩnh vực" value={fieldFilter} onChange={(e) => { setFieldFilter(e.target.value); setOffset(0); }} className="h-8 w-full text-xs sm:w-48">
             <option value="">Tất cả lĩnh vực ({activityFields.length})</option>
-            {activityFields.map((field) => (
-              <option key={field} value={field}>
-                {field}
-              </option>
-            ))}
+            {activityFields.map((field) => <option key={field} value={field}>{field}</option>)}
           </Select>
-
-          <Select
-            aria-label="Lọc trạng thái CLB"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as "" | "ACTIVE" | "INACTIVE")}
-            className="h-9 w-full text-xs sm:w-44"
-          >
+          <Select aria-label="Lọc trạng thái CLB" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as "" | "ACTIVE" | "INACTIVE"); setOffset(0); }} className="h-8 w-full text-xs sm:w-44">
             <option value="">Mọi trạng thái ({clubs.length})</option>
             <option value="ACTIVE">Đang hoạt động ({activeCount})</option>
             <option value="INACTIVE">Ngừng hoạt động ({inactiveCount})</option>
           </Select>
+          {hasFilters && <Button variant="outline" size="sm" onClick={resetFilters} className="h-8"><FilterX size={13} /> Xoá lọc</Button>}
         </div>
 
-        {canCreateClub && (
-          <Button size="sm" onClick={onOpenCreateClub}>
-            <Plus size={14} /> Thành lập CLB mới
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5" role="group" aria-label="Chế độ hiển thị">
+            <button type="button" onClick={() => setViewMode("table")} className={cn("inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors", viewMode === "table" ? "bg-card text-primary shadow-2xs" : "text-muted-foreground hover:text-foreground")}><Table2 size={13} /> Bảng</button>
+            <button type="button" onClick={() => setViewMode("cards")} className={cn("inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors", viewMode === "cards" ? "bg-card text-primary shadow-2xs" : "text-muted-foreground hover:text-foreground")}><LayoutGrid size={13} /> Thẻ</button>
+          </div>
+          {canCreateClub && <Button size="sm" onClick={onOpenCreateClub} className="h-8"><Plus size={14} /> Thành lập CLB mới</Button>}
+        </div>
       </div>
 
       {filteredClubs.length === 0 ? (
@@ -189,168 +184,172 @@ export function ClubsDirectoryTab({
           icon={<Building2 />}
           title="Không tìm thấy câu lạc bộ phù hợp"
           description="Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc trạng thái để xem đầy đủ danh sách CLB."
+          actionLabel={hasFilters ? "Xoá bộ lọc" : undefined}
+          onAction={hasFilters ? resetFilters : undefined}
+        />
+      ) : viewMode === "table" ? (
+        <DataTable
+          ariaLabel="Danh sách câu lạc bộ quản lý"
+          minWidth="min-w-[720px]"
+          rows={pagedClubs}
+          rowKey={(c) => c.id}
+          onRowClick={(c) => onSelectClubAndTab(c.id, "overview")}
+          columns={[
+            {
+              key: "index",
+              header: "STT",
+              className: "w-10 text-center font-mono text-muted-foreground",
+              render: (c) => <span>{offset + pagedClubs.indexOf(c) + 1}</span>,
+            },
+            {
+              key: "club",
+              header: "Câu lạc bộ",
+              className: "min-w-[190px] max-w-[240px]",
+              sortValue: (c) => c.name,
+              render: (c) => {
+                const media = mediaCatalog.data?.clubs[clubSlugFromCode(c.code)];
+                const isSelected = c.id === activeClubId;
+                return (
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <ClubAvatar name={c.name} code={c.code} logoUrl={c.logoUrl} fallbackUrl={media?.logo} size="sm" />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate font-bold text-foreground" title={c.name}>
+                          {c.name}
+                        </p>
+                        {isSelected && (
+                          <Badge tone="primary" dot={false}>
+                            Đang chọn
+                          </Badge>
+                        )}
+                      </div>
+                      {c.contactEmail && (
+                        <p className="truncate text-[11px] text-muted-foreground">{c.contactEmail}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              },
+            },
+            {
+              key: "code",
+              header: "Mã CLB",
+              className: "whitespace-nowrap",
+              sortValue: (c) => c.code,
+              render: (c) => (
+                <code className="rounded-md bg-primary/8 px-2 py-0.5 font-mono text-[11px] font-bold text-primary">
+                  {c.code}
+                </code>
+              ),
+            },
+            {
+              key: "field",
+              header: "Lĩnh vực",
+              className: "whitespace-nowrap",
+              sortValue: (c) => c.activityField ?? "",
+              render: (c) =>
+                c.activityField ? (
+                  <Badge tone="neutral" dot={false}>
+                    {c.activityField}
+                  </Badge>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                ),
+            },
+            {
+              key: "status",
+              header: "Trạng thái",
+              className: "whitespace-nowrap",
+              sortValue: (c) => c.status,
+              render: (c) => <StatusBadge status={c.status} />,
+            },
+            {
+              key: "shortcuts",
+              header: "Điều phối nhanh",
+              className: "whitespace-nowrap",
+              render: (c) => {
+                const pillCls = "inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[11px] font-semibold text-foreground hover:border-primary/40 hover:bg-primary/8 hover:text-primary";
+                return (
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <button type="button" onClick={() => onSelectClubAndTab(c.id, "overview")} className={pillCls}><Sparkles size={11} /> Tổng quan</button>
+                    <button type="button" onClick={() => onSelectClubAndTab(c.id, "members")} className={pillCls}><Users size={11} /> Thành viên</button>
+                    {(canInClub("application.view", c.id) || canInClub("application.review", c.id)) ? (
+                      <button type="button" onClick={() => onSelectClubAndTab(c.id, "applications")} className={pillCls}><ClipboardList size={11} /> Đơn</button>
+                    ) : (canInClub("chat.view", c.id) || canInClub("chat.send", c.id)) ? (
+                      <button type="button" onClick={() => onSelectClubAndTab(c.id, "chat")} className={pillCls}><MessageSquare size={11} /> Chat</button>
+                    ) : null}
+                  </div>
+                );
+              },
+            },
+            {
+              key: "actions",
+              header: "Thao tác",
+              className: "text-right whitespace-nowrap",
+              render: (c) => {
+                const canActivate = c.status !== "ACTIVE" && canInClub("club.active", c.id);
+                const canDeactivate = c.status === "ACTIVE" && canInClub("club.inactive", c.id);
+                const canEditSettings =
+                  canInClub("club.update", c.id) || canActivate || canDeactivate || canInClub("notification.send", c.id);
+                return (
+                  <TableRowActions
+                    actions={[
+                      ...(canInClub("document.view", c.id)
+                        ? [{ icon: <FileText />, label: "Kho tài liệu CLB", onClick: () => onSelectClubAndTab(c.id, "documents") }]
+                        : []),
+                      ...((canInClub("chat.view", c.id) || canInClub("chat.send", c.id))
+                        ? [{ icon: <MessageSquare />, label: "Kênh Chat & AI", onClick: () => onSelectClubAndTab(c.id, "chat") }]
+                        : []),
+                      ...(canEditSettings
+                        ? [{ icon: <Settings />, label: "Cài đặt CLB", onClick: () => onSelectClubAndTab(c.id, "settings") }]
+                        : []),
+                      ...(canActivate
+                        ? [
+                            {
+                              icon: <LockOpen />,
+                              label: "Kích hoạt CLB",
+                              disabled: statusMutation.isPending,
+                              onClick: () => statusMutation.mutate({ id: c.id, status: "ACTIVE" }),
+                            },
+                          ]
+                        : []),
+                      ...(canDeactivate
+                        ? [
+                            {
+                              icon: <Lock />,
+                              label: "Tạm ngừng CLB",
+                              danger: true,
+                              disabled: statusMutation.isPending,
+                              onClick: () =>
+                                confirm(`Tạm ngừng hoạt động câu lạc bộ "${c.name}"?`) &&
+                                statusMutation.mutate({ id: c.id, status: "INACTIVE" }),
+                            },
+                          ]
+                        : []),
+                    ]}
+                  />
+                );
+              },
+            },
+          ]}
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {filteredClubs.map((club) => {
-            const isSelected = club.id === activeClubId;
-            const slug = clubSlugFromCode(club.code);
-            const fallbackMedia = mediaCatalog.data?.clubs[slug];
-            const canActivate = club.status !== "ACTIVE" && canInClub("club.active", club.id);
-            const canDeactivate = club.status === "ACTIVE" && canInClub("club.inactive", club.id);
-            const canEditSettings =
-              canInClub("club.update", club.id) || canActivate || canDeactivate || canInClub("notification.send", club.id);
+        <ClubsDirectoryCards
+          clubs={pagedClubs}
+          activeClubId={activeClubId}
+          mediaMap={mediaCatalog.data?.clubs}
+          onSelectClubAndTab={onSelectClubAndTab}
+        />
+      )}
 
-            return (
-              <article
-                key={club.id}
-                className={`flex flex-col justify-between overflow-hidden rounded-xl border bg-card transition-all ${
-                  isSelected
-                    ? "border-primary ring-2 ring-primary/15"
-                    : "border-border/80 hover:border-primary/40"
-                }`}
-              >
-                <div>
-                  <ClubCoverBanner
-                    name={club.name}
-                    code={club.code}
-                    coverUrl={club.coverUrl}
-                    fallbackUrl={fallbackMedia?.cover}
-                    className="h-28 w-full"
-                  >
-                    <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5 rounded-full bg-white/95 px-2 py-0.5 shadow-xs backdrop-blur-xs">
-                      {isSelected && (
-                        <Badge tone="primary" dot={false}>
-                          Đang chọn
-                        </Badge>
-                      )}
-                      <StatusBadge status={club.status} />
-                    </div>
-                    <div className="absolute bottom-2.5 left-3 right-3 flex items-end gap-2.5">
-                      <ClubAvatar
-                        name={club.name}
-                        code={club.code}
-                        logoUrl={club.logoUrl}
-                        fallbackUrl={fallbackMedia?.logo}
-                        size="md"
-                      />
-                      <div className="min-w-0 flex-1 text-white drop-shadow-xs">
-                        <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-white/90">
-                          {club.code}
-                        </span>
-                        <h3 className="truncate text-sm font-extrabold leading-tight">{club.name}</h3>
-                      </div>
-                    </div>
-                  </ClubCoverBanner>
-
-                  <div className="space-y-2 p-3.5">
-                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                      {club.activityField && (
-                        <Badge tone="neutral" dot={false}>
-                          {club.activityField}
-                        </Badge>
-                      )}
-                      {club.contactEmail && (
-                        <span className="inline-flex items-center gap-1 text-muted-foreground">
-                          <Mail size={11} /> {club.contactEmail}
-                        </span>
-                      )}
-                    </div>
-                    <p className="line-clamp-2 text-xs text-muted-foreground">
-                      {club.description || "Chưa có mô tả chi tiết cho câu lạc bộ này."}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-1.5 border-t border-border/60 bg-muted/20 px-3.5 py-2.5">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Button
-                      size="sm"
-                      variant={isSelected ? "default" : "outline"}
-                      onClick={() => onSelectClubAndTab(club.id, "overview")}
-                    >
-                      <Sparkles size={12} />{" "}
-                      {canEditSettings || canInClub("application.view", club.id) ? "Quản lý CLB" : "Tổng quan CLB"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onSelectClubAndTab(club.id, "members")}
-                    >
-                      <Users size={12} /> Thành viên
-                    </Button>
-                    {canInClub("document.view", club.id) && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => onSelectClubAndTab(club.id, "documents")}
-                      >
-                        <FileText size={12} /> Tài liệu
-                      </Button>
-                    )}
-                    {canInClub("application.view", club.id) ||
-                    canInClub("application.review", club.id) ||
-                    canInClub("application.approve", club.id) ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => onSelectClubAndTab(club.id, "applications")}
-                      >
-                        <ClipboardList size={12} /> Đơn
-                      </Button>
-                    ) : (
-                      (canInClub("chat.view", club.id) || canInClub("chat.send", club.id)) && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onSelectClubAndTab(club.id, "chat")}
-                        >
-                          <MessageSquare size={12} /> Chat & AI
-                        </Button>
-                      )
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    {canEditSettings && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        title="Cấu hình thông tin & ảnh CLB"
-                        onClick={() => onSelectClubAndTab(club.id, "settings")}
-                      >
-                        <Settings size={13} /> Ảnh & Cài đặt
-                      </Button>
-                    )}
-                    {canActivate && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={statusMutation.isPending}
-                        onClick={() => statusMutation.mutate({ id: club.id, status: "ACTIVE" })}
-                      >
-                        <LockOpen size={12} /> Kích hoạt
-                      </Button>
-                    )}
-                    {canDeactivate && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={statusMutation.isPending}
-                        onClick={() =>
-                          confirm(`Tạm ngừng hoạt động câu lạc bộ "${club.name}"?`) &&
-                          statusMutation.mutate({ id: club.id, status: "INACTIVE" })
-                        }
-                      >
-                        <Lock size={12} /> Tạm dừng
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+      {filteredClubs.length > 0 && (
+        <Pagination
+          offset={offset}
+          limit={limit}
+          total={filteredClubs.length}
+          onOffset={setOffset}
+          onLimit={setLimit}
+        />
       )}
     </div>
   );

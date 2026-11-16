@@ -64,7 +64,10 @@ function ClubManagementViewContent() {
     urlTab && CLUB_MANAGEMENT_TAB_KEYS.includes(urlTab) ? urlTab : "clubs";
 
   const [memberStatusFilter, setMemberStatusFilter] = useState("");
+  const [memberDeptFilter, setMemberDeptFilter] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
   const [memberOffset, setMemberOffset] = useState(0);
+  const [memberLimit, setMemberLimit] = useState(MEMBER_LIMIT);
   const [memberId, setMemberId] = useState<string | null>(null);
   const [confirmingLeave, setConfirmingLeave] = useState<Membership | null>(null);
   const [addingMember, setAddingMember] = useState(false);
@@ -105,6 +108,8 @@ function ClubManagementViewContent() {
   const navigateClubAndTab = (nextClubId: string, nextTab: ClubManagementTabKey) => {
     setClubId(nextClubId);
     setMemberOffset(0);
+    setMemberDeptFilter("");
+    setMemberSearch("");
     setNotice("");
     setErrorMsg("");
     const params = new URLSearchParams(searchParams.toString());
@@ -131,8 +136,12 @@ function ClubManagementViewContent() {
   });
 
   const members = useQuery({
-    queryKey: ["club-members", activeClubId, memberStatusFilter, memberOffset],
-    queryFn: () => apiModel.clubMemberships(activeClubId, memberStatusFilter, memberOffset, MEMBER_LIMIT),
+    queryKey: ["club-members", activeClubId, memberStatusFilter, memberDeptFilter, memberSearch, memberOffset, memberLimit],
+    queryFn: () =>
+      apiModel.clubMemberships(activeClubId, memberStatusFilter, memberOffset, memberLimit, {
+        departmentId: memberDeptFilter || undefined,
+        search: memberSearch.trim() || undefined,
+      }),
     placeholderData: keepPreviousData,
     enabled: !!activeClubId && activeTab === "members" && canViewMembers,
   });
@@ -311,9 +320,14 @@ function ClubManagementViewContent() {
           canInDepartment={session.canInDepartment}
           memberStatusFilter={memberStatusFilter}
           setMemberStatusFilter={setMemberStatusFilter}
+          memberDeptFilter={memberDeptFilter}
+          setMemberDeptFilter={setMemberDeptFilter}
+          memberSearch={memberSearch}
+          setMemberSearch={setMemberSearch}
           memberOffset={memberOffset}
           setMemberOffset={setMemberOffset}
-          memberLimit={MEMBER_LIMIT}
+          memberLimit={memberLimit}
+          setMemberLimit={setMemberLimit}
           membersData={members.data}
           membersPending={members.isPending}
           membersError={members.isError ? members.error : null}

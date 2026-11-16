@@ -50,14 +50,15 @@ function MyApplicationsContent() {
     if (urlAppId) setDismissedUrlId(urlAppId);
   };
 
+  const [limit, setLimit] = useState(LIMIT);
   const list = useQuery({
-    queryKey: ["my-applications", statusFilter, clubFilter, offset],
+    queryKey: ["my-applications", statusFilter, clubFilter, offset, limit],
     queryFn: () =>
       apiModel.myApplications({
         status: statusFilter || undefined,
         clubId: clubFilter || undefined,
         offset,
-        limit: LIMIT,
+        limit,
       }),
     placeholderData: keepPreviousData,
   });
@@ -318,7 +319,7 @@ function MyApplicationsContent() {
               },
             ]}
           />
-          <Pagination offset={offset} limit={LIMIT} total={list.data.total} onOffset={setOffset} />
+          <Pagination offset={offset} limit={limit} total={list.data.total} onOffset={setOffset} onLimit={setLimit} />
         </>
       )}
 

@@ -27,6 +27,7 @@ export function AuditLogsView() {
   const [resourceType, setResourceType] = useState("");
   const [clubId, setClubId] = useState("");
   const [offset, setOffset] = useState(0);
+  const [limit, setLimit] = useState(LIMIT);
   const [selected, setSelected] = useState<AuditLogItem | null>(null);
 
   const clubs = useQuery({
@@ -36,13 +37,13 @@ export function AuditLogsView() {
   });
 
   const logs = useQuery({
-    queryKey: ["audit-logs", resourceType, clubId, offset],
+    queryKey: ["audit-logs", resourceType, clubId, offset, limit],
     queryFn: () =>
       apiModel.auditLogs({
         resourceType: resourceType || undefined,
         clubId: clubId || undefined,
         offset,
-        limit: LIMIT,
+        limit,
       }),
     placeholderData: keepPreviousData,
     enabled: session.ready && canView,
@@ -211,7 +212,7 @@ export function AuditLogsView() {
         />
       )}
       {logs.data && logs.data.total > 0 && (
-        <Pagination offset={offset} limit={LIMIT} total={logs.data.total} onOffset={setOffset} />
+        <Pagination offset={offset} limit={limit} total={logs.data.total} onOffset={setOffset} onLimit={setLimit} />
       )}
 
       <EntityDrawer

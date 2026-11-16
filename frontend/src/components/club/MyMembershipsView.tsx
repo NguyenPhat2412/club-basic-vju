@@ -23,15 +23,16 @@ export function MyMembershipsView() {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState("");
   const [offset, setOffset] = useState(0);
+  const [limit, setLimit] = useState(LIMIT);
   const mediaCatalog = useClubMediaCatalog(true);
 
   const list = useQuery({
-    queryKey: ["my-memberships", statusFilter, offset],
+    queryKey: ["my-memberships", statusFilter, offset, limit],
     queryFn: () =>
       apiModel.myMemberships({
         status: statusFilter || undefined,
         offset,
-        limit: LIMIT,
+        limit,
       }),
     placeholderData: keepPreviousData,
   });
@@ -149,7 +150,7 @@ export function MyMembershipsView() {
               { key: "status", header: "Trạng thái", render: (m) => <StatusBadge status={m.status} /> },
             ]}
           />
-          <Pagination offset={offset} limit={LIMIT} total={list.data.total} onOffset={setOffset} />
+          <Pagination offset={offset} limit={limit} total={list.data.total} onOffset={setOffset} onLimit={setLimit} />
         </>
       )}
     </ListPage>

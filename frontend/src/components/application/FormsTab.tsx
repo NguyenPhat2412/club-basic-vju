@@ -1,22 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FilePlus2, FileText, Image as ImageIcon, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  Eye,
+  FilePlus2,
+  FilterX,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import {
   apiModel,
   ApplicationForm,
   UpsertApplicationFormInput,
 } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
-import { ApplicationFilesList } from "@/components/shared/ApplicationFileView";
+import { DataTable } from "@/components/shared/DataTable";
+import { Pagination } from "@/components/shared/Pagination";
 import { EmptyState, ErrorState, LoadingRows } from "@/components/shared/States";
+import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError } from "@/components/shared/ListPage";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { OptionalMark, RequiredMark } from "@/components/ui/input";
+import { Input, Select } from "@/components/ui/input";
 import { EMPTY_FORM_DRAFT } from "@/forms/application/application-form";
 import { FormBuilderModal } from "@/components/application/FormBuilderModal";
+import { FormInspectDrawer } from "@/components/application/FormInspectDrawer";
+import { formatDay } from "@/lib/utils";
 
 export function FormsTab({
   clubId,
@@ -34,6 +47,12 @@ export function FormsTab({
   const canManageForm =
     session.canInClub("application.manage_form", clubId) ||
     session.canInClub("application.review", clubId);
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [offset, setOffset] = useState(0);
+  const [limit, setLimit] = useState(20);
+  const [inspectFormId, setInspectFormId] = useState<string | null>(null);
   const [editingFormId, setEditingFormId] = useState<string | null>(null);
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [formDraft, setFormDraft] = useState<UpsertApplicationFormInput>(EMPTY_FORM_DRAFT);
@@ -54,6 +73,7 @@ export function FormsTab({
     onSuccess: () => {
       onNotice("Đã xoá biểu mẫu đơn đăng ký.");
       onError("");
+      setInspectFormId(null);
       refreshForms();
     },
     onError: (e) => onError(describeError(e)),
@@ -127,169 +147,211 @@ export function FormsTab({
     setFormModalOpen(true);
   };
 
+  const allForms = useMemo(() => forms.data ?? [], [forms.data]);
+  const filteredForms = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return allForms.filter((f) => {
+      if (statusFilter && f.status !== statusFilter) return false;
+      if (!q) return true;
+      return (
+        f.title.toLowerCase().includes(q) ||
+        (f.description ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [allForms, search, statusFilter]);
+
+  const pagedForms = useMemo(
+    () => filteredForms.slice(offset, offset + limit),
+    [filteredForms, offset, limit]
+  );
+  const inspectedForm = allForms.find((f) => (f.id || f.title) === inspectFormId) ?? null;
+  const hasFilters = Boolean(search.trim() || statusFilter);
+
+  const resetFilters = () => {
+    setSearch("");
+    setStatusFilter("");
+    setOffset(0);
+  };
+
   return (
-    <div className="space-y-4 p-4 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">
-          Thiết kế biểu mẫu đơn đăng ký cho CLB, cấu hình câu hỏi tuỳ chỉnh và đính kèm file đơn mẫu (`.doc`, `.docx`, `.pdf`) hoặc ảnh poster tuyển thành viên.
-        </p>
-        {canManageForm && (
-          <Button size="sm" onClick={openCreateForm}>
-            <Plus size={14} /> Tạo biểu mẫu đơn
-          </Button>
-        )}
+    <div className="flex flex-1 flex-col">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-card px-4 py-2.5 sm:px-6">
+        <div className="flex flex-1 flex-wrap items-center gap-2">
+          <div className="relative min-w-[210px] flex-1 sm:max-w-xs">
+            <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(e) => { setSearch(e.target.value); setOffset(0); }} placeholder="Tìm theo tên hoặc mô tả biểu mẫu…" className="h-8 pl-8 pr-7 text-xs" />
+            {search && (
+              <button type="button" aria-label="Xoá tìm kiếm" onClick={() => { setSearch(""); setOffset(0); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X size={13} />
+              </button>
+            )}
+          </div>
+          <Select aria-label="Lọc trạng thái biểu mẫu" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setOffset(0); }} className="h-8 w-full text-xs sm:w-44">
+            <option value="">Mọi trạng thái</option>
+            <option value="OPEN">OPEN — Đang mở đơn</option>
+            <option value="DRAFT">DRAFT — Bản nháp</option>
+            <option value="CLOSED">CLOSED — Đã đóng đơn</option>
+          </Select>
+          {hasFilters && <Button variant="outline" size="sm" onClick={resetFilters} className="h-8"><FilterX size={13} /> Xoá lọc</Button>}
+        </div>
+        {canManageForm && <Button size="sm" onClick={openCreateForm} className="h-8"><Plus size={14} /> Tạo biểu mẫu đơn</Button>}
       </div>
 
       {forms.isPending ? (
         <LoadingRows />
       ) : forms.isError ? (
         <ErrorState message={describeError(forms.error)} onRetry={() => forms.refetch()} />
-      ) : !forms.data || forms.data.length === 0 ? (
+      ) : !filteredForms.length ? (
         <EmptyState
           icon={<FilePlus2 />}
-          title="CLB chưa có biểu mẫu đơn đăng ký riêng"
+          title={hasFilters ? "Không có biểu mẫu khớp bộ lọc" : "CLB chưa có biểu mẫu đơn đăng ký riêng"}
           description="Tạo biểu mẫu đơn để cấu hình câu hỏi tuỳ chỉnh và tải lên file đơn mẫu (.docx, .pdf) hoặc ảnh poster tuyển thành viên."
-          actionLabel={canManageForm ? "Tạo biểu mẫu đầu tiên" : undefined}
-          onAction={canManageForm ? openCreateForm : undefined}
+          actionLabel={hasFilters ? "Xoá bộ lọc" : canManageForm ? "Tạo biểu mẫu đầu tiên" : undefined}
+          onAction={hasFilters ? resetFilters : canManageForm ? openCreateForm : undefined}
         />
       ) : (
-        <div className="grid gap-4">
-          {forms.data.map((form) => (
-            <div key={form.id || form.title} className="rounded-xl border border-border bg-card p-5 shadow-xs">
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-4">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-base font-black">{form.title}</h3>
-                    <StatusBadge status={form.status} />
-                    {form.isDefault && <Badge tone="primary" dot={false}>Mặc định</Badge>}
-                    {form.requireAttachment && <Badge tone="danger" dot={false}>Bắt buộc đính kèm file</Badge>}
-                  </div>
-                  <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
-                    {form.description || "Không có mô tả hướng dẫn."}
-                  </p>
-                </div>
-                {canManageForm && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => openEditForm(form)}>
-                      <Pencil size={13} /> Chỉnh sửa cấu hình & câu hỏi
-                    </Button>
-                    {form.id && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        disabled={deleteFormMutation.isPending}
-                        onClick={() => confirm(`Xoá biểu mẫu "${form.title}"?`) && deleteFormMutation.mutate(form.id!)}
-                      >
-                        <Trash2 size={13} /> Xoá
-                      </Button>
+        <>
+          <DataTable
+            ariaLabel="Danh sách biểu mẫu ứng tuyển"
+            minWidth="min-w-[780px]"
+            rows={pagedForms}
+            rowKey={(f) => f.id || f.title}
+            onRowClick={(f) => setInspectFormId(f.id || f.title)}
+            columns={[
+              {
+                key: "index",
+                header: "STT",
+                className: "w-10 text-center font-mono text-muted-foreground",
+                render: (f) => <span>{offset + pagedForms.indexOf(f) + 1}</span>,
+              },
+              {
+                key: "title",
+                header: "Tên biểu mẫu tuyển quân",
+                className: "min-w-[230px] max-w-[320px]",
+                sortValue: (f) => f.title,
+                render: (f) => (
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="truncate font-bold text-foreground" title={f.title}>
+                        {f.title}
+                      </p>
+                      {f.isDefault && (
+                        <Badge tone="primary" dot={false}>
+                          Mặc định
+                        </Badge>
+                      )}
+                      {f.requireAttachment && (
+                        <Badge tone="danger" dot={false}>
+                          Bắt buộc tệp
+                        </Badge>
+                      )}
+                    </div>
+                    {f.description && (
+                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{f.description}</p>
                     )}
                   </div>
-                )}
-              </div>
-
-              <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                <div className="rounded-lg border border-border/70 bg-muted/20 p-3.5">
-                  <div className="mb-2.5 flex items-center justify-between">
-                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      Câu hỏi tuỳ chỉnh ({form.fields?.length ?? 0})
-                    </p>
-                    {canManageForm && (
-                      <Button variant="ghost" size="sm" onClick={() => openEditForm(form)}>
-                        <Plus size={12} /> Thêm / Sửa câu hỏi
-                      </Button>
-                    )}
-                  </div>
-                  {!form.fields || form.fields.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">
-                      Chưa có câu hỏi tuỳ chỉnh (chỉ sử dụng bộ thông tin chuẩn: Ban nguyện vọng, SĐT, Ngành, Khóa, GPA, Kỹ năng, Lý do).
-                    </p>
+                ),
+              },
+              {
+                key: "status",
+                header: "Trạng thái",
+                className: "whitespace-nowrap",
+                sortValue: (f) => f.status,
+                render: (f) => <StatusBadge status={f.status} />,
+              },
+              {
+                key: "window",
+                header: "Thời hạn nhận đơn",
+                className: "whitespace-nowrap font-mono text-muted-foreground",
+                render: (f) =>
+                  f.openAt || f.closeAt ? (
+                    <span>
+                      {f.openAt ? formatDay(f.openAt) : "Mở ngay"} → {f.closeAt ? formatDay(f.closeAt) : "Không hạn"}
+                    </span>
                   ) : (
-                    <ul className="space-y-2">
-                      {form.fields.map((f, idx) => (
-                        <li key={f.key || idx} className="rounded-md border border-border/60 bg-card px-3 py-2 text-xs">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-bold">
-                              <span>{idx + 1}. {f.label}</span>
-                              {f.required ? <RequiredMark /> : <OptionalMark />}
-                            </span>
-                            <Badge tone="neutral" dot={false}>{f.type}</Badge>
-                          </div>
-                          {f.options && f.options.length > 0 && (
-                            <p className="mt-1 text-[11px] text-muted-foreground">
-                              Lựa chọn: {f.options.join(" · ")}
-                            </p>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-
-                <div className="rounded-lg border border-border/70 bg-muted/20 p-3.5">
-                  <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      File đơn mẫu (.docx, .pdf) & Poster ({form.templateFiles?.length ?? 0})
-                    </p>
-                    {form.id && canManageForm && (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary hover:bg-primary/15">
-                          <FileText size={12} /> + Đơn mẫu (.doc/.docx/.pdf)
-                          <input
-                            type="file"
-                            multiple
-                            accept=".doc,.docx,.pdf"
-                            className="hidden"
-                            onChange={(e) => {
-                              const files = Array.from(e.target.files ?? []);
-                              if (files.length > 0) {
-                                uploadFormFileMutation.mutate({
-                                  formId: form.id!,
-                                  files,
-                                  category: "FORM_TEMPLATE_DOC",
-                                });
-                              }
-                              e.target.value = "";
-                            }}
-                          />
-                        </label>
-                        <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-[11px] font-bold hover:bg-muted">
-                          <ImageIcon size={12} /> + Ảnh Poster / Banner
-                          <input
-                            type="file"
-                            multiple
-                            accept=".png,.jpg,.jpeg,.gif,.webp"
-                            className="hidden"
-                            onChange={(e) => {
-                              const files = Array.from(e.target.files ?? []);
-                              if (files.length > 0) {
-                                uploadFormFileMutation.mutate({
-                                  formId: form.id!,
-                                  files,
-                                  category: "FORM_POSTER_IMAGE",
-                                });
-                              }
-                              e.target.value = "";
-                            }}
-                          />
-                        </label>
-                      </div>
-                    )}
-                  </div>
-                  <ApplicationFilesList
-                    files={form.templateFiles}
-                    deleting={deleteFormFileMutation.isPending}
-                    onDelete={
-                      form.id && canManageForm
-                        ? (f) => deleteFormFileMutation.mutate({ formId: form.id!, fileId: f.id })
-                        : undefined
-                    }
+                    <span>Mở xuyên suốt</span>
+                  ),
+              },
+              {
+                key: "questions",
+                header: "Câu hỏi tuỳ chỉnh",
+                className: "whitespace-nowrap",
+                sortValue: (f) => f.fields?.length ?? 0,
+                render: (f) => (
+                  <span className="font-mono font-semibold text-foreground">
+                    {f.fields?.length ?? 0} câu hỏi
+                  </span>
+                ),
+              },
+              {
+                key: "files",
+                header: "Tệp mẫu & Poster",
+                className: "whitespace-nowrap",
+                sortValue: (f) => f.templateFiles?.length ?? 0,
+                render: (f) => (
+                  <Badge tone={(f.templateFiles?.length ?? 0) > 0 ? "primary" : "neutral"} dot={false}>
+                    {f.templateFiles?.length ?? 0} tệp
+                  </Badge>
+                ),
+              },
+              {
+                key: "actions",
+                header: "Thao tác",
+                className: "text-right whitespace-nowrap",
+                render: (f) => (
+                  <TableRowActions
+                    actions={[
+                      {
+                        icon: <Eye />,
+                        label: "Câu hỏi & Tệp mẫu",
+                        onClick: () => setInspectFormId(f.id || f.title),
+                      },
+                      ...(canManageForm
+                        ? [
+                            { icon: <Pencil />, label: "Chỉnh sửa", onClick: () => openEditForm(f) },
+                            ...(f.id
+                              ? [
+                                  {
+                                    icon: <Trash2 />,
+                                    label: "Xoá biểu mẫu",
+                                    danger: true,
+                                    disabled: deleteFormMutation.isPending,
+                                    onClick: () =>
+                                      confirm(`Xoá biểu mẫu "${f.title}"?`) && deleteFormMutation.mutate(f.id!),
+                                  },
+                                ]
+                              : []),
+                          ]
+                        : []),
+                    ]}
                   />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+                ),
+              },
+            ]}
+          />
+          <Pagination
+            offset={offset}
+            limit={limit}
+            total={filteredForms.length}
+            onOffset={setOffset}
+            onLimit={setLimit}
+          />
+        </>
       )}
+
+      <FormInspectDrawer
+        form={inspectedForm}
+        canManageForm={canManageForm}
+        deletingFile={deleteFormFileMutation.isPending}
+        onClose={() => setInspectFormId(null)}
+        onEdit={openEditForm}
+        onUploadFiles={(formId, files, category) =>
+          uploadFormFileMutation.mutate({ formId, files, category })
+        }
+        onDeleteFile={(formId, fileId) =>
+          deleteFormFileMutation.mutate({ formId, fileId })
+        }
+      />
 
       <FormBuilderModal
         clubId={clubId}

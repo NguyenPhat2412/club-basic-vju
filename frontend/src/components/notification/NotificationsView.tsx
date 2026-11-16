@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, CheckCheck, ExternalLink, Eye } from "lucide-react";
+import { Bell, CheckCheck, ExternalLink, Eye, FilterX, Search, X } from "lucide-react";
 import { apiModel, Notification } from "@/lib/api";
 import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
 import { DataTable } from "@/components/shared/DataTable";
@@ -14,11 +14,10 @@ import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError, ListPage } from "@/components/shared/ListPage";
 import { Badge, CountBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input, Select } from "@/components/ui/input";
 import { targetHrefForNotification } from "@/forms/notification/notification-links";
 import { UNREAD_SUMMARY_QUERY_KEY } from "@/hooks/notification/useGlobalRealtimeNotifications";
 import { formatDateTime, formatDay, formatTime } from "@/lib/utils";
-
-const LIMIT = 20;
 
 export const targetHrefFor = targetHrefForNotification;
 
@@ -26,11 +25,19 @@ export function NotificationsView() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [offset, setOffset] = useState(0);
+  const [limit, setLimit] = useState(20);
+  const [search, setSearch] = useState("");
+  const [readFilter, setReadFilter] = useState<"" | "unread" | "read">("");
+  const [typeFilter, setTypeFilter] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  const hasClientFilter = Boolean(search.trim() || readFilter || typeFilter);
+  const queryOffset = hasClientFilter ? 0 : offset;
+  const queryLimit = hasClientFilter ? 100 : limit;
+
   const list = useQuery({
-    queryKey: ["notifications", offset],
-    queryFn: () => apiModel.notifications(offset, LIMIT),
+    queryKey: ["notifications", queryOffset, queryLimit],
+    queryFn: () => apiModel.notifications(queryOffset, queryLimit),
     placeholderData: keepPreviousData,
   });
 
@@ -56,9 +63,30 @@ export function NotificationsView() {
     }
   };
 
-  const unread = list.data?.items.filter((n) => !n.read).length ?? 0;
+  const rawItems = useMemo(() => list.data?.items ?? [], [list.data?.items]);
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rawItems.filter((n) => {
+      if (readFilter === "unread" && n.read) return false;
+      if (readFilter === "read" && !n.read) return false;
+      if (typeFilter && (n.referenceType ?? "") !== typeFilter) return false;
+      if (!q) return true;
+      return n.title.toLowerCase().includes(q) || n.message.toLowerCase().includes(q);
+    });
+  }, [rawItems, search, readFilter, typeFilter]);
+
+  const visibleRows = hasClientFilter ? filteredItems.slice(offset, offset + limit) : filteredItems;
+  const effectiveTotal = hasClientFilter ? filteredItems.length : (list.data?.total ?? 0);
+  const unread = rawItems.filter((n) => !n.read).length;
   const activeDetail = detail.data;
   const activeLink = activeDetail ? targetHrefFor(activeDetail) : null;
+
+  const resetFilters = () => {
+    setSearch("");
+    setReadFilter("");
+    setTypeFilter("");
+    setOffset(0);
+  };
 
   return (
     <ListPage title="Thông báo">
@@ -77,55 +105,138 @@ export function NotificationsView() {
           if (selectedId) detail.refetch();
         }}
       />
+
+      <div className="flex flex-wrap items-center gap-2 border-b border-border/60 bg-card px-4 py-2.5 sm:px-6">
+        <div className="relative min-w-[210px] flex-1 sm:max-w-xs">
+          <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setOffset(0);
+            }}
+            placeholder="Tìm tiêu đề hoặc nội dung thông báo…"
+            className="h-8 pl-8 pr-7 text-xs"
+          />
+          {search && (
+            <button
+              type="button"
+              aria-label="Xoá tìm kiếm"
+              onClick={() => {
+                setSearch("");
+                setOffset(0);
+              }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+
+        <Select
+          aria-label="Lọc trạng thái đọc"
+          value={readFilter}
+          onChange={(e) => {
+            setReadFilter(e.target.value as "" | "unread" | "read");
+            setOffset(0);
+          }}
+          className="h-8 w-full text-xs sm:w-40"
+        >
+          <option value="">Mọi trạng thái</option>
+          <option value="unread">Chưa đọc</option>
+          <option value="read">Đã đọc</option>
+        </Select>
+
+        <Select
+          aria-label="Lọc phân hệ thông báo"
+          value={typeFilter}
+          onChange={(e) => {
+            setTypeFilter(e.target.value);
+            setOffset(0);
+          }}
+          className="h-8 w-full text-xs sm:w-44"
+        >
+          <option value="">Mọi phân hệ</option>
+          <option value="CHAT">Tin nhắn & Kênh Chat</option>
+          <option value="CLUB_APPLICATION_REVIEW">Đơn ứng tuyển (BCN)</option>
+          <option value="CLUB_APPLICATION">Đơn đăng ký cá nhân</option>
+          <option value="EVENT">Sự kiện CLB</option>
+          <option value="TASK">Công việc</option>
+          <option value="DOCUMENT">Kho tài liệu</option>
+        </Select>
+
+        {hasClientFilter && (
+          <Button variant="outline" size="sm" onClick={resetFilters} className="h-8">
+            <FilterX size={13} /> Xoá lọc
+          </Button>
+        )}
+      </div>
+
       {list.isPending ? (
         <LoadingRows />
       ) : list.isError ? (
         <ErrorState message={describeError(list.error)} onRetry={() => list.refetch()} />
-      ) : !list.data.items.length ? (
+      ) : !visibleRows.length ? (
         <EmptyState
           icon={<Bell />}
-          title="Chưa có thông báo"
-          description="Khi đơn đăng ký được xét duyệt hoặc câu lạc bộ gửi thông báo, nội dung sẽ hiển thị tại đây."
+          title={hasClientFilter ? "Không có thông báo khớp bộ lọc" : "Chưa có thông báo"}
+          description={
+            hasClientFilter
+              ? "Thử xoá điều kiện lọc để xem toàn bộ lịch sử thông báo."
+              : "Khi đơn đăng ký được xét duyệt hoặc câu lạc bộ gửi thông báo, nội dung sẽ hiển thị tại đây."
+          }
+          actionLabel={hasClientFilter ? "Xoá bộ lọc" : undefined}
+          onAction={hasClientFilter ? resetFilters : undefined}
         />
       ) : (
         <>
           <DataTable
             ariaLabel="Thông báo"
-            minWidth="min-w-[820px]"
-            rows={list.data.items}
+            minWidth="min-w-[780px]"
+            rows={visibleRows}
             rowKey={(n) => n.id}
             onRowClick={openNotification}
             columns={[
               {
                 key: "time",
                 header: "Thời gian",
+                className: "whitespace-nowrap",
+                sortValue: (n) => n.createdAt,
                 render: (n) => (
                   <div className="font-mono">
                     <b className="text-primary">{formatDay(n.createdAt)}</b>
-                    <span className="ml-2 text-muted-foreground">{formatTime(n.createdAt)}</span>
+                    <span className="ml-1.5 text-muted-foreground">{formatTime(n.createdAt)}</span>
                   </div>
                 ),
               },
               {
                 key: "title",
                 header: "Tiêu đề",
-                render: (n) => <span className={n.read ? "" : "font-bold text-foreground"}>{n.title}</span>,
+                className: "min-w-[200px] max-w-[280px]",
+                sortValue: (n) => n.title,
+                render: (n) => (
+                  <span className={n.read ? "line-clamp-1" : "line-clamp-1 font-bold text-foreground"}>
+                    {n.title}
+                  </span>
+                ),
               },
               {
                 key: "message",
                 header: "Nội dung",
-                className: "max-w-[420px] whitespace-normal",
+                className: "max-w-[380px] whitespace-normal",
                 render: (n) => <span className="line-clamp-2 text-muted-foreground">{n.message}</span>,
               },
               {
                 key: "status",
                 header: "Trạng thái",
+                className: "whitespace-nowrap",
+                sortValue: (n) => Number(n.read),
                 render: (n) => (n.read ? <Badge>Đã đọc</Badge> : <Badge tone="primary">Chưa đọc</Badge>),
               },
               {
                 key: "actions",
                 header: "Thao tác",
-                className: "text-right",
+                className: "text-right whitespace-nowrap",
                 render: (n) => {
                   const link = targetHrefFor(n);
                   return (
@@ -157,7 +268,13 @@ export function NotificationsView() {
               },
             ]}
           />
-          <Pagination offset={offset} limit={LIMIT} total={list.data.total} onOffset={setOffset} />
+          <Pagination
+            offset={offset}
+            limit={limit}
+            total={effectiveTotal}
+            onOffset={setOffset}
+            onLimit={setLimit}
+          />
         </>
       )}
 

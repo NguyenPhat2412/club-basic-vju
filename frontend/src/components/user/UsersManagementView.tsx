@@ -43,6 +43,7 @@ export function UsersManagementView() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "LOCKED" | "INACTIVE" | "MUST_CHANGE">("ALL");
   const [offset, setOffset] = useState(0);
+  const [limit, setLimit] = useState(LIMIT);
   const [creating, setCreating] = useState(false);
   const [resetFor, setResetFor] = useState<User | null>(null);
   const [detail, setDetail] = useState<User | null>(null);
@@ -50,8 +51,8 @@ export function UsersManagementView() {
   const [notice, setNotice] = useState("");
 
   const users = useQuery({
-    queryKey: ["users", search, offset],
-    queryFn: () => apiModel.users(search, offset, LIMIT),
+    queryKey: ["users", search, offset, limit],
+    queryFn: () => apiModel.users(search, offset, limit),
     placeholderData: keepPreviousData,
     enabled: session.can("user.view"),
   });
@@ -328,7 +329,7 @@ export function UsersManagementView() {
           ]}
         />
       )}
-      {users.data && <Pagination offset={offset} limit={LIMIT} total={users.data.total} onOffset={setOffset} />}
+      {users.data && <Pagination offset={offset} limit={limit} total={users.data.total} onOffset={setOffset} onLimit={setLimit} />}
 
       <CreateUserModal
         open={creating}

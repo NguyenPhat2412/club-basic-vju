@@ -64,6 +64,7 @@ export function ApplicationsTab({
   const [createdFrom, setCreatedFrom] = useState("");
   const [createdTo, setCreatedTo] = useState("");
   const [offset, setOffset] = useState(0);
+  const [limit, setLimit] = useState(LIMIT);
 
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [review, setReview] = useState<{ app: Application; approve: boolean } | null>(null);
@@ -84,7 +85,7 @@ export function ApplicationsTab({
     session.canInClub("application.update", clubId) || session.canInClub("application.review", clubId);
 
   const apps = useQuery({
-    queryKey: ["club-applications", clubId, statusFilter, search, createdFrom, createdTo, offset],
+    queryKey: ["club-applications", clubId, statusFilter, search, createdFrom, createdTo, offset, limit],
     queryFn: () =>
       apiModel.clubApplications(clubId, {
         status: statusFilter || undefined,
@@ -92,7 +93,7 @@ export function ApplicationsTab({
         createdFrom: startOfDayIso(createdFrom),
         createdTo: endOfDayExclusiveIso(createdTo),
         offset,
-        limit: LIMIT,
+        limit,
       }),
     placeholderData: keepPreviousData,
     enabled: !!clubId && canViewList,
@@ -295,7 +296,7 @@ export function ApplicationsTab({
               },
             ]}
           />
-          <Pagination offset={offset} limit={LIMIT} total={apps.data.total} onOffset={setOffset} />
+          <Pagination offset={offset} limit={limit} total={apps.data.total} onOffset={setOffset} onLimit={setLimit} />
         </>
       )}
 
