@@ -6,6 +6,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
 } from 'react';
 import {
   useBrowserStorage,
@@ -38,8 +39,9 @@ const I18nContext = createContext<I18nContextType | undefined>(undefined);
 const originalTextNodeMap = new WeakMap<Text, string>();
 const lastRenderedTextNodeMap = new WeakMap<Text, string>();
 const originalAttributeMap = new WeakMap<Element, Record<string, string>>();
+const lastRenderedAttributeMap = new WeakMap<Element, Record<string, string>>();
 
-const TRANSLATABLE_ATTRIBUTES = ['placeholder', 'title', 'aria-label'] as const;
+const TRANSLATABLE_ATTRIBUTES = ['placeholder', 'title', 'aria-label', 'alt'] as const;
 const IGNORED_TAGS = new Set(['SCRIPT', 'STYLE', 'CODE', 'PRE', 'TEXTAREA', 'NOSCRIPT']);
 
 function shouldIgnoreNode(node: Node | null): boolean {
@@ -93,6 +95,7 @@ function translateTextNode(textNode: Text, locale: SupportedLocale) {
 function translateElementAttributes(element: Element, locale: SupportedLocale) {
   if (shouldIgnoreNode(element)) return;
   let storedAttrs = originalAttributeMap.get(element);
+  let lastRenderedAttrs = lastRenderedAttributeMap.get(element);
 
   for (const attr of TRANSLATABLE_ATTRIBUTES) {
     const currentAttr = element.getAttribute(attr);
@@ -102,8 +105,13 @@ function translateElementAttributes(element: Element, locale: SupportedLocale) {
       storedAttrs = {};
       originalAttributeMap.set(element, storedAttrs);
     }
+    if (!lastRenderedAttrs) {
+      lastRenderedAttrs = {};
+      lastRenderedAttributeMap.set(element, lastRenderedAttrs);
+    }
 
-    if (!(attr in storedAttrs)) {
+    const lastRendered = lastRenderedAttrs[attr];
+    if (!(attr in storedAttrs) || (lastRendered !== undefined && currentAttr !== lastRendered)) {
       storedAttrs[attr] = currentAttr;
     }
 
@@ -112,6 +120,7 @@ function translateElementAttributes(element: Element, locale: SupportedLocale) {
     if (nextAttr !== currentAttr) {
       element.setAttribute(attr, nextAttr);
     }
+    lastRenderedAttrs[attr] = nextAttr;
 
     if (
       locale !== 'vi' &&
@@ -126,6 +135,10 @@ function translateElementAttributes(element: Element, locale: SupportedLocale) {
           originalAttributeMap.get(element)?.[attr] !== capturedBase
         ) {
           return;
+        }
+        const latestMap = lastRenderedAttributeMap.get(element);
+        if (latestMap) {
+          latestMap[attr] = autoTranslated;
         }
         element.setAttribute(attr, autoTranslated);
       });
@@ -178,9 +191,12 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     writeBrowserStorage(LOCALE_STORAGE_KEY, normalized);
   }, []);
 
+  const didSyncUrlLocaleRef = useRef(false);
+
   // Support ?lang=vi|en|ja or ?locale=vi|en|ja on initial URL load
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || didSyncUrlLocaleRef.current) return;
+    didSyncUrlLocaleRef.current = true;
     const params = new URLSearchParams(window.location.search);
     const urlLocale = params.get('lang') ?? params.get('locale');
     if (urlLocale) {

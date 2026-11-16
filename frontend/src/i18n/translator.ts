@@ -11,11 +11,13 @@ import { PHRASES_EN_CORE } from './phrases-en';
 import { PHRASES_EN_ADMIN } from './phrases-en-admin';
 import { PHRASES_EN_CONTENT } from './phrases-en-content';
 import { PHRASES_EN_PERMISSIONS } from './phrases-en-permissions';
+import { PHRASES_EN_SPRINT4 } from './phrases-en-sprint4';
 import { PHRASES_EN_WORKSPACE } from './phrases-en-workspace';
 import { PHRASES_JA_CORE } from './phrases-ja';
 import { PHRASES_JA_ADMIN } from './phrases-ja-admin';
 import { PHRASES_JA_CONTENT } from './phrases-ja-content';
 import { PHRASES_JA_PERMISSIONS } from './phrases-ja-permissions';
+import { PHRASES_JA_SPRINT4 } from './phrases-ja-sprint4';
 import { PHRASES_JA_WORKSPACE } from './phrases-ja-workspace';
 
 const EN_DICTIONARY: Record<string, string> = {
@@ -24,6 +26,7 @@ const EN_DICTIONARY: Record<string, string> = {
   ...PHRASES_EN_ADMIN,
   ...PHRASES_EN_PERMISSIONS,
   ...PHRASES_EN_WORKSPACE,
+  ...PHRASES_EN_SPRINT4,
 };
 
 const JA_DICTIONARY: Record<string, string> = {
@@ -32,6 +35,7 @@ const JA_DICTIONARY: Record<string, string> = {
   ...PHRASES_JA_ADMIN,
   ...PHRASES_JA_PERMISSIONS,
   ...PHRASES_JA_WORKSPACE,
+  ...PHRASES_JA_SPRINT4,
 };
 
 function resolveNestedMessage(
@@ -267,6 +271,41 @@ const DYNAMIC_PATTERNS: PatternRule[] = [
     pattern: /^Thông báo\s*\((\d+)\s+chưa đọc\)$/i,
     en: (_, count) => `Notifications (${count} unread)`,
     ja: (_, count) => `通知（未読 ${count} 件）`,
+  },
+  {
+    pattern: /^Ảnh bìa(?:\s+câu lạc bộ)?\s+(.+)$/i,
+    en: (_, club) => `Cover image — ${translateUiText(club, 'en')}`,
+    ja: (_, club) => `${translateUiText(club, 'ja')} カバー画像`,
+  },
+  {
+    pattern: /^\+(\d+)\s+ghim$/i,
+    en: (_, count) => `+${count} pinned`,
+    ja: (_, count) => `他 ${count} 件ピン留め`,
+  },
+  {
+    pattern: /^Tin nhắn đã ghim\s*\((\d+)\)$/i,
+    en: (_, count) => `Pinned messages (${count})`,
+    ja: (_, count) => `ピン留めメッセージ (${count})`,
+  },
+  {
+    pattern: /^(\d+)\s+quyền\s+hạn$/i,
+    en: (_, count) => `${count} permissions`,
+    ja: (_, count) => `権限 ${count} 件`,
+  },
+  {
+    pattern: /^(\d+)\s+thành viên chính thức$/i,
+    en: (_, count) => `${count} active members`,
+    ja: (_, count) => `正部員 ${count} 名`,
+  },
+  {
+    pattern: /^(\d+)\s+hồ sơ mới$/i,
+    en: (_, count) => `${count} new applications`,
+    ja: (_, count) => `新規応募 ${count} 件`,
+  },
+  {
+    pattern: /^Tùy biến Trang Tổng quan\s*&\s*Bản sắc riêng của CLB\s*\((.+)\)$/i,
+    en: (_, code) => `Customize Club Overview & Identity (${code})`,
+    ja: (_, code) => `クラブ概要・アイデンティティ設定 (${code})`,
   },
 ];
 

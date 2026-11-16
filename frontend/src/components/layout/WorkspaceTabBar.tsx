@@ -191,8 +191,8 @@ export function WorkspaceTabBar({
           if (!map.has(id)) {
             map.set(id, {
               id,
-              label: item.label,
-              groupLabel: grp.label,
+              label: tr(item.label),
+              groupLabel: tr(grp.label),
               href: item.href,
               tab: item.tab,
               tier: item.tier,
