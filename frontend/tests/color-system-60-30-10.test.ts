@@ -43,11 +43,21 @@ test("globals.css defines the complete 60/30/10 VJU ClubHub color token contract
     "--color-primary-hover:",
     "--color-primary-active:",
     "--color-primary-on-dark:",
+    "--font-inter:",
+    "--font-libre-franklin:",
+    "--font-source-serif:",
   ];
 
   for (const token of requiredTokens) {
     assert.ok(css.includes(token), `Expected globals.css to declare ${token}`);
   }
+
+  const layoutSrc = fs.readFileSync(path.join(SRC_ROOT, "app/layout.tsx"), "utf8");
+  assert.equal(
+    layoutSrc.includes("next/font/google"),
+    false,
+    "RootLayout must not import next/font/google (prevents Turbopack + @tailwindcss/postcss v4 font URL resolution 500 crashes)"
+  );
 });
 
 test("frontend source contains zero off-palette Tailwind color classes (purple, blue, sky, teal, indigo, violet, fuchsia, pink, cyan, orange)", () => {

@@ -1,29 +1,9 @@
 import type { Metadata } from "next";
-import { Inter, Libre_Franklin, Source_Serif_4 } from "next/font/google";
 import { AppProviders } from "@/providers/AppProviders";
 import "@/styles/globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin", "vietnamese"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-});
-
-const libreFranklin = Libre_Franklin({
-  variable: "--font-libre-franklin",
-  subsets: ["latin", "vietnamese"],
-  weight: ["600", "700", "800"],
-  display: "swap",
-});
-
-const sourceSerif = Source_Serif_4({
-  variable: "--font-source-serif",
-  subsets: ["latin", "vietnamese"],
-  weight: ["400", "600", "700"],
-  style: ["normal", "italic"],
-  display: "swap",
-});
+const GOOGLE_FONTS_HREF =
+  "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Libre+Franklin:wght@600;700;800&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap";
 
 export const metadata: Metadata = {
   title: "VJU ClubHub",
@@ -36,12 +16,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="vi"
-      className={`${inter.variable} ${libreFranklin.variable} ${sourceSerif.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="vi" suppressHydrationWarning>
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href={GOOGLE_FONTS_HREF} />
         <script
           dangerouslySetInnerHTML={{
             __html: `if (typeof navigator !== "undefined" && "serviceWorker" in navigator) { navigator.serviceWorker.getRegistrations().then(function(regs) { for (var i = 0; i < regs.length; i++) { regs[i].unregister(); } }).catch(function(){}); }`,
