@@ -8,6 +8,7 @@ import com.vju.club.service.AiTranslationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,7 +29,7 @@ public class PublicI18nController {
     @PublicEndpoint
     @GetMapping(ApiPaths.PUBLIC_I18N_TRANSLATIONS)
     @Operation(summary = "Get cached dynamic translations for a target locale (en or ja)")
-    public Map<String, String> getTranslations(@RequestParam(defaultValue = "en") String locale) {
+    public Map<String, String> getTranslations(@RequestParam(defaultValue = "en") @Size(max = 16) String locale) {
         return aiTranslationService.getCatalog(locale);
     }
 

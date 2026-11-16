@@ -17,8 +17,8 @@ export function ChangePasswordModal({ open, onClose }: { open: boolean; onClose:
     <ModalShell open={open} onClose={close} title="Đổi mật khẩu" icon={<KeyRound />} size="sm" onSubmit={done ? undefined : () => mutation.mutate()}
       submitLabel="Đổi mật khẩu" submitLoading={mutation.isPending} submitDisabled={!current || next.length < 8}>
       {done ? <p className="text-sm text-primary">Đã đổi mật khẩu. Các phiên đăng nhập khác đã bị đăng xuất.</p> : <>
-        <FormField label="Mật khẩu hiện tại" required><PasswordInput autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} /></FormField>
-        <FormField label="Mật khẩu mới" required hint="Tối thiểu 8 ký tự"><PasswordInput autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} /></FormField>
+        <FormField label="Mật khẩu hiện tại" required><PasswordInput autoComplete="current-password" maxLength={128} value={current} onChange={(e) => setCurrent(e.target.value)} /></FormField>
+        <FormField label="Mật khẩu mới" required hint="Tối thiểu 8 ký tự"><PasswordInput autoComplete="new-password" minLength={8} maxLength={72} value={next} onChange={(e) => setNext(e.target.value)} /></FormField>
         {mutation.error && <p className="text-xs text-destructive">{errorMessage(mutation.error)}</p>}
       </>}
     </ModalShell>

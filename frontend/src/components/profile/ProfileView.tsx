@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { LockKeyhole, Save, UserRound } from "lucide-react";
 import { apiModel } from "@/lib/api";
+import { resolveMediaUrl } from "@/lib/media";
 import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { Badge, StatusBadge } from "@/components/ui/badge";
@@ -99,10 +100,10 @@ export function ProfileView() {
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)] lg:gap-6">
             <section className="min-w-0 rounded-xl border border-border bg-card p-4 sm:p-7">
               <div className="flex items-center gap-3.5 border-b border-border pb-4 sm:gap-4 sm:pb-5">
-                {user.avatarUrl ? (
+                {resolveMediaUrl(user.avatarUrl) ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={user.avatarUrl}
+                    src={resolveMediaUrl(user.avatarUrl)!}
                     alt={user.fullName || user.email}
                     className="size-12 shrink-0 rounded-full border border-border object-cover sm:size-14"
                   />
@@ -139,6 +140,7 @@ export function ProfileView() {
                 </div>
                 <FormField label="Họ và tên" required>
                   <Input
+                    maxLength={200}
                     value={fullName}
                     onChange={(e) => setFullNameDraft(e.target.value)}
                     placeholder="Nhập họ và tên đầy đủ"
@@ -146,6 +148,8 @@ export function ProfileView() {
                 </FormField>
                 <FormField label="Số điện thoại" hint="Chỉ gồm chữ số, dấu +, dấu gạch ngang hoặc khoảng trắng.">
                   <Input
+                    type="tel"
+                    maxLength={32}
                     value={phone}
                     onChange={(e) => setPhoneDraft(e.target.value)}
                     placeholder="0901234567"
@@ -200,6 +204,7 @@ export function ProfileView() {
                 <FormField label="Mật khẩu hiện tại" required>
                   <PasswordInput
                     autoComplete="current-password"
+                    maxLength={128}
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                   />
@@ -207,6 +212,8 @@ export function ProfileView() {
                 <FormField label="Mật khẩu mới" required hint="Nên dùng ít nhất 8 ký tự.">
                   <PasswordInput
                     autoComplete="new-password"
+                    minLength={8}
+                    maxLength={72}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                   />
@@ -214,6 +221,8 @@ export function ProfileView() {
                 <FormField label="Nhập lại mật khẩu mới" required>
                   <PasswordInput
                     autoComplete="new-password"
+                    minLength={8}
+                    maxLength={72}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />

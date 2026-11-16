@@ -238,26 +238,26 @@ function AuthModalDialog({
             <form onSubmit={submitRegister} className="mt-4 grid gap-2.5 sm:gap-3">
               <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
                 <FormField label="Họ và tên" required>
-                  <Input required type="text" autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nguyễn Văn A" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
+                  <Input required type="text" maxLength={200} autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nguyễn Văn A" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
                 </FormField>
                 <FormField label="Mã sinh viên">
-                  <Input type="text" value={studentCode} onChange={(e) => setStudentCode(e.target.value)} placeholder="VD: 23110209" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
+                  <Input type="text" maxLength={50} value={studentCode} onChange={(e) => setStudentCode(e.target.value)} placeholder="VD: 23110209" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
                 </FormField>
               </div>
               <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
                 <FormField label="Địa chỉ email" required>
-                  <Input required type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="sinhvien@st.vju.ac.vn" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
+                  <Input required type="email" maxLength={320} autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="sinhvien@st.vju.ac.vn" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
                 </FormField>
                 <FormField label="Số điện thoại">
-                  <Input type="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0901234567" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
+                  <Input type="tel" maxLength={32} autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0901234567" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
                 </FormField>
               </div>
               <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
                 <FormField label="Mật khẩu (8+ ký tự)" required>
-                  <PasswordInput required autoComplete="new-password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
+                  <PasswordInput required autoComplete="new-password" minLength={8} maxLength={72} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
                 </FormField>
                 <FormField label="Xác nhận mật khẩu" required>
-                  <PasswordInput required autoComplete="new-password" minLength={8} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
+                  <PasswordInput required autoComplete="new-password" minLength={8} maxLength={72} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
                 </FormField>
               </div>
               <button type="submit" disabled={loading} className="mt-1 flex h-10 sm:h-11 items-center justify-center gap-2 rounded-lg bg-primary text-sm font-bold text-white shadow-xs transition-opacity hover:opacity-90 disabled:opacity-60">

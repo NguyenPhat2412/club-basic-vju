@@ -106,6 +106,7 @@ export function CreateUserModal({
       <FormField label="Email" required>
         <Input
           type="email"
+          maxLength={320}
           autoComplete="off"
           value={form.email}
           onChange={set("email")}
@@ -113,14 +114,14 @@ export function CreateUserModal({
         />
       </FormField>
       <FormField label="Họ và tên" required>
-        <Input value={form.fullName} onChange={set("fullName")} placeholder="Nguyễn Văn A" />
+        <Input maxLength={200} value={form.fullName} onChange={set("fullName")} placeholder="Nguyễn Văn A" />
       </FormField>
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField label="Mã sinh viên">
-          <Input value={form.studentCode} onChange={set("studentCode")} placeholder="22110001" />
+          <Input maxLength={50} value={form.studentCode} onChange={set("studentCode")} placeholder="22110001" />
         </FormField>
         <FormField label="Điện thoại">
-          <Input value={form.phone} onChange={set("phone")} placeholder="0901234567" />
+          <Input type="tel" maxLength={32} value={form.phone} onChange={set("phone")} placeholder="0901234567" />
         </FormField>
       </div>
       {studentNeedsSchoolEmail && (
@@ -141,7 +142,7 @@ export function CreateUserModal({
             required
             hint="Tối thiểu 8 ký tự. Gửi cho người dùng qua kênh riêng."
           >
-            <Input type="text" autoComplete="new-password" value={form.password} onChange={set("password")} />
+            <Input type="text" minLength={8} maxLength={72} autoComplete="new-password" value={form.password} onChange={set("password")} />
           </FormField>
           <Checkbox
             checked={forceChange}
@@ -231,6 +232,8 @@ export function ResetUserPasswordModal({
       <FormField label="Mật khẩu mới" required hint="Mọi phiên đăng nhập hiện có của người này sẽ bị đăng xuất.">
         <Input
           type="text"
+          minLength={8}
+          maxLength={72}
           autoComplete="new-password"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}

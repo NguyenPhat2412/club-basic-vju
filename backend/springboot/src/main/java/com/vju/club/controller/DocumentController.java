@@ -1,6 +1,7 @@
 package com.vju.club.controller;
 
 import com.vju.club.common.ApiPaths;
+import com.vju.club.common.DocumentConstants;
 import com.vju.club.dto.record.DocumentContent;
 import com.vju.club.dto.record.UploadedFile;
 import com.vju.club.dto.request.DocumentPatchRequest;
@@ -19,6 +20,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.ContentDisposition;
@@ -54,8 +56,8 @@ public class DocumentController {
     @Operation(summary = "Danh sách văn bản & biểu mẫu chung cấp Hệ thống")
     public PageResponse<DocumentResponse> listSystem(
             Actor actor,
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) String appDetailKey,
+            @RequestParam(required = false) @Size(max = DocumentConstants.MAX_NAME_LENGTH) String name,
+            @RequestParam(required = false) @Size(max = DocumentConstants.MAX_APP_DETAIL_KEY_LENGTH) String appDetailKey,
             @RequestParam(required = false) DocumentVisibility visibility,
             @RequestParam(defaultValue = "false") boolean deleted,
             @RequestParam(defaultValue = "0") @Min(0) int offset,
@@ -68,8 +70,8 @@ public class DocumentController {
     public ResponseEntity<DocumentResponse> uploadSystem(
             Actor actor,
             @RequestPart("file") MultipartFile file,
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) String appDetailKey,
+            @RequestParam(required = false) @Size(max = DocumentConstants.MAX_NAME_LENGTH) String name,
+            @RequestParam(required = false) @Size(max = DocumentConstants.MAX_APP_DETAIL_KEY_LENGTH) String appDetailKey,
             @RequestParam(required = false) DocumentVisibility visibility) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(documentService.uploadSystem(actor, name, appDetailKey, visibility, uploaded(file)));
@@ -82,8 +84,8 @@ public class DocumentController {
             @PathVariable UUID clubId,
             @RequestParam(required = false) UUID departmentId,
             @RequestParam(required = false) DocumentVisibility visibility,
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) String appDetailKey,
+            @RequestParam(required = false) @Size(max = DocumentConstants.MAX_NAME_LENGTH) String name,
+            @RequestParam(required = false) @Size(max = DocumentConstants.MAX_APP_DETAIL_KEY_LENGTH) String appDetailKey,
             @RequestParam(defaultValue = "false") boolean deleted,
             @RequestParam(defaultValue = "0") @Min(0) int offset,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
@@ -95,7 +97,7 @@ public class DocumentController {
     public DocumentCountResponse count(
             Actor actor,
             @PathVariable UUID clubId,
-            @RequestParam(required = false) String appDetailKey,
+            @RequestParam(required = false) @Size(max = DocumentConstants.MAX_APP_DETAIL_KEY_LENGTH) String appDetailKey,
             @RequestParam(defaultValue = "false") boolean deleted) {
         return documentService.getDocCount(actor, clubId, appDetailKey, deleted);
     }
@@ -117,8 +119,8 @@ public class DocumentController {
             @RequestPart("file") MultipartFile file,
             @RequestParam(required = false) UUID departmentId,
             @RequestParam(required = false) DocumentVisibility visibility,
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) String appDetailKey) {
+            @RequestParam(required = false) @Size(max = DocumentConstants.MAX_NAME_LENGTH) String name,
+            @RequestParam(required = false) @Size(max = DocumentConstants.MAX_APP_DETAIL_KEY_LENGTH) String appDetailKey) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(documentService.upload(actor, clubId, departmentId, visibility, name, appDetailKey, uploaded(file)));
     }
@@ -161,7 +163,7 @@ public class DocumentController {
             Actor actor,
             @PathVariable UUID documentId,
             @RequestPart("file") MultipartFile file,
-            @RequestParam(required = false) Integer expectedVersion) {
+            @RequestParam(required = false) @Min(1) Integer expectedVersion) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(documentService.uploadVersion(actor, documentId, expectedVersion, uploaded(file)));
     }
@@ -171,7 +173,7 @@ public class DocumentController {
     public ResponseEntity<InputStreamResource> download(
             Actor actor,
             @PathVariable UUID documentId,
-            @RequestParam(required = false) Integer version,
+            @RequestParam(required = false) @Min(1) Integer version,
             WebRequest webRequest) {
         DocumentService.DocumentMeta meta = documentService.resolveMetadata(actor, documentId, version, false);
         if (webRequest.checkNotModified(meta.checksumSha256())) {
@@ -186,7 +188,7 @@ public class DocumentController {
     public ResponseEntity<InputStreamResource> preview(
             Actor actor,
             @PathVariable UUID documentId,
-            @RequestParam(required = false) Integer version,
+            @RequestParam(required = false) @Min(1) Integer version,
             WebRequest webRequest) {
         DocumentService.DocumentMeta meta = documentService.resolveMetadata(actor, documentId, version, true);
         if (webRequest.checkNotModified(meta.checksumSha256())) {
@@ -211,7 +213,7 @@ public class DocumentController {
     public DocumentDownloadUrlResponse downloadUrl(
             Actor actor,
             @PathVariable UUID documentId,
-            @RequestParam(required = false) Integer version) {
+            @RequestParam(required = false) @Min(1) Integer version) {
         return documentService.downloadUrl(actor, documentId, version);
     }
 
@@ -229,6 +231,7 @@ public class DocumentController {
                 .contentLength(content.size())
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .header(HttpHeaders.CACHE_CONTROL, "private, max-age=3600, must-revalidate")
+                .header("X-Content-Type-Options", "nosniff")
                 .eTag("\"" + content.checksumSha256() + "\"")
                 .header("X-Document-Version", String.valueOf(content.version()))
                 .body(new InputStreamResource(content.content()));

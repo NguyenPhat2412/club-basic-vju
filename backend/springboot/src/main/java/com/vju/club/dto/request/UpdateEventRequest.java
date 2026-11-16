@@ -2,6 +2,7 @@ package com.vju.club.dto.request;
 
 import com.vju.club.enums.EventStatus;
 import com.vju.club.enums.EventType;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 
@@ -18,7 +19,7 @@ public record UpdateEventRequest(
         OffsetDateTime endTime,
         OffsetDateTime registrationDeadline,
         Boolean allowCtv,
-        @Min(1) Integer maxParticipants,
+        @Min(1) @Max(100_000) Integer maxParticipants,
         EventStatus status
 ) {
 }

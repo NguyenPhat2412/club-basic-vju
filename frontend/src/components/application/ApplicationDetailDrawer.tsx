@@ -10,6 +10,7 @@ import { ErrorState, LoadingRows } from "@/components/shared/States";
 import { describeError } from "@/components/shared/ListPage";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
+import { validateApplicationFile } from "@/lib/utils";
 
 export function ClubApplicationsFilterBar({
   search,
@@ -136,6 +137,10 @@ export function ApplicationDetailDrawer({
 
   const uploadInlineMutation = useMutation({
     mutationFn: async ({ appId, files }: { appId: string; files: File[] }) => {
+      for (const file of files) {
+        const err = validateApplicationFile(file);
+        if (err) throw new Error(err);
+      }
       for (const file of files) {
         await apiModel.uploadApplicationFile(appId, file, "APPLICANT_ATTACHMENT");
       }

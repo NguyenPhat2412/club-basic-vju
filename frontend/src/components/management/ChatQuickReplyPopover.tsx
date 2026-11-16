@@ -189,6 +189,7 @@ export function ChatQuickReplyPopover({
                 <label className="flex h-7 items-center gap-1.5 rounded-md bg-muted/40 px-2 text-xs">
                   <Search size={12} className="text-muted-foreground" />
                   <input
+                    maxLength={120}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Tìm /phím-tắt hoặc nội dung…"

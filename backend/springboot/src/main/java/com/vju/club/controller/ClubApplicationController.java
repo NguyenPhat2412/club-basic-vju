@@ -18,6 +18,7 @@ import com.vju.club.security.Actor;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -94,7 +95,7 @@ public class ClubApplicationController {
             @PathVariable UUID clubId,
             @PathVariable UUID formId,
             @RequestPart("file") MultipartFile file,
-            @RequestParam(required = false) String fileCategory) {
+            @RequestParam(required = false) @Size(max = 50) String fileCategory) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(applicationService.uploadFormFile(actor, clubId, formId, fileCategory, uploaded(file)));
     }
@@ -129,7 +130,7 @@ public class ClubApplicationController {
             Actor actor,
             @RequestParam(required = false) ClubApplicationStatus status,
             @RequestParam(required = false) UUID clubId,
-            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) @Size(max = 50) String sort,
             @RequestParam(defaultValue = "0") @Min(0) int offset,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
         return applicationService.listMine(actor, status, clubId, sort, offset, limit);
@@ -158,7 +159,7 @@ public class ClubApplicationController {
             Actor actor,
             @PathVariable UUID applicationId,
             @RequestPart("file") MultipartFile file,
-            @RequestParam(required = false) String fileCategory) {
+            @RequestParam(required = false) @Size(max = 50) String fileCategory) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(applicationService.uploadApplicationFile(actor, applicationId, fileCategory, uploaded(file)));
     }
@@ -188,6 +189,8 @@ public class ClubApplicationController {
                 .contentLength(content.size())
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .header(HttpHeaders.CACHE_CONTROL, "private, max-age=3600, must-revalidate")
+                .header("X-Content-Type-Options", "nosniff")
+                .header("Content-Security-Policy", "default-src 'none'; img-src 'self' data: blob:; media-src 'self'; style-src 'unsafe-inline'")
                 .eTag("\"" + content.checksumSha256() + "\"")
                 .body(new InputStreamResource(content.content()));
     }
@@ -196,10 +199,10 @@ public class ClubApplicationController {
     public PageResponse<ClubApplicationResponse> listForClub(
             Actor actor, @PathVariable UUID clubId,
             @RequestParam(required = false) ClubApplicationStatus status,
-            @RequestParam(required = false) String search,
+            @RequestParam(required = false) @Size(max = 200) String search,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime createdFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime createdTo,
-            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) @Size(max = 50) String sort,
             @RequestParam(defaultValue = "0") @Min(0) int offset,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
         return applicationService.listForClub(actor, clubId, status, search, createdFrom, createdTo, sort, offset, limit);

@@ -84,6 +84,7 @@ export function FormBuilderModal({
           <div className="sm:col-span-2">
             <FormField label="Tiêu đề biểu mẫu / Đợt tuyển thành viên" required>
               <Input
+                maxLength={200}
                 value={formDraft.title}
                 onChange={(e) => setFormDraft({ ...formDraft, title: e.target.value })}
                 placeholder="VD: Đơn đăng ký tuyển thành viên Gen 5"
@@ -202,6 +203,7 @@ export function FormBuilderModal({
                 <div className="sm:col-span-2">
                   <FormField label={`Câu hỏi #${idx + 1}`} required>
                     <Input
+                      maxLength={200}
                       value={field.label}
                       placeholder="VD: Bạn có thể tham gia phỏng vấn vào khung giờ nào?"
                       onChange={(e) => {

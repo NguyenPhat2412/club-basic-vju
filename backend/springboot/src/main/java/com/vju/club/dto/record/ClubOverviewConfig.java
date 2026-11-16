@@ -3,6 +3,8 @@ package com.vju.club.dto.record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -13,13 +15,13 @@ import java.util.Locale;
 import java.util.Set;
 
 public record ClubOverviewConfig(
-        String preset,
-        String slogan,
-        String campusLocation,
-        String operatingSchedule,
-        List<String> enabledBlocks,
-        List<CustomMetric> customMetrics,
-        List<HighlightItem> highlights
+        @Size(max = 32) String preset,
+        @Size(max = 500) String slogan,
+        @Size(max = 300) String campusLocation,
+        @Size(max = 300) String operatingSchedule,
+        @Size(max = 10) List<@Size(max = 40) String> enabledBlocks,
+        @Size(max = 10) List<@Valid CustomMetric> customMetrics,
+        @Size(max = 10) List<@Valid HighlightItem> highlights
 ) implements Serializable {
 
     private static final ObjectMapper JSON = new ObjectMapper()
@@ -38,16 +40,16 @@ public record ClubOverviewConfig(
     );
 
     public record CustomMetric(
-            String label,
-            String value,
-            String sub
+            @Size(max = 160) String label,
+            @Size(max = 80) String value,
+            @Size(max = 300) String sub
     ) implements Serializable {
     }
 
     public record HighlightItem(
-            String title,
-            String tag,
-            String description
+            @Size(max = 240) String title,
+            @Size(max = 100) String tag,
+            @Size(max = 800) String description
     ) implements Serializable {
     }
 

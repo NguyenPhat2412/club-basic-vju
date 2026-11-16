@@ -148,14 +148,14 @@ export function UserDetailDrawer({
       {detail && canUpdateUser && (
         <Section title="Cập nhật thông tin tài khoản" icon={<Pencil />}>
           <FormField label="Họ và tên" required>
-            <Input value={editFullName} onChange={(e) => setEditFullName(e.target.value)} />
+            <Input maxLength={200} value={editFullName} onChange={(e) => setEditFullName(e.target.value)} />
           </FormField>
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField label="Mã sinh viên">
-              <Input value={editStudentCode} onChange={(e) => setEditStudentCode(e.target.value)} />
+              <Input maxLength={50} value={editStudentCode} onChange={(e) => setEditStudentCode(e.target.value)} />
             </FormField>
             <FormField label="Điện thoại">
-              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+              <Input type="tel" maxLength={32} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
             </FormField>
           </div>
           <AvatarField

@@ -12,6 +12,6 @@ public record ReplacePermissionsRequest(
         @NotNull PermissionScope scope,
         UUID clubId,
         UUID departmentId,
-        @NotNull @Size(max = 200) Set<@NotBlank String> permissionKeys,
+        @NotNull @Size(max = 200) Set<@NotBlank @Size(max = 100) String> permissionKeys,
         @Size(max = 1000) String reason
 ) { }

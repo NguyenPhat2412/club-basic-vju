@@ -149,9 +149,19 @@ async function requestBackendBatchTranslate(
     // Fall through to client fallback if backend is unreachable
   }
 
+  const isPublicPage =
+    typeof window !== 'undefined' &&
+    ['/', '/home', '/clubs', '/events'].some(
+      (p) => window.location.pathname === p || window.location.pathname.startsWith(`${p}/`),
+    );
+  if (!isPublicPage) {
+    return {};
+  }
+
   const fallbackResult: Record<string, string> = {};
   await Promise.all(
-    texts.map(async (text) => {
+    texts.slice(0, MAX_BATCH_SIZE).map(async (text) => {
+      if (text.length > 2000) return;
       try {
         const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=vi&tl=${locale}&dt=t&q=${encodeURIComponent(
           text,

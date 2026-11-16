@@ -332,25 +332,25 @@ export function validateChatMediaFile(file: Pick<File, 'name' | 'size' | 'type'>
   };
 }
 
-export function isComposerImeComposing(event: ComposerKeyboardEventLike): boolean {
-  return Boolean(
-    event.nativeEvent?.isComposing ||
-      event.isComposing ||
-      event.keyCode === 229 ||
-      event.nativeEvent?.keyCode === 229 ||
-      event.key === 'Process'
-  );
+export function clearChatMessageCache() {
+  cacheOwner = '';
+  windowMap.clear();
+  pinnedMap.clear();
+  for (const url of mediaUrlCache.values()) {
+    if (!pinnedPreviewUrls.has(url) && url.startsWith('blob:') && typeof URL !== 'undefined') URL.revokeObjectURL(url);
+  }
+  mediaUrlCache.clear();
+  if (typeof window !== 'undefined') {
+    try { window.sessionStorage.removeItem(SESSION_STORAGE_KEY); } catch { /* ignore */ }
+  }
 }
 
-export function shouldIgnoreTrailingComposerImeText(
-  guard: ComposerPostSendImeGuard | null | undefined,
-  candidateText: string,
-  now = Date.now(),
-  windowMs = 180
-): boolean {
-  if (!guard || guard.hasUserTypedSinceSend || now - guard.sentAt > windowMs) {
-    return false;
-  }
+export function isComposerImeComposing(event: ComposerKeyboardEventLike): boolean {
+  return Boolean(event.nativeEvent?.isComposing || event.isComposing || event.keyCode === 229 || event.nativeEvent?.keyCode === 229 || event.key === 'Process');
+}
+
+export function shouldIgnoreTrailingComposerImeText(guard: ComposerPostSendImeGuard | null | undefined, candidateText: string, now = Date.now(), windowMs = 180): boolean {
+  if (!guard || guard.hasUserTypedSinceSend || now - guard.sentAt > windowMs) return false;
   const cand = candidateText.trim().normalize('NFC').toLowerCase();
   const sent = guard.sentBody.trim().normalize('NFC').toLowerCase();
   return Boolean(cand && sent && sent.endsWith(cand));

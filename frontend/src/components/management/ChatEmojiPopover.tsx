@@ -127,6 +127,7 @@ export function ChatEmojiPopover({
               <Search size={13} className="shrink-0 text-muted-foreground" />
               <input
                 type="text"
+                maxLength={80}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Tìm cảm xúc…"

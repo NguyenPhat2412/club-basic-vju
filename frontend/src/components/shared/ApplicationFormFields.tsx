@@ -7,7 +7,7 @@ import { DetailList } from "@/components/shared/Overlays";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { FormField, Input, OptionalMark, RequiredMark, Select, Textarea } from "@/components/ui/input";
 import { ClubApplicationDraft } from "@/forms/application/application-form";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, safeExternalHref } from "@/lib/utils";
 import { ApplicationDetail } from "@/types";
 
 export interface PendingApplicationAttachment {
@@ -55,6 +55,8 @@ export function ApplicationDraftFormFields({
         <div className="grid gap-3 sm:grid-cols-2">
           <FormField label="Số điện thoại liên hệ" required={requireAcademic}>
             <Input
+              type="tel"
+              maxLength={32}
               value={values.applicantPhone}
               onChange={(e) => onChange("applicantPhone", e.target.value)}
               placeholder="VD: 0912345678"
@@ -62,6 +64,7 @@ export function ApplicationDraftFormFields({
           </FormField>
           <FormField label="Khoa / Ngành học" required={requireAcademic}>
             <Input
+              maxLength={150}
               value={values.facultyMajor}
               onChange={(e) => onChange("facultyMajor", e.target.value)}
               placeholder="VD: CNTT (BCSE), Nhật Bản học (BJS)..."
@@ -71,6 +74,7 @@ export function ApplicationDraftFormFields({
         <div className="grid gap-3 sm:grid-cols-3">
           <FormField label="Khóa / Năm học" required={requireAcademic}>
             <Input
+              maxLength={50}
               value={values.academicYear}
               onChange={(e) => onChange("academicYear", e.target.value)}
               placeholder="VD: K8 - Năm 3"
@@ -78,6 +82,7 @@ export function ApplicationDraftFormFields({
           </FormField>
           <FormField label="Điểm GPA">
             <Input
+              maxLength={20}
               value={values.gpa}
               onChange={(e) => onChange("gpa", e.target.value)}
               placeholder="VD: 3.5 / 4.0"
@@ -85,6 +90,8 @@ export function ApplicationDraftFormFields({
           </FormField>
           <FormField label="Link FB / Portfolio">
             <Input
+              type="url"
+              maxLength={500}
               value={values.socialPortfolioUrl}
               onChange={(e) => onChange("socialPortfolioUrl", e.target.value)}
               placeholder="https://..."
@@ -297,19 +304,25 @@ export function ApplicationDetailInfoList({
         ["Điểm GPA", application.gpa || "—"],
         [
           "Link FB / Portfolio",
-          application.socialPortfolioUrl ? (
-            <a
-              key="url"
-              href={application.socialPortfolioUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="break-all text-primary underline"
-            >
-              {application.socialPortfolioUrl}
-            </a>
-          ) : (
-            "—"
-          ),
+          (() => {
+            const safeUrl = safeExternalHref(application.socialPortfolioUrl);
+            if (!application.socialPortfolioUrl) return "—";
+            return safeUrl ? (
+              <a
+                key="url"
+                href={safeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="break-all text-primary underline"
+              >
+                {application.socialPortfolioUrl}
+              </a>
+            ) : (
+              <span key="url-raw" className="break-all text-muted-foreground">
+                {application.socialPortfolioUrl}
+              </span>
+            );
+          })(),
         ],
         [
           "Giới thiệu bản thân",

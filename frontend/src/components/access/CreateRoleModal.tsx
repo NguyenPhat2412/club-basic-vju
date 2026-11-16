@@ -77,6 +77,7 @@ export function CreateRoleModal({
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField label="Tên vai trò" required hint="Ví dụ: Trưởng ban Truyền thông, Thủ quỹ, Cộng tác viên.">
           <Input
+            maxLength={200}
             value={newRole.name}
             onChange={(e) => setNewRole((r) => ({ ...r, name: e.target.value }))}
             placeholder="Nhập tên chức vụ / vai trò…"
@@ -95,6 +96,7 @@ export function CreateRoleModal({
       </div>
       <FormField label="Mô tả trách nhiệm">
         <Textarea
+          maxLength={2000}
           value={newRole.description}
           onChange={(e) => setNewRole((r) => ({ ...r, description: e.target.value }))}
           placeholder="Mô tả ngắn gọn nhiệm vụ của vai trò này…"

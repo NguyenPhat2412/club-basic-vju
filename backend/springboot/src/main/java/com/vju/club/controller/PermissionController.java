@@ -12,6 +12,7 @@ import com.vju.club.dto.request.ReplacePermissionsRequest;
 import com.vju.club.dto.response.PermissionResponse;
 import com.vju.club.dto.response.UserPermissionResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -95,7 +96,7 @@ public class PermissionController {
     public ResponseEntity<Void> revokeByKey(
             Actor actor,
             @PathVariable UUID userId,
-            @PathVariable String permissionKey,
+            @PathVariable @Size(max = 100) String permissionKey,
             @RequestParam(required = false) PermissionScope scope,
             @RequestParam(required = false) UUID clubId,
             @RequestParam(required = false) UUID departmentId) {

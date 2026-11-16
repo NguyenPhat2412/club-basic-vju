@@ -28,15 +28,25 @@ function collectOptions(node: ReactNode, out: { value: string; label: string }[]
   return out;
 }
 
-export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input({ className, ...props }, ref) {
-  return <input ref={ref} className={cn(field, "h-9", className)} {...props} />;
+const DEFAULT_MAX_LENGTH_BY_TYPE: Record<string, number> = {
+  text: 500,
+  search: 200,
+  email: 320,
+  tel: 32,
+  url: 1000,
+  password: 128,
+};
+
+export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input({ className, maxLength, type, ...props }, ref) {
+  const effectiveMaxLength = maxLength ?? DEFAULT_MAX_LENGTH_BY_TYPE[type ?? "text"];
+  return <input ref={ref} type={type} maxLength={effectiveMaxLength} className={cn(field, "h-9", className)} {...props} />;
 });
 
-export const PasswordInput = forwardRef<HTMLInputElement, Omit<InputHTMLAttributes<HTMLInputElement>, "type">>(function PasswordInput({ className, ...props }, ref) {
+export const PasswordInput = forwardRef<HTMLInputElement, Omit<InputHTMLAttributes<HTMLInputElement>, "type">>(function PasswordInput({ className, maxLength = 128, ...props }, ref) {
   const [visible, setVisible] = useState(false);
   return (
     <span className="relative block">
-      <Input ref={ref} type={visible ? "text" : "password"} className={cn(className, "pr-10")} {...props} />
+      <Input ref={ref} type={visible ? "text" : "password"} maxLength={maxLength} className={cn(className, "pr-10")} {...props} />
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
@@ -90,8 +100,8 @@ export function Select({ className, children, value, defaultValue, onChange, ...
   );
 }
 
-export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className={cn(field, "min-h-28 py-2.5", className)} {...props} />;
+export function Textarea({ className, maxLength = 4000, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return <textarea maxLength={maxLength} className={cn(field, "min-h-28 py-2.5", className)} {...props} />;
 }
 
 export function RequiredMark({ className }: { className?: string }) {

@@ -143,6 +143,8 @@ export function UpsertEventModal({
           <Input
             type="number"
             min={1}
+            max={100000}
+            step={1}
             value={form.maxParticipants}
             onChange={(e) => setForm((f) => ({ ...f, maxParticipants: e.target.value }))}
             placeholder="Không giới hạn"

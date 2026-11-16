@@ -13,6 +13,7 @@ import com.vju.club.dto.request.UpdateUserStatusRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -55,11 +56,11 @@ public class UserController {
     @GetMapping(ApiPaths.USERS)
     public PageResponse<UserResponse> search(
             Actor actor,
-            @RequestParam(defaultValue = "") String query,
+            @RequestParam(defaultValue = "") @Size(max = 200) String query,
             @RequestParam(defaultValue = "0") @Min(0) int offset,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
-            @RequestParam(defaultValue = "createdAt") String orderBy,
-            @RequestParam(defaultValue = "desc") String orderType) {
+            @RequestParam(defaultValue = "createdAt") @Size(max = 50) String orderBy,
+            @RequestParam(defaultValue = "desc") @Size(max = 10) String orderType) {
         return userService.search(actor, query, offset, limit, orderBy, orderType);
     }
 

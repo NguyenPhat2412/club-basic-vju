@@ -40,9 +40,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private boolean isRateLimitedEndpoint(HttpServletRequest request) {
+        String uri = request.getRequestURI();
         return "POST".equalsIgnoreCase(request.getMethod()) && (
-                ApiPaths.FULL_AUTH_LOGIN.equals(request.getRequestURI())
-                        || ApiPaths.FULL_AUTH_REGISTER.equals(request.getRequestURI())
-                        || ApiPaths.FULL_AUTH_GOOGLE.equals(request.getRequestURI()));
+                ApiPaths.FULL_AUTH_LOGIN.equals(uri)
+                        || ApiPaths.FULL_AUTH_REGISTER.equals(uri)
+                        || ApiPaths.FULL_AUTH_GOOGLE.equals(uri)
+                        || (ApiPaths.API_V1 + ApiPaths.PUBLIC_I18N_TRANSLATE_BATCH).equals(uri));
     }
 }

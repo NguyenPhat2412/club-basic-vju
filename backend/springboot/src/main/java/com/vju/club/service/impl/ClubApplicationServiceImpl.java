@@ -1096,11 +1096,57 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
 
     private static String serializeMap(Map<String, Object> map) {
         if (map == null || map.isEmpty()) return "{}";
+        if (map.size() > 50) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "customAnswers: at most 50 fields allowed");
+        }
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            String key = entry.getKey();
+            if (key == null || key.isBlank() || key.length() > 100) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "customAnswers: invalid field key");
+            }
+            validateCustomAnswerValue(key, entry.getValue());
+        }
         try {
-            return JSON.writeValueAsString(map);
+            String json = JSON.writeValueAsString(map);
+            if (json.length() > 32_768) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "customAnswers: payload exceeds maximum size");
+            }
+            return json;
         } catch (JsonProcessingException exception) {
             return "{}";
         }
+    }
+
+    private static void validateCustomAnswerValue(String key, Object value) {
+        if (value == null || value instanceof Boolean || value instanceof Number) {
+            return;
+        }
+        if (value instanceof String s) {
+            if (s.length() > 2_000) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                        "customAnswers." + key + ": must be at most 2000 characters");
+            }
+            return;
+        }
+        if (value instanceof java.util.Collection<?> list) {
+            if (list.size() > 30) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                        "customAnswers." + key + ": at most 30 selections allowed");
+            }
+            for (Object item : list) {
+                if (item != null && !(item instanceof String || item instanceof Number || item instanceof Boolean)) {
+                    throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                            "customAnswers." + key + ": nested objects are not allowed");
+                }
+                if (item instanceof String str && str.length() > 500) {
+                    throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                            "customAnswers." + key + ": option value exceeds 500 characters");
+                }
+            }
+            return;
+        }
+        throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                "customAnswers." + key + ": unsupported value type");
     }
 
     private static String blankToNull(String value) {

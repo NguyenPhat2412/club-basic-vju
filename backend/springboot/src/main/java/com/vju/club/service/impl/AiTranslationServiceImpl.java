@@ -39,7 +39,9 @@ public class AiTranslationServiceImpl implements AiTranslationService {
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final Set<String> SUPPORTED_TARGETS = Set.of("en", "ja");
     private static final int MAX_TEXT_LENGTH = 2000;
+    private static final int MAX_OUTPUT_LENGTH = 4000;
     private static final int MAX_BATCH_SIZE = 30;
+    private static final int MAX_MEMORY_ENTRIES = 10_000;
 
     private final I18nTranslationRepository repository;
     private final AiProperties aiProperties;
@@ -168,8 +170,13 @@ public class AiTranslationServiceImpl implements AiTranslationService {
         for (Map.Entry<String, String> entry : newlyTranslated.entrySet()) {
             String src = entry.getKey();
             String dst = entry.getValue();
+            if (dst.length() > MAX_OUTPUT_LENGTH) {
+                dst = dst.substring(0, MAX_OUTPUT_LENGTH).strip();
+            }
             persistTranslation(locale, src, dst, modelLabel);
-            localeCache.put(src, dst);
+            if (localeCache.size() < MAX_MEMORY_ENTRIES) {
+                localeCache.put(src, dst);
+            }
             result.put(src, dst);
         }
 

@@ -206,6 +206,7 @@ export function RolesManagementView() {
             <div className="relative w-full sm:w-56">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
+                maxLength={200}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Tìm tên quyền chức năng…"

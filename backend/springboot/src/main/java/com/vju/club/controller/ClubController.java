@@ -17,6 +17,7 @@ import com.vju.club.enums.ClubStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -47,8 +48,8 @@ public class ClubController {
     @PublicEndpoint(reason = "Public club discovery on landing page")
     @GetMapping(ApiPaths.PUBLIC_CLUBS)
     public PageResponse<ClubResponse> listPublic(
-            @RequestParam(defaultValue = "") String query,
-            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "") @Size(max = 200) String query,
+            @RequestParam(required = false) @Size(max = 200) String category,
             @RequestParam(defaultValue = "0") @Min(0) int offset,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
         return clubService.listPublic(query, category, offset, limit);
@@ -80,8 +81,8 @@ public class ClubController {
 
     @GetMapping(ApiPaths.CLUBS)
     public PageResponse<ClubResponse> list(Actor actor,
-                                   @RequestParam(defaultValue = "") String query,
-                                   @RequestParam(required = false) String category,
+                                   @RequestParam(defaultValue = "") @Size(max = 200) String query,
+                                   @RequestParam(required = false) @Size(max = 200) String category,
                                    @RequestParam(required = false) ClubStatus status,
                                    @RequestParam(defaultValue = "0") @Min(0) int offset,
                                    @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
@@ -127,6 +128,8 @@ public class ClubController {
                 .contentType(MediaType.parseMediaType(media.contentType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.inline().filename(media.fileName(), StandardCharsets.UTF_8).build().toString())
+                .header("X-Content-Type-Options", "nosniff")
+                .header("Content-Security-Policy", "default-src 'none'; img-src 'self' data: blob:; style-src 'unsafe-inline'")
                 .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400");
         if (media.sizeBytes() != null && media.sizeBytes() > 0) {
             builder.contentLength(media.sizeBytes());

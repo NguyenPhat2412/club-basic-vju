@@ -163,6 +163,7 @@ export function HomeClubsEventsSections({
               />
               <input
                 type="search"
+                maxLength={200}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={m.clubsSection.searchPlaceholder}

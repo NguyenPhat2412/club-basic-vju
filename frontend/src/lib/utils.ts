@@ -27,6 +27,39 @@ export const VAULT_ALLOWED_EXTENSIONS = new Set([
   "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv", "md", "png", "jpg", "jpeg", "gif", "webp", "zip",
 ]);
 export const VAULT_ACCEPT = Array.from(VAULT_ALLOWED_EXTENSIONS, (e) => `.${e}`).join(",");
+export const APPLICATION_ALLOWED_EXTENSIONS = new Set(["pdf", "doc", "docx", "png", "jpg", "jpeg", "gif", "webp"]);
+export const IMAGE_ALLOWED_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp"]);
+
+export function safeExternalHref(raw?: string | null): string | null {
+  const trimmed = raw?.trim();
+  if (!trimmed || trimmed.length > 2000) return null;
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+export function validateApplicationFile(
+  file: Pick<File, "name" | "size">,
+  allowedExts: ReadonlySet<string> = APPLICATION_ALLOWED_EXTENSIONS,
+  maxBytes = VAULT_MAX_BYTES,
+): string | null {
+  if (file.size <= 0) return `Tệp "${file.name}" rỗng (0 B). Vui lòng chọn tệp có dữ liệu.`;
+  if (file.size > maxBytes) {
+    return `Tệp "${file.name}" vượt quá giới hạn ${Math.round(maxBytes / (1024 * 1024))} MB.`;
+  }
+  const ext = fileExtension(file.name);
+  if (!allowedExts.has(ext)) {
+    return `Định dạng .${ext} không được phép tải lên. Chỉ hỗ trợ ${Array.from(allowedExts).join(", ")}.`;
+  }
+  return null;
+}
+
+export function validateImageUploadFile(file: Pick<File, "name" | "size">, maxMb = 10): string | null {
+  return validateApplicationFile(file, IMAGE_ALLOWED_EXTENSIONS, maxMb * 1024 * 1024);
+}
 
 export function fileExtension(name: string, contentType?: string): string {
   const dot = name.lastIndexOf(".");

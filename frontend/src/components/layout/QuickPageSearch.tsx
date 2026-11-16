@@ -184,6 +184,7 @@ export function QuickPageSearch({
         <Search size={13.5} className="shrink-0 text-slate-400" />
         <input
           ref={desktopInputRef}
+          maxLength={120}
           value={query}
           onFocus={() => setOpen(true)}
           onChange={(e) => {
@@ -225,6 +226,7 @@ export function QuickPageSearch({
             <Search size={14} className="shrink-0 text-slate-400" />
             <input
               ref={mobileInputRef}
+              maxLength={120}
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);

@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ImageIcon, Loader2, Sparkles, Upload, X } from "lucide-react";
 import { apiModel, Club, describeError } from "@/lib/api";
 import { ClubMediaCatalog, clubSlugFromCode, resolveMediaUrl } from "@/lib/media";
-import { cn } from "@/lib/utils";
+import { cn, validateImageUploadFile } from "@/lib/utils";
 import { FormField } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -162,6 +162,8 @@ export function ClubMediaPickerField({
   const handleUploadFile = async (file: File) => {
     setUploadError(null);
     setUploadNotice(null);
+    const fileErr = validateImageUploadFile(file, 10);
+    if (fileErr) { setUploadError(fileErr); return; }
     if (!clubId) {
       onPendingFileChange?.(file);
       setPendingFileName(file.name);

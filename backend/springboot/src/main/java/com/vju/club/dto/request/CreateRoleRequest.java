@@ -15,5 +15,5 @@ public record CreateRoleRequest(
         @NotBlank @Size(max = 200) String name,
         @Size(max = 2000) String description,
         @NotNull PermissionScope scope,
-        @NotEmpty Set<@NotNull UUID> permissionIds
+        @NotEmpty @Size(max = 200) Set<@NotNull UUID> permissionIds
 ) { }

@@ -4,6 +4,8 @@ import { useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, Upload, X } from "lucide-react";
 import { describeError, type User } from "@/lib/api";
+import { resolveMediaUrl } from "@/lib/media";
+import { validateImageUploadFile } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
@@ -30,7 +32,7 @@ export function AvatarField({
     },
     onError: (err) => toast.error(describeError(err)),
   });
-  const url = value.trim();
+  const url = resolveMediaUrl(value) ?? "";
 
   return (
     <FormField label="Ảnh đại diện">
@@ -70,7 +72,13 @@ export function AvatarField({
           onChange={(e) => {
             const file = e.target.files?.[0];
             e.target.value = "";
-            if (file) mutation.mutate(file);
+            if (!file) return;
+            const err = validateImageUploadFile(file, 5);
+            if (err) {
+              toast.error(err);
+              return;
+            }
+            mutation.mutate(file);
           }}
         />
       </div>

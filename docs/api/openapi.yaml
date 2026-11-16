@@ -5455,31 +5455,31 @@ components:
         formId: {type: [string, 'null'], format: uuid}
         preferredDepartmentId: {type: [string, 'null'], format: uuid}
         secondaryDepartmentId: {type: [string, 'null'], format: uuid}
-        applicantPhone: {type: [string, 'null'], maxLength: 30}
+        applicantPhone: {type: [string, 'null'], maxLength: 32, pattern: '^[0-9+().\- ]*$'}
         facultyMajor: {type: [string, 'null'], maxLength: 150}
         academicYear: {type: [string, 'null'], maxLength: 50}
         gpa: {type: [string, 'null'], maxLength: 20}
-        socialPortfolioUrl: {type: [string, 'null'], maxLength: 500}
+        socialPortfolioUrl: {type: [string, 'null'], maxLength: 500, pattern: '^(https?://.+)?$'}
         selfIntroduction: {type: [string, 'null'], maxLength: 2000}
         skillsExperience: {type: [string, 'null'], maxLength: 2000}
         availability: {type: [string, 'null'], maxLength: 500}
-        customAnswers: {type: [object, 'null']}
+        customAnswers: {type: [object, 'null'], maxProperties: 50}
         applicantId: {type: [string, 'null'], format: uuid, description: Dành cho quản lý tạo hồ sơ đơn hộ (yêu cầu quyền application.create)}
     UpdateClubApplicationRequest:
       type: object
       properties:
         preferredDepartmentId: {type: [string, 'null'], format: uuid}
         secondaryDepartmentId: {type: [string, 'null'], format: uuid}
-        applicantPhone: {type: [string, 'null'], maxLength: 30}
+        applicantPhone: {type: [string, 'null'], maxLength: 32, pattern: '^[0-9+().\- ]*$'}
         facultyMajor: {type: [string, 'null'], maxLength: 150}
         academicYear: {type: [string, 'null'], maxLength: 50}
         gpa: {type: [string, 'null'], maxLength: 20}
-        socialPortfolioUrl: {type: [string, 'null'], maxLength: 500}
+        socialPortfolioUrl: {type: [string, 'null'], maxLength: 500, pattern: '^(https?://.+)?$'}
         selfIntroduction: {type: [string, 'null'], maxLength: 2000}
         skillsExperience: {type: [string, 'null'], maxLength: 2000}
         availability: {type: [string, 'null'], maxLength: 500}
         message: {type: [string, 'null'], maxLength: 2000}
-        customAnswers: {type: [object, 'null']}
+        customAnswers: {type: [object, 'null'], maxProperties: 50}
         status: {type: [string, 'null'], enum: [PENDING, APPROVED, REJECTED, CANCELLED, null], description: Không cho phép đổi trạng thái qua PUT (409 APPLICATION_STATUS_TRANSITION_NOT_ALLOWED)}
         reviewNote: {type: [string, 'null'], maxLength: 1000}
         internalNote: {type: [string, 'null'], maxLength: 1000}
@@ -7341,7 +7341,7 @@ components:
         status: {type: [string, 'null'], enum: [TODO, IN_PROGRESS, DONE, null]}
         progressPercent: {type: [integer, 'null'], minimum: 0, maximum: 100}
         progressNote: {type: [string, 'null'], maxLength: 2000}
-        reportLink: {type: [string, 'null'], maxLength: 1000}
+        reportLink: {type: [string, 'null'], maxLength: 1000, pattern: '^(https?://.+)?$'}
     VerifyTaskRequest:
       type: object
       properties: {}
@@ -7676,11 +7676,11 @@ components:
       type: object
       required: [locale, texts]
       properties:
-        locale: {type: string}
+        locale: {type: string, maxLength: 16}
         texts:
           type: array
           maxItems: 30
-          items: {type: string}
+          items: {type: string, maxLength: 2000}
     TranslateBatchResponse:
       type: object
       required: [locale, translations, provider]

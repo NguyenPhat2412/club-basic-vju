@@ -3,6 +3,7 @@ package com.vju.club.dto.request;
 import com.vju.club.annotation.ValidClubCode;
 import com.vju.club.dto.record.ClubOverviewConfig;
 import static com.vju.club.common.UserConstants.WEB_URL_PATTERN;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 import org.hibernate.validator.constraints.URL;
@@ -15,7 +16,7 @@ public record ClubPatchRequest(
         @Size(max = 2000) String description,
         @Size(max = 200) String activityField,
         @Email @Size(max = 320) String contactEmail,
-        ClubOverviewConfig overviewConfig
+        @Valid ClubOverviewConfig overviewConfig
 ) {
     public ClubPatchRequest(
             String code,

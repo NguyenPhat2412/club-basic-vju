@@ -140,6 +140,7 @@ export function CustomFieldsInputs({
             {field.type === "TEXTAREA" ? (
               <Textarea
                 rows={3}
+                maxLength={2000}
                 value={val}
                 placeholder={field.placeholder || "Nhập câu trả lời..."}
                 onChange={(e) => onChange(field.key, e.target.value)}
@@ -164,6 +165,7 @@ export function CustomFieldsInputs({
             ) : (
               <Input
                 type={field.type === "DATE" ? "date" : field.type === "URL" ? "url" : "text"}
+                maxLength={field.type === "DATE" ? undefined : 500}
                 value={val}
                 placeholder={field.placeholder || "Nhập thông tin..."}
                 onChange={(e) => onChange(field.key, e.target.value)}

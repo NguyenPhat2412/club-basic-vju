@@ -10,5 +10,5 @@ public record UpdateRoleRequest(
         @Size(max = 200) String name,
         @Size(max = 2000) String description,
         Boolean active,
-        @Size(min = 1) Set<@NotNull UUID> permissionIds
+        @Size(min = 1, max = 200) Set<@NotNull UUID> permissionIds
 ) { }

@@ -116,22 +116,29 @@ public class ChatSummaryServiceImpl {
             content = content.substring(firstBrace, lastBrace + 1);
         }
         JsonNode parsed = JSON.readTree(content);
+        String summaryText = parsed.path("summary").asText("Đã tóm tắt " + messages.size() + " tin nhắn.").strip();
+        if (summaryText.length() > 4000) {
+            summaryText = summaryText.substring(0, 4000).strip();
+        }
         return new ExtractedDigest(
-                parsed.path("summary").asText("Đã tóm tắt " + messages.size() + " tin nhắn."),
+                summaryText,
                 readList(parsed.path("decisions")),
                 readList(parsed.path("suggestedTasks")),
                 readList(parsed.path("suggestedEvents")),
-                resolvedModel
+                resolvedModel.length() > 100 ? resolvedModel.substring(0, 100) : resolvedModel
         );
     }
 
     private static List<String> readList(JsonNode arrayNode) {
         if (!arrayNode.isArray()) return Collections.emptyList();
         List<String> list = new ArrayList<>();
-        arrayNode.forEach(item -> {
+        for (JsonNode item : arrayNode) {
+            if (list.size() >= 20) break;
             String text = item.asText("").strip();
-            if (!text.isEmpty()) list.add(text);
-        });
+            if (!text.isEmpty()) {
+                list.add(text.length() > 500 ? text.substring(0, 500).strip() : text);
+            }
+        }
         return list;
     }
 

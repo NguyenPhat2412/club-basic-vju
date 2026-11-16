@@ -7,6 +7,7 @@ import com.vju.club.dto.record.UploadedFile;
 import com.vju.club.dto.response.UserResponse;
 import com.vju.club.security.Actor;
 import com.vju.club.service.UserAvatarService;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
@@ -40,13 +41,14 @@ public class UserAvatarController {
 
     @PublicEndpoint(reason = "Avatar images shown next to names; file names are unguessable")
     @GetMapping(ApiPaths.PUBLIC_AVATAR)
-    public ResponseEntity<InputStreamResource> avatar(@PathVariable String fileName) {
+    public ResponseEntity<InputStreamResource> avatar(@PathVariable @Size(max = 128) String fileName) {
         ClubMediaContent media = avatarService.open(fileName);
         ResponseEntity.BodyBuilder builder = ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(media.contentType()))
                 // each upload gets a new file name, so the bytes behind a URL never change
                 .header(HttpHeaders.CACHE_CONTROL, "public, max-age=31536000, immutable")
-                .header("X-Content-Type-Options", "nosniff");
+                .header("X-Content-Type-Options", "nosniff")
+                .header("Content-Security-Policy", "default-src 'none'; img-src 'self' data: blob:; style-src 'unsafe-inline'");
         if (media.sizeBytes() != null && media.sizeBytes() > 0) builder.contentLength(media.sizeBytes());
         return builder.body(new InputStreamResource(media.content()));
     }

@@ -9,6 +9,7 @@ import com.vju.club.dto.response.PageResponse;
 import com.vju.club.security.Actor;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -24,11 +25,11 @@ public class AuditController {
 
     @GetMapping(ApiPaths.AUDIT_LOGS)
     public PageResponse<AuditLogResponse> search(Actor actor,
-                                                 @RequestParam(required = false) String resourceType,
+                                                 @RequestParam(required = false) @Size(max = 64) String resourceType,
                                                  @RequestParam(required = false) UUID resourceId,
                                                  @RequestParam(required = false) UUID actorUserId,
                                                  @RequestParam(required = false) UUID clubId,
-                                                 @RequestParam(required = false) String action,
+                                                 @RequestParam(required = false) @Size(max = 64) String action,
                                                  @RequestParam(defaultValue = "0") @Min(0) int offset,
                                                  @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
         return auditQueryService.search(actor, resourceType, resourceId, actorUserId, clubId, action, offset, limit);

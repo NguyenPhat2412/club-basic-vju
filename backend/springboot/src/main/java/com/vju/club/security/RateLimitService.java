@@ -11,6 +11,8 @@ import java.util.concurrent.atomic.AtomicLong;
 @Service
 @RequiredArgsConstructor
 public class RateLimitService {
+    private static final int MAX_TRACKED_KEYS = 10_000;
+
     private final RateLimitProperties properties;
     private final Clock clock;
     private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
@@ -22,8 +24,15 @@ public class RateLimitService {
             return new RateLimitDecision(true, limit, 0);
         }
 
+        long nowMillis = clock.millis();
         long windowMillis = Math.max(1, properties.getWindow().toMillis());
-        sweepExpired(clock.millis(), windowMillis);
+        sweepExpired(nowMillis, windowMillis);
+        if (windows.size() >= MAX_TRACKED_KEYS && !windows.containsKey(key)) {
+            windows.entrySet().removeIf(entry -> nowMillis - entry.getValue().startedAt >= windowMillis);
+            if (windows.size() >= MAX_TRACKED_KEYS) {
+                return new RateLimitDecision(false, 0, Math.max(1, (windowMillis + 999) / 1000));
+            }
+        }
         RateLimitDecision[] decisionHolder = new RateLimitDecision[1];
         windows.compute(key, (ignored, existing) -> {
             long now = clock.millis();

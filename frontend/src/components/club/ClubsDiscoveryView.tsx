@@ -15,12 +15,9 @@ import { describeError } from "@/components/shared/ListPage";
 import { CountBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/input";
-import {
-  buildApplicationSubmitPayload,
-  ClubApplicationDraft,
-  EMPTY_APPLICATION_DRAFT,
-  inferApplicantCategory,
-} from "@/forms/application/application-form";
+import { toast } from "@/components/ui/toast";
+import { validateApplicationFile } from "@/lib/utils";
+import { buildApplicationSubmitPayload, ClubApplicationDraft, EMPTY_APPLICATION_DRAFT, inferApplicantCategory } from "@/forms/application/application-form";
 import { ClubDiscoveryCard } from "./ClubDiscoveryCard";
 import { ClubRecruitmentDrawer, PendingAttachment } from "./ClubRecruitmentDrawer";
 
@@ -213,17 +210,12 @@ function ClubsDiscoveryContent() {
 
   const handleSelectFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
     if (!files.length) return;
     const maxCount = activeForm.data?.maxAttachments ?? 5;
-    setAttachments((prev) => {
-      const next = [...prev];
-      for (const file of files) {
-        if (next.length >= maxCount) break;
-        next.push({ file, category: inferApplicantCategory(file.name) });
-      }
-      return next;
-    });
-    e.target.value = "";
+    const valid = files.filter((file) => { const err = validateApplicationFile(file); if (err) toast.error(err); return !err; });
+    if (!valid.length) return;
+    setAttachments((prev) => [...prev, ...valid.slice(0, Math.max(0, maxCount - prev.length)).map((file) => ({ file, category: inferApplicantCategory(file.name) }))]);
   };
 
   const selectedMembership = activeSelected ? currentMembershipByClub.get(activeSelected.id) : undefined;

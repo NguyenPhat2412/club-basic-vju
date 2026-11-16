@@ -31,6 +31,18 @@ class RateLimitFilterTest {
     }
 
     @Test
+    void limitsPublicAiTranslateBatchEndpoint() throws Exception {
+        RateLimitFilter filter = filter(1);
+
+        MockHttpServletResponse first = invoke(filter, "/api/v1/public/i18n/translate-batch", "10.0.0.9");
+        MockHttpServletResponse second = invoke(filter, "/api/v1/public/i18n/translate-batch", "10.0.0.9");
+
+        assertThat(first.getStatus()).isEqualTo(200);
+        assertThat(second.getStatus()).isEqualTo(429);
+        assertThat(second.getContentAsString()).contains("RATE_LIMIT_EXCEEDED");
+    }
+
+    @Test
     void doesNotLimitBusinessEndpointsOrNonPostRequests() throws Exception {
         RateLimitFilter filter = filter(1);
 

@@ -14,7 +14,7 @@ import { describeError, ListPage } from "@/components/shared/ListPage";
 import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/input";
-import { formatDay } from "@/lib/utils";
+import { formatDay, validateApplicationFile } from "@/lib/utils";
 import { inferApplicantCategory } from "@/forms/application/application-form";
 import { MyApplicationOverlays } from "./MyApplicationOverlays";
 
@@ -134,6 +134,10 @@ function MyApplicationsContent() {
 
   const uploadFile = useMutation({
     mutationFn: async ({ appId, files }: { appId: string; files: File[] }) => {
+      for (const file of files) {
+        const err = validateApplicationFile(file);
+        if (err) throw new Error(err);
+      }
       for (const file of files) {
         await apiModel.uploadApplicationFile(appId, file, inferApplicantCategory(file.name));
       }

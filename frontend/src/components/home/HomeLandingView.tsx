@@ -106,6 +106,8 @@ function HomeLandingContent({ initialAuthMode }: { initialAuthMode?: AuthModalMo
   };
 
   const signOut = async () => {
+    const { clearChatMessageCache } = await import("@/lib/chat-message-cache");
+    clearChatMessageCache();
     await apiModel.logout().catch(() => undefined);
     queryClient.setQueryData(["optional-me"], null);
     queryClient.setQueryData(["me"], null);

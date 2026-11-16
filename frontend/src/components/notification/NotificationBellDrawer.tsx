@@ -237,6 +237,7 @@ export function NotificationBellDrawer({
                 <div className="relative">
                   <Search size={13.5} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
+                    maxLength={200}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Lọc nhanh tiêu đề, nội dung thông báo…"

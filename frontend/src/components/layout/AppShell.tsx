@@ -115,6 +115,8 @@ function AppShellInner({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await queryClient.cancelQueries();
+    const { clearChatMessageCache } = await import("@/lib/chat-message-cache");
+    clearChatMessageCache();
     queryClient.setQueryData(["optional-me"], null);
     queryClient.setQueryData(["me"], null);
     queryClient.removeQueries({ queryKey: ["me", "permissions"] });

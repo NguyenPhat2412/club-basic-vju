@@ -42,8 +42,15 @@ async function ensureCsrfToken() {
 }
 
 function redirectToLogin() {
-  if (typeof window !== 'undefined' && window.location.pathname !== '/home') {
-    window.location.replace(new URL('/home?auth=login', window.location.origin));
+  if (typeof window !== 'undefined') {
+    try {
+      window.sessionStorage.removeItem('vju-club:chat-windows:v1');
+    } catch {
+      // Ignore storage access errors
+    }
+    if (window.location.pathname !== '/home') {
+      window.location.replace(new URL('/home?auth=login', window.location.origin));
+    }
   }
 }
 

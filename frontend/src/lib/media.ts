@@ -35,7 +35,7 @@ export function resolveMediaUrl(url?: string | null): string | null {
   const trimmed = url.trim();
   if (!trimmed) return null;
   const apiOrigin = API_BASE.replace(/\/api\/v1\/?$/, "");
-  if (trimmed.startsWith("/api/v1/public/clubs/")) {
+  if (trimmed.startsWith("/api/v1/public/clubs/") || trimmed.startsWith("/api/v1/public/avatars/")) {
     return `${apiOrigin}${trimmed}`;
   }
   if (trimmed.startsWith("/images/")) {
@@ -44,7 +44,7 @@ export function resolveMediaUrl(url?: string | null): string | null {
   if (/^https?:\/\//i.test(trimmed)) {
     try {
       const parsed = new URL(trimmed);
-      if (parsed.pathname.startsWith("/api/v1/public/clubs/")) {
+      if (parsed.pathname.startsWith("/api/v1/public/clubs/") || parsed.pathname.startsWith("/api/v1/public/avatars/")) {
         return `${apiOrigin}${parsed.pathname}${parsed.search}`;
       }
       if (parsed.pathname.startsWith("/images/")) {
@@ -77,5 +77,5 @@ export function toApiMediaUrl(value?: string | null, originFallback = "http://lo
         : originFallback;
     return `${origin.replace(/\/$/, "")}${trimmed}`;
   }
-  return trimmed;
+  return "";
 }

@@ -29,7 +29,7 @@ import { Input, Select } from "@/components/ui/input";
 import { EMPTY_FORM_DRAFT } from "@/forms/application/application-form";
 import { FormBuilderModal } from "@/components/application/FormBuilderModal";
 import { FormInspectDrawer } from "@/components/application/FormInspectDrawer";
-import { formatDay } from "@/lib/utils";
+import { formatDay, validateApplicationFile } from "@/lib/utils";
 
 export function FormsTab({
   clubId,
@@ -81,6 +81,10 @@ export function FormsTab({
 
   const uploadFormFileMutation = useMutation({
     mutationFn: async ({ formId, files, category }: { formId: string; files: File[]; category: string }) => {
+      for (const file of files) {
+        const err = validateApplicationFile(file);
+        if (err) throw new Error(err);
+      }
       for (const file of files) {
         await apiModel.uploadFormFile(clubId, formId, file, category);
       }

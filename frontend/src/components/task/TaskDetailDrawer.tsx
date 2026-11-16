@@ -10,7 +10,7 @@ import { describeError } from "@/components/shared/ListPage";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/input";
-import { formatDateTime, formatDay } from "@/lib/utils";
+import { formatDateTime, formatDay, safeExternalHref } from "@/lib/utils";
 
 export function TaskDetailDrawer({
   clubId,
@@ -127,19 +127,25 @@ export function TaskDetailDrawer({
               ["Ghi chú tiến độ", selected.progressNote || "—"],
               [
                 "Link báo cáo",
-                selected.reportLink ? (
-                  <a
-                    key="r"
-                    href={selected.reportLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="break-all text-primary underline"
-                  >
-                    {selected.reportLink}
-                  </a>
-                ) : (
-                  "—"
-                ),
+                (() => {
+                  const safeUrl = safeExternalHref(selected.reportLink);
+                  if (!selected.reportLink) return "—";
+                  return safeUrl ? (
+                    <a
+                      key="r"
+                      href={safeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="break-all text-primary underline"
+                    >
+                      {selected.reportLink}
+                    </a>
+                  ) : (
+                    <span key="r-raw" className="break-all text-muted-foreground">
+                      {selected.reportLink}
+                    </span>
+                  );
+                })(),
               ],
               ["Mô tả", <p key="d" className="whitespace-pre-line">{selected.description || "—"}</p>],
             ]}
@@ -197,6 +203,7 @@ export function TaskDetailDrawer({
                       type="number"
                       min={0}
                       max={100}
+                      step={1}
                       value={progressPercent}
                       onChange={(e) => setProgressPercent(Number(e.target.value))}
                     />
@@ -204,6 +211,7 @@ export function TaskDetailDrawer({
                 </div>
                 <FormField label="Ghi chú tiến độ">
                   <Textarea
+                    maxLength={2000}
                     value={progressNote}
                     onChange={(e) => setProgressNote(e.target.value)}
                     placeholder="Báo cáo ngắn gọn kết quả hoặc vướng mắc…"
@@ -211,6 +219,8 @@ export function TaskDetailDrawer({
                 </FormField>
                 <FormField label="Đường dẫn báo cáo / sản phẩm">
                   <Input
+                    type="url"
+                    maxLength={1000}
                     value={reportLink}
                     onChange={(e) => setReportLink(e.target.value)}
                     placeholder="https://…"

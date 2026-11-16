@@ -96,6 +96,8 @@ public class ChatMediaController {
                     .header(HttpHeaders.CONTENT_RANGE, "bytes " + start + "-" + end + "/" + total)
                     .header(HttpHeaders.ETAG, etag)
                     .header(HttpHeaders.CACHE_CONTROL, "private, max-age=86400, immutable")
+                    .header("X-Content-Type-Options", "nosniff")
+                    .header("Content-Security-Policy", "default-src 'none'; img-src 'self' data: blob:; media-src 'self'; style-src 'unsafe-inline'")
                     .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                     .body(new InputStreamResource(slice));
         }
@@ -106,6 +108,8 @@ public class ChatMediaController {
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
                 .header(HttpHeaders.ETAG, etag)
                 .header(HttpHeaders.CACHE_CONTROL, "private, max-age=86400, immutable")
+                .header("X-Content-Type-Options", "nosniff")
+                .header("Content-Security-Policy", "default-src 'none'; img-src 'self' data: blob:; media-src 'self'; style-src 'unsafe-inline'")
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .body(new InputStreamResource(stored.content()));
     }

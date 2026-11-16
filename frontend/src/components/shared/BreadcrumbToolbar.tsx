@@ -48,6 +48,7 @@ export function BreadcrumbToolbar({
           <div className="relative w-full sm:w-56">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
+              maxLength={200}
               value={search.value}
               onChange={(e) => search.onChange(e.target.value)}
               placeholder={search.placeholder ?? "Tìm kiếm…"}

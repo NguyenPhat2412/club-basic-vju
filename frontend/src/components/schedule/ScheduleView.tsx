@@ -271,14 +271,14 @@ export function ScheduleView() {
                     </Select>
                   </FormField>
                   <FormField label="Phần trăm hoàn thành (%)" required>
-                    <Input type="number" min={0} max={100} value={progressPercent} onChange={(e) => setProgressPercent(Number(e.target.value))} />
+                    <Input type="number" min={0} max={100} step={1} value={progressPercent} onChange={(e) => setProgressPercent(Number(e.target.value))} />
                   </FormField>
                 </div>
                 <FormField label="Báo cáo tiến độ">
-                  <Textarea value={progressNote} onChange={(e) => setProgressNote(e.target.value)} placeholder="Ghi chú kết quả thực hiện…" />
+                  <Textarea maxLength={2000} value={progressNote} onChange={(e) => setProgressNote(e.target.value)} placeholder="Ghi chú kết quả thực hiện…" />
                 </FormField>
                 <FormField label="Đường dẫn sản phẩm / tài liệu">
-                  <Input value={reportLink} onChange={(e) => setReportLink(e.target.value)} placeholder="https://…" />
+                  <Input type="url" maxLength={1000} value={reportLink} onChange={(e) => setReportLink(e.target.value)} placeholder="https://…" />
                 </FormField>
                 <Button size="sm" className="justify-self-end" disabled={updateProgress.isPending} onClick={() => updateProgress.mutate()}>
                   <Send size={14} /> Lưu tiến độ

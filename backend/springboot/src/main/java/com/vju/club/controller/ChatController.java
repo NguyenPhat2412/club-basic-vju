@@ -112,7 +112,7 @@ public class ChatController {
     @Operation(summary = "Đánh dấu đã đọc tin nhắn trong kênh")
     public ResponseEntity<Void> markChannelRead(Actor actor,
                                                 @PathVariable UUID channelId,
-                                                @RequestBody(required = false) MarkChannelReadRequest request) {
+                                                @Valid @RequestBody(required = false) MarkChannelReadRequest request) {
         chatService.markChannelRead(actor, channelId, request != null ? request.lastReadMessageId() : null);
         return ResponseEntity.noContent().build();
     }

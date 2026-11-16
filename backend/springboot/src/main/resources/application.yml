@@ -46,9 +46,13 @@ springdoc:
 
 server:
   port: ${SERVER_PORT:8080}
+  max-http-request-header-size: 16KB
   # Trust X-Forwarded-For only from private/loopback proxies (Tomcat RemoteIpValve), so the
   # rate limiter sees the real client IP behind nginx without letting clients spoof it.
   forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:native}
+  tomcat:
+    max-http-form-post-size: 2MB
+    max-swallow-size: 2MB
   compression:
     enabled: true
     mime-types: application/json,text/html,text/xml,text/plain,application/javascript,text/css
