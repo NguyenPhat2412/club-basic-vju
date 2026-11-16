@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Hash, MessageSquare, Plus } from "lucide-react";
-import { apiModel, ChatChannel, ChatMessage, Department, Page } from "@/lib/api";
+import { apiModel, ChatChannel, ChatMessage, Department } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
 import { setActiveViewedChatChannel, UNREAD_SUMMARY_QUERY_KEY } from "@/hooks/notification/useGlobalRealtimeNotifications";
 import { useChannelMessages, useChannelPinnedMessages, useClubChannels, useClubQuickReplies, useWarmClubChannels } from "@/hooks/chat/useClubChat";
+import { useChatMessageActions } from "@/hooks/chat/useChatMessageActions";
 import { useChatMessageSender } from "@/hooks/chat/useChatMessageSender";
 import { useChatRealtime } from "@/hooks/chat/useChatRealtime";
-import { filterChannelMessages, reconcilePinnedChatMessage, saveCachedChannelWindow, saveCachedPinnedMessages } from "@/lib/chat-message-cache";
+import { filterChannelMessages } from "@/lib/chat-message-cache";
 import { DocumentPreviewModal, PreviewTarget } from "@/components/document/DocumentPreviewModal";
 import { ChatDocumentPickerModal } from "@/components/management/ChatDocumentPickerModal";
 import { ChatMessagePane } from "@/components/management/ChatMessagePane";
@@ -134,36 +135,14 @@ export function ChatTab({
     onError: (e) => onError(describeError(e)),
   });
 
-  const applyOptimisticPinState = (targetChId: string, msg: ChatMessage, nextPinned: boolean) => {
-    const updatedMsg: ChatMessage = { ...msg, pinned: nextPinned, pinnedAt: nextPinned ? new Date().toISOString() : null };
-    queryClient.setQueryData<ChatMessage[]>(["channel-pinned-messages", targetChId], (old) => {
-      const next = reconcilePinnedChatMessage(old, updatedMsg, nextPinned);
-      saveCachedPinnedMessages(targetChId, next, userId, activeChannelId || targetChId);
-      return next;
-    });
-    queryClient.setQueryData<Page<ChatMessage>>(["channel-messages", targetChId], (old) => {
-      if (!old) return old;
-      const next = {
-        ...old,
-        items: old.items.map((m) => (m.id === msg.id ? { ...m, pinned: nextPinned } : m)),
-      };
-      saveCachedChannelWindow(targetChId, next, userId, activeChannelId || targetChId);
-      return next;
-    });
-  };
-
-  const togglePinMessage = (msg: ChatMessage, forceUnpin = false) => {
-    const targetChId = msg.channelId;
-    const nextPinned = forceUnpin ? false : !msg.pinned;
-    applyOptimisticPinState(targetChId, msg, nextPinned);
-    const req = nextPinned
-      ? apiModel.pinMessage(targetChId, msg.id)
-      : apiModel.unpinMessage(targetChId, msg.id);
-    void req.catch((e) => {
-      applyOptimisticPinState(targetChId, msg, !nextPinned);
-      onError(describeError(e));
-    });
-  };
+  const { togglePinMessage, toggleReactionMessage } = useChatMessageActions({
+    queryClient,
+    activeChannelId,
+    userId,
+    userFullName: session.user?.fullName,
+    setOlderByChannel,
+    onError,
+  });
 
   if (channels.isPending) return <LoadingRows />;
   if (channels.isError) return <ErrorState message={describeError(channels.error)} onRetry={() => channels.refetch()} />;
@@ -308,6 +287,7 @@ export function ChatTab({
             latestSummary={summaries.data?.[0]}
             pinnedMessages={pinnedMessages}
             onTogglePin={(m) => togglePinMessage(m)}
+            onToggleReaction={toggleReactionMessage}
             onUnpinById={(messageId) => {
               const target =
                 pinnedMessages.find((m) => m.id === messageId) ??

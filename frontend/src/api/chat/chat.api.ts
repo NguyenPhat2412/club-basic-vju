@@ -55,6 +55,11 @@ export const chatApi = {
     api<void>(API_ROUTES.channels.messagePin(channelId, messageId), {
       method: 'DELETE',
     }),
+  toggleMessageReaction: (channelId: string, messageId: string, emoji: string) =>
+    api<ChatMessage>(API_ROUTES.channels.messageReactions(channelId, messageId), {
+      method: 'PUT',
+      body: JSON.stringify({ emoji }),
+    }),
   sendMessage: (channelId: string, input: SendMessageInput) => {
     const body = typeof input === 'string' ? { content: input } : input;
     return api<ChatMessage>(API_ROUTES.channels.messages(channelId), {

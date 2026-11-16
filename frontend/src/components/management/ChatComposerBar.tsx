@@ -8,6 +8,8 @@ import {
   isComposerImeComposing,
   shouldIgnoreTrailingComposerImeText,
 } from "@/lib/chat-message-cache";
+import { insertTextAtCursor } from "@/forms/chat/chat-emojis";
+import { ChatEmojiPopover } from "@/components/management/ChatEmojiPopover";
 import { ChatQuickReplyPopover, filterQuickReplies } from "@/components/management/ChatQuickReplyPopover";
 import { cn, fileExtension, formatSize } from "@/lib/utils";
 import type { ChatMessage, ChatQuickReply, DocumentItem, StagedChatMedia } from "@/types";
@@ -51,34 +53,41 @@ export function ChatComposerBar(props: ChatComposerBarProps) {
 
   const mediaInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const imeGuardRef = useRef<ComposerPostSendImeGuard | null>(null);
   const [quickPanelOpen, setQuickPanelOpen] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const [slashDismissedFor, setSlashDismissedFor] = useState("");
   const [slashIndex, setSlashIndex] = useState(0);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
 
   const trimmedStart = content.trimStart();
   const isSlashTrigger =
-    trimmedStart.startsWith("/") &&
-    !trimmedStart.includes(" ") &&
-    !trimmedStart.includes("\n") &&
-    slashDismissedFor !== trimmedStart;
+    trimmedStart.startsWith("/") && !trimmedStart.includes(" ") && !trimmedStart.includes("\n") && slashDismissedFor !== trimmedStart;
   const slashQuery = isSlashTrigger ? trimmedStart : "";
   const slashMatches = isSlashTrigger ? filterQuickReplies(quickReplies, slashQuery) : [];
   const showQuickPopover = quickPanelOpen || isSlashTrigger;
-
   const canSubmitNow = Boolean(content.trim() || attachedDoc || stagedMedia.length > 0);
 
   const triggerSubmit = () => {
     if (!canSubmitNow) return;
-    imeGuardRef.current = {
-      hasUserTypedSinceSend: false,
-      sentAt: Date.now(),
-      sentBody: content,
-    };
+    imeGuardRef.current = { hasUserTypedSinceSend: false, sentAt: Date.now(), sentBody: content };
     setQuickPanelOpen(false);
     setFileMenuOpen(false);
+    setEmojiOpen(false);
     onSend();
+  };
+
+  const handleInsertEmoji = (emoji: string) => {
+    const el = textareaRef.current;
+    const { nextValue, nextCursor } = insertTextAtCursor(content, emoji, el?.selectionStart, el?.selectionEnd);
+    onContentChange(nextValue);
+    requestAnimationFrame(() => {
+      if (el) {
+        el.focus();
+        el.setSelectionRange(nextCursor, nextCursor);
+      }
+    });
   };
 
   const handleInsertQuickReply = (reply: ChatQuickReply, sendImmediately = false) => {
@@ -103,28 +112,8 @@ export function ChatComposerBar(props: ChatComposerBarProps) {
       data-testid="chat-composer"
       className="relative shrink-0 border-t border-border/60 bg-card"
     >
-      <input
-        ref={mediaInputRef}
-        type="file"
-        multiple
-        accept={MEDIA_ACCEPT}
-        className="hidden"
-        onChange={(e) => {
-          if (e.target.files?.length) onAddFiles(e.target.files);
-          e.target.value = "";
-        }}
-      />
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept={FILE_ACCEPT}
-        className="hidden"
-        onChange={(e) => {
-          if (e.target.files?.length) onAddFiles(e.target.files);
-          e.target.value = "";
-        }}
-      />
+      <input ref={mediaInputRef} type="file" multiple accept={MEDIA_ACCEPT} className="hidden" onChange={(e) => { if (e.target.files?.length) onAddFiles(e.target.files); e.target.value = ""; }} />
+      <input ref={fileInputRef} type="file" multiple accept={FILE_ACCEPT} className="hidden" onChange={(e) => { if (e.target.files?.length) onAddFiles(e.target.files); e.target.value = ""; }} />
 
       <ChatQuickReplyPopover
         open={showQuickPopover}
@@ -228,11 +217,23 @@ export function ChatComposerBar(props: ChatComposerBarProps) {
 
       <div className="flex items-end gap-1 px-2.5 py-1.5">
         <div className="relative flex shrink-0 items-center gap-0.5">
+          <ChatEmojiPopover
+            open={emojiOpen}
+            onOpenChange={(next) => {
+              if (next) {
+                setFileMenuOpen(false);
+                setQuickPanelOpen(false);
+              }
+              setEmojiOpen(next);
+            }}
+            onSelectEmoji={handleInsertEmoji}
+          />
           <button
             type="button"
             aria-label="Gửi hình ảnh hoặc video"
             title="Gửi ảnh hoặc video"
             onClick={() => {
+              setEmojiOpen(false);
               setFileMenuOpen(false);
               setQuickPanelOpen(false);
               mediaInputRef.current?.click();
@@ -300,6 +301,7 @@ export function ChatComposerBar(props: ChatComposerBarProps) {
             aria-label="Tin nhắn nhanh"
             title="Tin nhắn nhanh (/)"
             onClick={() => {
+              setEmojiOpen(false);
               setFileMenuOpen(false);
               setQuickPanelOpen((v) => !v);
             }}
@@ -313,6 +315,7 @@ export function ChatComposerBar(props: ChatComposerBarProps) {
         </div>
 
         <textarea
+          ref={textareaRef}
           rows={1}
           aria-label="Nội dung tin nhắn"
           value={content}

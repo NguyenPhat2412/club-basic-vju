@@ -19,8 +19,10 @@ import {
 import type { ChatMessage } from "@/lib/api";
 import type { PreviewTarget } from "@/components/document/DocumentPreviewModal";
 import { resolveChatMessageStatusMeta } from "@/forms/chat/chat-status-meta";
+import { getTelegramJumbomojiCount } from "@/forms/chat/chat-emojis";
 import { formatChatTimeCompact } from "@/lib/chat-message-cache";
 import { ChatMediaCollage } from "@/components/management/ChatMediaCollage";
+import { ChatReactionPills, ChatReactionTrigger } from "@/components/management/ChatMessageReactions";
 import { cn, formatDateTime, formatSize } from "@/lib/utils";
 
 function senderInitials(name: string): string {
@@ -71,6 +73,7 @@ export function ChatMessageBubble({
   canSend,
   onReply,
   onTogglePin,
+  onToggleReaction,
   onJumpToMessage,
   onRetryMessage,
   onDismissFailed,
@@ -87,6 +90,7 @@ export function ChatMessageBubble({
   canSend: boolean;
   onReply: (msg: ChatMessage) => void;
   onTogglePin: (msg: ChatMessage) => void;
+  onToggleReaction: (msg: ChatMessage, emoji: string) => void;
   onJumpToMessage: (messageId: string) => void;
   onRetryMessage: (clientTempId: string) => void;
   onDismissFailed: (channelId: string, clientTempId: string) => void;
@@ -105,11 +109,22 @@ export function ChatMessageBubble({
     isMine && statusMeta && !isFailed && (isLatestOwn || isPending)
   );
   const attachments = m.attachments ?? [];
+  const reactions = m.reactions ?? [];
+  const myEmojis = new Set(
+    currentUserId
+      ? reactions.filter((r) => r.reactorIds?.includes(currentUserId)).map((r) => r.emoji)
+      : []
+  );
   const mediaCount = attachments.filter((a) => a.mediaKind === "IMAGE" || a.mediaKind === "VIDEO").length;
   const hasText = Boolean(m.content?.trim());
   const isBareMedia =
     mediaCount > 0 && mediaCount === attachments.length && !hasText && !m.replyToId && !m.documentId;
+  const jumbomojiCount = getTelegramJumbomojiCount(
+    m.content ?? "",
+    attachments.length > 0 || Boolean(m.documentId) || Boolean(m.replyToId)
+  );
   const senderLabel = isBot ? "Trợ lý AI CLB" : m.senderFullName || "Thành viên";
+  const canInteract = canSend && !m.optimistic && !isFailed;
 
   return (
     <div
@@ -151,6 +166,9 @@ export function ChatMessageBubble({
 
         <div className={cn("flex max-w-full items-center gap-1", isMine && "flex-row-reverse")}>
           <div
+            onDoubleClick={() => {
+              if (canInteract) onToggleReaction(m, "❤️");
+            }}
             className={cn(
               "relative max-w-full text-[13px] leading-snug",
               isBareMedia
@@ -188,7 +206,15 @@ export function ChatMessageBubble({
             )}
 
             {hasText && (
-              <p className={cn("whitespace-pre-line break-words", attachments.length > 0 && "mt-1.5")}>
+              <p
+                className={cn(
+                  "whitespace-pre-line break-words",
+                  attachments.length > 0 && "mt-1.5",
+                  jumbomojiCount === 1 && "py-0.5 text-[34px] leading-none",
+                  jumbomojiCount === 2 && "py-0.5 text-[28px] leading-tight",
+                  jumbomojiCount === 3 && "py-0.5 text-[23px] leading-tight"
+                )}
+              >
                 {m.content}
               </p>
             )}
@@ -254,8 +280,13 @@ export function ChatMessageBubble({
             )}
           </div>
 
-          {canSend && !m.optimistic && !isFailed && (
+          {canInteract && (
             <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+              <ChatReactionTrigger
+                isMine={isMine}
+                myEmojis={myEmojis}
+                onToggleReaction={(emoji) => onToggleReaction(m, emoji)}
+              />
               <button
                 type="button"
                 title="Trả lời"
@@ -280,6 +311,14 @@ export function ChatMessageBubble({
             </div>
           )}
         </div>
+
+        <ChatReactionPills
+          reactions={reactions}
+          currentUserId={currentUserId}
+          isMine={isMine}
+          canReact={canInteract}
+          onToggleReaction={(emoji) => onToggleReaction(m, emoji)}
+        />
 
         {showExplicitReceiptFooter && statusMeta && (
           <div

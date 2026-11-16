@@ -5023,6 +5023,37 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+  /channels/{channelId}/messages/{messageId}/reactions:
+    put:
+      operationId: chat.toggleMessageReaction
+      summary: Toggle a Telegram-style emoji reaction on a chat message
+      tags: [Chat]
+      x-permission: chat.send
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: channelId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: messageId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ToggleChatReactionRequest'}
+      responses:
+        '200':
+          description: Updated chat message with reaction summaries
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ChatMessage'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
   /channels/{channelId}/attachments:
     post:
       operationId: chat.uploadAttachment
@@ -7526,6 +7557,9 @@ components:
         senderFullName: {type: [string, 'null']}
         senderType: {type: string, enum: [USER, AI_BOT]}
         content: {type: string}
+        reactions:
+          type: array
+          items: {$ref: '#/components/schemas/ChatReactionSummary'}
         pinned: {type: boolean}
         pinnedAt: {type: [string, 'null'], format: date-time}
         pinnedByName: {type: [string, 'null']}
@@ -7537,6 +7571,23 @@ components:
           items: {type: string}
         lastSeenAt: {type: [string, 'null'], format: date-time}
         createdAt: {type: string, format: date-time}
+    ToggleChatReactionRequest:
+      type: object
+      required: [emoji]
+      properties:
+        emoji: {type: string, minLength: 1, maxLength: 24}
+    ChatReactionSummary:
+      type: object
+      required: [emoji, count, reactorIds, reactorNames]
+      properties:
+        emoji: {type: string}
+        count: {type: integer}
+        reactorIds:
+          type: array
+          items: {type: string, format: uuid}
+        reactorNames:
+          type: array
+          items: {type: string}
     ChatMessageListResponse:
       type: object
       required: [items, total, offset, limit]

@@ -148,6 +148,11 @@ const DYNAMIC_PATTERNS: PatternRule[] = [
     ja: (_, who, when) => (when ? `${who} が既読 (${when})` : `${who} が既読`),
   },
   {
+    pattern: /^Đã thả\s+(\S+):\s*(.+)$/i,
+    en: (_, emoji, who) => `Reacted ${emoji}: ${who}`,
+    ja: (_, emoji, who) => `${emoji} でリアクション: ${who}`,
+  },
+  {
     pattern: /^XEM TẤT CẢ CÂU LẠC BỘ(?:\s*\((\d+)\))?$/i,
     en: (_, count) => (count ? `VIEW ALL CLUBS (${count})` : 'VIEW ALL CLUBS'),
     ja: (_, count) => (count ? `すべてのクラブを見る (${count})` : 'すべてのクラブを見る'),

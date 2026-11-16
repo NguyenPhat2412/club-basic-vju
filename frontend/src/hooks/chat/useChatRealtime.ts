@@ -153,10 +153,18 @@ export function useChatRealtime({
         return;
       }
 
-      if ((event.type === 'MESSAGE_PINNED' || event.type === 'MESSAGE_UNPINNED') && event.message) {
+      if (
+        (event.type === 'MESSAGE_PINNED' ||
+          event.type === 'MESSAGE_UNPINNED' ||
+          event.type === 'MESSAGE_REACTION_UPDATED') &&
+        event.message
+      ) {
         const incoming = readRealtimeChatMessage(event.message, event.channelId);
         if (!incoming) return;
-        const isPinned = event.type === 'MESSAGE_PINNED';
+        const isPinned =
+          event.type === 'MESSAGE_REACTION_UPDATED'
+            ? Boolean(incoming.pinned)
+            : event.type === 'MESSAGE_PINNED';
         queryClient.setQueryData<ChatMessage[]>(
           ['channel-pinned-messages', event.channelId],
           (old) => {

@@ -42,6 +42,7 @@ export type ChatMessagePaneProps = {
   latestSummary?: AiSummary;
   pinnedMessages: ChatMessage[];
   onTogglePin: (msg: ChatMessage) => void;
+  onToggleReaction: (msg: ChatMessage, emoji: string) => void;
   onUnpinById: (messageId: string) => void;
   messagesPending: boolean;
   messagesError: unknown;
@@ -77,7 +78,7 @@ export function ChatMessagePane(props: ChatMessagePaneProps) {
   const {
     clubId, activeChannel, currentUserId, wsStatus, wsError, canSend, canSummarize,
     canManageQuickReplies, quickReplies, quickRepliesLoading, summarizePending,
-    onSummarize, latestSummary, pinnedMessages, onTogglePin, onUnpinById,
+    onSummarize, latestSummary, pinnedMessages, onTogglePin, onToggleReaction, onUnpinById,
     messagesPending, messagesError, onRetryMessages, orderedMessages,
     hasOlder, loadingOlder, onLoadOlder, typingUsers, replyTo, onReply, onClearReply, attachedDoc,
     onOpenDocPicker, onClearAttachedDoc, stagedMedia, onAddFiles, onRemoveStagedMedia,
@@ -316,9 +317,7 @@ export function ChatMessagePane(props: ChatMessagePaneProps) {
         ) : (
           (() => {
             const latestOwnId = currentUserId
-              ? [...orderedMessages]
-                  .reverse()
-                  .find((item) => item.senderType !== "AI_BOT" && item.senderId === currentUserId)?.id
+              ? [...orderedMessages].reverse().find((item) => item.senderType !== "AI_BOT" && item.senderId === currentUserId)?.id
               : undefined;
             return orderedMessages.map((m, idx) => (
               <ChatMessageBubble
@@ -332,6 +331,7 @@ export function ChatMessagePane(props: ChatMessagePaneProps) {
                 canSend={canSend}
                 onReply={onReply}
                 onTogglePin={onTogglePin}
+                onToggleReaction={onToggleReaction}
                 onJumpToMessage={jumpToMessage}
                 onRetryMessage={onRetryMessage}
                 onDismissFailed={onDismissFailed}

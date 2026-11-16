@@ -20,6 +20,7 @@ public record ChatMessageResponse(
         Long documentSizeBytes,
         Boolean documentPreviewable,
         List<ChatAttachmentResponse> attachments,
+        List<ChatReactionSummaryResponse> reactions,
         boolean pinned,
         OffsetDateTime pinnedAt,
         String pinnedByName,
@@ -48,6 +49,7 @@ public record ChatMessageResponse(
                 documentSizeBytes,
                 documentPreviewable,
                 items == null ? List.of() : items,
+                reactions == null ? List.of() : reactions,
                 pinned,
                 pinnedAt,
                 pinnedByName,
@@ -83,6 +85,7 @@ public record ChatMessageResponse(
                 base.documentSizeBytes(),
                 base.documentPreviewable(),
                 base.attachments() == null ? List.of() : base.attachments(),
+                base.reactions() == null ? List.of() : base.reactions(),
                 base.pinned(),
                 base.pinnedAt(),
                 base.pinnedByName(),
@@ -91,6 +94,38 @@ public record ChatMessageResponse(
                 seenCount,
                 seenByNames == null ? List.of() : seenByNames,
                 lastSeenAt,
+                base.clientTempId(),
+                base.createdAt()
+        );
+    }
+
+    public static ChatMessageResponse enrichReactions(ChatMessageResponse base,
+                                                      List<ChatReactionSummaryResponse> reactions) {
+        return new ChatMessageResponse(
+                base.id(),
+                base.channelId(),
+                base.senderId(),
+                base.senderFullName(),
+                base.senderType(),
+                base.content(),
+                base.replyToId(),
+                base.replyToSenderName(),
+                base.replyToPreview(),
+                base.documentId(),
+                base.documentName(),
+                base.documentContentType(),
+                base.documentSizeBytes(),
+                base.documentPreviewable(),
+                base.attachments() == null ? List.of() : base.attachments(),
+                reactions == null ? List.of() : reactions,
+                base.pinned(),
+                base.pinnedAt(),
+                base.pinnedByName(),
+                base.deliveryStatus() != null ? base.deliveryStatus() : "SENT",
+                base.deliveredAt(),
+                base.seenCount(),
+                base.seenByNames() == null ? List.of() : base.seenByNames(),
+                base.lastSeenAt(),
                 base.clientTempId(),
                 base.createdAt()
         );

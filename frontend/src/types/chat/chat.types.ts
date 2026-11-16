@@ -55,6 +55,13 @@ export type ChatMessageDeliveryStatus =
   | 'seen'
   | 'failed';
 
+export type ChatReactionSummary = {
+  emoji: string;
+  count: number;
+  reactorIds: string[];
+  reactorNames: string[];
+};
+
 export type ChatMessage = {
   id: string;
   channelId: string;
@@ -70,6 +77,7 @@ export type ChatMessage = {
   documentSizeBytes?: number;
   documentPreviewable?: boolean;
   attachments?: ChatAttachment[];
+  reactions?: ChatReactionSummary[];
   pinned?: boolean;
   pinnedAt?: string | null;
   pinnedByName?: string | null;
@@ -91,6 +99,7 @@ export type ChatRealtimeEvent = {
     | 'SUMMARY_POSTED'
     | 'MESSAGE_PINNED'
     | 'MESSAGE_UNPINNED'
+    | 'MESSAGE_REACTION_UPDATED'
     | 'CHANNEL_DELIVERED'
     | 'CHANNEL_READ'
     | 'TYPING'

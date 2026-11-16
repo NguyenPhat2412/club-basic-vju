@@ -5,6 +5,7 @@ import com.vju.club.dto.request.CreateChatChannelRequest;
 import com.vju.club.dto.request.MarkChannelReadRequest;
 import com.vju.club.dto.request.SendChatMessageRequest;
 import com.vju.club.dto.request.SummarizeChatRequest;
+import com.vju.club.dto.request.ToggleChatReactionRequest;
 import com.vju.club.dto.response.AiSummaryResponse;
 import com.vju.club.dto.response.ChatChannelResponse;
 import com.vju.club.dto.response.ChatMessageResponse;
@@ -12,6 +13,7 @@ import com.vju.club.dto.response.PageResponse;
 import com.vju.club.security.Actor;
 import com.vju.club.service.ChatService;
 import com.vju.club.service.impl.ChatPinService;
+import com.vju.club.service.impl.ChatReactionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -39,6 +42,7 @@ import java.util.UUID;
 public class ChatController {
     private final ChatService chatService;
     private final ChatPinService chatPinService;
+    private final ChatReactionService chatReactionService;
 
     @PostMapping(ApiPaths.CLUB_CHANNELS)
     @Operation(summary = "Tạo kênh trao đổi nội bộ CLB, Ban hoặc Sự kiện")
@@ -93,6 +97,15 @@ public class ChatController {
                                              @PathVariable UUID messageId) {
         chatPinService.unpinMessage(actor, channelId, messageId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping(ApiPaths.CHANNEL_MESSAGE_REACTIONS)
+    @Operation(summary = "Thả hoặc gỡ biểu tượng cảm xúc trên tin nhắn (kiểu Telegram) và phát realtime")
+    public ChatMessageResponse toggleMessageReaction(Actor actor,
+                                                     @PathVariable UUID channelId,
+                                                     @PathVariable UUID messageId,
+                                                     @Valid @RequestBody ToggleChatReactionRequest request) {
+        return chatReactionService.toggleReaction(actor, channelId, messageId, request);
     }
 
     @PostMapping(ApiPaths.CHANNEL_READ)

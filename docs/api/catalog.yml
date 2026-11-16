@@ -1098,3 +1098,10 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: chat.send
+- method: PUT
+  path: /api/v1/channels/{channelId}/messages/{messageId}/reactions
+  module: chat-realtime
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.send

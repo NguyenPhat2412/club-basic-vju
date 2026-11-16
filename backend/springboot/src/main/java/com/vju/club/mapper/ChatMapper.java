@@ -47,6 +47,7 @@ public interface ChatMapper {
     @Mapping(target = "documentSizeBytes", expression = "java(liveDocSize(message.getDocument()))")
     @Mapping(target = "documentPreviewable", expression = "java(liveDocPreviewable(message.getDocument()))")
     @Mapping(target = "attachments", expression = "java(java.util.List.of())")
+    @Mapping(target = "reactions", expression = "java(java.util.List.of())")
     @Mapping(target = "pinnedByName", source = "pinnedBy.fullName")
     @Mapping(target = "deliveryStatus", expression = "java(message.getDeliveryStatus() != null ? message.getDeliveryStatus().name() : \"SENT\")")
     @Mapping(target = "seenCount", constant = "0")

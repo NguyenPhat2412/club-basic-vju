@@ -300,4 +300,86 @@ class ChatMediaAndQuickReplyTest {
         assertThat(enriched.getFirst().seenCount()).isEqualTo(1);
         assertThat(enriched.getFirst().seenByNames()).containsExactly("Trần Văn Bob");
     }
+
+    @Test
+    void telegramReactionServiceValidatesEmojiTogglesAndEnrichesBatch() {
+        assertThat(ChatReactionService.normalizeAndValidateEmoji(" ❤️ ")).isEqualTo("❤️");
+        assertThat(ChatReactionService.normalizeAndValidateEmoji("🔥")).isEqualTo("🔥");
+        assertThatThrownBy(() -> ChatReactionService.normalizeAndValidateEmoji("hello"))
+                .isInstanceOf(ApiException.class);
+        assertThatThrownBy(() -> ChatReactionService.normalizeAndValidateEmoji("<script>"))
+                .isInstanceOf(ApiException.class);
+
+        var accessPolicy = mock(ChatAccessPolicy.class);
+        var msgRepo = mock(com.vju.club.repository.ChatMessageRepository.class);
+        var reactionRepo = mock(com.vju.club.repository.ChatMessageReactionRepository.class);
+        var userRepo = mock(UserRepository.class);
+        var membershipRepo = mock(com.vju.club.repository.MembershipRepository.class);
+        var deptMemberRepo = mock(com.vju.club.repository.DepartmentMemberRepository.class);
+        var mediaService = mock(ChatMediaService.class);
+        var events = mock(org.springframework.context.ApplicationEventPublisher.class);
+        ChatMapper mapper = Mappers.getMapper(ChatMapper.class);
+
+        UUID clubId = UUID.randomUUID();
+        UUID channelId = UUID.randomUUID();
+        UUID msgId = UUID.randomUUID();
+        UUID aliceId = UUID.randomUUID();
+        UUID bobId = UUID.randomUUID();
+        java.time.OffsetDateTime now = java.time.OffsetDateTime.parse("2026-11-16T11:30:00Z");
+
+        Club club = new Club();
+        club.setId(clubId);
+        ChatChannel ch = new ChatChannel();
+        ch.setId(channelId);
+        ch.setClub(club);
+        User alice = new User();
+        alice.setId(aliceId);
+        alice.setFullName("Nguyễn Minh Alice");
+        ChatMessage msg = new ChatMessage();
+        msg.setId(msgId);
+        msg.setChannel(ch);
+        msg.setSender(alice);
+        msg.setContent("Chào team!");
+        ReflectionTestUtils.setField(msg, "createdAt", now);
+
+        when(accessPolicy.requireChannelAccessById(any(), org.mockito.ArgumentMatchers.eq(channelId), any(), org.mockito.ArgumentMatchers.eq(true))).thenReturn(ch);
+        when(userRepo.findById(aliceId)).thenReturn(Optional.of(alice));
+        when(msgRepo.findWithRelationsById(msgId)).thenReturn(Optional.of(msg));
+        when(membershipRepo.findActiveUserIdsByClubId(clubId)).thenReturn(List.of(aliceId, bobId));
+        when(mediaService.enrichMessages(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(reactionRepo.deleteByMessageAndUserAndEmoji(msgId, aliceId, "❤️")).thenReturn(0);
+        when(reactionRepo.findByMessage_IdAndUser_IdOrderByCreatedAtAsc(msgId, aliceId)).thenReturn(List.of());
+
+        com.vju.club.repository.ChatMessageReactionRepository.ReactionRow row1 =
+                new com.vju.club.repository.ChatMessageReactionRepository.ReactionRow() {
+                    @Override public UUID getMessageId() { return msgId; }
+                    @Override public UUID getUserId() { return aliceId; }
+                    @Override public String getFullName() { return "Nguyễn Minh Alice"; }
+                    @Override public String getEmoji() { return "❤️"; }
+                };
+        com.vju.club.repository.ChatMessageReactionRepository.ReactionRow row2 =
+                new com.vju.club.repository.ChatMessageReactionRepository.ReactionRow() {
+                    @Override public UUID getMessageId() { return msgId; }
+                    @Override public UUID getUserId() { return bobId; }
+                    @Override public String getFullName() { return "Trần Văn Bob"; }
+                    @Override public String getEmoji() { return "❤️"; }
+                };
+        when(reactionRepo.findReactionRowsByMessageIds(List.of(msgId))).thenReturn(List.of(row1, row2));
+
+        ChatReactionService service = new ChatReactionService(
+                accessPolicy, msgRepo, reactionRepo, userRepo, membershipRepo, deptMemberRepo,
+                mediaService, mapper, events, Clock.fixed(now.toInstant(), java.time.ZoneOffset.UTC));
+
+        var updated = service.toggleReaction(
+                new Actor(aliceId),
+                channelId,
+                msgId,
+                new com.vju.club.dto.request.ToggleChatReactionRequest("❤️"));
+
+        assertThat(updated.reactions()).hasSize(1);
+        assertThat(updated.reactions().getFirst().emoji()).isEqualTo("❤️");
+        assertThat(updated.reactions().getFirst().count()).isEqualTo(2);
+        assertThat(updated.reactions().getFirst().reactorIds()).containsExactly(aliceId, bobId);
+        assertThat(updated.reactions().getFirst().reactorNames()).containsExactly("Nguyễn Minh Alice", "Trần Văn Bob");
+    }
 }

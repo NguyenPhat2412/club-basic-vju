@@ -6,6 +6,11 @@ import {
   normalizeMessageDeliveryStatus,
   resolveChatMessageStatusMeta,
 } from "@/forms/chat/chat-status-meta";
+import {
+  getTelegramJumbomojiCount,
+  insertTextAtCursor,
+  toggleOptimisticMessageReaction,
+} from "@/forms/chat/chat-emojis";
 import { translateUiText } from "@/i18n/translator";
 import { reconcileIncomingChatMessage } from "@/lib/chat-message-cache";
 import type { ChatMessage } from "@/types/chat/chat.types";
@@ -112,4 +117,42 @@ test("i18n translates all 6 chat message status labels, tooltips, and dynamic se
   assert.equal(translateUiText("Đã gửi lên máy chủ lúc 17:27:31", "en"), "Sent to server at 17:27:31");
   assert.equal(translateUiText("Đã nhận lúc 17:28:00", "ja"), "受信日時: 17:28:00");
   assert.equal(translateUiText("Đã xem bởi Nguyễn Văn A lúc 17:29:00", "en"), "Seen by Nguyễn Văn A at 17:29:00");
+  assert.equal(translateUiText("Đã thả ❤️: Nguyễn Văn A", "en"), "Reacted ❤️: Nguyễn Văn A");
+  assert.equal(translateUiText("Thả cảm xúc", "ja"), "リアクションを追加");
+});
+
+test("Telegram reactions toggle, cap at 3 per user, insert emojis at cursor, and detect 1-3 Jumbomojis", () => {
+  let msg = makeMsg({ id: "m-tg" });
+  msg = toggleOptimisticMessageReaction(msg, "❤️", "u-me", "Local Admin");
+  msg = toggleOptimisticMessageReaction(msg, "🔥", "u-me", "Local Admin");
+  msg = toggleOptimisticMessageReaction(msg, "🎉", "u-me", "Local Admin");
+  assert.deepEqual(
+    msg.reactions?.map((r) => r.emoji),
+    ["❤️", "🔥", "🎉"]
+  );
+
+  // 4th distinct reaction replaces oldest ("❤️") just like Telegram
+  msg = toggleOptimisticMessageReaction(msg, "👏", "u-me", "Local Admin");
+  assert.deepEqual(
+    msg.reactions?.map((r) => r.emoji),
+    ["🔥", "🎉", "👏"]
+  );
+
+  // Clicking existing reaction toggles it off
+  msg = toggleOptimisticMessageReaction(msg, "🎉", "u-me", "Local Admin");
+  assert.deepEqual(
+    msg.reactions?.map((r) => r.emoji),
+    ["🔥", "👏"]
+  );
+
+  const inserted = insertTextAtCursor("Chào CLB!", " 🔥", 4, 4);
+  assert.equal(inserted.nextValue, "Chào 🔥 CLB!");
+  assert.equal(inserted.nextCursor, 7);
+
+  assert.equal(getTelegramJumbomojiCount("❤️", false), 1);
+  assert.equal(getTelegramJumbomojiCount("🔥 🎉", false), 2);
+  assert.equal(getTelegramJumbomojiCount("👍 ❤️ 🚀", false), 3);
+  assert.equal(getTelegramJumbomojiCount("👍 ❤️ 🚀 💯", false), 0);
+  assert.equal(getTelegramJumbomojiCount("Chào ❤️", false), 0);
+  assert.equal(getTelegramJumbomojiCount("❤️", true), 0);
 });

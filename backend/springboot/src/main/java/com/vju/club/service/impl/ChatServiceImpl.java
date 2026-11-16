@@ -104,6 +104,8 @@ public class ChatServiceImpl implements ChatService {
     private ChatAndVaultNotifier notifier;
     @Autowired(required = false)
     private ChatDeliveryReceiptService deliveryReceiptService;
+    @Autowired(required = false)
+    private ChatReactionService reactionService;
 
     @Override
     @Transactional
@@ -280,7 +282,8 @@ public class ChatServiceImpl implements ChatService {
     private List<ChatMessageResponse> enrich(UUID channelId, List<ChatMessage> entities) {
         List<ChatMessageResponse> items = chatMediaService.enrichMessages(
                 entities.stream().map(chatMapper::toMessageResponse).toList());
-        return deliveryReceiptService != null ? deliveryReceiptService.enrichReceipts(channelId, items) : items;
+        if (deliveryReceiptService != null) items = deliveryReceiptService.enrichReceipts(channelId, items);
+        return reactionService != null ? reactionService.enrichReactions(items) : items;
     }
 
     @Override

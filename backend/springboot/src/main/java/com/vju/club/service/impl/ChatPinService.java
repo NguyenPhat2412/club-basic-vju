@@ -45,6 +45,8 @@ public class ChatPinService {
 
     @Autowired(required = false)
     private NotificationService notificationService;
+    @Autowired(required = false)
+    private ChatReactionService reactionService;
 
     @Transactional(readOnly = true)
     public List<ChatMessageResponse> listPinnedMessages(Actor actor, UUID channelId) {
@@ -53,7 +55,8 @@ public class ChatPinService {
                 .limit(MAX_PINNED_PER_CHANNEL)
                 .map(chatMapper::toMessageResponse)
                 .toList();
-        return chatMediaService.enrichMessages(raw);
+        List<ChatMessageResponse> enriched = chatMediaService.enrichMessages(raw);
+        return reactionService != null ? reactionService.enrichReactions(enriched) : enriched;
     }
 
     @Transactional
@@ -144,6 +147,7 @@ public class ChatPinService {
 
     private ChatMessageResponse enrichSingle(ChatMessage message) {
         List<ChatMessageResponse> enriched = chatMediaService.enrichMessages(List.of(chatMapper.toMessageResponse(message)));
+        if (reactionService != null) enriched = reactionService.enrichReactions(enriched);
         return enriched.getFirst();
     }
 
