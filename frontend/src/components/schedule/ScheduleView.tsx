@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Calendar, ClipboardCheck, Eye, FilterX, MapPin, Send } from "lucide-react";
 import { apiModel, TaskItem } from "@/lib/api";
 import { BreadcrumbToolbar, SegmentedTabs } from "@/components/shared/BreadcrumbToolbar";
 import { DataTable } from "@/components/shared/DataTable";
 import { DetailList, EntityDrawer, Section } from "@/components/shared/Overlays";
+import { Pagination } from "@/components/shared/Pagination";
 import { EmptyState, ErrorState, LoadingRows, Notice } from "@/components/shared/States";
 import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError, ListPage } from "@/components/shared/ListPage";
@@ -18,8 +19,13 @@ import { formatDateTime, formatDay } from "@/lib/utils";
 export function ScheduleView() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<"tasks" | "calendar">("tasks");
+  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("");
+  const [calTypeFilter, setCalTypeFilter] = useState<"" | "EVENT" | "TASK">("");
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [limit, setLimit] = useState(20);
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
   const [progressStatus, setProgressStatus] = useState("IN_PROGRESS");
   const [progressPercent, setProgressPercent] = useState(50);
@@ -28,19 +34,51 @@ export function ScheduleView() {
   const [notice, setNotice] = useState("");
 
   const myTasks = useQuery({
-    queryKey: ["my-tasks", statusFilter, overdueOnly],
-    queryFn: () =>
-      apiModel.myTasks({
-        status: statusFilter || undefined,
-        overdue: overdueOnly ? true : undefined,
-        limit: 50,
-      }),
+    queryKey: ["my-tasks", statusFilter, overdueOnly, offset, limit],
+    queryFn: () => apiModel.myTasks({ status: statusFilter || undefined, overdue: overdueOnly ? true : undefined, offset, limit }),
   });
   const myCalendar = useQuery({
     queryKey: ["my-calendar"],
     queryFn: () => apiModel.myCalendar(),
     enabled: tab === "calendar",
   });
+
+  const filteredTasks = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (myTasks.data?.items ?? []).filter((t) => {
+      if (priorityFilter && t.priority !== priorityFilter) return false;
+      if (!q) return true;
+      return (
+        t.title.toLowerCase().includes(q) ||
+        (t.clubName ?? "").toLowerCase().includes(q) ||
+        (t.departmentName ?? "").toLowerCase().includes(q) ||
+        (t.eventTitle ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [myTasks.data?.items, search, priorityFilter]);
+
+  const filteredCalendar = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (myCalendar.data ?? []).filter((c) => {
+      if (calTypeFilter && c.itemType !== calTypeFilter) return false;
+      if (!q) return true;
+      return (
+        c.title.toLowerCase().includes(q) ||
+        c.clubName.toLowerCase().includes(q) ||
+        (c.location ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [myCalendar.data, search, calTypeFilter]);
+
+  const hasFilters = Boolean(search.trim() || statusFilter || priorityFilter || calTypeFilter || overdueOnly);
+  const clearFilters = () => {
+    setSearch("");
+    setStatusFilter("");
+    setPriorityFilter("");
+    setCalTypeFilter("");
+    setOverdueOnly(false);
+    setOffset(0);
+  };
 
   const updateProgress = useMutation({
     mutationFn: () =>
@@ -76,27 +114,27 @@ export function ScheduleView() {
         crumbs={[{ label: "Trang chủ", href: "/clubs" }, { label: "Cá nhân" }, { label: "Lịch & Công việc" }]}
         titleBadge={
           <CountBadge>
-            {tab === "tasks" ? `${myTasks.data?.total ?? 0} việc` : `${myCalendar.data?.length ?? 0} mục lịch`}
+            {tab === "tasks" ? `${myTasks.data?.total ?? 0} việc` : `${filteredCalendar.length} mục lịch`}
           </CountBadge>
         }
+        search={{
+          value: search,
+          onChange: (v) => { setSearch(v); setOffset(0); },
+          placeholder: tab === "tasks" ? "Tìm tên việc, CLB, sự kiện…" : "Tìm nội dung lịch, CLB, địa điểm…",
+        }}
         extraActions={
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <SegmentedTabs
               value={tab}
-              onChange={setTab}
+              onChange={(v) => { setTab(v); setOffset(0); }}
               options={[
                 { value: "tasks", label: "Việc được giao" },
                 { value: "calendar", label: "Lịch tổng hợp" },
               ]}
             />
-            {tab === "tasks" && (
+            {tab === "tasks" ? (
               <>
-                <Select
-                  aria-label="Lọc trạng thái công việc"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="h-9 w-full text-xs sm:w-44"
-                >
+                <Select aria-label="Lọc trạng thái công việc" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setOffset(0); }} className="h-9 w-full text-xs sm:w-40">
                   <option value="">Tất cả trạng thái</option>
                   <option value="TODO">Chưa bắt đầu</option>
                   <option value="IN_PROGRESS">Đang thực hiện</option>
@@ -104,26 +142,27 @@ export function ScheduleView() {
                   <option value="COMPLETED">Đã nghiệm thu</option>
                   <option value="CANCELLED">Đã huỷ</option>
                 </Select>
-                <Button
-                  size="sm"
-                  variant={overdueOnly ? "destructive" : "outline"}
-                  onClick={() => setOverdueOnly((v) => !v)}
-                >
+                <Select aria-label="Lọc độ ưu tiên" value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className="h-9 w-full text-xs sm:w-36">
+                  <option value="">Mọi ưu tiên</option>
+                  <option value="HIGH">Cao (HIGH)</option>
+                  <option value="MEDIUM">Trung bình</option>
+                  <option value="LOW">Thấp (LOW)</option>
+                </Select>
+                <Button size="sm" variant={overdueOnly ? "destructive" : "outline"} onClick={() => { setOverdueOnly((v) => !v); setOffset(0); }}>
                   <AlertTriangle size={13} /> {overdueOnly ? "Đang lọc: Quá hạn" : "Quá hạn"}
                 </Button>
-                {(statusFilter || overdueOnly) && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setStatusFilter("");
-                      setOverdueOnly(false);
-                    }}
-                  >
-                    <FilterX size={13} /> Xoá lọc
-                  </Button>
-                )}
               </>
+            ) : (
+              <Select aria-label="Lọc loại mục lịch" value={calTypeFilter} onChange={(e) => setCalTypeFilter(e.target.value as "" | "EVENT" | "TASK")} className="h-9 w-full text-xs sm:w-44">
+                <option value="">Tất cả mục lịch</option>
+                <option value="EVENT">Sự kiện CLB</option>
+                <option value="TASK">Hạn công việc</option>
+              </Select>
+            )}
+            {hasFilters && (
+              <Button size="sm" variant="outline" onClick={clearFilters}>
+                <FilterX size={13} /> Xoá lọc
+              </Button>
             )}
           </div>
         }
@@ -140,87 +179,98 @@ export function ScheduleView() {
           <LoadingRows />
         ) : myTasks.isError ? (
           <ErrorState message={describeError(myTasks.error)} onRetry={() => myTasks.refetch()} />
-        ) : !myTasks.data.items.length ? (
+        ) : !filteredTasks.length ? (
           <EmptyState
             icon={<ClipboardCheck />}
-            title={statusFilter || overdueOnly ? "Không có công việc khớp bộ lọc" : "Bạn chưa được giao công việc nào"}
+            title={hasFilters ? "Không có công việc khớp bộ lọc" : "Bạn chưa được giao công việc nào"}
             description="Các công việc từ câu lạc bộ, ban chuyên môn hoặc sự kiện (bao gồm vai trò CTV) sẽ hiển thị tại đây."
+            actionLabel={hasFilters ? "Xoá bộ lọc" : undefined}
+            onAction={hasFilters ? clearFilters : undefined}
           />
         ) : (
-          <DataTable
-            ariaLabel="Công việc của tôi"
-            rows={myTasks.data.items}
-            rowKey={(t) => t.id}
-            onRowClick={openTask}
-            columns={[
-              {
-                key: "club",
-                header: "Câu lạc bộ / Nguồn",
-                render: (t) => (
-                  <div>
-                    <p className="font-bold">{t.clubName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {t.eventTitle ? `Sự kiện: ${t.eventTitle}` : t.departmentName || t.clubCode}
-                    </p>
-                  </div>
-                ),
-              },
-              {
-                key: "title",
-                header: "Công việc",
-                render: (t) => (
-                  <div>
-                    <p className="font-semibold text-foreground">{t.title}</p>
-                    {t.parentTaskTitle && (
-                      <p className="text-[11px] text-muted-foreground">Việc cha: {t.parentTaskTitle}</p>
-                    )}
-                  </div>
-                ),
-              },
-              { key: "priority", header: "Ưu tiên", render: (t) => <StatusBadge status={t.priority} /> },
-              { key: "progress", header: "Tiến độ", render: (t) => <span className="font-mono font-bold text-primary">{t.progressPercent}%</span> },
-              { key: "deadline", header: "Hạn chót", render: (t) => <span className="font-mono">{formatDay(t.deadline)}</span> },
-              {
-                key: "status",
-                header: "Trạng thái",
-                render: (t) => (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <StatusBadge status={t.status} />
-                    {t.overdue && <StatusBadge status="OVERDUE" />}
-                  </div>
-                ),
-              },
-              {
-                key: "actions",
-                header: "Thao tác",
-                className: "text-right",
-                render: (t) => <TableRowActions actions={[{ icon: <Eye />, label: "Cập nhật tiến độ", onClick: () => openTask(t) }]} />,
-              },
-            ]}
-          />
+          <>
+            <DataTable
+              ariaLabel="Công việc của tôi"
+              minWidth="min-w-[760px]"
+              rows={filteredTasks}
+              rowKey={(t) => t.id}
+              onRowClick={openTask}
+              columns={[
+                {
+                  key: "club",
+                  header: "Câu lạc bộ / Nguồn",
+                  sortValue: (t) => t.clubName ?? "",
+                  render: (t) => (
+                    <div>
+                      <p className="font-bold">{t.clubName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {t.eventTitle ? `Sự kiện: ${t.eventTitle}` : t.departmentName || t.clubCode}
+                      </p>
+                    </div>
+                  ),
+                },
+                {
+                  key: "title",
+                  header: "Công việc",
+                  sortValue: (t) => t.title,
+                  render: (t) => (
+                    <div>
+                      <p className="font-semibold text-foreground">{t.title}</p>
+                      {t.parentTaskTitle && (
+                        <p className="text-[11px] text-muted-foreground">Việc cha: {t.parentTaskTitle}</p>
+                      )}
+                    </div>
+                  ),
+                },
+                { key: "priority", header: "Ưu tiên", sortValue: (t) => t.priority, render: (t) => <StatusBadge status={t.priority} /> },
+                { key: "progress", header: "Tiến độ", sortValue: (t) => t.progressPercent, render: (t) => <span className="font-mono font-bold text-primary">{t.progressPercent}%</span> },
+                { key: "deadline", header: "Hạn chót", sortValue: (t) => t.deadline ?? "", render: (t) => <span className="font-mono">{formatDay(t.deadline)}</span> },
+                {
+                  key: "status",
+                  header: "Trạng thái",
+                  sortValue: (t) => t.status,
+                  render: (t) => (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <StatusBadge status={t.status} />
+                      {t.overdue && <StatusBadge status="OVERDUE" />}
+                    </div>
+                  ),
+                },
+                {
+                  key: "actions",
+                  header: "Thao tác",
+                  className: "text-right",
+                  render: (t) => <TableRowActions actions={[{ icon: <Eye />, label: "Cập nhật tiến độ", onClick: () => openTask(t) }]} />,
+                },
+              ]}
+            />
+            {myTasks.data && <Pagination offset={offset} limit={limit} total={myTasks.data.total} onOffset={setOffset} onLimit={setLimit} />}
+          </>
         )
       ) : myCalendar.isPending ? (
         <LoadingRows />
       ) : myCalendar.isError ? (
         <ErrorState message={describeError(myCalendar.error)} onRetry={() => myCalendar.refetch()} />
-      ) : !myCalendar.data.length ? (
-        <EmptyState icon={<Calendar />} title="Chưa có sự kiện hoặc hạn công việc sắp tới" />
+      ) : !filteredCalendar.length ? (
+        <EmptyState icon={<Calendar />} title={hasFilters ? "Không có mục lịch khớp bộ lọc" : "Chưa có sự kiện hoặc hạn công việc sắp tới"} actionLabel={hasFilters ? "Xoá bộ lọc" : undefined} onAction={hasFilters ? clearFilters : undefined} />
       ) : (
         <DataTable
           ariaLabel="Lịch tổng hợp cá nhân"
-          rows={myCalendar.data}
+          minWidth="min-w-[720px]"
+          rows={filteredCalendar}
           rowKey={(item) => `${item.itemType}-${item.id}`}
           columns={[
-            { key: "time", header: "Thời gian", render: (c) => <span className="font-mono font-bold text-primary">{formatDateTime(c.startTime)}</span> },
+            { key: "time", header: "Thời gian", sortValue: (c) => c.startTime, render: (c) => <span className="font-mono font-bold text-primary">{formatDateTime(c.startTime)}</span> },
             {
               key: "type",
               header: "Loại",
+              sortValue: (c) => c.itemType,
               render: (c) => <Badge tone={c.itemType === "EVENT" ? "primary" : "pending"} dot={false}>{c.itemType === "EVENT" ? "Sự kiện CLB" : "Hạn công việc"}</Badge>,
             },
-            { key: "club", header: "Câu lạc bộ", render: (c) => <span className="font-semibold">{c.clubName}</span> },
-            { key: "title", header: "Nội dung", render: (c) => <span className="font-bold text-foreground">{c.title}</span> },
+            { key: "club", header: "Câu lạc bộ", sortValue: (c) => c.clubName, render: (c) => <span className="font-semibold">{c.clubName}</span> },
+            { key: "title", header: "Nội dung", sortValue: (c) => c.title, render: (c) => <span className="font-bold text-foreground">{c.title}</span> },
             { key: "location", header: "Địa điểm", render: (c) => <span className="text-muted-foreground">{c.location ? <span className="inline-flex items-center gap-1"><MapPin size={12} /> {c.location}</span> : "—"}</span> },
-            { key: "status", header: "Trạng thái", render: (c) => <StatusBadge status={c.status} /> },
+            { key: "status", header: "Trạng thái", sortValue: (c) => c.status, render: (c) => <StatusBadge status={c.status} /> },
           ]}
         />
       )}

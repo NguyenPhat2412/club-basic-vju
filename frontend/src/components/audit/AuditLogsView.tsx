@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Activity, Building2, Eye, Layers, ScrollText } from "lucide-react";
+import { Activity, Building2, Eye, FilterX, Layers, ScrollText } from "lucide-react";
 import { apiModel, AuditLogItem } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
 import { useUserNames } from "@/hooks/user/useUsers";
@@ -14,6 +14,7 @@ import { EmptyState, ErrorState, LoadingRows } from "@/components/shared/States"
 import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError, ListPage } from "@/components/shared/ListPage";
 import { Badge, CountBadge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/input";
 import { formatDateTime, formatDay, formatTime } from "@/lib/utils";
 import { formatAuditAction, RESOURCE_LABELS, resourceLabel } from "@/utils/audit/audit-meta";
@@ -24,6 +25,7 @@ export function AuditLogsView() {
   const session = useSession();
   const canView = session.can("audit.view");
   const nameOf = useUserNames(session.can("user.view"));
+  const [search, setSearch] = useState("");
   const [resourceType, setResourceType] = useState("");
   const [clubId, setClubId] = useState("");
   const [offset, setOffset] = useState(0);
@@ -49,14 +51,6 @@ export function AuditLogsView() {
     enabled: session.ready && canView,
   });
 
-  if (session.ready && !canView) {
-    return (
-      <ListPage title="Nhật ký hệ thống">
-        <EmptyState icon={<ScrollText />} title="Bạn không có quyền xem nhật ký hệ thống" />
-      </ListPage>
-    );
-  }
-
   const actorLabel = (userId?: string) => {
     if (!userId) return "Hệ thống";
     const u = nameOf(userId);
@@ -69,6 +63,32 @@ export function AuditLogsView() {
     return c ? `${c.code} · ${c.name}` : id.slice(0, 8);
   };
 
+  const filteredLogs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (logs.data?.items ?? []).filter((l) => {
+      if (!q) return true;
+      return (
+        actorLabel(l.actorUserId).toLowerCase().includes(q) ||
+        formatAuditAction(l.action).toLowerCase().includes(q) ||
+        l.action.toLowerCase().includes(q) ||
+        (l.resourceId ?? "").toLowerCase().includes(q) ||
+        clubName(l.clubId).toLowerCase().includes(q)
+      );
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logs.data?.items, search, clubs.data?.items]);
+
+  if (session.ready && !canView) {
+    return (
+      <ListPage title="Nhật ký hệ thống">
+        <EmptyState icon={<ScrollText />} title="Bạn không có quyền xem nhật ký hệ thống" />
+      </ListPage>
+    );
+  }
+
+  const hasFilters = Boolean(search.trim() || resourceType || clubId);
+  const clearFilters = () => { setSearch(""); setResourceType(""); setClubId(""); setOffset(0); };
+
   return (
     <ListPage title="Nhật ký hệ thống">
       <BreadcrumbToolbar
@@ -78,6 +98,7 @@ export function AuditLogsView() {
           { label: "Nhật ký hệ thống" },
         ]}
         titleBadge={<CountBadge>{logs.data?.total ?? 0} bản ghi</CountBadge>}
+        search={{ value: search, onChange: setSearch, placeholder: "Tìm người thực hiện, hành động, ID…" }}
         extraActions={
           <>
             <Select
@@ -112,6 +133,11 @@ export function AuditLogsView() {
                 </option>
               ))}
             </Select>
+            {hasFilters && (
+              <Button variant="outline" size="sm" onClick={clearFilters}>
+                <FilterX size={14} /> Xoá lọc
+              </Button>
+            )}
           </>
         }
         onRefresh={() => logs.refetch()}
@@ -155,18 +181,20 @@ export function AuditLogsView() {
         <LoadingRows />
       ) : logs.isError ? (
         <ErrorState message={describeError(logs.error)} onRetry={() => logs.refetch()} />
-      ) : !logs.data.items.length ? (
-        <EmptyState icon={<ScrollText />} title="Không tìm thấy bản ghi nhật ký" />
+      ) : !filteredLogs.length ? (
+        <EmptyState icon={<ScrollText />} title="Không tìm thấy bản ghi nhật ký" actionLabel={hasFilters ? "Xoá bộ lọc" : undefined} onAction={hasFilters ? clearFilters : undefined} />
       ) : (
         <DataTable
           ariaLabel="Nhật ký hệ thống"
-          rows={logs.data.items}
+          minWidth="min-w-[760px]"
+          rows={filteredLogs}
           rowKey={(l) => l.id}
           onRowClick={setSelected}
           columns={[
             {
               key: "time",
               header: "Thời gian",
+              sortValue: (l) => l.createdAt,
               render: (l) => (
                 <div className="font-mono">
                   <b className="text-primary">{formatDay(l.createdAt)}</b>
@@ -177,11 +205,13 @@ export function AuditLogsView() {
             {
               key: "actor",
               header: "Người thực hiện",
+              sortValue: (l) => actorLabel(l.actorUserId),
               render: (l) => <span className="font-semibold text-foreground">{actorLabel(l.actorUserId)}</span>,
             },
             {
               key: "resource",
               header: "Phân hệ",
+              sortValue: (l) => resourceLabel(l.resourceType),
               render: (l) => (
                 <Badge tone="primary" dot={false}>
                   {resourceLabel(l.resourceType)}
@@ -191,11 +221,13 @@ export function AuditLogsView() {
             {
               key: "action",
               header: "Hành động",
+              sortValue: (l) => formatAuditAction(l.action),
               render: (l) => <span className="font-semibold text-foreground">{formatAuditAction(l.action)}</span>,
             },
             {
               key: "club",
               header: "Phạm vi áp dụng",
+              sortValue: (l) => clubName(l.clubId),
               render: (l) => <span className="text-xs text-muted-foreground">{clubName(l.clubId)}</span>,
             },
             {

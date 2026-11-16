@@ -2,25 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Building2,
-  Lock,
-  LockOpen,
-  Pencil,
-  Plus,
-  Trash2,
-  UserCheck,
-  UsersRound,
-} from "lucide-react";
+import { Lock, LockOpen, Pencil, UserCheck, UsersRound } from "lucide-react";
 import { apiModel, ClubPositionSlot, Department, DepartmentMember } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
-import { DataTable } from "@/components/shared/DataTable";
-import { EmptyState, ErrorState, LoadingRows } from "@/components/shared/States";
-import { RowAction, TableRowActions } from "@/components/shared/TableRowActions";
+import { ErrorState, LoadingRows } from "@/components/shared/States";
+import { RowAction } from "@/components/shared/TableRowActions";
 import { describeError } from "@/components/shared/ListPage";
-import { StatusBadge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ClubBoardPositionsSection } from "@/components/department/ClubBoardPositionsSection";
+import { DepartmentTableSection } from "@/components/department/DepartmentTableSection";
 import {
   AssignPositionModal,
   MoveDepartmentMemberModal,
@@ -190,114 +179,27 @@ export function DepartmentsTab({
         onRevokeAssignment={(assignmentId) => revokePosition.mutate(assignmentId)}
       />
 
-      {canCreate && (
-        <div className="flex justify-end px-4">
-          <Button
-            size="sm"
-            onClick={() => {
-              setCreating(true);
-              setName("");
-              setDescription("");
-            }}
-          >
-            <Plus size={14} /> Tạo ban chuyên môn
-          </Button>
-        </div>
-      )}
-
       {departments.isPending ? (
         <LoadingRows />
       ) : departments.isError ? (
         <ErrorState message={describeError(departments.error)} onRetry={() => departments.refetch()} />
-      ) : !departments.data.items.length ? (
-        <EmptyState
-          icon={<Building2 />}
-          title="CLB chưa có ban chuyên môn nào"
-          actionLabel={canCreate ? "Tạo ban chuyên môn" : undefined}
-          onAction={
-            canCreate
-              ? () => {
-                  setCreating(true);
-                  setName("");
-                  setDescription("");
-                }
-              : undefined
-          }
-        />
       ) : (
-        <DataTable
-          ariaLabel="Ban chuyên môn"
-          rows={departments.data.items}
-          rowKey={(d) => d.id}
-          onRowClick={(d) =>
-            session.canInDepartment("department.member.view", clubId, d.id)
-              ? setSelectedDept(d)
-              : session.canInDepartment("department.update", clubId, d.id)
-                ? openEdit(d)
-                : undefined
-          }
-          columns={[
-            {
-              key: "name",
-              header: "Tên ban chuyên môn",
-              render: (d) => <span className="font-bold text-foreground">{d.name}</span>,
-            },
-            {
-              key: "head",
-              header: "Trưởng ban (PB-14.2)",
-              render: (d) => {
-                const slot = deptHeadSlotFor(d.id);
-                const holder = slot?.holders?.[0];
-                if (!holder) {
-                  return <span className="text-xs italic text-muted-foreground">Chưa bổ nhiệm</span>;
-                }
-                return (
-                  <div className="flex min-w-0 items-center gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-bold text-foreground">{holder.fullName || holder.email}</p>
-                      <p className="truncate text-[11px] text-muted-foreground">{holder.email}</p>
-                    </div>
-                    {canRevokePosition && (
-                      <button
-                        type="button"
-                        aria-label={`Miễn nhiệm Trưởng ban ${holder.fullName || holder.email}`}
-                        title="Miễn nhiệm Trưởng ban"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm(`Miễn nhiệm Trưởng ban ${holder.fullName || holder.email} khỏi ${d.name}?`)) {
-                            revokePosition.mutate(holder.assignmentId);
-                          }
-                        }}
-                        className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    )}
-                  </div>
-                );
-              },
-            },
-            {
-              key: "desc",
-              header: "Mô tả nhiệm vụ",
-              className: "max-w-[340px]",
-              render: (d) => <p className="truncate text-muted-foreground">{d.description || "—"}</p>,
-            },
-            { key: "status", header: "Trạng thái", render: (d) => <StatusBadge status={d.status} /> },
-            {
-              key: "actions",
-              header: "Thao tác",
-              className: "text-right",
-              render: (d) => {
-                const acts = actionsFor(d);
-                return acts.length ? (
-                  <TableRowActions actions={acts} />
-                ) : (
-                  <span className="text-xs text-muted-foreground">—</span>
-                );
-              },
-            },
-          ]}
+        <DepartmentTableSection
+          items={departments.data.items}
+          canCreate={canCreate}
+          canRevokePosition={canRevokePosition}
+          deptHeadSlotFor={deptHeadSlotFor}
+          actionsFor={actionsFor}
+          onRowClick={(d) => {
+            if (session.canInDepartment("department.member.view", clubId, d.id)) setSelectedDept(d);
+            else if (session.canInDepartment("department.update", clubId, d.id)) openEdit(d);
+          }}
+          onOpenCreate={() => {
+            setCreating(true);
+            setName("");
+            setDescription("");
+          }}
+          onRevokeHead={(assignmentId) => revokePosition.mutate(assignmentId)}
         />
       )}
 

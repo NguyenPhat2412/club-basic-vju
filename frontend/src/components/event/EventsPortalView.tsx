@@ -3,22 +3,22 @@
 import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Compass, Eye, MapPin, UserCheck, XCircle } from "lucide-react";
+import { Compass, Eye, FilterX, MapPin, UserCheck, XCircle } from "lucide-react";
 import { apiModel, MyEventParticipation, PublicEvent } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { BreadcrumbToolbar, SegmentedTabs } from "@/components/shared/BreadcrumbToolbar";
 import { DataTable } from "@/components/shared/DataTable";
+import { Pagination } from "@/components/shared/Pagination";
 import { EmptyState, ErrorState, LoadingRows, Notice } from "@/components/shared/States";
 import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError, ListPage } from "@/components/shared/ListPage";
 import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/input";
 import { formatDateTime, formatDay } from "@/lib/utils";
 import { EVENT_TYPE_LABELS } from "@/forms/event/event-form";
 import { EventParticipationDrawers } from "./EventParticipationDrawers";
 import { MyEventsHistorySection } from "./MyEventsHistorySection";
-
-const HISTORY_LIMIT = 20;
 
 export function EventsPortalView() {
   return (
@@ -38,9 +38,13 @@ function EventsPortalContent() {
   const [tab, setTab] = useState<"discover" | "mine">("discover");
   const [search, setSearch] = useState("");
   const [ctvFilter, setCtvFilter] = useState<"ALL" | "CTV_ONLY">("ALL");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [discoverOffset, setDiscoverOffset] = useState(0);
+  const [discoverLimit, setDiscoverLimit] = useState(20);
   const [regStatusFilter, setRegStatusFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [historyOffset, setHistoryOffset] = useState(0);
+  const [historyLimit, setHistoryLimit] = useState(20);
 
   const [selectedDiscover, setSelectedDiscover] = useState<PublicEvent | null>(null);
   const [closedDeepLinkId, setClosedDeepLinkId] = useState<string | null>(null);
@@ -76,13 +80,13 @@ function EventsPortalContent() {
   });
 
   const myHistory = useQuery({
-    queryKey: ["my-event-registrations", regStatusFilter, roleFilter, historyOffset],
+    queryKey: ["my-event-registrations", regStatusFilter, roleFilter, historyOffset, historyLimit],
     queryFn: () =>
       apiModel.myEventRegistrations({
         status: regStatusFilter || undefined,
         participantType: roleFilter || undefined,
         offset: historyOffset,
-        limit: HISTORY_LIMIT,
+        limit: historyLimit,
       }),
     enabled: isLoggedIn,
   });
@@ -119,15 +123,16 @@ function EventsPortalContent() {
     return [...merged.values()]
       .filter((ev) => {
         if (ctvFilter === "CTV_ONLY" && !ev.allowCtv) return false;
+        if (typeFilter && ev.eventType !== typeFilter) return false;
         if (!qLower) return true;
-        return (
-          ev.title.toLowerCase().includes(qLower) ||
-          ev.clubName.toLowerCase().includes(qLower) ||
-          (ev.location ?? "").toLowerCase().includes(qLower)
-        );
+        return ev.title.toLowerCase().includes(qLower) || ev.clubName.toLowerCase().includes(qLower) || (ev.location ?? "").toLowerCase().includes(qLower);
       })
       .sort((a, b) => b.startTime.localeCompare(a.startTime));
-  }, [publicEvents.data?.items, memberClubEventQueries, search, ctvFilter]);
+  }, [publicEvents.data?.items, memberClubEventQueries, search, ctvFilter, typeFilter]);
+
+  const pagedDiscover = useMemo(() => discoverList.slice(discoverOffset, discoverOffset + discoverLimit), [discoverList, discoverOffset, discoverLimit]);
+  const hasDiscoverFilters = Boolean(search.trim() || ctvFilter !== "ALL" || typeFilter);
+  const clearDiscoverFilters = () => { setSearch(""); setCtvFilter("ALL"); setTypeFilter(""); setDiscoverOffset(0); };
 
   const activeSelectedDiscover: PublicEvent | null =
     selectedDiscover ??
@@ -196,25 +201,13 @@ function EventsPortalContent() {
             {tab === "discover" ? `${discoverList.length} sự kiện` : `${myHistory.data?.total ?? 0} lượt tham gia`}
           </CountBadge>
         }
-        search={
-          tab === "discover"
-            ? {
-                value: search,
-                onChange: setSearch,
-                placeholder: "Tìm tên sự kiện, CLB, địa điểm…",
-              }
-            : undefined
-        }
+        search={tab === "discover" ? { value: search, onChange: (v) => { setSearch(v); setDiscoverOffset(0); }, placeholder: "Tìm tên sự kiện, CLB, địa điểm…" } : undefined}
         extraActions={
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             {isLoggedIn && (
               <SegmentedTabs
                 value={tab}
-                onChange={(v) => {
-                  setTab(v);
-                  setNotice("");
-                  setErrorMsg("");
-                }}
+                onChange={(v) => { setTab(v); setNotice(""); setErrorMsg(""); }}
                 options={[
                   { value: "discover", label: "Khám phá sự kiện" },
                   { value: "mine", label: "Sự kiện & Điểm danh của tôi" },
@@ -222,15 +215,19 @@ function EventsPortalContent() {
               />
             )}
             {tab === "discover" && (
-              <Select
-                aria-label="Lọc đối tượng sự kiện"
-                value={ctvFilter}
-                onChange={(e) => setCtvFilter(e.target.value as "ALL" | "CTV_ONLY")}
-                className="h-9 w-full text-xs sm:w-48"
-              >
-                <option value="ALL">Tất cả sự kiện mở</option>
-                <option value="CTV_ONLY">Mở tuyển Cộng tác viên (CTV)</option>
-              </Select>
+              <>
+                <Select aria-label="Lọc loại sự kiện" value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setDiscoverOffset(0); }} className="h-9 w-full text-xs sm:w-44">
+                  <option value="">Mọi loại hình</option>
+                  {Object.entries(EVENT_TYPE_LABELS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+                </Select>
+                <Select aria-label="Lọc đối tượng sự kiện" value={ctvFilter} onChange={(e) => { setCtvFilter(e.target.value as "ALL" | "CTV_ONLY"); setDiscoverOffset(0); }} className="h-9 w-full text-xs sm:w-48">
+                  <option value="ALL">Tất cả sự kiện mở</option>
+                  <option value="CTV_ONLY">Mở tuyển Cộng tác viên (CTV)</option>
+                </Select>
+                {hasDiscoverFilters && (
+                  <Button size="sm" variant="outline" onClick={clearDiscoverFilters}><FilterX size={14} /> Xoá lọc</Button>
+                )}
+              </>
             )}
           </div>
         }
@@ -250,122 +247,95 @@ function EventsPortalContent() {
             icon={<Compass />}
             title="Chưa có sự kiện phù hợp với bộ lọc"
             description="Khi các câu lạc bộ mở đăng ký sự kiện hoặc tuyển Cộng tác viên (CTV), danh sách sẽ hiển thị tại đây."
+            actionLabel={hasDiscoverFilters ? "Xoá bộ lọc" : undefined}
+            onAction={hasDiscoverFilters ? clearDiscoverFilters : undefined}
           />
         ) : (
-          <DataTable
-            ariaLabel="Danh sách sự kiện khám phá"
-            rows={discoverList}
-            rowKey={(ev) => ev.id}
-            onRowClick={setSelectedDiscover}
-            columns={[
-              {
-                key: "time",
-                header: "Thời gian",
-                render: (ev) => (
-                  <div>
-                    <p className="font-mono font-bold text-primary">{formatDay(ev.startTime)}</p>
-                    <p className="font-mono text-[11px] text-muted-foreground">
-                      {new Date(ev.startTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
-                    </p>
-                  </div>
-                ),
-              },
-              {
-                key: "title",
-                header: "Sự kiện & Câu lạc bộ",
-                render: (ev) => (
-                  <div>
-                    <p className="font-bold text-foreground">{ev.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {ev.clubName} · {EVENT_TYPE_LABELS[ev.eventType] ?? ev.eventType}
-                    </p>
-                  </div>
-                ),
-              },
-              {
-                key: "audience",
-                header: "Đối tượng",
-                render: (ev) =>
-                  ev.allowCtv ? (
-                    <Badge tone="pending">Mở cho SV & CTV</Badge>
-                  ) : (
-                    <Badge tone="neutral">Nội bộ thành viên CLB</Badge>
-                  ),
-              },
-              {
-                key: "location",
-                header: "Địa điểm",
-                render: (ev) => (
-                  <span className="text-muted-foreground">
-                    {ev.location ? (
-                      <span className="inline-flex items-center gap-1">
-                        <MapPin size={12} /> {ev.location}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </span>
-                ),
-              },
-              {
-                key: "deadline",
-                header: "Hạn đăng ký",
-                render: (ev) => <span className="font-mono text-xs">{formatDateTime(ev.registrationDeadline)}</span>,
-              },
-              {
-                key: "status",
-                header: "Trạng thái",
-                render: (ev) => {
-                  const myReg = activeRegByEvent.get(ev.id);
-                  return (
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <StatusBadge status={ev.status} />
-                      {myReg && (
-                        <Badge tone="primary">
-                          Đã ĐK ({myReg.participantType === "CTV" ? "CTV" : "TV"})
-                        </Badge>
-                      )}
+          <>
+            <DataTable
+              ariaLabel="Danh sách sự kiện khám phá"
+              minWidth="min-w-[820px]"
+              rows={pagedDiscover}
+              rowKey={(ev) => ev.id}
+              onRowClick={setSelectedDiscover}
+              columns={[
+                {
+                  key: "time",
+                  header: "Thời gian",
+                  sortValue: (ev) => ev.startTime,
+                  render: (ev) => (
+                    <div>
+                      <p className="font-mono font-bold text-primary">{formatDay(ev.startTime)}</p>
+                      <p className="font-mono text-[11px] text-muted-foreground">
+                        {new Date(ev.startTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                      </p>
                     </div>
-                  );
+                  ),
                 },
-              },
-              {
-                key: "actions",
-                header: "Thao tác",
-                className: "text-right",
-                render: (ev) => {
-                  const myReg = activeRegByEvent.get(ev.id);
-                  const actions = [
-                    { icon: <Eye />, label: "Xem chi tiết", onClick: () => setSelectedDiscover(ev) },
-                    ...(isLoggedIn && myReg && canCancelNow(ev.status, myReg.registrationStatus, ev.registrationDeadline)
-                      ? [
-                          {
-                            icon: <XCircle />,
-                            label: "Huỷ đăng ký",
-                            danger: true,
-                            disabled: cancelMutation.isPending,
-                            onClick: () => cancelMutation.mutate(ev.id),
-                          },
-                        ]
-                      : isLoggedIn && !myReg && canRegisterNow(ev)
-                        ? [
-                            {
-                              icon: <UserCheck />,
-                              label: activeClubIds.has(ev.clubId) ? "Đăng ký tham gia" : "Đăng ký CTV",
-                              onClick: () => {
-                                setRegisteringEvent(ev);
-                                setRegNote("");
-                                registerMutation.reset();
-                              },
-                            },
-                          ]
-                        : []),
-                  ];
-                  return <TableRowActions actions={actions} />;
+                {
+                  key: "title",
+                  header: "Sự kiện & Câu lạc bộ",
+                  sortValue: (ev) => ev.title,
+                  render: (ev) => (
+                    <div>
+                      <p className="font-bold text-foreground">{ev.title}</p>
+                      <p className="text-xs text-muted-foreground">{ev.clubName} · {EVENT_TYPE_LABELS[ev.eventType] ?? ev.eventType}</p>
+                    </div>
+                  ),
                 },
-              },
-            ]}
-          />
+                {
+                  key: "audience",
+                  header: "Đối tượng",
+                  sortValue: (ev) => Number(ev.allowCtv),
+                  render: (ev) => ev.allowCtv ? <Badge tone="pending">Mở cho SV & CTV</Badge> : <Badge tone="neutral">Nội bộ thành viên CLB</Badge>,
+                },
+                {
+                  key: "location",
+                  header: "Địa điểm",
+                  sortValue: (ev) => ev.location ?? "",
+                  render: (ev) => <span className="text-muted-foreground">{ev.location ? <span className="inline-flex items-center gap-1"><MapPin size={12} /> {ev.location}</span> : "—"}</span>,
+                },
+                {
+                  key: "deadline",
+                  header: "Hạn đăng ký",
+                  sortValue: (ev) => ev.registrationDeadline ?? "",
+                  render: (ev) => <span className="font-mono text-xs">{formatDateTime(ev.registrationDeadline)}</span>,
+                },
+                {
+                  key: "status",
+                  header: "Trạng thái",
+                  sortValue: (ev) => ev.status,
+                  render: (ev) => {
+                    const myReg = activeRegByEvent.get(ev.id);
+                    return (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <StatusBadge status={ev.status} />
+                        {myReg && <Badge tone="primary">Đã ĐK ({myReg.participantType === "CTV" ? "CTV" : "TV"})</Badge>}
+                      </div>
+                    );
+                  },
+                },
+                {
+                  key: "actions",
+                  header: "Thao tác",
+                  className: "text-right",
+                  render: (ev) => {
+                    const myReg = activeRegByEvent.get(ev.id);
+                    const actions = [
+                      { icon: <Eye />, label: "Xem chi tiết", onClick: () => setSelectedDiscover(ev) },
+                      ...(isLoggedIn && myReg && canCancelNow(ev.status, myReg.registrationStatus, ev.registrationDeadline)
+                        ? [{ icon: <XCircle />, label: "Huỷ đăng ký", danger: true, disabled: cancelMutation.isPending, onClick: () => cancelMutation.mutate(ev.id) }]
+                        : isLoggedIn && !myReg && canRegisterNow(ev)
+                          ? [{ icon: <UserCheck />, label: activeClubIds.has(ev.clubId) ? "Đăng ký tham gia" : "Đăng ký CTV", onClick: () => { setRegisteringEvent(ev); setRegNote(""); registerMutation.reset(); } }]
+                          : []),
+                    ];
+                    return <TableRowActions actions={actions} />;
+                  },
+                },
+              ]}
+            />
+            <Pagination offset={discoverOffset} limit={discoverLimit} total={discoverList.length} onOffset={setDiscoverOffset} onLimit={setDiscoverLimit} />
+          </>
         )
       ) : (
         <MyEventsHistorySection
@@ -382,7 +352,8 @@ function EventsPortalContent() {
           setRoleFilter={setRoleFilter}
           historyOffset={historyOffset}
           setHistoryOffset={setHistoryOffset}
-          historyLimit={HISTORY_LIMIT}
+          historyLimit={historyLimit}
+          setHistoryLimit={setHistoryLimit}
           onDiscoverTab={() => setTab("discover")}
           onSelectParticipation={setSelectedParticipation}
           canCancelNow={canCancelNow}

@@ -275,6 +275,7 @@ export function UsersManagementView() {
             {
               key: "user",
               header: "Người dùng",
+              sortValue: (u) => u.fullName || u.email,
               render: (u) => (
                 <div className="flex items-center gap-3">
                   <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-extrabold text-primary">
@@ -290,6 +291,7 @@ export function UsersManagementView() {
             {
               key: "code",
               header: "Mã sinh viên",
+              sortValue: (u) => u.studentCode ?? "",
               render: (u) =>
                 u.studentCode ? (
                   <code className="rounded-md bg-primary/8 px-2 py-0.5 font-mono text-[11px] font-bold text-primary">
@@ -307,6 +309,7 @@ export function UsersManagementView() {
             {
               key: "security",
               header: "Bảo mật",
+              sortValue: (u) => Number(u.requiresPasswordChange),
               render: (u) =>
                 u.requiresPasswordChange ? (
                   <Badge tone="pending">Chờ đổi MK lần đầu</Badge>
@@ -317,9 +320,10 @@ export function UsersManagementView() {
             {
               key: "created",
               header: "Ngày tạo",
+              sortValue: (u) => u.createdAt ?? "",
               render: (u) => <span className="font-mono font-semibold text-foreground">{formatDay(u.createdAt)}</span>,
             },
-            { key: "status", header: "Trạng thái", render: (u) => <StatusBadge status={u.status} /> },
+            { key: "status", header: "Trạng thái", sortValue: (u) => u.status, render: (u) => <StatusBadge status={u.status} /> },
             {
               key: "actions",
               header: "Thao tác",

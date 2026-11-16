@@ -210,12 +210,14 @@ export function ApplicationsTab({
               {
                 key: "date",
                 header: "Ngày gửi",
+                sortValue: (a) => a.createdAt,
                 render: (a) => <span className="font-mono font-bold text-primary">{formatDay(a.createdAt)}</span>,
               },
-              { key: "applicant", header: "Người nộp", render: (a) => applicant(a) },
+              { key: "applicant", header: "Người nộp", sortValue: (a) => a.applicantId, render: (a) => applicant(a) },
               {
                 key: "dept",
                 header: "Ban nguyện vọng",
+                sortValue: (a) => a.preferredDepartmentName ?? "",
                 render: (a) =>
                   a.preferredDepartmentName ? (
                     <Badge tone="primary" dot={false}>
@@ -228,6 +230,7 @@ export function ApplicationsTab({
               {
                 key: "major",
                 header: "Ngành / Khóa / SĐT",
+                sortValue: (a) => a.facultyMajor ?? "",
                 render: (a) => (
                   <div className="text-xs">
                     <p className="font-semibold">
@@ -242,6 +245,7 @@ export function ApplicationsTab({
               {
                 key: "files",
                 header: "Tệp đính kèm",
+                sortValue: (a) => a.attachments?.length ?? 0,
                 render: (a) =>
                   a.attachments && a.attachments.length > 0 ? (
                     <Badge tone="neutral" dot={false}>
@@ -257,7 +261,7 @@ export function ApplicationsTab({
                 className: "max-w-[260px]",
                 render: (a) => <p className="truncate text-muted-foreground">{a.message}</p>,
               },
-              { key: "status", header: "Trạng thái", render: (a) => <StatusBadge status={a.status} /> },
+              { key: "status", header: "Trạng thái", sortValue: (a) => a.status, render: (a) => <StatusBadge status={a.status} /> },
               {
                 key: "actions",
                 header: "Thao tác",

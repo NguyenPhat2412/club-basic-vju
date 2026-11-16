@@ -3,7 +3,7 @@
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Compass, FilterX, LogIn, Send, Sparkles, UserPlus } from "lucide-react";
+import { Compass, FilterX, LayoutGrid, Table2 } from "lucide-react";
 import { apiModel, ApplicationSummary, Club, Membership } from "@/lib/api";
 import { ClubMediaItem, clubSlugFromCode } from "@/lib/media";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
@@ -16,12 +16,13 @@ import { CountBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
-import { validateApplicationFile } from "@/lib/utils";
+import { cn, validateApplicationFile } from "@/lib/utils";
 import { buildApplicationSubmitPayload, ClubApplicationDraft, EMPTY_APPLICATION_DRAFT, inferApplicantCategory } from "@/forms/application/application-form";
 import { ClubDiscoveryCard } from "./ClubDiscoveryCard";
+import { ClubDiscoveryGuestBanner, ClubsDiscoveryTable } from "./ClubsDiscoveryTable";
 import { ClubRecruitmentDrawer, PendingAttachment } from "./ClubRecruitmentDrawer";
 
-const LIMIT = 12;
+const DEFAULT_LIMIT = 20;
 
 export function ClubsDiscoveryView() {
   return (
@@ -39,7 +40,10 @@ function ClubsDiscoveryContent() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
+  const [relationFilter, setRelationFilter] = useState<"" | "OPEN" | "MEMBER" | "PENDING">("");
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [offset, setOffset] = useState(0);
+  const [limit, setLimit] = useState(DEFAULT_LIMIT);
   const [selected, setSelected] = useState<Club | null>(null);
   const [closedDeepLinkId, setClosedDeepLinkId] = useState<string | null>(null);
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
@@ -58,8 +62,8 @@ function ClubsDiscoveryContent() {
   });
 
   const clubs = useQuery({
-    queryKey: ["clubs", "public-discovery", search, category, offset],
-    queryFn: () => apiModel.publicClubs(search.trim(), category, offset, LIMIT),
+    queryKey: ["clubs", "public-discovery", search, category, offset, limit],
+    queryFn: () => apiModel.publicClubs(search.trim(), category, offset, limit),
     placeholderData: keepPreviousData,
     enabled: session.settled,
   });
@@ -177,32 +181,34 @@ function ClubsDiscoveryContent() {
     apply.reset();
   };
 
-  const items = clubs.data?.items ?? [];
-  const hasActiveFilter = search.trim() !== "" || category !== "";
+  const items = useMemo(() => {
+    const rawItems = clubs.data?.items ?? [];
+    if (!relationFilter) return rawItems;
+    return rawItems.filter((c) => {
+      if (relationFilter === "MEMBER") return currentMembershipByClub.has(c.id);
+      if (relationFilter === "PENDING") return pendingAppByClub.has(c.id);
+      return !currentMembershipByClub.has(c.id) && !pendingAppByClub.has(c.id);
+    });
+  }, [clubs.data?.items, relationFilter, currentMembershipByClub, pendingAppByClub]);
+  const hasActiveFilter = search.trim() !== "" || category !== "" || relationFilter !== "";
 
   const mediaForClub = (club?: Club | null): ClubMediaItem | undefined => {
     if (!club) return undefined;
     return mediaCatalog.data?.clubs[clubSlugFromCode(club.code)];
   };
 
+  const canManageClub = (club: Club) =>
+    !!session.user &&
+    (session.canInClub("club.update", club.id) ||
+      session.canInClub("application.view", club.id) ||
+      session.can("club.create"));
+
   const selectedMedia = mediaForClub(activeSelected);
   const selectedGallery = selectedMedia?.gallery ?? [];
 
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-    setOffset(0);
-  };
-
-  const handleCategoryChange = (value: string) => {
-    setCategory(value);
-    setOffset(0);
-  };
-
-  const clearFilters = () => {
-    setSearch("");
-    setCategory("");
-    setOffset(0);
-  };
+  const handleSearchChange = (value: string) => { setSearch(value); setOffset(0); };
+  const handleCategoryChange = (value: string) => { setCategory(value); setOffset(0); };
+  const clearFilters = () => { setSearch(""); setCategory(""); setRelationFilter(""); setOffset(0); };
 
   const onDraftChange = <K extends keyof ClubApplicationDraft>(key: K, value: ClubApplicationDraft[K]) => {
     setDraft((prev) => ({ ...prev, [key]: value }));
@@ -233,15 +239,27 @@ function ClubsDiscoveryContent() {
         search={{ value: search, onChange: handleSearchChange, placeholder: "Tìm tên, mã CLB, lĩnh vực…" }}
         extraActions={
           <>
-            <Select aria-label="Lọc theo lĩnh vực hoạt động" value={category} onChange={(e) => handleCategoryChange(e.target.value)} className="h-9 w-full text-xs sm:w-52">
+            <Select aria-label="Lọc theo lĩnh vực hoạt động" value={category} onChange={(e) => handleCategoryChange(e.target.value)} className="h-9 w-full text-xs sm:w-48">
               <option value="">Tất cả lĩnh vực</option>
               {(categoriesQuery.data ?? []).map((cat) => <option key={cat} value={cat}>{cat}</option>)}
             </Select>
+            {session.user && (
+              <Select aria-label="Lọc theo tư cách tham gia" value={relationFilter} onChange={(e) => { setRelationFilter(e.target.value as typeof relationFilter); setOffset(0); }} className="h-9 w-full text-xs sm:w-44">
+                <option value="">Mọi tư cách</option>
+                <option value="OPEN">Mở ứng tuyển</option>
+                <option value="MEMBER">Đã là thành viên</option>
+                <option value="PENDING">Đang chờ duyệt đơn</option>
+              </Select>
+            )}
             {hasActiveFilter && (
               <Button variant="outline" size="sm" onClick={clearFilters}>
                 <FilterX size={14} /> Xoá bộ lọc
               </Button>
             )}
+            <div className="inline-flex h-9 items-center rounded-lg border border-border bg-muted/40 p-0.5" role="group" aria-label="Chế độ hiển thị">
+              <button type="button" onClick={() => setViewMode("table")} className={cn("inline-flex h-full items-center gap-1 rounded-md px-2.5 text-xs font-semibold transition-colors", viewMode === "table" ? "bg-card text-primary shadow-2xs" : "text-muted-foreground hover:text-foreground")}><Table2 size={13} /> Bảng</button>
+              <button type="button" onClick={() => setViewMode("cards")} className={cn("inline-flex h-full items-center gap-1 rounded-md px-2.5 text-xs font-semibold transition-colors", viewMode === "cards" ? "bg-card text-primary shadow-2xs" : "text-muted-foreground hover:text-foreground")}><LayoutGrid size={13} /> Thẻ</button>
+            </div>
           </>
         }
         onRefresh={() => {
@@ -262,50 +280,10 @@ function ClubsDiscoveryContent() {
         {notice && <div role="status" className="rounded-lg border border-primary/20 bg-primary/8 px-4 py-3 text-xs font-medium text-primary">{notice}</div>}
 
         {session.settled && !session.user && (
-          <section aria-label="Hướng dẫn 3 bước gia nhập Câu lạc bộ" className="overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card via-card to-accent/55 p-4 shadow-2xs sm:p-5">
-            <div className="flex flex-col justify-between gap-3 border-b border-border/70 pb-4 lg:flex-row lg:items-center">
-              <div className="min-w-0">
-                <p className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-wider text-primary">
-                  <Sparkles size={13} /> Cổng tuyển thành viên trực tuyến · VJU ClubHub
-                </p>
-                <h2 className="mt-1 text-sm font-extrabold tracking-tight text-slate-900 sm:text-base">
-                  Gia nhập Câu lạc bộ yêu thích chỉ với 3 bước đơn giản
-                </h2>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => router.push("/clubs?auth=login")} className="flex-1 border-slate-300 bg-white font-bold text-slate-800 hover:border-primary/40 hover:text-primary sm:flex-initial">
-                  <LogIn size={14} /> Đăng nhập ngay
-                </Button>
-                <Button size="sm" onClick={() => router.push("/clubs?auth=register")} className="flex-1 font-bold shadow-xs sm:flex-initial">
-                  <UserPlus size={14} /> Gia nhập CLB
-                </Button>
-              </div>
-            </div>
-
-            <div className="mt-3.5 grid grid-cols-1 gap-2.5 md:grid-cols-3 md:gap-3">
-              <div className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white/90 p-3">
-                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary text-xs font-extrabold text-primary-foreground">01</span>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-900">1. Đăng nhập / Tạo tài khoản</p>
-                  <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">Dùng tài khoản SV VJU hoặc bấm Google 1 chạm để mở hồ sơ cá nhân.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white/90 p-3">
-                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary/12 text-xs font-extrabold text-primary">02</span>
-                <div className="min-w-0">
-                  <p className="flex items-center gap-1 text-xs font-bold text-slate-900">2. Chọn CLB & Ban nguyện vọng</p>
-                  <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">Bấm <b>Xem chi tiết</b> trên thẻ CLB để xem ảnh hoạt động và các ban chuyên môn.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white/90 p-3">
-                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-emerald-600/12 text-xs font-extrabold text-emerald-700"><Send size={13} /></span>
-                <div className="min-w-0">
-                  <p className="flex items-center gap-1 text-xs font-bold text-slate-900">3. Nộp đơn trực tuyến <CheckCircle2 size={12} className="text-emerald-600" /></p>
-                  <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">Điền form ứng tuyển (kèm CV/minh chứng nếu có) và nhận thông báo duyệt đơn.</p>
-                </div>
-              </div>
-            </div>
-          </section>
+          <ClubDiscoveryGuestBanner
+            onLogin={() => router.push("/clubs?auth=login")}
+            onRegister={() => router.push("/clubs?auth=register")}
+          />
         )}
 
         {clubs.isPending ? (
@@ -332,6 +310,19 @@ function ClubsDiscoveryContent() {
               onAction={hasActiveFilter ? clearFilters : undefined}
             />
           </div>
+        ) : viewMode === "table" ? (
+          <ClubsDiscoveryTable
+            items={items}
+            offset={offset}
+            currentMembershipByClub={currentMembershipByClub}
+            pendingAppByClub={pendingAppByClub}
+            mediaForClub={mediaForClub}
+            canManageClub={canManageClub}
+            onOpenDetail={open}
+            onNavigateManage={(club) => router.push(`/management?clubId=${club.id}`)}
+            onNavigateMemberships={() => router.push("/memberships")}
+            onNavigatePendingApp={(appId) => router.push(`/applications?applicationId=${appId}`)}
+          />
         ) : (
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {items.map((club) => (
@@ -343,12 +334,7 @@ function ClubsDiscoveryContent() {
                 canReapply={leftClubIds.has(club.id) || pastAppClubIds.has(club.id)}
                 clubMedia={mediaForClub(club)}
                 isAuthenticated={!!session.user || !session.settled}
-                canManage={
-                  !!session.user &&
-                  (session.canInClub("club.update", club.id) ||
-                    session.canInClub("application.view", club.id) ||
-                    session.can("club.create"))
-                }
+                canManage={canManageClub(club)}
                 onOpenDetail={open}
                 onNavigateLogin={() => router.push("/clubs?auth=login")}
                 onNavigateManage={() => router.push(`/management?clubId=${club.id}`)}
@@ -361,7 +347,7 @@ function ClubsDiscoveryContent() {
       </div>
 
       {clubs.data && clubs.data.total > 0 && (
-        <Pagination offset={offset} limit={LIMIT} total={clubs.data.total} onOffset={setOffset} />
+        <Pagination offset={offset} limit={limit} total={clubs.data.total} onOffset={setOffset} onLimit={setLimit} />
       )}
 
       <ClubRecruitmentDrawer

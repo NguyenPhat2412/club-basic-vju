@@ -157,13 +157,28 @@ function MyApplicationsContent() {
     },
   });
 
+  const [search, setSearch] = useState("");
   const openEdit = (app: Application) => {
     setEditing({ ...app, customAnswers: { ...(app.customAnswers ?? {}) } });
     update.reset();
   };
 
-  const hasFilter = statusFilter !== "" || clubFilter !== "";
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (list.data?.items ?? []).filter((a) => {
+      if (!q) return true;
+      return (
+        a.clubName.toLowerCase().includes(q) ||
+        a.clubCode.toLowerCase().includes(q) ||
+        (a.preferredDepartmentName ?? "").toLowerCase().includes(q) ||
+        (a.facultyMajor ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [list.data?.items, search]);
+
+  const hasFilter = statusFilter !== "" || clubFilter !== "" || search.trim() !== "";
   const clearFilters = () => {
+    setSearch("");
     setStatusFilter("");
     setClubFilter("");
     setOffset(0);
@@ -176,6 +191,7 @@ function MyApplicationsContent() {
       <BreadcrumbToolbar
         crumbs={[{ label: "Trang chủ", href: "/clubs" }, { label: "Câu lạc bộ" }, { label: "Đơn đăng ký của tôi" }]}
         titleBadge={<CountBadge>{list.data?.total ?? 0}</CountBadge>}
+        search={{ value: search, onChange: setSearch, placeholder: "Tìm tên CLB, mã CLB, ban nguyện vọng…" }}
         extraActions={
           <>
             <Select
@@ -228,13 +244,13 @@ function MyApplicationsContent() {
         <LoadingRows />
       ) : list.isError ? (
         <ErrorState message={describeError(list.error)} onRetry={() => list.refetch()} />
-      ) : !list.data.items.length ? (
+      ) : !filteredItems.length ? (
         <EmptyState
           icon={<ClipboardList />}
           title={hasFilter ? "Không có đơn đăng ký khớp bộ lọc" : "Bạn chưa gửi đơn nào"}
           description={
             hasFilter
-              ? "Hãy xoá bộ lọc trạng thái hoặc câu lạc bộ để xem toàn bộ lịch sử đơn đăng ký."
+              ? "Hãy xoá bộ lọc trạng thái, câu lạc bộ hoặc từ khoá để xem toàn bộ lịch sử đơn đăng ký."
               : "Vào Khám phá CLB để chọn câu lạc bộ phù hợp và điền biểu mẫu ứng tuyển."
           }
           actionLabel={hasFilter ? "Xoá bộ lọc" : undefined}
@@ -244,14 +260,16 @@ function MyApplicationsContent() {
         <>
           <DataTable
             ariaLabel="Đơn đăng ký"
-            rows={list.data.items}
+            minWidth="min-w-[820px]"
+            rows={filteredItems}
             rowKey={(a) => a.id}
             onRowClick={(a) => openDrawer(a.id)}
             columns={[
-              { key: "date", header: "Ngày gửi", render: (a) => <span className="font-mono font-bold text-primary">{formatDay(a.createdAt)}</span> },
+              { key: "date", header: "Ngày gửi", sortValue: (a) => a.createdAt, render: (a) => <span className="font-mono font-bold text-primary">{formatDay(a.createdAt)}</span> },
               {
                 key: "club",
                 header: "Câu lạc bộ",
+                sortValue: (a) => a.clubName,
                 render: (a) => (
                   <div>
                     <p className="font-bold">{a.clubName}</p>
@@ -262,6 +280,7 @@ function MyApplicationsContent() {
               {
                 key: "dept",
                 header: "Ban nguyện vọng",
+                sortValue: (a) => a.preferredDepartmentName ?? "",
                 render: (a) => a.preferredDepartmentName ? <Badge tone="primary" dot={false}>{a.preferredDepartmentName}</Badge> : <span className="text-muted-foreground">—</span>,
               },
               {
@@ -276,6 +295,7 @@ function MyApplicationsContent() {
               {
                 key: "files",
                 header: "Đính kèm",
+                sortValue: (a) => a.attachmentCount ?? 0,
                 render: (a) =>
                   a.attachmentCount ? (
                     <Badge tone="neutral" dot={false}>
@@ -285,10 +305,11 @@ function MyApplicationsContent() {
                     <span className="text-muted-foreground">—</span>
                   ),
               },
-              { key: "status", header: "Trạng thái", render: (a) => <StatusBadge status={a.status} /> },
+              { key: "status", header: "Trạng thái", sortValue: (a) => a.status, render: (a) => <StatusBadge status={a.status} /> },
               {
                 key: "processed",
                 header: "Xét duyệt / Huỷ",
+                sortValue: (a) => a.reviewedAt || a.cancelledAt || "",
                 render: (a) => (
                   <span className="font-mono text-xs">
                     {a.reviewedAt ? formatDay(a.reviewedAt) : a.cancelledAt ? formatDay(a.cancelledAt) : "—"}

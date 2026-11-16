@@ -1,6 +1,7 @@
 "use client";
 
-import { Calendar, Eye, FilterX, XCircle } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Calendar, Eye, FilterX, Search, X, XCircle } from "lucide-react";
 import { MyEventParticipation } from "@/lib/api";
 import { DataTable } from "@/components/shared/DataTable";
 import { Pagination } from "@/components/shared/Pagination";
@@ -10,7 +11,7 @@ import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError } from "@/components/shared/ListPage";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/input";
+import { Input, Select } from "@/components/ui/input";
 import { formatDay } from "@/lib/utils";
 
 export function MyEventsHistorySection({
@@ -28,6 +29,7 @@ export function MyEventsHistorySection({
   historyOffset,
   setHistoryOffset,
   historyLimit,
+  setHistoryLimit,
   onDiscoverTab,
   onSelectParticipation,
   canCancelNow,
@@ -48,14 +50,34 @@ export function MyEventsHistorySection({
   historyOffset: number;
   setHistoryOffset: (offset: number) => void;
   historyLimit: number;
+  setHistoryLimit: (limit: number) => void;
   onDiscoverTab: () => void;
   onSelectParticipation: (item: MyEventParticipation) => void;
   canCancelNow: (eventStatus: string, registrationStatus: string, deadline?: string) => boolean;
   cancelPending: boolean;
   onCancelRegistration: (eventId: string) => void;
 }) {
+  const [search, setSearch] = useState("");
+  const [attFilter, setAttFilter] = useState<"" | "COUNTED" | "PENDING">("");
   const attendedTotal = items.filter((i) => i.countedAsAttended).length;
   const ctvTotal = items.filter((i) => i.participantType === "CTV" && i.registrationStatus === "REGISTERED").length;
+
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((item) => {
+      if (attFilter === "COUNTED" && !item.countedAsAttended) return false;
+      if (attFilter === "PENDING" && item.attendanceStatus) return false;
+      if (!q) return true;
+      return (
+        item.eventTitle.toLowerCase().includes(q) ||
+        item.clubName.toLowerCase().includes(q) ||
+        item.clubCode.toLowerCase().includes(q) ||
+        (item.eventRole ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [items, search, attFilter]);
+
+  const hasFilters = Boolean(search.trim() || regStatusFilter || roleFilter || attFilter);
 
   return (
     <div className="flex flex-1 flex-col space-y-3">
@@ -69,47 +91,34 @@ export function MyEventsHistorySection({
         ]}
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6">
-        <p className="text-xs text-muted-foreground">
-          Theo dõi trạng thái đăng ký, vai trò trong sự kiện (Thành viên / Cộng tác viên) và kết quả điểm danh cá nhân.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-y border-border/60 bg-card px-4 py-2.5 sm:px-6">
+        <div className="relative min-w-[210px] flex-1 sm:max-w-xs">
+          <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input maxLength={200} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm tên sự kiện, CLB, vai trò…" className="h-8 pl-8 pr-7 text-xs" />
+          {search && (
+            <button type="button" aria-label="Xoá tìm kiếm" onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X size={13} />
+            </button>
+          )}
+        </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-          <Select
-            aria-label="Lọc trạng thái đăng ký"
-            value={regStatusFilter}
-            onChange={(e) => {
-              setRegStatusFilter(e.target.value);
-              setHistoryOffset(0);
-            }}
-            className="h-9 w-full text-xs sm:w-44"
-          >
+          <Select aria-label="Lọc trạng thái đăng ký" value={regStatusFilter} onChange={(e) => { setRegStatusFilter(e.target.value); setHistoryOffset(0); }} className="h-8 w-full text-xs sm:w-40">
             <option value="">Tất cả đăng ký</option>
             <option value="REGISTERED">Đang đăng ký</option>
             <option value="CANCELLED">Đã huỷ đăng ký</option>
           </Select>
-          <Select
-            aria-label="Lọc vai trò tham gia"
-            value={roleFilter}
-            onChange={(e) => {
-              setRoleFilter(e.target.value);
-              setHistoryOffset(0);
-            }}
-            className="h-9 w-full text-xs sm:w-44"
-          >
+          <Select aria-label="Lọc vai trò tham gia" value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setHistoryOffset(0); }} className="h-8 w-full text-xs sm:w-40">
             <option value="">Mọi tư cách</option>
             <option value="MEMBER">Thành viên CLB</option>
             <option value="CTV">Cộng tác viên (CTV)</option>
           </Select>
-          {(regStatusFilter || roleFilter) && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setRegStatusFilter("");
-                setRoleFilter("");
-                setHistoryOffset(0);
-              }}
-            >
+          <Select aria-label="Lọc kết quả điểm danh" value={attFilter} onChange={(e) => setAttFilter(e.target.value as "" | "COUNTED" | "PENDING")} className="h-8 w-full text-xs sm:w-44">
+            <option value="">Mọi điểm danh</option>
+            <option value="COUNTED">Đã tính tham gia</option>
+            <option value="PENDING">Chưa điểm danh</option>
+          </Select>
+          {hasFilters && (
+            <Button size="sm" variant="outline" className="h-8" onClick={() => { setSearch(""); setRegStatusFilter(""); setRoleFilter(""); setAttFilter(""); setHistoryOffset(0); }}>
               <FilterX size={14} /> Xoá lọc
             </Button>
           )}
@@ -120,25 +129,27 @@ export function MyEventsHistorySection({
         <LoadingRows />
       ) : isError ? (
         <ErrorState message={describeError(error)} onRetry={onRetry} />
-      ) : !items.length ? (
+      ) : !filteredItems.length ? (
         <EmptyState
           icon={<Calendar />}
-          title="Bạn chưa đăng ký sự kiện nào"
+          title={hasFilters ? "Không có sự kiện khớp bộ lọc" : "Bạn chưa đăng ký sự kiện nào"}
           description="Hãy chuyển sang tab Khám phá sự kiện để đăng ký tham gia hoạt động hoặc làm Cộng tác viên."
-          actionLabel="Khám phá sự kiện"
-          onAction={onDiscoverTab}
+          actionLabel={hasFilters ? "Xoá bộ lọc" : "Khám phá sự kiện"}
+          onAction={hasFilters ? () => { setSearch(""); setRegStatusFilter(""); setRoleFilter(""); setAttFilter(""); setHistoryOffset(0); } : onDiscoverTab}
         />
       ) : (
         <>
           <DataTable
             ariaLabel="Lịch sử sự kiện và điểm danh của tôi"
-            rows={items}
+            minWidth="min-w-[780px]"
+            rows={filteredItems}
             rowKey={(item) => item.registrationId}
             onRowClick={onSelectParticipation}
             columns={[
               {
                 key: "event",
                 header: "Sự kiện & Câu lạc bộ",
+                sortValue: (item) => item.startTime,
                 render: (item) => (
                   <div>
                     <p className="font-bold text-foreground">{item.eventTitle}</p>
@@ -151,6 +162,7 @@ export function MyEventsHistorySection({
               {
                 key: "role",
                 header: "Tư cách & Phân công",
+                sortValue: (item) => item.participantType,
                 render: (item) => (
                   <div className="flex flex-wrap items-center gap-1.5">
                     <StatusBadge status={item.participantType} />
@@ -158,28 +170,17 @@ export function MyEventsHistorySection({
                   </div>
                 ),
               },
-              {
-                key: "eventStatus",
-                header: "TT Sự kiện",
-                render: (item) => <StatusBadge status={item.eventStatus} />,
-              },
-              {
-                key: "regStatus",
-                header: "TT Đăng ký",
-                render: (item) => <StatusBadge status={item.registrationStatus} />,
-              },
+              { key: "eventStatus", header: "TT Sự kiện", sortValue: (item) => item.eventStatus, render: (item) => <StatusBadge status={item.eventStatus} /> },
+              { key: "regStatus", header: "TT Đăng ký", sortValue: (item) => item.registrationStatus, render: (item) => <StatusBadge status={item.registrationStatus} /> },
               {
                 key: "attendance",
                 header: "Kết quả điểm danh",
+                sortValue: (item) => item.attendanceStatus ?? "",
                 render: (item) =>
                   item.attendanceStatus ? (
                     <div className="flex flex-wrap items-center gap-1.5">
                       <StatusBadge status={item.attendanceStatus} />
-                      {item.countedAsAttended && (
-                        <Badge tone="primary" dot={false}>
-                          Tính tham gia
-                        </Badge>
-                      )}
+                      {item.countedAsAttended && <Badge tone="primary" dot={false}>Tính tham gia</Badge>}
                     </div>
                   ) : (
                     <span className="text-xs text-muted-foreground">Chưa ghi nhận</span>
@@ -194,15 +195,7 @@ export function MyEventsHistorySection({
                     actions={[
                       { icon: <Eye />, label: "Xem chi tiết", onClick: () => onSelectParticipation(item) },
                       ...(canCancelNow(item.eventStatus, item.registrationStatus, item.registrationDeadline)
-                        ? [
-                            {
-                              icon: <XCircle />,
-                              label: "Huỷ đăng ký",
-                              danger: true,
-                              disabled: cancelPending,
-                              onClick: () => onCancelRegistration(item.eventId),
-                            },
-                          ]
+                        ? [{ icon: <XCircle />, label: "Huỷ đăng ký", danger: true, disabled: cancelPending, onClick: () => onCancelRegistration(item.eventId) }]
                         : []),
                     ]}
                   />
@@ -210,12 +203,7 @@ export function MyEventsHistorySection({
               },
             ]}
           />
-          <Pagination
-            offset={historyOffset}
-            limit={historyLimit}
-            total={total}
-            onOffset={setHistoryOffset}
-          />
+          <Pagination offset={historyOffset} limit={historyLimit} total={total} onOffset={setHistoryOffset} onLimit={setHistoryLimit} />
         </>
       )}
     </div>
