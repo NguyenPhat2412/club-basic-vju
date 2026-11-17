@@ -15,4 +15,5 @@ ssh "$HOST" "flock /var/lock/vju-club-deploy.lock bash -c 'set -e
   docker compose -f compose.prod.yml --env-file .env build
   docker compose -f compose.prod.yml --env-file .env up -d --remove-orphans
   cd $APP/releases && rm -rf previous && { [ -d current ] && mv current previous || true; } && mv next current
+  grep -q \"api/v1/ws\" /etc/nginx/sites-available/vju-club-stagging 2>/dev/null || echo \"WARNING: /etc/nginx/sites-available/vju-club-stagging is missing api/v1/ws WebSocket Upgrade block\" >&2
   docker compose -f $APP/releases/current/deploy/compose.prod.yml --env-file $APP/deploy/.env ps'"

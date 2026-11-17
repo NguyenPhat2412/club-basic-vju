@@ -1,4 +1,12 @@
-import { Client, type IFrame, type StompConfig, type StompSubscription, type messageCallbackType } from '@stomp/stompjs';
+import {
+  Client,
+  ReconnectionTimeMode,
+  TickerStrategy,
+  type IFrame,
+  type StompConfig,
+  type StompSubscription,
+  type messageCallbackType,
+} from '@stomp/stompjs';
 import { API_BASE } from '@/lib/api/client';
 
 export function resolveWsBrokerUrl(apiBase: string = API_BASE): string {
@@ -63,17 +71,56 @@ function detach(entry: Entry) {
   entry.subs = [];
 }
 
+function waitForBrowserOnline(): Promise<void> {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined' || navigator.onLine !== false) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    window.addEventListener('online', () => resolve(), { once: true });
+  });
+}
+
 function ensureClient(): Client {
   if (client) return client;
+  let consecutiveFailures = 0;
+  let connectedInCurrentSocket = false;
+
   const created = createClient({
     brokerURL: resolveWsBrokerUrl(),
-    // Reconciled from the two former clients (chat 3s/15s, notifications 4s/20s): keep the faster chat values.
-    reconnectDelay: 3_000,
+    reconnectDelay: 2_000,
+    maxReconnectDelay: 30_000,
+    reconnectTimeMode: ReconnectionTimeMode.EXPONENTIAL,
     heartbeatIncoming: 15_000,
     heartbeatOutgoing: 15_000,
-    onConnect: () => entries.forEach((entry) => attach(entry, created)),
+    heartbeatToleranceMultiplier: 3,
+    heartbeatStrategy: TickerStrategy.Worker,
+    beforeConnect: async (activeClient) => {
+      await waitForBrowserOnline();
+      if (consecutiveFailures >= 2 && typeof fetch === 'function') {
+        try {
+          const probe = await fetch(`${API_BASE}/api/v1/users/me`, { credentials: 'include' });
+          if (probe.status === 401 || probe.status === 403) {
+            consecutiveFailures = 0;
+            void activeClient.deactivate();
+          }
+        } catch {
+          // Network or upstream temporarily restarting; let exponential backoff retry quietly.
+        }
+      }
+    },
+    onConnect: () => {
+      consecutiveFailures = 0;
+      connectedInCurrentSocket = true;
+      entries.forEach((entry) => attach(entry, created));
+    },
     onDisconnect: () => entries.forEach((entry) => entry.consumer.onDisconnect?.()),
-    onWebSocketClose: () => entries.forEach((entry) => entry.consumer.onWebSocketClose?.()),
+    onWebSocketClose: () => {
+      if (!connectedInCurrentSocket) {
+        consecutiveFailures += 1;
+      }
+      connectedInCurrentSocket = false;
+      entries.forEach((entry) => entry.consumer.onWebSocketClose?.());
+    },
     onStompError: (frame) => entries.forEach((entry) => entry.consumer.onStompError?.(frame)),
   });
   client = created;

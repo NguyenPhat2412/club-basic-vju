@@ -7,8 +7,9 @@ const wsOrigin = apiOrigin.replace(/^http/i, "ws");
 const cspDirectives = [
   "default-src 'self'",
   isProd
-    ? "script-src 'self' 'unsafe-inline' https://accounts.google.com"
-    : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com",
+    ? "script-src 'self' 'unsafe-inline' https://accounts.google.com https://static.cloudflareinsights.com"
+    : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://static.cloudflareinsights.com",
+  "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
   "font-src 'self' https://fonts.gstatic.com data:",
   isProd ? `img-src 'self' data: blob: https: ${apiOrigin}` : "img-src 'self' data: blob: https: http:",

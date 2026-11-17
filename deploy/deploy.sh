@@ -19,4 +19,5 @@ ssh "$HOST" "flock /var/lock/vju-club-deploy.lock bash -c 'set -e
   install -m 700 $APP/releases/next/deploy/backup/backup-db.sh $APP/releases/next/deploy/backup/restore-db.sh $APP/bin/
   install -m 644 $APP/releases/next/deploy/backup/vju-club-backup.cron /etc/cron.d/vju-club-backup
   cd $APP/releases && rm -rf previous && { [ -d current ] && mv current previous || true; } && mv next current
+  grep -q \"api/v1/ws\" /etc/nginx/sites-available/vju-club 2>/dev/null || echo \"WARNING: /etc/nginx/sites-available/vju-club is missing api/v1/ws WebSocket Upgrade block\" >&2
   docker compose -f $APP/releases/current/deploy/compose.prod.yml --env-file $APP/deploy/.env ps'"

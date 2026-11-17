@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -130,8 +131,31 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<ProblemDetail> handleUnexpectedException(Exception exception) {
+        if (isClientDisconnect(exception)) {
+            log.debug("Client disconnected before response completed: {}", exception.getMessage());
+            return null;
+        }
         log.error("Unhandled exception", exception);
         return problem(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "An unexpected error occurred");
+    }
+
+    private static boolean isClientDisconnect(Throwable throwable) {
+        for (Throwable cur = throwable; cur != null; cur = cur.getCause()) {
+            if (cur instanceof AsyncRequestNotUsableException) {
+                return true;
+            }
+            String className = cur.getClass().getName();
+            if (className.endsWith("ClientAbortException")) {
+                return true;
+            }
+            if (cur instanceof java.io.IOException ioEx) {
+                String msg = ioEx.getMessage();
+                if (msg != null && (msg.contains("Broken pipe") || msg.contains("Connection reset by peer"))) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     @Override

@@ -122,3 +122,42 @@ test("StrictMode release/acquire in the same tick keeps the same client", async 
   third.release();
   await tick();
 });
+
+test("uses exponential reconnect backoff, Worker heartbeat ticker, and deactivates on 401 session probe after repeated handshake failures", async () => {
+  created.length = 0;
+  const origFetch = globalThis.fetch;
+  let fetchCalls = 0;
+  globalThis.fetch = (async () => {
+    fetchCalls += 1;
+    return new Response(null, { status: 401 });
+  }) as typeof fetch;
+
+  try {
+    const handle = acquireStompConnection({});
+    const fake = created[0];
+    assert.equal(fake.config.reconnectDelay, 2_000);
+    assert.equal(fake.config.maxReconnectDelay, 30_000);
+    assert.ok(fake.config.reconnectTimeMode !== undefined, "must set exponential reconnectTimeMode");
+    assert.ok(fake.config.heartbeatStrategy !== undefined, "must set Worker heartbeatStrategy");
+    assert.equal(fake.config.heartbeatToleranceMultiplier, 3);
+
+    // First attempt: no extra HTTP probe on healthy initial dial
+    await fake.config.beforeConnect?.(handle.client);
+    assert.equal(fetchCalls, 0);
+
+    // Simulate 2 consecutive failed WebSocket handshakes (close without ever connecting)
+    fake.dropSocket();
+    await fake.config.beforeConnect?.(handle.client);
+    assert.equal(fetchCalls, 0);
+
+    fake.dropSocket();
+    await fake.config.beforeConnect?.(handle.client);
+    assert.equal(fetchCalls, 1);
+    assert.equal(fake.deactivations, 1, "401 session probe must deactivate STOMP client to stop infinite WS error spam");
+
+    handle.release();
+    await tick();
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+});
