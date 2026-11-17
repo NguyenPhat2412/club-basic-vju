@@ -124,7 +124,11 @@ public class OtpMailServiceImpl implements OtpMailService {
                 sender.setUsername(smtp.username());
             }
             if (smtp.password() != null && !smtp.password().isBlank()) {
-                sender.setPassword(smtp.password());
+                String normalizedPassword = smtp.host() != null
+                        && smtp.host().toLowerCase(java.util.Locale.ROOT).contains("gmail.com")
+                        ? smtp.password().replaceAll("\\s+", "")
+                        : smtp.password();
+                sender.setPassword(normalizedPassword);
             }
 
             Properties props = sender.getJavaMailProperties();

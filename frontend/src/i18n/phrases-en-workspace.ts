@@ -238,4 +238,8 @@ export const PHRASES_EN_WORKSPACE: Record<string, string> = {
     'Please select the Club / Department for the chosen direct permission before saving.',
   'Bạn đang có thông tin hoặc phân quyền chưa lưu. Đóng cửa sổ và bỏ các lựa chọn chưa lưu?':
     'You have unsaved profile or permission changes. Close and discard unsaved selections?',
+  'Điền nhanh Gmail (smtp.gmail.com:587)': 'Quick-fill Gmail (smtp.gmail.com:587)',
+  'Email tài khoản gửi SMTP': 'SMTP Sender Account / Email',
+  'Với Gmail, nhập địa chỉ email đầy đủ (VD: ten-ban@gmail.com), không nhập tên ứng dụng.':
+    'For Gmail, enter the full email address (e.g., your-name@gmail.com), not the App Password label.',
 };

@@ -238,4 +238,8 @@ export const PHRASES_JA_WORKSPACE: Record<string, string> = {
     '保存する前に、選択した直接権限の対象クラブ／専門部署を選択してください。',
   'Bạn đang có thông tin hoặc phân quyền chưa lưu. Đóng cửa sổ và bỏ các lựa chọn chưa lưu?':
     '未保存のプロフィールまたは権限変更があります。閉じて変更を破棄しますか？',
+  'Điền nhanh Gmail (smtp.gmail.com:587)': 'Gmailプリセット入力 (smtp.gmail.com:587)',
+  'Email tài khoản gửi SMTP': 'SMTP送信アカウント（メールアドレス）',
+  'Với Gmail, nhập địa chỉ email đầy đủ (VD: ten-ban@gmail.com), không nhập tên ứng dụng.':
+    'Gmailの場合はアプリ名ではなく、メールアドレス全体（例: your-name@gmail.com）を入力してください。',
 };

@@ -57,9 +57,27 @@ export function SystemSmtpCard({
             Máy chủ gửi Email (SMTP) & Mẫu thư OTP 3 Tông màu
           </h3>
         </div>
-        <Badge tone={smtpReady ? "success" : "neutral"}>
-          {smtpReady ? `Đang bật (${current.smtpHost}:${current.smtpPort})` : "Chưa cấu hình máy chủ SMTP"}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() =>
+                onChange({
+                  ...draft,
+                  smtpHost: "smtp.gmail.com",
+                  smtpPort: 587,
+                  smtpStartTls: true,
+                })
+              }
+              className="rounded-full border border-primary/25 bg-white px-2.5 py-0.5 text-[10.5px] font-bold text-primary transition-colors hover:bg-primary/5"
+            >
+              Điền nhanh Gmail (smtp.gmail.com:587)
+            </button>
+          )}
+          <Badge tone={smtpReady ? "success" : "neutral"}>
+            {smtpReady ? `Đang bật (${current.smtpHost}:${current.smtpPort})` : "Chưa cấu hình máy chủ SMTP"}
+          </Badge>
+        </div>
       </div>
 
       <div className="grid gap-5 p-4 sm:p-5 @4xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] @4xl:gap-6">
@@ -98,13 +116,16 @@ export function SystemSmtpCard({
           </div>
 
           <div className="grid gap-3.5 sm:grid-cols-2">
-            <FormField label="Tài khoản đăng nhập SMTP">
+            <FormField
+              label="Email tài khoản gửi SMTP"
+              hint="Với Gmail, nhập địa chỉ email đầy đủ (VD: ten-ban@gmail.com), không nhập tên ứng dụng."
+            >
               <Input
                 maxLength={255}
                 disabled={!canEdit}
                 value={draft.smtpUsername ?? ""}
                 onChange={(e) => onChange({ ...draft, smtpUsername: e.target.value })}
-                placeholder="VD: clubhub@vju.ac.vn"
+                placeholder="VD: masterrio2412@gmail.com"
               />
             </FormField>
 

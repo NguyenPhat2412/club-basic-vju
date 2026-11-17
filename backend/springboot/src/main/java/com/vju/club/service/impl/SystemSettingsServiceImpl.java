@@ -79,7 +79,12 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
         if (Boolean.TRUE.equals(request.clearSmtpPassword())) {
             settings.setSmtpPassword(null);
         } else if (request.smtpPassword() != null && !request.smtpPassword().isBlank()) {
-            settings.setSmtpPassword(request.smtpPassword().trim());
+            String effectiveHost = settings.getSmtpHost();
+            String rawPw = request.smtpPassword().trim();
+            settings.setSmtpPassword(
+                    effectiveHost != null && effectiveHost.toLowerCase(Locale.ROOT).contains("gmail.com")
+                            ? rawPw.replaceAll("\\s+", "")
+                            : rawPw);
         }
         if (request.smtpFromEmail() != null) {
             String normalizedFrom = blankToNull(request.smtpFromEmail());
