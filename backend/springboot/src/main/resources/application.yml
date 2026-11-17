@@ -106,6 +106,14 @@ app:
     base-url: ${AI_BASE_URL:https://router.anhchau.all1.vn/v1}
     api-key: ${AI_API_KEY:}
     model: ${AI_MODEL:apmarket}
+  mail:
+    smtp-host: ${SMTP_HOST:}
+    smtp-port: ${SMTP_PORT:587}
+    smtp-username: ${SMTP_USERNAME:}
+    smtp-password: ${SMTP_PASSWORD:}
+    smtp-from-email: ${SMTP_FROM_EMAIL:}
+    smtp-from-name: ${SMTP_FROM_NAME:VJU ClubHub}
+    smtp-start-tls: ${SMTP_START_TLS:true}
   cache:
     type: ${CACHE_TYPE:simple}
     ttl: ${CACHE_TTL:10m}

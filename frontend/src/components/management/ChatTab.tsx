@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { Hash, MessageSquare, Plus } from "lucide-react";
 import { apiModel, ChatChannel, ChatMessage, Department } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
-import { setActiveViewedChatChannel, UNREAD_SUMMARY_QUERY_KEY } from "@/hooks/notification/useGlobalRealtimeNotifications";
+import { setActiveViewedChatChannel } from "@/hooks/notification/useGlobalRealtimeNotifications";
 import { useChannelMessages, useChannelPinnedMessages, useClubChannels, useClubQuickReplies, useWarmClubChannels } from "@/hooks/chat/useClubChat";
 import { useChatMessageActions } from "@/hooks/chat/useChatMessageActions";
 import { useChatMessageSender } from "@/hooks/chat/useChatMessageSender";
@@ -87,7 +88,7 @@ export function ChatTab({
   const pinnedQuery = useChannelPinnedMessages(activeChannelId, Boolean(activeChannelId), userId);
 
   const summaries = useQuery({
-    queryKey: ["channel-summaries", activeChannelId],
+    queryKey: qk.channelSummaries(activeChannelId),
     queryFn: () => apiModel.channelSummaries(activeChannelId),
     staleTime: 25_000,
     enabled: !!activeChannelId,
@@ -98,9 +99,9 @@ export function ChatTab({
     const newestId = filterChannelMessages(messages.data?.items, activeChannelId).find((m) => !m.optimistic)?.id;
     apiModel
       .markChannelRead(activeChannelId, newestId)
-      .then(() => queryClient.invalidateQueries({ queryKey: UNREAD_SUMMARY_QUERY_KEY }))
+      .then(() => queryClient.invalidateQueries({ queryKey: qk.unreadSummary() }))
       .catch(() => {});
-    queryClient.setQueryData<ChatChannel[]>(["club-channels", clubId], (old) =>
+    queryClient.setQueryData<ChatChannel[]>(qk.clubChannels(clubId), (old) =>
       old?.map((ch) => (ch.id === activeChannelId ? { ...ch, unreadCount: 0 } : ch))
     );
   }, [activeChannelId, activeChannel?.unreadCount, clubId, messages.data?.items, queryClient]);
@@ -118,7 +119,7 @@ export function ChatTab({
       setCreating(false);
       setNewName("");
       setChannelId(ch.id);
-      queryClient.invalidateQueries({ queryKey: ["club-channels", clubId] });
+      queryClient.invalidateQueries({ queryKey: qk.clubChannels(clubId) });
     },
     onError: (e) => onError(describeError(e)),
   });
@@ -129,8 +130,8 @@ export function ChatTab({
     onSuccess: (_res, targetChId) => {
       onNotice("Trợ lý AI đã tóm tắt nội dung thảo luận của kênh.");
       onError("");
-      queryClient.invalidateQueries({ queryKey: ["channel-messages", targetChId] });
-      queryClient.invalidateQueries({ queryKey: ["channel-summaries", targetChId] });
+      queryClient.invalidateQueries({ queryKey: qk.channelMessages(targetChId) });
+      queryClient.invalidateQueries({ queryKey: qk.channelSummaries(targetChId) });
     },
     onError: (e) => onError(describeError(e)),
   });

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { Edit2, Plus, Search, Send, Trash2, X } from "lucide-react";
 import { chatApi } from "@/api/chat/chat.api";
 import { describeError } from "@/components/shared/ListPage";
@@ -73,7 +74,7 @@ export function ChatQuickReplyPopover({
         : chatApi.createQuickReply(clubId, payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["club-quick-replies", clubId] });
+      queryClient.invalidateQueries({ queryKey: qk.clubQuickReplies(clubId) });
       onNotice(editing === "new" ? "Đã lưu tin nhắn nhanh mới." : "Đã cập nhật tin nhắn nhanh.");
       setEditing(null);
     },
@@ -83,7 +84,7 @@ export function ChatQuickReplyPopover({
   const deleteMutation = useMutation({
     mutationFn: (replyId: string) => chatApi.deleteQuickReply(clubId, replyId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["club-quick-replies", clubId] });
+      queryClient.invalidateQueries({ queryKey: qk.clubQuickReplies(clubId) });
       onNotice("Đã xóa tin nhắn nhanh.");
     },
     onError: (err) => onError(describeError(err)),

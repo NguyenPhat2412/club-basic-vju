@@ -5,13 +5,21 @@ import com.vju.club.mapper.UserMapperImpl;
 import com.vju.club.service.impl.AuthServiceImpl;
 
 import com.vju.club.enums.AuditAction;
+import com.vju.club.enums.PermissionScope;
 import com.vju.club.dto.request.ChangePasswordRequest;
+import com.vju.club.dto.request.ForgotPasswordRequest;
 import com.vju.club.dto.request.LoginRequest;
+import com.vju.club.entity.Role;
 import com.vju.club.entity.User;
+import com.vju.club.entity.UserRole;
 import com.vju.club.enums.UserStatus;
 import com.vju.club.error.ApiException;
+import com.vju.club.repository.RoleRepository;
 import com.vju.club.repository.UserRepository;
+import com.vju.club.repository.UserRoleRepository;
 import com.vju.club.security.ClubPrincipal;
+import com.vju.club.security.GrantGuard;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -52,6 +60,9 @@ class AuthServiceTest {
     @Mock AuthenticationManager authenticationManager;
     @Mock UserSessionService userSessionService;
     @Mock AuditService auditService;
+    @Mock NotificationService notificationService;
+    @Mock UserRoleRepository userRoleRepository;
+    @Mock RoleRepository roleRepository;
 
     private AuthService service;
 
@@ -174,6 +185,70 @@ class AuthServiceTest {
             when(userRepository.findById(id)).thenReturn(Optional.empty());
             assertApiError(() -> service.changePassword(id, new ChangePasswordRequest("a", "NewPassword1"), "current"),
                     HttpStatus.NOT_FOUND, "USER_NOT_FOUND");
+        }
+    }
+
+    @Nested
+    class ForgotPassword {
+        @BeforeEach
+        void wireOptionalCollaborators() {
+            ReflectionTestUtils.setField(service, "notificationService", notificationService);
+            ReflectionTestUtils.setField(service, "userRoleRepository", userRoleRepository);
+            ReflectionTestUtils.setField(service, "roleRepository", roleRepository);
+        }
+
+        @Test
+        void silentlyIgnoresUnknownOrInactiveAccountsToPreventEnumeration() {
+            when(userRepository.findByEmailIgnoreCase("ghost@st.vju.ac.vn")).thenReturn(Optional.empty());
+            User inactive = user("inactive@st.vju.ac.vn", "password123", UserStatus.INACTIVE);
+            when(userRepository.findByEmailIgnoreCase("inactive@st.vju.ac.vn")).thenReturn(Optional.of(inactive));
+
+            service.requestPasswordReset(new ForgotPasswordRequest(" ghost@st.vju.ac.vn ", "23110209", "Quên MK"));
+            service.requestPasswordReset(new ForgotPasswordRequest("inactive@st.vju.ac.vn", null, null));
+
+            verify(auditService, never()).record(any(), any(), any(), any(), any(), any());
+            verify(notificationService, never()).create(any(), anyString(), anyString(), anyString(), any(), anyString());
+        }
+
+        @Test
+        void recordsAuditAndNotifiesActiveSystemAdminsForActiveAccount() {
+            User target = user("student@st.vju.ac.vn", "password123", UserStatus.ACTIVE);
+            target.setStudentCode("23110209");
+            when(userRepository.findByEmailIgnoreCase("student@st.vju.ac.vn")).thenReturn(Optional.of(target));
+
+            Role sysAdminRole = new Role();
+            sysAdminRole.setId(UUID.randomUUID());
+            sysAdminRole.setCode(GrantGuard.SYSTEM_ADMIN);
+            when(roleRepository.findByCode(GrantGuard.SYSTEM_ADMIN)).thenReturn(Optional.of(sysAdminRole));
+
+            User activeAdmin = user("admin@vju.ac.vn", "password123", UserStatus.ACTIVE);
+            User inactiveAdmin = user("retired-admin@vju.ac.vn", "password123", UserStatus.INACTIVE);
+            UserRole holder1 = new UserRole();
+            holder1.setUser(activeAdmin);
+            holder1.setRole(sysAdminRole);
+            UserRole holder2 = new UserRole();
+            holder2.setUser(inactiveAdmin);
+            holder2.setRole(sysAdminRole);
+            when(userRoleRepository.findActiveHoldersForTarget(sysAdminRole.getId(), PermissionScope.GLOBAL, null, null))
+                    .thenReturn(List.of(holder1, holder2));
+
+            service.requestPasswordReset(new ForgotPasswordRequest(
+                    " STUDENT@st.vju.ac.vn ", " 23110209 ", "Em quên mật khẩu cổng CLB"));
+
+            verify(auditService).record(eq(null), eq(AuditAction.USER_PASSWORD_RESET), eq(target.getId()), eq(null), eq(null), any());
+            ArgumentCaptor<String> msgCaptor = ArgumentCaptor.forClass(String.class);
+            verify(notificationService).create(
+                    eq(activeAdmin.getId()),
+                    eq("Yêu cầu đặt lại mật khẩu: student@st.vju.ac.vn"),
+                    msgCaptor.capture(),
+                    eq("USER"),
+                    eq(target.getId()),
+                    anyString());
+            assertThat(msgCaptor.getValue())
+                    .contains("23110209")
+                    .contains("khớp hồ sơ")
+                    .contains("Em quên mật khẩu cổng CLB");
+            verify(notificationService, never()).create(eq(inactiveAdmin.getId()), anyString(), anyString(), anyString(), any(), anyString());
         }
     }
 }

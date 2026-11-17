@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import {
   ArrowRight,
   Bell,
@@ -18,7 +19,6 @@ import {
 import { apiModel, Notification } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import {
-  UNREAD_SUMMARY_QUERY_KEY,
   useUnreadNotificationSummary,
 } from "@/hooks/notification/useGlobalRealtimeNotifications";
 import { Badge } from "@/components/ui/badge";
@@ -58,7 +58,7 @@ export function NotificationBellDrawer({
   const unreadSummary = useUnreadNotificationSummary(canQuery);
 
   const list = useQuery({
-    queryKey: ["notifications", 0, "bell-drawer"],
+    queryKey: qk.notifications(0, "bell-drawer"),
     queryFn: () => apiModel.notifications(0, 40),
     enabled: canQuery,
     staleTime: 15_000,
@@ -74,9 +74,9 @@ export function NotificationBellDrawer({
   }, [open]);
 
   const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    queryClient.invalidateQueries({ queryKey: UNREAD_SUMMARY_QUERY_KEY });
-    queryClient.invalidateQueries({ queryKey: ["dashboard", "notifications"] });
+    queryClient.invalidateQueries({ queryKey: qk.notifications() });
+    queryClient.invalidateQueries({ queryKey: qk.unreadSummary() });
+    queryClient.invalidateQueries({ queryKey: qk.dashboard("notifications") });
   };
 
   const markRead = useMutation({

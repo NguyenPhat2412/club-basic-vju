@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { Activity, Building2, Eye, FilterX, Layers, ScrollText } from "lucide-react";
 import { apiModel, AuditLogItem } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
@@ -33,13 +34,13 @@ export function AuditLogsView() {
   const [selected, setSelected] = useState<AuditLogItem | null>(null);
 
   const clubs = useQuery({
-    queryKey: ["clubs", "audit"],
+    queryKey: qk.clubs("audit"),
     queryFn: () => apiModel.clubs("", "", 0, 100),
     enabled: session.ready && canView,
   });
 
   const logs = useQuery({
-    queryKey: ["audit-logs", resourceType, clubId, offset, limit],
+    queryKey: qk.auditLogs(resourceType, clubId, offset, limit),
     queryFn: () =>
       apiModel.auditLogs({
         resourceType: resourceType || undefined,

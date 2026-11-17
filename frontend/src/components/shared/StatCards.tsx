@@ -60,7 +60,7 @@ export function StatKpiCard({ item }: { item: StatKpiCardItem }) {
 
 export function StatKpiGrid({
   items,
-  columnsClassName = "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6",
+  columnsClassName = "grid-cols-1 @sm:grid-cols-2 @2xl:grid-cols-3 @6xl:grid-cols-6",
   ariaLabel = "Chỉ số tổng quan",
 }: {
   items: StatKpiCardItem[];

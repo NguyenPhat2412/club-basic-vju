@@ -23,6 +23,8 @@ public final class ApiPaths {
     public static final String AUTH_LOGOUT = "/auth/logout";
     public static final String AUTH_GOOGLE = "/auth/google";
     public static final String AUTH_GOOGLE_CONFIG = "/auth/google/config";
+    public static final String AUTH_FORGOT_PASSWORD = "/auth/forgot-password";
+    public static final String AUTH_RESET_PASSWORD = "/auth/reset-password";
     public static final String AUTH_CHANGE_PASSWORD = "/auth/change-password";
     public static final String AUTH_ME = "/auth/me";
 
@@ -31,6 +33,8 @@ public final class ApiPaths {
     public static final String FULL_AUTH_REGISTER = API_V1 + AUTH_REGISTER;
     public static final String FULL_AUTH_LOGOUT = API_V1 + AUTH_LOGOUT;
     public static final String FULL_AUTH_GOOGLE = API_V1 + AUTH_GOOGLE;
+    public static final String FULL_AUTH_FORGOT_PASSWORD = API_V1 + AUTH_FORGOT_PASSWORD;
+    public static final String FULL_AUTH_RESET_PASSWORD = API_V1 + AUTH_RESET_PASSWORD;
     public static final String FULL_AUTH_CHANGE_PASSWORD = API_V1 + AUTH_CHANGE_PASSWORD;
     public static final String FULL_AUTH_ME = API_V1 + AUTH_ME;
 
@@ -171,6 +175,7 @@ public final class ApiPaths {
 
     // System Settings & Audit Logs
     public static final String SYSTEM_SETTINGS = "/system-settings";
+    public static final String SYSTEM_SETTINGS_SMTP_TEST = "/system-settings/smtp-test";
     public static final String AUDIT_LOGS = "/audit-logs";
 
     // Swagger / Springdoc UI

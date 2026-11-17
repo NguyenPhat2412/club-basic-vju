@@ -114,6 +114,17 @@ class SystemSettingsServiceTest {
         values.put("documentMaxFileMb", 20);
         values.put("clubImageMaxMb", 10);
         values.put("avatarMaxMb", 5);
+        values.put("otpExpiryMinutes", 5);
+        values.put("otpMaxSendCount", 5);
+        values.put("otpResendCooldownSeconds", 60);
+        values.put("otpMaxVerifyAttempts", 5);
+        values.put("smtpHost", null);
+        values.put("smtpPort", 587);
+        values.put("smtpUsername", null);
+        values.put("smtpPasswordConfigured", false);
+        values.put("smtpFromEmail", null);
+        values.put("smtpFromName", "VJU ClubHub");
+        values.put("smtpStartTls", true);
         return values;
     }
 

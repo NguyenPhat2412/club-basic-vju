@@ -63,7 +63,7 @@ export function OverviewDepartmentPanel({
                 </div>
                 <div>
                   <span className="text-muted-foreground">Việc Mở/Xong: </span>
-                  <span className="font-mono font-bold text-emerald-700">
+                  <span className="font-mono font-bold text-slate-900">
                     {dept.openTasks}/{dept.completedTasks}
                   </span>
                 </div>
@@ -116,10 +116,10 @@ export function OverviewDepartmentPanel({
                   <td className="px-3 py-2.5 text-right font-mono tabular-nums text-muted-foreground">
                     {dept.secondChoiceApplications}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono font-semibold tabular-nums text-amber-700">
+                  <td className="px-3 py-2.5 text-right font-mono font-semibold tabular-nums text-slate-700">
                     {dept.openTasks}
                   </td>
-                  <td className="py-2.5 pl-3 text-right font-mono font-bold tabular-nums text-emerald-700">
+                  <td className="py-2.5 pl-3 text-right font-mono font-bold tabular-nums text-slate-900">
                     {dept.completedTasks}
                   </td>
                 </tr>

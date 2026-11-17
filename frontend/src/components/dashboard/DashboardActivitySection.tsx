@@ -3,9 +3,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  Bell,
   Calendar,
-  CheckCheck,
   ClipboardCheck,
   ClipboardList,
   Clock,
@@ -14,14 +12,12 @@ import {
 import { ClubMediaCatalog, clubSlugFromCode } from "@/lib/media";
 import { ClubAvatar } from "@/components/shared/ClubMedia";
 import { Badge, StatusBadge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { formatDateTime, formatDay } from "@/lib/utils";
 import {
   ApplicationSummary,
   CalendarItem,
   ClubItem,
   Membership,
-  NotificationItem,
   PublicEvent,
   TaskItem,
 } from "@/types";
@@ -38,11 +34,6 @@ interface DashboardActivitySectionProps {
   mediaCatalog?: ClubMediaCatalog;
   upcomingPublicEvents: PublicEvent[];
   calendarEvents: CalendarItem[];
-  unreadNotifCount: number;
-  notifList: NotificationItem[];
-  notificationsPending: boolean;
-  markAllReadPending: boolean;
-  onMarkAllRead: () => void;
 }
 
 export function DashboardActivitySection({
@@ -57,14 +48,9 @@ export function DashboardActivitySection({
   mediaCatalog,
   upcomingPublicEvents,
   calendarEvents,
-  unreadNotifCount,
-  notifList,
-  notificationsPending,
-  markAllReadPending,
-  onMarkAllRead,
 }: DashboardActivitySectionProps) {
   return (
-    <section className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.95fr)]">
+    <section className="grid grid-cols-1 gap-4 @4xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.95fr)]">
       <div className="flex min-w-0 flex-col rounded-xl border border-border bg-card">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3 sm:px-5">
           <div className="flex w-full min-w-0 flex-wrap items-center gap-1 rounded-lg bg-secondary/70 p-1 sm:w-auto">
@@ -283,7 +269,7 @@ export function DashboardActivitySection({
                           <div className="flex min-w-0 items-center gap-2">
                             <ClubAvatar name={clubName} code={clubCode} logoUrl={logoUrl} fallbackUrl={media?.logo} size="sm" />
                             <Badge tone="primary">{clubCode}</Badge>
-                            {matchedMembership && <Badge tone="neutral" dot={false}>Đã tham gia</Badge>}
+                            {matchedMembership && <Badge tone="success" dot={false}>Đã tham gia</Badge>}
                           </div>
                           <StatusBadge status={status} />
                         </div>
@@ -305,84 +291,38 @@ export function DashboardActivitySection({
         </div>
       </div>
 
-      <div className="min-w-0 space-y-4">
-        <div className="min-w-0 rounded-xl border border-border bg-card p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
-            <div className="flex items-center gap-2">
-              <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
-                <Calendar size={15} />
-              </span>
-              <div>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">Sự kiện & Lịch sinh hoạt</h2>
-                <p className="text-[11px] text-muted-foreground">Hoạt động CLB sắp diễn ra</p>
-              </div>
+      <div className="min-w-0 rounded-xl border border-border bg-card p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
+          <div className="flex items-center gap-2">
+            <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
+              <Calendar size={15} />
+            </span>
+            <div>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">Sự kiện & Lịch sinh hoạt</h2>
+              <p className="text-[11px] text-muted-foreground">Hoạt động CLB sắp diễn ra</p>
             </div>
-            <Link href="/events" className="text-[11px] font-semibold text-primary hover:underline">Sự kiện & CTV</Link>
           </div>
-          {upcomingPublicEvents.length === 0 && calendarEvents.length === 0 ? (
-            <p className="py-6 text-center text-xs text-muted-foreground">Chưa có sự kiện nào sắp diễn ra.</p>
-          ) : (
-            <div className="mt-3 divide-y divide-border">
-              {(upcomingPublicEvents.length > 0 ? upcomingPublicEvents : calendarEvents).slice(0, 4).map((ev) => (
-                <div key={ev.id} className="py-2.5 first:pt-0 last:pb-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-xs font-bold text-foreground">{ev.title}</p>
-                    <StatusBadge status={ev.status} />
-                  </div>
-                  <p className="mt-0.5 text-[11px] font-medium text-primary">{ev.clubName}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-                    <span className="inline-flex items-center gap-1"><Clock size={11} /> {formatDateTime(ev.startTime)}</span>
-                    {ev.location && <span className="inline-flex items-center gap-1"><MapPin size={11} /> {ev.location}</span>}
-                  </div>
+          <Link href="/events" className="text-[11px] font-semibold text-primary hover:underline">Sự kiện & CTV</Link>
+        </div>
+        {upcomingPublicEvents.length === 0 && calendarEvents.length === 0 ? (
+          <p className="py-8 text-center text-xs text-muted-foreground">Chưa có sự kiện nào sắp diễn ra.</p>
+        ) : (
+          <div className="mt-3 divide-y divide-border">
+            {(upcomingPublicEvents.length > 0 ? upcomingPublicEvents : calendarEvents).slice(0, 5).map((ev) => (
+              <div key={ev.id} className="py-2.5 first:pt-0 last:pb-0">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-xs font-bold text-foreground">{ev.title}</p>
+                  <StatusBadge status={ev.status} />
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="min-w-0 rounded-xl border border-border bg-card p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
-            <div className="flex items-center gap-2">
-              <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary"><Bell size={15} /></span>
-              <div>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">Thông báo mới nhất</h2>
-                <p className="text-[11px] text-muted-foreground">
-                  {unreadNotifCount > 0 ? `${unreadNotifCount} thông báo chưa đọc` : "Đã đọc tất cả thông báo"}
-                </p>
+                <p className="mt-0.5 text-[11px] font-medium text-primary">{ev.clubName}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1"><Clock size={11} /> {formatDateTime(ev.startTime)}</span>
+                  {ev.location && <span className="inline-flex items-center gap-1"><MapPin size={11} /> {ev.location}</span>}
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {unreadNotifCount > 0 && (
-                <Button size="sm" variant="outline" disabled={markAllReadPending} onClick={onMarkAllRead}>
-                  <CheckCheck size={12} /> Đọc hết
-                </Button>
-              )}
-              <Link href="/notifications" className="text-[11px] font-semibold text-primary hover:underline">Tất cả</Link>
-            </div>
+            ))}
           </div>
-          {notificationsPending ? (
-            <div className="mt-3 space-y-2">
-              {[1, 2, 3].map((i) => <div key={i} className="h-12 animate-pulse rounded-lg bg-muted" />)}
-            </div>
-          ) : notifList.length === 0 ? (
-            <p className="py-6 text-center text-xs text-muted-foreground">Bạn chưa có thông báo mới.</p>
-          ) : (
-            <div className="mt-3 divide-y divide-border">
-              {notifList.slice(0, 4).map((item) => (
-                <Link href="/notifications" key={item.id} className="flex items-start gap-2.5 py-2.5 first:pt-0 last:pb-0 hover:opacity-85">
-                  <span className={`mt-1.5 size-2 shrink-0 rounded-full ${item.read ? "bg-muted-foreground/35" : "bg-primary"}`} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-xs font-semibold text-foreground">{item.title}</p>
-                      <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">{formatDay(item.createdAt)}</span>
-                    </div>
-                    <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">{item.message}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </section>
   );

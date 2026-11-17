@@ -3,6 +3,7 @@
 import { Suspense, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { FileText, Trash2 } from "lucide-react";
 import { apiModel, DocumentItem, DocumentVisibility } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
@@ -72,7 +73,7 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
   const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
 
   const clubs = useQuery({
-    queryKey: ["clubs", "documents"],
+    queryKey: qk.clubs("documents"),
     queryFn: () => apiModel.clubs("", "", 0, 100),
     enabled: session.ready,
   });
@@ -84,7 +85,7 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
   const activeClubId = isEmbedded ? (embeddedClubId ?? "") : (club?.id ?? "");
 
   const departmentsQuery = useQuery({
-    queryKey: ["departments", "documents", activeClubId],
+    queryKey: qk.departments(activeClubId),
     queryFn: () => apiModel.departments(activeClubId),
     enabled: !isSystemTier && !!activeClubId && session.canInClub("department.view", activeClubId),
   });
@@ -108,7 +109,7 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
   const queryLimit = hasClientRefine ? 100 : pageLimit;
 
   const documents = useQuery({
-    queryKey: ["documents", effectiveTier, activeClubId, serverDeptId ?? "", filterVisibility, categoryFilter, search, effectiveTrash, queryOffset, queryLimit],
+    queryKey: qk.documents(effectiveTier, activeClubId, serverDeptId ?? "", filterVisibility, categoryFilter, search, effectiveTrash, queryOffset, queryLimit),
     queryFn: () =>
       isSystemTier
         ? apiModel.systemDocuments({
@@ -133,7 +134,7 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
   });
 
   const counts = useQuery({
-    queryKey: ["documents", activeClubId, "counts", canRestore],
+    queryKey: qk.documents(activeClubId, "counts", canRestore),
     queryFn: async () => ({
       live: (await apiModel.documentCount(activeClubId)).count,
       deleted: canRestore ? (await apiModel.documentCount(activeClubId, true)).count : 0,
@@ -141,8 +142,8 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
     enabled: !isSystemTier && !!activeClubId,
   });
 
-  const detail = useQuery({ queryKey: ["document", detailId], queryFn: () => apiModel.documentDetail(detailId!), enabled: !!detailId });
-  const versions = useQuery({ queryKey: ["document", detailId, "versions"], queryFn: () => apiModel.documentVersions(detailId!), enabled: !!detailId && !detail.data?.deleted });
+  const detail = useQuery({ queryKey: qk.document(detailId), queryFn: () => apiModel.documentDetail(detailId!), enabled: !!detailId });
+  const versions = useQuery({ queryKey: qk.document(detailId, "versions"), queryFn: () => apiModel.documentVersions(detailId!), enabled: !!detailId && !detail.data?.deleted });
 
   const rawItems = useMemo(() => documents.data?.items ?? [], [documents.data?.items]);
   const categoryOptions = useMemo(
@@ -173,8 +174,8 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
     try {
       await action();
       setNotice(success);
-      queryClient.invalidateQueries({ queryKey: ["documents"] });
-      if (detailId) queryClient.invalidateQueries({ queryKey: ["document", detailId] });
+      queryClient.invalidateQueries({ queryKey: qk.documents() });
+      if (detailId) queryClient.invalidateQueries({ queryKey: qk.document(detailId) });
       return true;
     } catch (e) {
       setError(describeError(e));

@@ -3,16 +3,33 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { ArrowRight, LockKeyhole, UserPlus, X } from "lucide-react";
 import { apiModel, type AuthUserEnvelope } from "@/lib/api";
 import { describeError } from "@/components/shared/ListPage";
 import { GoogleSignInButton, OrDivider, useGoogleSignIn } from "@/components/shared/GoogleSignInButton";
 import { FormField, Input, PasswordInput } from "@/components/ui/input";
-import { AuthModalMode, validateRegisterDraft } from "@/forms/auth/auth-form";
+import {
+  AuthModalMode,
+  LoginFieldErrors,
+  RegisterFieldErrors,
+  toRegisterPayload,
+  validateLoginFields,
+  validateRegisterFields,
+} from "@/forms/auth/auth-form";
 import { toast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
 import { AuthModalBanner } from "./AuthModalBanner";
+import { AuthModalForgotForm } from "./AuthModalForgotForm";
 
 export type { AuthModalMode };
+
+const authInputCls = (hasError?: boolean, pad = "px-3") =>
+  cn(
+    "h-10 rounded-lg border-slate-300 bg-white text-sm text-slate-900",
+    pad,
+    hasError && "border-destructive focus:border-destructive focus:ring-destructive",
+  );
 
 export function AuthModal({
   open,
@@ -59,28 +76,39 @@ function AuthModalDialog({
   const queryClient = useQueryClient();
   const google = useGoogleSignIn();
   const googleOn = !!google.data?.enabled;
+  const allowedDomain = google.data?.allowedDomains[0] ?? "st.vju.ac.vn";
 
-  const [mode, setMode] = useState<AuthModalMode>(initialMode);
+  const [mode, setMode] = useState<AuthModalMode>(initialMode ?? "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [studentCode, setStudentCode] = useState("");
   const [phone, setPhone] = useState("");
+  const [loginErrors, setLoginErrors] = useState<LoginFieldErrors>({});
+  const [registerErrors, setRegisterErrors] = useState<RegisterFieldErrors>({});
   const [loading, setLoading] = useState(false);
 
   const switchMode = (nextMode: AuthModalMode) => {
+    setLoginErrors({});
+    setRegisterErrors({});
     setMode(nextMode);
   };
 
+  const clearLoginError = (field: keyof LoginFieldErrors) =>
+    setLoginErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
+
+  const clearRegisterError = (field: keyof RegisterFieldErrors) =>
+    setRegisterErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
+
   const handleAuthSuccess = async (envelope?: AuthUserEnvelope) => {
     await queryClient.cancelQueries();
-    queryClient.removeQueries({ queryKey: ["me", "permissions"] });
-    queryClient.removeQueries({ queryKey: ["optional-me", "permissions"] });
-    queryClient.removeQueries({ queryKey: ["dashboard"] });
+    queryClient.removeQueries({ queryKey: qk.me("permissions") });
+    queryClient.removeQueries({ queryKey: qk.optionalMe("permissions") });
+    queryClient.removeQueries({ queryKey: qk.dashboard() });
     if (envelope?.user) {
-      queryClient.setQueryData(["optional-me"], envelope.user);
-      queryClient.setQueryData(["me"], envelope.user);
+      queryClient.setQueryData(qk.optionalMe(), envelope.user);
+      queryClient.setQueryData(qk.me(), envelope.user);
     }
     try {
       window.sessionStorage.setItem("vju_clubhub_auto_auth_prompted_v1", "1");
@@ -98,6 +126,11 @@ function AuthModalDialog({
 
   const submitLogin = async (event: FormEvent) => {
     event.preventDefault();
+    const fieldErrors = validateLoginFields({ email, password });
+    if (Object.keys(fieldErrors).length > 0) {
+      setLoginErrors(fieldErrors);
+      return;
+    }
     setLoading(true);
     try {
       const envelope = await apiModel.login(email.trim(), password);
@@ -111,27 +144,15 @@ function AuthModalDialog({
 
   const submitRegister = async (event: FormEvent) => {
     event.preventDefault();
-    const validationErr = validateRegisterDraft({
-      fullName,
-      studentCode,
-      email,
-      phone,
-      password,
-      confirmPassword,
-    });
-    if (validationErr) {
-      toast.error(validationErr);
+    const draft = { fullName, studentCode, email, phone, password, confirmPassword };
+    const fieldErrors = validateRegisterFields(draft);
+    if (Object.keys(fieldErrors).length > 0) {
+      setRegisterErrors(fieldErrors);
       return;
     }
     setLoading(true);
     try {
-      const envelope = await apiModel.register({
-        fullName: fullName.trim(),
-        email: email.trim(),
-        password,
-        studentCode: studentCode.trim() || undefined,
-        phone: phone.trim() || undefined,
-      });
+      const envelope = await apiModel.register(toRegisterPayload(draft));
       await handleAuthSuccess(envelope);
     } catch (err) {
       toast.error(describeError(err));
@@ -139,6 +160,20 @@ function AuthModalDialog({
       setLoading(false);
     }
   };
+
+  const eyebrow =
+    mode === "login"
+      ? "KHU VỰC THÀNH VIÊN"
+      : mode === "forgot"
+        ? "KHÔI PHỤC TÀI KHOẢN"
+        : "THÀNH VIÊN MỚI · VJU CLUBHUB";
+
+  const heading =
+    mode === "login"
+      ? "Đăng nhập hệ thống"
+      : mode === "forgot"
+        ? "Quên mật khẩu đăng nhập"
+        : "Hãy gia nhập cộng đồng CLB";
 
   return (
     <div
@@ -149,128 +184,184 @@ function AuthModalDialog({
       onClick={onClose}
     >
       <div
-        className="relative my-auto grid max-h-[92dvh] w-full max-w-[460px] overflow-y-auto rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl md:max-w-[760px] md:grid-cols-[265px_1fr] md:overflow-hidden lg:max-w-[920px] lg:grid-cols-[380px_1fr]"
+        className="relative my-auto grid max-h-[92dvh] w-full max-w-[460px] overflow-y-auto rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl md:min-h-[595px] md:max-w-[780px] md:grid-cols-[270px_1fr] md:overflow-hidden lg:max-w-[920px] lg:grid-cols-[375px_1fr]"
         onClick={(event) => event.stopPropagation()}
       >
         <AuthModalBanner mode={mode} onClose={onClose} />
 
-        <div className="flex flex-col p-4 sm:p-6 md:max-h-[92dvh] md:overflow-y-auto lg:p-7">
-          <div className="hidden items-start justify-between gap-3 md:flex">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-[.14em] text-primary">
-                {mode === "login" ? "KHU VỰC THÀNH VIÊN" : "THÀNH VIÊN MỚI · VJU CLUBHUB"}
-              </p>
-              <h2 id="auth-modal-title" className="mt-0.5 text-xl font-extrabold tracking-tight text-slate-900 lg:text-2xl">
-                {mode === "login" ? "Đăng nhập hệ thống" : "Hãy gia nhập cộng đồng CLB"}
-              </h2>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Đóng cửa sổ"
-              className="grid size-8 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1 md:mt-4">
-            <button
-              type="button"
-              onClick={() => switchMode("login")}
-              className={`rounded-lg py-2 text-xs font-bold transition-all sm:text-sm ${
-                mode === "login"
-                  ? "bg-white text-primary shadow-2xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Đăng nhập
-            </button>
-            <button
-              type="button"
-              onClick={() => switchMode("register")}
-              className={`rounded-lg py-2 text-xs font-bold transition-all sm:text-sm ${
-                mode === "register"
-                  ? "bg-white text-primary shadow-2xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Hãy gia nhập (Đăng ký)
-            </button>
-          </div>
-
-          {googleOn && (
-            <div className="mt-4 grid gap-2">
-              <p className="truncate whitespace-nowrap text-center text-xs font-medium text-slate-600">
-                Sinh viên VJU: Đăng nhập nhanh bằng email{" "}
-                <span className="font-semibold text-slate-800">@{google.data?.allowedDomains[0]}</span>
-              </p>
-              <GoogleSignInButton
-                onSignedIn={handleAuthSuccess}
-                width={360}
-                mode={mode === "register" ? "signup" : "signin"}
-              />
-              <OrDivider />
-            </div>
-          )}
-
-          {mode === "login" ? (
-            <form onSubmit={submitLogin} className="mt-4 grid gap-3.5 sm:mt-5 sm:gap-4">
-              <FormField label="Địa chỉ email" required>
-                <Input required type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="sinhvien@st.vju.ac.vn" className="h-10 rounded-lg border-slate-300 bg-white px-3.5 text-sm text-slate-900" />
-              </FormField>
-              <FormField label="Mật khẩu" required>
-                <PasswordInput required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="h-10 rounded-lg border-slate-300 bg-white px-3.5 text-sm text-slate-900" />
-              </FormField>
-              <button type="submit" disabled={loading} className="mt-1 flex h-11 items-center justify-center gap-2 rounded-lg bg-primary text-sm font-bold text-white shadow-xs transition-opacity hover:opacity-90 disabled:opacity-60">
-                <LockKeyhole size={15} />
-                {loading ? "ĐANG ĐĂNG NHẬP…" : "ĐĂNG NHẬP VÀO CỘNG ĐỒNG"}
-                <ArrowRight size={15} />
+        <div className="flex flex-col justify-between p-4 sm:p-6 md:max-h-[92dvh] md:overflow-y-auto lg:p-7">
+          <div>
+            <div className="hidden items-start justify-between gap-3 md:flex">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[.14em] text-primary">{eyebrow}</p>
+                <h2 id="auth-modal-title" className="mt-0.5 text-xl font-extrabold tracking-tight text-slate-900 lg:text-2xl">
+                  {heading}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Đóng cửa sổ"
+                className="grid size-8 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+              >
+                <X size={16} />
               </button>
-              <p className="border-t border-slate-100 pt-3 text-center text-xs text-slate-600">
-                Bạn chưa có tài khoản?{" "}
-                <button type="button" onClick={() => switchMode("register")} className="font-bold text-primary hover:underline">
-                  Hãy gia nhập cùng chúng mình →
+            </div>
+
+            <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1 md:mt-4">
+              <button
+                type="button"
+                onClick={() => switchMode("login")}
+                className={cn(
+                  "rounded-lg py-2 text-xs font-bold transition-all sm:text-sm",
+                  mode === "login" ? "bg-white text-primary shadow-2xs" : "text-slate-600 hover:text-slate-900",
+                )}
+              >
+                Đăng nhập
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode("register")}
+                className={cn(
+                  "rounded-lg py-2 text-xs font-bold transition-all sm:text-sm",
+                  mode === "register" ? "bg-white text-primary shadow-2xs" : "text-slate-600 hover:text-slate-900",
+                )}
+              >
+                Hãy gia nhập (Đăng ký)
+              </button>
+            </div>
+
+            {googleOn && mode !== "forgot" && (
+              <div className="mt-4 grid gap-2">
+                <p className="truncate whitespace-nowrap text-center text-xs font-medium text-slate-600">
+                  Sinh viên VJU: Đăng nhập nhanh bằng email{" "}
+                  <span className="font-semibold text-slate-800">@{allowedDomain}</span>
+                </p>
+                <GoogleSignInButton
+                  onSignedIn={handleAuthSuccess}
+                  width={360}
+                  mode={mode === "register" ? "signup" : "signin"}
+                />
+                <OrDivider />
+              </div>
+            )}
+          </div>
+
+          {mode === "forgot" ? (
+            <AuthModalForgotForm
+              initialEmail={email}
+              allowedDomain={allowedDomain}
+              onEmailSync={setEmail}
+              onBackToLogin={() => switchMode("login")}
+            />
+          ) : mode === "login" ? (
+            <form noValidate onSubmit={submitLogin} className="mt-4 flex flex-1 flex-col justify-between gap-4 sm:mt-5">
+              <div className="grid gap-3.5 sm:gap-4">
+                <FormField label="Địa chỉ email" required error={loginErrors.email}>
+                  <Input
+                    type="email" maxLength={320} autoComplete="username" aria-invalid={Boolean(loginErrors.email)}
+                    value={email} onChange={(e) => { setEmail(e.target.value); clearLoginError("email"); }}
+                    placeholder="sinhvien@st.vju.ac.vn" className={authInputCls(Boolean(loginErrors.email), "px-3.5")}
+                  />
+                </FormField>
+
+                <div className="relative">
+                  <FormField label="Mật khẩu" required error={loginErrors.password}>
+                    <PasswordInput
+                      maxLength={128} autoComplete="current-password" aria-invalid={Boolean(loginErrors.password)}
+                      value={password} onChange={(e) => { setPassword(e.target.value); clearLoginError("password"); }}
+                      placeholder="••••••••" className={authInputCls(Boolean(loginErrors.password), "px-3.5")}
+                    />
+                  </FormField>
+                  <button
+                    type="button" onClick={() => switchMode("forgot")}
+                    className="absolute top-0 right-0 text-xs font-semibold text-primary hover:underline"
+                  >
+                    Quên mật khẩu?
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid gap-3">
+                <button type="submit" disabled={loading} className="flex h-11 items-center justify-center gap-2 rounded-lg bg-primary text-sm font-bold text-white shadow-xs transition-opacity hover:opacity-90 disabled:opacity-60">
+                  <LockKeyhole size={15} />
+                  {loading ? "ĐANG ĐĂNG NHẬP…" : "ĐĂNG NHẬP VÀO CỘNG ĐỒNG"}
+                  <ArrowRight size={15} />
                 </button>
-              </p>
+                <p className="border-t border-slate-100 pt-3 text-center text-xs text-slate-600">
+                  Bạn chưa có tài khoản?{" "}
+                  <button type="button" onClick={() => switchMode("register")} className="font-bold text-primary hover:underline">
+                    Hãy gia nhập cùng chúng mình →
+                  </button>
+                </p>
+              </div>
             </form>
           ) : (
-            <form onSubmit={submitRegister} className="mt-4 grid gap-2.5 sm:gap-3">
-              <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
-                <FormField label="Họ và tên" required>
-                  <Input required type="text" maxLength={200} autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nguyễn Văn A" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
-                </FormField>
-                <FormField label="Mã sinh viên">
-                  <Input type="text" maxLength={50} value={studentCode} onChange={(e) => setStudentCode(e.target.value)} placeholder="VD: 23110209" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
-                </FormField>
+            <form noValidate onSubmit={submitRegister} className="mt-4 flex flex-1 flex-col justify-between gap-3">
+              <div className="grid gap-2.5 sm:gap-3">
+                <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
+                  <FormField label="Họ và tên" required error={registerErrors.fullName}>
+                    <Input
+                      type="text" maxLength={200} autoComplete="name" aria-invalid={Boolean(registerErrors.fullName)}
+                      value={fullName} onChange={(e) => { setFullName(e.target.value); clearRegisterError("fullName"); }}
+                      placeholder="Nguyễn Văn A" className={authInputCls(Boolean(registerErrors.fullName))}
+                    />
+                  </FormField>
+                  <FormField label="Mã sinh viên" error={registerErrors.studentCode}>
+                    <Input
+                      type="text" maxLength={50} aria-invalid={Boolean(registerErrors.studentCode)}
+                      value={studentCode} onChange={(e) => { setStudentCode(e.target.value); clearRegisterError("studentCode"); }}
+                      placeholder="VD: 23110209" className={authInputCls(Boolean(registerErrors.studentCode))}
+                    />
+                  </FormField>
+                </div>
+                <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
+                  <FormField label="Địa chỉ email" required error={registerErrors.email}>
+                    <Input
+                      type="email" maxLength={320} autoComplete="email" aria-invalid={Boolean(registerErrors.email)}
+                      value={email} onChange={(e) => { setEmail(e.target.value); clearRegisterError("email"); }}
+                      placeholder="sinhvien@st.vju.ac.vn" className={authInputCls(Boolean(registerErrors.email))}
+                    />
+                  </FormField>
+                  <FormField label="Số điện thoại" error={registerErrors.phone}>
+                    <Input
+                      type="tel" maxLength={32} autoComplete="tel" aria-invalid={Boolean(registerErrors.phone)}
+                      value={phone} onChange={(e) => { setPhone(e.target.value); clearRegisterError("phone"); }}
+                      placeholder="0901234567" className={authInputCls(Boolean(registerErrors.phone))}
+                    />
+                  </FormField>
+                </div>
+                <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
+                  <FormField label="Mật khẩu (8+ ký tự)" required error={registerErrors.password}>
+                    <PasswordInput
+                      autoComplete="new-password" maxLength={72} aria-invalid={Boolean(registerErrors.password)}
+                      value={password} onChange={(e) => { setPassword(e.target.value); clearRegisterError("password"); }}
+                      placeholder="••••••••" className={authInputCls(Boolean(registerErrors.password))}
+                    />
+                  </FormField>
+                  <FormField label="Xác nhận mật khẩu" required error={registerErrors.confirmPassword}>
+                    <PasswordInput
+                      autoComplete="new-password" maxLength={72} aria-invalid={Boolean(registerErrors.confirmPassword)}
+                      value={confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); clearRegisterError("confirmPassword"); }}
+                      placeholder="••••••••" className={authInputCls(Boolean(registerErrors.confirmPassword))}
+                    />
+                  </FormField>
+                </div>
               </div>
-              <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
-                <FormField label="Địa chỉ email" required>
-                  <Input required type="email" maxLength={320} autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="sinhvien@st.vju.ac.vn" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
-                </FormField>
-                <FormField label="Số điện thoại">
-                  <Input type="tel" maxLength={32} autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0901234567" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
-                </FormField>
-              </div>
-              <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
-                <FormField label="Mật khẩu (8+ ký tự)" required>
-                  <PasswordInput required autoComplete="new-password" minLength={8} maxLength={72} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
-                </FormField>
-                <FormField label="Xác nhận mật khẩu" required>
-                  <PasswordInput required autoComplete="new-password" minLength={8} maxLength={72} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className="h-10 rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900" />
-                </FormField>
-              </div>
-              <button type="submit" disabled={loading} className="mt-1 flex h-10 sm:h-11 items-center justify-center gap-2 rounded-lg bg-primary text-sm font-bold text-white shadow-xs transition-opacity hover:opacity-90 disabled:opacity-60">
-                <UserPlus size={15} />
-                {loading ? "ĐANG KHỞI TẠO TÀI KHOẢN…" : "HÃY GIA NHẬP NGAY"}
-                <ArrowRight size={15} />
-              </button>
-              <p className="border-t border-slate-100 pt-2.5 text-center text-xs text-slate-600">
-                Đã là thành viên trên hệ thống?{" "}
-                <button type="button" onClick={() => switchMode("login")} className="font-bold text-primary hover:underline">
-                  Đăng nhập tại đây →
+
+              <div className="grid gap-2.5">
+                <button type="submit" disabled={loading} className="flex h-10 sm:h-11 items-center justify-center gap-2 rounded-lg bg-primary text-sm font-bold text-white shadow-xs transition-opacity hover:opacity-90 disabled:opacity-60">
+                  <UserPlus size={15} />
+                  {loading ? "ĐANG KHỞI TẠO TÀI KHOẢN…" : "HÃY GIA NHẬP NGAY"}
+                  <ArrowRight size={15} />
                 </button>
-              </p>
+                <p className="border-t border-slate-100 pt-2.5 text-center text-xs text-slate-600">
+                  Đã là thành viên trên hệ thống?{" "}
+                  <button type="button" onClick={() => switchMode("login")} className="font-bold text-primary hover:underline">
+                    Đăng nhập tại đây →
+                  </button>
+                </p>
+              </div>
             </form>
           )}
         </div>

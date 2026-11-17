@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { apiModel } from "@/lib/api";
@@ -28,17 +29,17 @@ function HomeLandingContent({ initialAuthMode }: { initialAuthMode?: AuthModalMo
   const authParam = searchParams.get("auth") ?? initialAuthMode ?? null;
 
   const clubsQuery = useQuery({
-    queryKey: ["home", "public-clubs"],
+    queryKey: qk.home("public-clubs"),
     queryFn: () => apiModel.publicClubs("", "", 0, 24),
     retry: 1,
   });
   const eventsQuery = useQuery({
-    queryKey: ["home", "public-events"],
+    queryKey: qk.home("public-events"),
     queryFn: () => apiModel.publicEvents(0, 12),
     retry: 1,
   });
   const categoriesQuery = useQuery({
-    queryKey: ["home", "public-club-categories"],
+    queryKey: qk.home("public-club-categories"),
     queryFn: () => apiModel.publicClubCategories(),
     retry: 1,
   });
@@ -100,7 +101,7 @@ function HomeLandingContent({ initialAuthMode }: { initialAuthMode?: AuthModalMo
 
   const closeAuthModal = () => {
     setAuthModalOpen(false);
-    if (authParam && !session.user && !queryClient.getQueryData(["optional-me"])) {
+    if (authParam && !session.user && !queryClient.getQueryData(qk.optionalMe())) {
       router.replace("/home", { scroll: false });
     }
   };
@@ -109,8 +110,8 @@ function HomeLandingContent({ initialAuthMode }: { initialAuthMode?: AuthModalMo
     const { clearChatMessageCache } = await import("@/lib/chat-message-cache");
     clearChatMessageCache();
     await apiModel.logout().catch(() => undefined);
-    queryClient.setQueryData(["optional-me"], null);
-    queryClient.setQueryData(["me"], null);
+    queryClient.setQueryData(qk.optionalMe(), null);
+    queryClient.setQueryData(qk.me(), null);
     queryClient.clear();
     router.replace("/home");
   };

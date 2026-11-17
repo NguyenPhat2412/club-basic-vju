@@ -1,5 +1,6 @@
 "use client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { apiModel, EffectivePermission } from "@/lib/api";
 
 export const CLUB_MANAGEMENT_KEYS = [
@@ -35,10 +36,10 @@ export const CLUB_WORKSPACE_KEYS = [
 export function useSession() {
   const queryClient = useQueryClient();
   const me = useQuery({
-    queryKey: ["me"],
+    queryKey: qk.me(),
     queryFn: async () => {
       const user = await apiModel.me();
-      queryClient.setQueryData(["optional-me"], user);
+      queryClient.setQueryData(qk.optionalMe(), user);
       return user;
     },
     staleTime: 60_000,
@@ -46,10 +47,10 @@ export function useSession() {
   const mustChangePassword = !!me.data?.requiresPasswordChange;
   const userId = me.data?.id ?? null;
   const permissions = useQuery({
-    queryKey: ["me", "permissions", userId],
+    queryKey: qk.me("permissions", userId),
     queryFn: async () => {
       const perms = await apiModel.effectivePermissions();
-      queryClient.setQueryData(["optional-me", "permissions", userId], perms);
+      queryClient.setQueryData(qk.optionalMe("permissions", userId), perms);
       return perms;
     },
     enabled: me.isSuccess && !!userId && !mustChangePassword,

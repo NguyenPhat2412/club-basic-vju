@@ -4,9 +4,10 @@ import { translateKey, translateUiText } from "@/i18n/translator";
 import { cn } from "@/lib/utils";
 
 const tones = {
-  // opaque like the other tones: badges also sit on top of cover photos
+  // opaque 60/30/10 3-tone pills (White + Structural Slate + VJU Crimson): badges also sit on top of cover photos
   primary: { box: "bg-rose-50 text-primary border-primary/20", dot: "bg-primary" },
-  pending: { box: "bg-amber-50 text-amber-800 border-amber-200", dot: "bg-amber-500" },
+  success: { box: "bg-white text-slate-900 border-slate-300 shadow-2xs", dot: "bg-primary" },
+  pending: { box: "bg-slate-100 text-slate-800 border-slate-300", dot: "bg-slate-500" },
   danger: { box: "bg-rose-50 text-rose-700 border-rose-200", dot: "bg-rose-600" },
   neutral: { box: "bg-slate-100 text-slate-600 border-slate-200", dot: "bg-slate-400" },
 } as const;
@@ -23,8 +24,8 @@ export function Badge({ tone = "neutral", children, className, dot = true }: { t
 }
 
 const STATUS: Record<string, { tone: Tone; label: string }> = {
-  ACTIVE: { tone: "primary", label: "Hoạt động" },
-  APPROVED: { tone: "primary", label: "Đã duyệt" },
+  ACTIVE: { tone: "success", label: "Hoạt động" },
+  APPROVED: { tone: "success", label: "Đã duyệt" },
   PENDING: { tone: "pending", label: "Chờ duyệt" },
   REJECTED: { tone: "danger", label: "Từ chối" },
   CANCELLED: { tone: "neutral", label: "Đã huỷ" },
@@ -34,16 +35,16 @@ const STATUS: Record<string, { tone: Tone; label: string }> = {
   SUSPENDED: { tone: "pending", label: "Tạm đình chỉ" },
   DELETED: { tone: "danger", label: "Đã xoá" },
   DRAFT: { tone: "neutral", label: "Bản nháp" },
-  OPEN_REGISTRATION: { tone: "primary", label: "Đang mở đăng ký" },
+  OPEN_REGISTRATION: { tone: "success", label: "Đang mở đăng ký" },
   CLOSED_REGISTRATION: { tone: "pending", label: "Đã đóng đăng ký" },
-  COMPLETED: { tone: "primary", label: "Đã hoàn thành" },
-  REGISTERED: { tone: "primary", label: "Đã đăng ký" },
-  PRESENT: { tone: "primary", label: "Có mặt" },
+  COMPLETED: { tone: "success", label: "Đã hoàn thành" },
+  REGISTERED: { tone: "success", label: "Đã đăng ký" },
+  PRESENT: { tone: "success", label: "Có mặt" },
   LATE: { tone: "pending", label: "Đi muộn" },
   EXCUSED: { tone: "pending", label: "Vắng có phép" },
   ABSENT: { tone: "danger", label: "Vắng mặt" },
   CTV: { tone: "pending", label: "Cộng tác viên" },
-  MEMBER: { tone: "primary", label: "Thành viên CLB" },
+  MEMBER: { tone: "success", label: "Thành viên CLB" },
   TODO: { tone: "neutral", label: "Chưa bắt đầu" },
   IN_PROGRESS: { tone: "pending", label: "Đang thực hiện" },
   DONE: { tone: "primary", label: "Chờ nghiệm thu" },

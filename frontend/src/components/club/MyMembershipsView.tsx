@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { ClipboardList, Compass, Eye, FilterX, UsersRound } from "lucide-react";
 import { apiModel } from "@/lib/api";
 import { clubSlugFromCode } from "@/lib/media";
@@ -22,6 +23,7 @@ const LIMIT = 20;
 
 export function MyMembershipsView() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [offset, setOffset] = useState(0);
@@ -29,7 +31,7 @@ export function MyMembershipsView() {
   const mediaCatalog = useClubMediaCatalog(true);
 
   const list = useQuery({
-    queryKey: ["my-memberships", statusFilter, offset, limit],
+    queryKey: qk.myMemberships(statusFilter, offset, limit),
     queryFn: () =>
       apiModel.myMemberships({
         status: statusFilter || undefined,
@@ -90,7 +92,7 @@ export function MyMembershipsView() {
             </Button>
           </>
         }
-        onRefresh={() => list.refetch()}
+        onRefresh={() => queryClient.invalidateQueries({ queryKey: qk.myMemberships() })}
       />
       {list.isPending ? (
         <LoadingRows />

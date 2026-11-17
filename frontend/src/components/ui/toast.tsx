@@ -75,14 +75,14 @@ export function Toaster() {
               "toast-in pointer-events-auto flex items-start gap-2.5 rounded-xl border bg-white px-3.5 py-3 text-xs font-medium shadow-lg transition-colors",
               clickable && "cursor-pointer hover:bg-slate-50",
               t.variant === "error" && "border-rose-200 text-rose-700",
-              t.variant === "success" && "border-emerald-200 text-emerald-700",
+              t.variant === "success" && "border-primary/25 text-slate-900",
               (t.variant === "info" || t.variant === "chat") && "border-primary/25 text-slate-800"
             )}
           >
             {t.variant === "error" ? (
               <CircleAlert size={16} className="mt-0.5 shrink-0 text-rose-600" />
             ) : t.variant === "success" ? (
-              <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-600" />
+              <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-primary" />
             ) : t.variant === "chat" ? (
               <MessageSquare size={16} className="mt-0.5 shrink-0 text-primary" />
             ) : (

@@ -50,7 +50,7 @@ function DeliveryStatusIcon({
     return (
       <CheckCheck
         size={12}
-        className={cn("shrink-0", bareMedia ? "text-emerald-300" : "text-primary")}
+        className={cn("shrink-0", bareMedia ? "text-white" : "text-primary")}
       />
     );
   }

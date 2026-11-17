@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { Building2, PauseCircle, PlayCircle, ShieldCheck, UserMinus, UserPlus, UserRound } from "lucide-react";
 import { apiModel, Club, Department, Membership } from "@/lib/api";
 import { toApiMediaUrl } from "@/lib/media";
@@ -33,7 +34,7 @@ export function AddClubMemberModal({
   const [userSearch, setUserSearch] = useState("");
 
   const candidateUsers = useQuery({
-    queryKey: ["users", "candidate", userSearch],
+    queryKey: qk.users("candidate", userSearch),
     queryFn: () => apiModel.users(userSearch, 0, 20),
     enabled: open && canViewUsers,
   });
@@ -239,7 +240,7 @@ export function ClubMemberDetailDrawer({
   onRequestLeave: (membership: Membership) => void;
 }) {
   const memberDetail = useQuery({
-    queryKey: ["membership", memberId],
+    queryKey: qk.membership(memberId),
     queryFn: () => apiModel.membership(memberId!),
     enabled: !!memberId,
   });

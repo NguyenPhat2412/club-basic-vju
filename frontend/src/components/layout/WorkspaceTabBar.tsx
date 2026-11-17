@@ -1,116 +1,26 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { ReactNode, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import {
-  BarChart3,
-  Bell,
-  Building2,
-  CalendarCheck2,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ClipboardCheck,
-  ClipboardList,
-  Compass,
-  FileSpreadsheet,
-  FileText,
-  FolderArchive,
-  History,
-  Layers,
-  LayoutDashboard,
-  MessageSquare,
-  RotateCcw,
-  Settings,
-  ShieldCheck,
-  SlidersHorizontal,
-  UserCircle,
-  Users,
-  UsersRound,
-  X,
-} from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import type { NavSection } from "@/config/navigation";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/I18nContext";
+import { WorkspaceTabItem } from "./WorkspaceTabItem";
+import { WorkspaceTabMenu } from "./WorkspaceTabMenu";
+import {
+  emptySubscribe,
+  iconForTab,
+  resolveTabId,
+  STARTER_PRIORITY,
+  subscribeWorkspaceTabs,
+  TABS_SYNC_EVENT,
+  type WorkspaceTabSpec,
+} from "./WorkspaceTabSpecs";
 
-export type WorkspaceTabSpec = {
-  id: string;
-  label: string;
-  groupLabel: string;
-  href: string;
-  tab?: string;
-  tier?: "club" | "system";
-  icon: ReactNode;
-};
-
-const STARTER_PRIORITY = [
-  "route:/dashboard",
-  "mgmt:clubs",
-  "mgmt:overview",
-  "mgmt:applications",
-  "mgmt:members",
-  "mgmt:events",
-  "mgmt:tasks",
-  "mgmt:chat",
-  "docs:club",
-  "route:/users",
-  "route:/clubs",
-  "route:/events",
-  "route:/schedule",
-];
-
-function iconForTab(href: string, tab?: string, tier?: string): ReactNode {
-  if (tab === "clubs") return <Building2 size={13.5} />;
-  if (tab === "overview") return <BarChart3 size={13.5} />;
-  if (tab === "applications") return <ClipboardList size={13.5} />;
-  if (tab === "forms") return <FileSpreadsheet size={13.5} />;
-  if (tab === "members") return <UsersRound size={13.5} />;
-  if (tab === "departments") return <Layers size={13.5} />;
-  if (tab === "events") return <CalendarCheck2 size={13.5} />;
-  if (tab === "tasks") return <ClipboardCheck size={13.5} />;
-  if (tab === "documents") return <FolderArchive size={13.5} />;
-  if (tab === "chat") return <MessageSquare size={13.5} />;
-  if (tab === "settings") return <SlidersHorizontal size={13.5} />;
-  if (tier === "club") return <FolderArchive size={13.5} />;
-  if (tier === "system") return <FileText size={13.5} />;
-  if (href === "/dashboard") return <LayoutDashboard size={13.5} />;
-  if (href === "/users") return <Users size={13.5} />;
-  if (href === "/roles") return <ShieldCheck size={13.5} />;
-  if (href === "/audit-logs") return <History size={13.5} />;
-  if (href === "/settings") return <Settings size={13.5} />;
-  if (href === "/clubs") return <Compass size={13.5} />;
-  if (href === "/events") return <CalendarCheck2 size={13.5} />;
-  if (href === "/schedule") return <ClipboardCheck size={13.5} />;
-  if (href === "/applications") return <ClipboardList size={13.5} />;
-  if (href === "/memberships") return <Building2 size={13.5} />;
-  if (href === "/notifications") return <Bell size={13.5} />;
-  if (href === "/profile") return <UserCircle size={13.5} />;
-  return <Compass size={13.5} />;
-}
-
-export function resolveTabId(pathname: string, currentTab: string | null, currentTier: string | null): string {
-  if (pathname === "/management") {
-    return `mgmt:${currentTab || "clubs"}`;
-  }
-  if (pathname === "/documents") {
-    return `docs:${currentTier === "system" ? "system" : "club"}`;
-  }
-  return `route:${pathname}`;
-}
-
-const emptySubscribe = () => () => {};
-const TABS_SYNC_EVENT = "vju-workspace-tabs-sync";
-
-function subscribeWorkspaceTabs(onStoreChange: () => void) {
-  if (typeof window === "undefined") return () => {};
-  window.addEventListener("storage", onStoreChange);
-  window.addEventListener(TABS_SYNC_EVENT, onStoreChange);
-  return () => {
-    window.removeEventListener("storage", onStoreChange);
-    window.removeEventListener(TABS_SYNC_EVENT, onStoreChange);
-  };
-}
+export { resolveTabId };
+export type { WorkspaceTabSpec };
 
 export function WorkspaceTabBar({
   sections,
@@ -373,73 +283,18 @@ export function WorkspaceTabBar({
           const isActive = spec.id === activeId;
           const canClose = openSpecs.length > 1;
           return (
-            <div
+            <WorkspaceTabItem
               key={spec.id}
-              ref={(el) => {
+              spec={spec}
+              isActive={isActive}
+              canClose={canClose}
+              tabRef={(el) => {
                 tabRefs.current[spec.id] = el;
               }}
-              role="tab"
-              aria-selected={isActive}
-              tabIndex={0}
-              onClick={() => activateTab(spec)}
-              onAuxClick={(e) => {
-                if (e.button === 1 && canClose) {
-                  e.preventDefault();
-                  closeTab(spec.id);
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  activateTab(spec);
-                }
-              }}
-              onMouseEnter={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                setHoveredTip({
-                  label: spec.label,
-                  x: rect.left + rect.width / 2,
-                  y: rect.bottom + 7,
-                });
-              }}
-              onMouseLeave={() => setHoveredTip(null)}
-              className={cn(
-                "group relative flex h-7.5 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 text-xs transition-all focus-visible:outline-2 focus-visible:outline-primary",
-                isActive
-                  ? "border border-slate-200/95 bg-white font-bold text-slate-900 shadow-2xs before:absolute before:inset-x-2 before:-top-[1px] before:h-[2.5px] before:rounded-full before:bg-primary"
-                  : "border border-transparent bg-slate-50/55 font-medium text-slate-600 hover:border-slate-200/70 hover:bg-slate-100/90 hover:text-slate-900"
-              )}
-            >
-              <span className={cn("shrink-0", isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-600")}>
-                {spec.icon}
-              </span>
-              <span
-                className={cn(
-                  "truncate",
-                  isActive ? "max-w-[180px] sm:max-w-[240px]" : "max-w-[92px] sm:max-w-[112px]"
-                )}
-              >
-                {spec.label}
-              </span>
-              {canClose && (
-                <button
-                  type="button"
-                  aria-label={`${tr("Đóng tab")} ${spec.label}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    closeTab(spec.id);
-                  }}
-                  className={cn(
-                    "ml-0.5 grid size-4 shrink-0 place-items-center rounded-sm transition-colors hover:bg-slate-200/80 hover:text-slate-900",
-                    isActive
-                      ? "text-slate-400"
-                      : "text-slate-400 opacity-70 group-hover:opacity-100"
-                  )}
-                >
-                  <X size={11.5} />
-                </button>
-              )}
-            </div>
+              activateTab={activateTab}
+              closeTab={closeTab}
+              setHoveredTip={setHoveredTip}
+            />
           );
         })}
       </div>
@@ -475,76 +330,15 @@ export function WorkspaceTabBar({
         </button>
 
         {menuOpen && (
-          <div
-            role="menu"
-            className="panel-modal absolute right-0 top-9 z-50 w-68 overflow-hidden p-1.5 fade-in"
-          >
-            <div className="px-2.5 py-1.5 text-[10.5px] font-bold uppercase tracking-wider text-slate-400">
-              {tr("Trang đang mở")} ({openSpecs.length})
-            </div>
-            <div className="max-h-64 space-y-0.5 overflow-y-auto">
-              {openSpecs.map((spec) => {
-                const isActive = spec.id === activeId;
-                return (
-                  <div
-                    key={spec.id}
-                    className={cn(
-                      "flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors",
-                      isActive ? "bg-primary/8 font-bold text-primary" : "text-slate-700 hover:bg-slate-50"
-                    )}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => activateTab(spec)}
-                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                    >
-                      <span className={cn("shrink-0", isActive ? "text-primary" : "text-slate-400")}>
-                        {spec.icon}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate">{spec.label}</p>
-                        <p className="truncate text-[10px] font-normal text-slate-400">{spec.groupLabel}</p>
-                      </div>
-                    </button>
-                    {openSpecs.length > 1 && (
-                      <button
-                        type="button"
-                        aria-label={`${tr("Đóng tab")} ${spec.label}`}
-                        onClick={() => closeTab(spec.id)}
-                        className="rounded p-1 text-slate-400 hover:bg-slate-200/70 hover:text-slate-800"
-                      >
-                        <X size={12} />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-1.5 space-y-0.5 border-t border-slate-100 pt-1.5">
-              <button
-                type="button"
-                onClick={resetStarterTabs}
-                className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-100"
-              >
-                <RotateCcw size={13} className="text-primary" /> {tr("Khôi phục bộ tab quản lý chuẩn")}
-              </button>
-              <button
-                type="button"
-                onClick={closeOtherTabs}
-                className="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-100"
-              >
-                {tr("Đóng các tab khác")}
-              </button>
-              <button
-                type="button"
-                onClick={closeAllToOverview}
-                className="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-xs font-medium text-destructive hover:bg-destructive/10"
-              >
-                {tr("Thu gọn về Tổng quan")}
-              </button>
-            </div>
-          </div>
+          <WorkspaceTabMenu
+            openSpecs={openSpecs}
+            activeId={activeId}
+            activateTab={activateTab}
+            closeTab={closeTab}
+            resetStarterTabs={resetStarterTabs}
+            closeOtherTabs={closeOtherTabs}
+            closeAllToOverview={closeAllToOverview}
+          />
         )}
       </div>
 

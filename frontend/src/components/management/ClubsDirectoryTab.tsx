@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import {
   Building2,
   ClipboardList,
@@ -115,9 +116,9 @@ export function ClubsDirectoryTab({
           : `Đã tạm ngừng hoạt động câu lạc bộ "${updated.name}" (${updated.code}).`
       );
       onError("");
-      queryClient.invalidateQueries({ queryKey: ["clubs"] });
-      queryClient.invalidateQueries({ queryKey: ["home", "public-clubs"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard", "public-clubs"] });
+      queryClient.invalidateQueries({ queryKey: qk.clubs() });
+      queryClient.invalidateQueries({ queryKey: qk.home("public-clubs") });
+      queryClient.invalidateQueries({ queryKey: qk.dashboard("public-clubs") });
     },
     onError: (err) => onError(describeError(err)),
   });

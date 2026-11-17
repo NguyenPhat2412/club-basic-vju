@@ -63,20 +63,20 @@ export function Notice({ tone, children }: { tone: "success" | "error"; children
       aria-live={isError ? "assertive" : "polite"}
       className={cn(
         "pointer-events-auto slide-in-right relative overflow-hidden rounded-xl border bg-white px-4 py-3 shadow-xl",
-        isError ? "border-rose-200 text-rose-950" : "border-emerald-200 text-slate-900"
+        isError ? "border-rose-200 text-rose-950" : "border-primary/25 text-slate-900"
       )}
     >
       <div className="flex items-start gap-3">
         <span
           className={cn(
             "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg",
-            isError ? "bg-rose-100 text-rose-600" : "bg-emerald-100 text-emerald-600"
+            isError ? "bg-rose-100 text-rose-600" : "bg-primary/10 text-primary"
           )}
         >
           {isError ? <AlertTriangle size={15} /> : <CheckCircle2 size={15} />}
         </span>
         <div className="min-w-0 flex-1">
-          <p className={cn("text-xs font-bold", isError ? "text-rose-700" : "text-emerald-700")}>
+          <p className={cn("text-xs font-bold", isError ? "text-rose-700" : "text-slate-900")}>
             {isError ? "Thông báo lỗi" : "Thao tác thành công"}
           </p>
           <div className="mt-0.5 text-xs leading-relaxed text-slate-700">{children}</div>
@@ -95,7 +95,7 @@ export function Notice({ tone, children }: { tone: "success" | "error"; children
         style={{ animationDuration: `${durationMs}ms` }}
         className={cn(
           "toast-progress absolute bottom-0 left-0 right-0 h-0.5",
-          isError ? "bg-rose-500/80" : "bg-emerald-500/80"
+          isError ? "bg-rose-500/80" : "bg-primary"
         )}
       />
     </div>,

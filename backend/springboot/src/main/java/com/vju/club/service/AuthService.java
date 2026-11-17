@@ -2,9 +2,12 @@ package com.vju.club.service;
 
 import com.vju.club.dto.record.SignedIn;
 import com.vju.club.dto.request.ChangePasswordRequest;
+import com.vju.club.dto.request.ForgotPasswordRequest;
 import com.vju.club.dto.request.GoogleLoginRequest;
 import com.vju.club.dto.request.LoginRequest;
 import com.vju.club.dto.request.RegisterRequest;
+import com.vju.club.dto.request.ResetPasswordWithOtpRequest;
+import com.vju.club.dto.response.ForgotPasswordOtpResponse;
 import com.vju.club.dto.response.GoogleSignInConfigResponse;
 import com.vju.club.dto.response.UserResponse;
 
@@ -22,4 +25,8 @@ public interface AuthService {
     UserResponse getCurrentUser(UUID userId);
 
     void changePassword(UUID userId, ChangePasswordRequest request, String currentSessionId);
+
+    ForgotPasswordOtpResponse requestPasswordReset(ForgotPasswordRequest request);
+
+    void resetPasswordWithOtp(ResetPasswordWithOtpRequest request);
 }

@@ -11,9 +11,30 @@ interface AuthModalBannerProps {
 
 export function AuthModalBanner({ mode, onClose }: AuthModalBannerProps) {
   const leftBannerImage =
+    mode === "register"
+      ? "/images/clubs/bigheart/cover.jpg"
+      : "/images/clubs/vjua/cover.jpg";
+
+  const mobileHeadline =
     mode === "login"
-      ? "/images/clubs/vjua/cover.jpg"
-      : "/images/clubs/bigheart/cover.jpg";
+      ? "Chào mừng bạn trở lại!"
+      : mode === "forgot"
+        ? "Khôi phục quyền truy cập tài khoản"
+        : "Hãy gia nhập cùng chúng mình!";
+
+  const desktopHeadline =
+    mode === "login"
+      ? "Chào mừng bạn quay trở lại!"
+      : mode === "forgot"
+        ? "Hỗ trợ đặt lại mật khẩu an toàn"
+        : "Hãy gia nhập cùng chúng mình!";
+
+  const desktopDescription =
+    mode === "login"
+      ? "Kết nối ngay với câu lạc bộ, lịch hoạt động, công việc và các ban chuyên môn của bạn tại Trường Đại học Việt Nhật."
+      : mode === "forgot"
+        ? "Gửi yêu cầu xác minh tới Quản trị viên hệ thống VJU ClubHub để cấp lại mật khẩu, hoặc đăng nhập nhanh bằng tài khoản Google sinh viên trường."
+        : "Chỉ mất 30 giây để khởi tạo tài khoản, nộp đơn ứng tuyển vào 12+ câu lạc bộ và đăng ký tham gia các sự kiện sinh viên sôi động.";
 
   return (
     <>
@@ -27,19 +48,21 @@ export function AuthModalBanner({ mode, onClose }: AuthModalBannerProps) {
         }}
       >
         <div className="flex min-w-0 items-center gap-2.5">
-          <Image
-            src="/images/vju-logo.png"
-            alt="Logo Trường Đại học Việt Nhật (VJU)"
-            width={36}
-            height={36}
-            className="size-9 shrink-0 rounded-full bg-white p-0.5 object-contain shadow-xs"
-          />
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white p-1 shadow-xs">
+            <Image
+              src="/images/vju-logo.png"
+              alt="Logo Trường Đại học Việt Nhật (VJU)"
+              width={36}
+              height={36}
+              className="size-full object-contain object-center"
+            />
+          </span>
           <div className="min-w-0">
             <p className="truncate text-[10px] font-bold uppercase tracking-wider text-primary-on-dark">
               CỘNG ĐỒNG CLB SINH VIÊN VJU
             </p>
             <p className="truncate text-sm font-extrabold text-white">
-              {mode === "login" ? "Chào mừng bạn trở lại!" : "Hãy gia nhập cùng chúng mình!"}
+              {mobileHeadline}
             </p>
           </div>
         </div>
@@ -63,13 +86,15 @@ export function AuthModalBanner({ mode, onClose }: AuthModalBannerProps) {
         }}
       >
         <div className="flex items-center gap-2.5 lg:gap-3">
-          <Image
-            src="/images/vju-logo.png"
-            alt="Logo Trường Đại học Việt Nhật (VJU)"
-            width={42}
-            height={42}
-            className="size-10 shrink-0 rounded-full bg-white p-0.5 object-contain shadow-sm lg:size-11"
-          />
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white p-1 shadow-sm lg:size-11">
+            <Image
+              src="/images/vju-logo.png"
+              alt="Logo Trường Đại học Việt Nhật (VJU)"
+              width={42}
+              height={42}
+              className="size-full object-contain object-center"
+            />
+          </span>
           <div className="border-l border-white/25 pl-2.5 lg:pl-3">
             <p className="text-[10px] font-bold uppercase tracking-[.14em] text-white/80">
               Vietnam Japan University
@@ -85,14 +110,10 @@ export function AuthModalBanner({ mode, onClose }: AuthModalBannerProps) {
             <Sparkles size={12} className="text-primary-on-dark" /> Cộng đồng CLB VJU
           </span>
           <h3 className="mt-3 font-serif text-2xl font-semibold leading-tight text-white lg:mt-4 lg:text-3xl">
-            {mode === "login"
-              ? "Chào mừng bạn quay trở lại!"
-              : "Hãy gia nhập cùng chúng mình!"}
+            {desktopHeadline}
           </h3>
           <p className="mt-2.5 text-xs leading-5 text-white/90 lg:mt-3 lg:text-sm lg:leading-6">
-            {mode === "login"
-              ? "Kết nối ngay với câu lạc bộ, lịch hoạt động, công việc và các ban chuyên môn của bạn tại Trường Đại học Việt Nhật."
-              : "Chỉ mất 30 giây để khởi tạo tài khoản, nộp đơn ứng tuyển vào 12+ câu lạc bộ và đăng ký tham gia các sự kiện sinh viên sôi động."}
+            {desktopDescription}
           </p>
 
           <ul className="mt-4 space-y-2 text-[11px] font-medium text-white/95 lg:mt-6 lg:space-y-2.5 lg:text-xs">

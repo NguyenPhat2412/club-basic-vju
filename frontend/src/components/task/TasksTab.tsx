@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { AlertTriangle, CheckCircle2, ClipboardCheck, Eye, FilterX, Pencil, Plus, Search, X } from "lucide-react";
 import { apiModel, Department, Membership, TaskItem } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
@@ -77,14 +78,14 @@ export function TasksTab({
   };
 
   const tasks = useQuery({
-    queryKey: ["club-tasks", clubId, deptFilter, statusFilter, assigneeFilter, overdueOnly, queryOffset, queryLimit],
+    queryKey: qk.clubTasks(clubId, deptFilter, statusFilter, assigneeFilter, overdueOnly, queryOffset, queryLimit),
     queryFn: () => apiModel.clubTasks(clubId, filterParams),
     placeholderData: keepPreviousData,
     enabled: !!clubId,
   });
 
   const summary = useQuery({
-    queryKey: ["club-task-summary", clubId, deptFilter, statusFilter, assigneeFilter, overdueOnly],
+    queryKey: qk.clubTaskSummary(clubId, deptFilter, statusFilter, assigneeFilter, overdueOnly),
     queryFn: () =>
       apiModel.clubTaskSummary(clubId, {
         departmentId: deptFilter || undefined,
@@ -96,14 +97,14 @@ export function TasksTab({
   });
 
   const clubEvents = useQuery({
-    queryKey: ["club-events", clubId, "for-tasks"],
+    queryKey: qk.clubEvents(clubId, "for-tasks"),
     queryFn: () => apiModel.clubEvents(clubId, { limit: 50 }),
     enabled: !!clubId && (creating || !!editingTask),
   });
 
   const activeEventIdForCandidates = creating ? form.eventId : editingTask?.eventId ?? "";
   const eventRegsForTask = useQuery({
-    queryKey: ["event-registrations", activeEventIdForCandidates, "for-task-candidates"],
+    queryKey: qk.eventRegistrations(activeEventIdForCandidates, "for-task-candidates"),
     queryFn: () => apiModel.eventRegistrations(activeEventIdForCandidates),
     enabled: !!activeEventIdForCandidates && (creating || !!editingTask),
   });
@@ -116,7 +117,7 @@ export function TasksTab({
   const hasActiveFilter = Boolean(search.trim() || deptFilter || assigneeFilter || priorityFilter || statusFilter || overdueOnly);
 
   const allTasksForHierarchy = useQuery({
-    queryKey: ["club-tasks", clubId, "", "", false],
+    queryKey: qk.clubTasks(clubId, "", "", false),
     queryFn: () => apiModel.clubTasks(clubId, { limit: 100 }),
     enabled: !!clubId && hasActiveFilter && (creating || !!selected),
   });
@@ -159,10 +160,11 @@ export function TasksTab({
   };
 
   const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["club-tasks", clubId] });
-    queryClient.invalidateQueries({ queryKey: ["club-task-summary", clubId] });
-    queryClient.invalidateQueries({ queryKey: ["club-statistics", clubId] });
-    queryClient.invalidateQueries({ queryKey: ["my-tasks"] });
+    queryClient.invalidateQueries({ queryKey: qk.clubTasks(clubId) });
+    queryClient.invalidateQueries({ queryKey: qk.clubTaskSummary(clubId) });
+    queryClient.invalidateQueries({ queryKey: qk.clubStatistics(clubId) });
+    queryClient.invalidateQueries({ queryKey: qk.myTasks() });
+    queryClient.invalidateQueries({ queryKey: qk.dashboard("my-tasks") });
   };
 
   const verify = useMutation({

@@ -1,7 +1,12 @@
 import type { SystemSettings, SystemSettingsInput } from '@/types/settings/settings.types';
 
-type NumberKey = { [K in keyof SystemSettingsInput]: SystemSettingsInput[K] extends number ? K : never }[keyof SystemSettingsInput];
-type BooleanKey = { [K in keyof SystemSettingsInput]: SystemSettingsInput[K] extends boolean ? K : never }[keyof SystemSettingsInput];
+type NumberKey = {
+  [K in keyof SystemSettingsInput]-?: SystemSettingsInput[K] extends number ? K : never;
+}[keyof SystemSettingsInput];
+
+type BooleanKey = {
+  [K in keyof SystemSettingsInput]-?: SystemSettingsInput[K] extends boolean ? K : never;
+}[keyof SystemSettingsInput];
 
 export type SystemSettingsFieldMeta =
   | { kind: 'number'; key: NumberKey; label: string; hint: string; unit: string; min: number; max: number }
@@ -18,6 +23,15 @@ export const SYSTEM_SETTINGS_GROUPS: SystemSettingsGroup[] = [
     title: 'Tài khoản & Đăng ký',
     fields: [
       { kind: 'toggle', key: 'allowSelfRegistration', label: 'Cho phép tự đăng ký tài khoản', hint: 'Tắt để chỉ quản trị viên được tạo tài khoản (áp dụng cho cả đăng ký bằng email và Google).' },
+    ],
+  },
+  {
+    title: 'Mã OTP & Khôi phục mật khẩu',
+    fields: [
+      { kind: 'number', key: 'otpExpiryMinutes', label: 'Thời gian hiệu lực mã OTP', hint: 'Số phút một mã xác thực OTP 6 chữ số có hiệu lực kể từ lúc phát hành.', unit: 'phút', min: 1, max: 60 },
+      { kind: 'number', key: 'otpMaxSendCount', label: 'Số lần gửi OTP tối đa (60 phút)', hint: 'Giới hạn số lần một tài khoản được yêu cầu gửi mã OTP trong vòng 1 giờ.', unit: 'lần', min: 1, max: 30 },
+      { kind: 'number', key: 'otpResendCooldownSeconds', label: 'Thời gian chờ gửi lại OTP', hint: 'Số giây người dùng phải chờ trước khi bấm gửi lại mã OTP mới (0 = không chờ).', unit: 'giây', min: 0, max: 600 },
+      { kind: 'number', key: 'otpMaxVerifyAttempts', label: 'Số lần nhập sai OTP tối đa', hint: 'Vượt quá số lần thử này, mã OTP hiện tại sẽ tự động bị vô hiệu hoá để chống dò mã.', unit: 'lần', min: 1, max: 15 },
     ],
   },
   {
@@ -69,6 +83,18 @@ export function defaultSystemSettingsInput(): SystemSettingsInput {
     documentMaxFileMb: 20,
     clubImageMaxMb: 10,
     avatarMaxMb: 5,
+    otpExpiryMinutes: 5,
+    otpMaxSendCount: 5,
+    otpResendCooldownSeconds: 60,
+    otpMaxVerifyAttempts: 5,
+    smtpHost: null,
+    smtpPort: 587,
+    smtpUsername: null,
+    smtpPassword: '',
+    clearSmtpPassword: false,
+    smtpFromEmail: null,
+    smtpFromName: 'VJU ClubHub',
+    smtpStartTls: true,
   };
 }
 
@@ -76,14 +102,53 @@ export function createSystemSettingsDraft(settings?: SystemSettings | null): Sys
   const draft = defaultSystemSettingsInput();
   if (!settings) return draft;
   for (const f of SYSTEM_SETTINGS_FIELDS) {
-    (draft as Record<string, unknown>)[f.key] = settings[f.key] ?? draft[f.key];
+    const val = settings[f.key as keyof SystemSettings];
+    if (val !== undefined && val !== null) {
+      (draft as Record<string, unknown>)[f.key] = val;
+    }
   }
+  draft.smtpHost = settings.smtpHost ?? null;
+  draft.smtpPort = settings.smtpPort ?? 587;
+  draft.smtpUsername = settings.smtpUsername ?? null;
+  draft.smtpPassword = '';
+  draft.clearSmtpPassword = false;
+  draft.smtpFromEmail = settings.smtpFromEmail ?? null;
+  draft.smtpFromName = settings.smtpFromName || 'VJU ClubHub';
+  draft.smtpStartTls = settings.smtpStartTls ?? true;
   return draft;
 }
 
 export const settingsToFormInput = createSystemSettingsDraft;
 
+function normStr(value: string | null | undefined): string {
+  return (value ?? '').trim();
+}
+
 export function hasSystemSettingsChanged(draft: SystemSettingsInput, current?: SystemSettings | null): boolean {
   if (!current) return true;
-  return SYSTEM_SETTINGS_FIELDS.some((f) => draft[f.key] !== current[f.key]);
+  if (SYSTEM_SETTINGS_FIELDS.some((f) => draft[f.key] !== current[f.key as keyof SystemSettings])) {
+    return true;
+  }
+  if (normStr(draft.smtpHost) !== normStr(current.smtpHost)) return true;
+  if ((draft.smtpPort || 587) !== (current.smtpPort || 587)) return true;
+  if (normStr(draft.smtpUsername) !== normStr(current.smtpUsername)) return true;
+  if (normStr(draft.smtpFromEmail) !== normStr(current.smtpFromEmail)) return true;
+  if ((normStr(draft.smtpFromName) || 'VJU ClubHub') !== (normStr(current.smtpFromName) || 'VJU ClubHub')) return true;
+  if (Boolean(draft.smtpStartTls) !== Boolean(current.smtpStartTls)) return true;
+  if (Boolean(draft.smtpPassword && draft.smtpPassword.trim())) return true;
+  if (Boolean(draft.clearSmtpPassword) && current.smtpPasswordConfigured) return true;
+  return false;
+}
+
+export function toSystemSettingsPayload(draft: SystemSettingsInput): SystemSettingsInput {
+  return {
+    ...draft,
+    smtpHost: normStr(draft.smtpHost) || null,
+    smtpPort: draft.smtpPort || 587,
+    smtpUsername: normStr(draft.smtpUsername) || null,
+    smtpPassword: normStr(draft.smtpPassword) || undefined,
+    clearSmtpPassword: draft.clearSmtpPassword ? true : undefined,
+    smtpFromEmail: normStr(draft.smtpFromEmail) || null,
+    smtpFromName: normStr(draft.smtpFromName) || 'VJU ClubHub',
+  };
 }

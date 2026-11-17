@@ -1,6 +1,8 @@
 "use client";
 import { useSyncExternalStore } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
+import { getIntlLocale } from "@/i18n/config";
 import { API_BASE, type EffectivePermission, type User } from "@/lib/api";
 import {
   clubIdsWith,
@@ -11,7 +13,10 @@ import {
 } from "./useSession";
 
 async function readOptional<T>(path: string): Promise<T | null> {
-  const response = await fetch(`${API_BASE}/api/v1${path}`, { credentials: "include" });
+  const response = await fetch(`${API_BASE}/api/v1${path}`, {
+    credentials: "include",
+    headers: { "Accept-Language": getIntlLocale() },
+  });
   if (response.status === 401) return null;
   if (!response.ok) throw new Error(`Request failed (${response.status})`);
   return response.json();
@@ -27,11 +32,11 @@ export function useOptionalSession() {
     () => false,
   );
   const me = useQuery({
-    queryKey: ["optional-me"],
+    queryKey: qk.optionalMe(),
     queryFn: async () => {
       const user = await readOptional<User>("/auth/me");
       if (user) {
-        queryClient.setQueryData(["me"], user);
+        queryClient.setQueryData(qk.me(), user);
       }
       return user;
     },
@@ -40,11 +45,11 @@ export function useOptionalSession() {
   const mustChangePassword = !!me.data?.requiresPasswordChange;
   const userId = me.data?.id ?? null;
   const permissions = useQuery({
-    queryKey: ["optional-me", "permissions", userId],
+    queryKey: qk.optionalMe("permissions", userId),
     queryFn: async () => {
       const perms = await readOptional<EffectivePermission[]>("/users/me/effective-permissions");
       if (perms) {
-        queryClient.setQueryData(["me", "permissions", userId], perms);
+        queryClient.setQueryData(qk.me("permissions", userId), perms);
       }
       return perms;
     },

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import {
   Check,
   ClipboardList,
@@ -85,7 +86,7 @@ export function ApplicationsTab({
     session.canInClub("application.update", clubId) || session.canInClub("application.review", clubId);
 
   const apps = useQuery({
-    queryKey: ["club-applications", clubId, statusFilter, search, createdFrom, createdTo, offset, limit],
+    queryKey: qk.clubApplications(clubId, statusFilter, search, createdFrom, createdTo, offset, limit),
     queryFn: () =>
       apiModel.clubApplications(clubId, {
         status: statusFilter || undefined,
@@ -100,15 +101,15 @@ export function ApplicationsTab({
   });
 
   const activeFormQuery = useQuery({
-    queryKey: ["club-application-form", clubId],
+    queryKey: qk.clubApplicationForm(clubId),
     queryFn: () => apiModel.clubApplicationForm(clubId),
     enabled: !!clubId,
   });
 
   const refreshApps = () => {
-    queryClient.invalidateQueries({ queryKey: ["club-applications", clubId] });
+    queryClient.invalidateQueries({ queryKey: qk.clubApplications(clubId) });
     if (selectedAppId) {
-      queryClient.invalidateQueries({ queryKey: ["club-application-detail", clubId, selectedAppId] });
+      queryClient.invalidateQueries({ queryKey: qk.clubApplicationDetail(clubId, selectedAppId) });
     }
   };
 

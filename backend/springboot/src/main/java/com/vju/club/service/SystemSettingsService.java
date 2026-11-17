@@ -1,5 +1,6 @@
 package com.vju.club.service;
 
+import com.vju.club.dto.request.TestSmtpEmailRequest;
 import com.vju.club.dto.request.UpdateSystemSettingsRequest;
 import com.vju.club.dto.response.SystemSettingsResponse;
 import com.vju.club.security.Actor;
@@ -11,4 +12,6 @@ public interface SystemSettingsService {
     SystemSettingsResponse get(Actor actor);
 
     SystemSettingsResponse update(Actor actor, UpdateSystemSettingsRequest request);
+
+    void sendTestEmail(Actor actor, TestSmtpEmailRequest request);
 }

@@ -3,6 +3,7 @@
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { Compass, FilterX, LayoutGrid, Table2 } from "lucide-react";
 import { apiModel, ApplicationSummary, Club, Membership } from "@/lib/api";
 import { ClubMediaItem, clubSlugFromCode } from "@/lib/media";
@@ -56,20 +57,20 @@ function ClubsDiscoveryContent() {
   const mediaCatalog = useClubMediaCatalog(true);
 
   const categoriesQuery = useQuery({
-    queryKey: ["public-club-categories"],
+    queryKey: qk.publicClubCategories(),
     queryFn: apiModel.publicClubCategories,
     staleTime: 60_000,
   });
 
   const clubs = useQuery({
-    queryKey: ["clubs", "public-discovery", search, category, offset, limit],
+    queryKey: qk.clubs("public-discovery", search, category, offset, limit),
     queryFn: () => apiModel.publicClubs(search.trim(), category, offset, limit),
     placeholderData: keepPreviousData,
     enabled: session.settled,
   });
 
   const deepLinkedClub = useQuery({
-    queryKey: ["public-club-detail", requestedClubId],
+    queryKey: qk.publicClubDetail(requestedClubId),
     queryFn: () => apiModel.publicClub(requestedClubId!),
     enabled: !!requestedClubId && closedDeepLinkId !== requestedClubId,
   });
@@ -79,13 +80,13 @@ function ClubsDiscoveryContent() {
     (requestedClubId && closedDeepLinkId !== requestedClubId ? (deepLinkedClub.data ?? null) : null);
 
   const myMemberships = useQuery({
-    queryKey: ["my-memberships", "discovery"],
+    queryKey: qk.myMemberships("discovery"),
     queryFn: () => apiModel.myMemberships({ limit: 100 }),
     enabled: !!session.user,
   });
 
   const myApplications = useQuery({
-    queryKey: ["my-applications", "discovery"],
+    queryKey: qk.myApplications("discovery"),
     queryFn: () => apiModel.myApplications({ limit: 100 }),
     enabled: !!session.user,
   });
@@ -129,7 +130,7 @@ function ClubsDiscoveryContent() {
   }, [myApplications.data]);
 
   const activeForm = useQuery({
-    queryKey: ["club-application-form", activeSelected?.id],
+    queryKey: qk.clubApplicationForm(activeSelected?.id),
     queryFn: () => apiModel.clubApplicationForm(activeSelected!.id),
     enabled: !!activeSelected && !!session.user,
   });
@@ -164,8 +165,8 @@ function ClubsDiscoveryContent() {
       setCustomAnswers({});
       setAttachments([]);
       closeDrawer();
-      queryClient.invalidateQueries({ queryKey: ["my-applications"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard", "my-applications"] });
+      queryClient.invalidateQueries({ queryKey: qk.myApplications() });
+      queryClient.invalidateQueries({ queryKey: qk.dashboard("my-applications") });
     },
   });
 

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { ImageIcon, Loader2, Sparkles, Upload, X } from "lucide-react";
 import { apiModel, Club, describeError } from "@/lib/api";
 import { ClubMediaCatalog, clubSlugFromCode, resolveMediaUrl } from "@/lib/media";
@@ -11,7 +12,7 @@ import { Button } from "@/components/ui/button";
 
 export function useClubMediaCatalog(enabled = true) {
   return useQuery<ClubMediaCatalog>({
-    queryKey: ["club-media-catalog"],
+    queryKey: qk.clubMediaCatalog(),
     queryFn: async () => {
       const res = await fetch("/api/club-media");
       if (!res.ok) throw new Error("Không thể tải thư viện hình ảnh CLB");
@@ -184,10 +185,10 @@ export function ClubMediaPickerField({
       if (!onUploaded) {
         setUploadNotice(kind === "logo" ? "Đã cập nhật logo câu lạc bộ." : "Đã cập nhật ảnh bìa câu lạc bộ.");
       }
-      queryClient.invalidateQueries({ queryKey: ["club", clubId] });
-      queryClient.invalidateQueries({ queryKey: ["clubs"] });
-      queryClient.invalidateQueries({ queryKey: ["home", "public-clubs"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard", "public-clubs"] });
+      queryClient.invalidateQueries({ queryKey: qk.publicClubDetail(clubId) });
+      queryClient.invalidateQueries({ queryKey: qk.clubs() });
+      queryClient.invalidateQueries({ queryKey: qk.home("public-clubs") });
+      queryClient.invalidateQueries({ queryKey: qk.dashboard("public-clubs") });
     } catch (err) {
       setUploadError(describeError(err));
     } finally {
@@ -339,7 +340,7 @@ export function ClubMediaPickerField({
       </FormField>
 
       {uploadNotice && (
-        <p className="text-[11.5px] font-medium text-emerald-700">{uploadNotice}</p>
+        <p className="text-[11.5px] font-medium text-primary">{uploadNotice}</p>
       )}
       {uploadError && (
         <p className="text-[11.5px] font-medium text-destructive">{uploadError}</p>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { FileText } from "lucide-react";
 import { apiModel, DocumentItem } from "@/lib/api";
 import { SegmentedTabs } from "@/components/shared/BreadcrumbToolbar";
@@ -28,7 +29,7 @@ export function ChatDocumentPickerModal({
   const effectiveTab = docTab === "club" && !canViewClubDocs ? "system" : docTab;
 
   const vaultDocs = useQuery({
-    queryKey: ["chat-vault-picker", clubId, effectiveTab, docSearch],
+    queryKey: qk.chatVaultPicker(clubId, effectiveTab, docSearch),
     queryFn: () =>
       effectiveTab === "system"
         ? apiModel.systemDocuments({ name: docSearch, limit: 20 })

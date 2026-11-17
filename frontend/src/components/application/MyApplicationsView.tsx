@@ -3,6 +3,7 @@
 import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { ClipboardList, Eye, FilterX, Paperclip, XCircle } from "lucide-react";
 import { apiModel, Application, ApplicationSummary } from "@/lib/api";
 import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
@@ -52,7 +53,7 @@ function MyApplicationsContent() {
 
   const [limit, setLimit] = useState(LIMIT);
   const list = useQuery({
-    queryKey: ["my-applications", statusFilter, clubFilter, offset, limit],
+    queryKey: qk.myApplications(statusFilter, clubFilter, offset, limit),
     queryFn: () =>
       apiModel.myApplications({
         status: statusFilter || undefined,
@@ -64,7 +65,7 @@ function MyApplicationsContent() {
   });
 
   const clubsCatalog = useQuery({
-    queryKey: ["public-clubs", "filter-options"],
+    queryKey: qk.publicClubs("filter-options"),
     queryFn: () => apiModel.publicClubs("", "", 0, 100),
     staleTime: 60_000,
   });
@@ -83,21 +84,21 @@ function MyApplicationsContent() {
   }, [clubsCatalog.data, list.data]);
 
   const detail = useQuery({
-    queryKey: ["my-applications", "detail", selectedId],
+    queryKey: qk.myApplications("detail", selectedId),
     queryFn: () => apiModel.application(selectedId!),
     enabled: !!selectedId,
   });
 
   const activeClubId = detail.data?.clubId || editing?.clubId;
   const clubForm = useQuery({
-    queryKey: ["club-application-form", activeClubId],
+    queryKey: qk.clubApplicationForm(activeClubId),
     queryFn: () => apiModel.clubApplicationForm(activeClubId!),
     enabled: !!activeClubId,
   });
 
   const refreshAll = () => {
-    queryClient.invalidateQueries({ queryKey: ["my-applications"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard", "my-applications"] });
+    queryClient.invalidateQueries({ queryKey: qk.myApplications() });
+    queryClient.invalidateQueries({ queryKey: qk.dashboard("my-applications") });
   };
 
   const cancel = useMutation({

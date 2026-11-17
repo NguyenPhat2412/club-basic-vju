@@ -1,6 +1,13 @@
 import { api } from '@/lib/api/client';
 import { API_ROUTES } from '@/lib/api/routes';
-import type { AuthUserEnvelope, GoogleSignInConfig, RegisterInput } from '@/types/auth/auth.types';
+import type {
+  AuthUserEnvelope,
+  ForgotPasswordInput,
+  ForgotPasswordOtpResponse,
+  GoogleSignInConfig,
+  RegisterInput,
+  ResetPasswordWithOtpInput,
+} from '@/types/auth/auth.types';
 import type { User } from '@/types/user/user.types';
 
 export const authApi = {
@@ -19,6 +26,16 @@ export const authApi = {
     api<AuthUserEnvelope>(API_ROUTES.auth.google, {
       method: 'POST',
       body: JSON.stringify({ credential, register }),
+    }),
+  requestPasswordReset: (body: ForgotPasswordInput) =>
+    api<ForgotPasswordOtpResponse>(API_ROUTES.auth.forgotPassword, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  resetPasswordWithOtp: (body: ResetPasswordWithOtpInput) =>
+    api<void>(API_ROUTES.auth.resetPassword, {
+      method: 'POST',
+      body: JSON.stringify(body),
     }),
   logout: () => api<void>(API_ROUTES.auth.logout, { method: 'POST' }),
   changePassword: (currentPassword: string, newPassword: string) =>

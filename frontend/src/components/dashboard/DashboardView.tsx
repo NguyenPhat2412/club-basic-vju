@@ -4,9 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import {
-  Bell, Building2, Calendar, ClipboardCheck, ClipboardList, Users, UsersRound,
+  ArrowRight, Bell, Building2, Calendar, ClipboardCheck, ClipboardList, Users, UsersRound,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { apiModel, ApplicationSummary } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { CLUB_MANAGEMENT_KEYS } from "@/hooks/useSession";
@@ -16,8 +17,10 @@ import { useClubMediaCatalog } from "@/components/shared/ClubMedia";
 import { StatKpiGrid } from "@/components/shared/StatCards";
 import { LoadingRows } from "@/components/shared/States";
 import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
+import { toast } from "@/components/ui/toast";
 import { StudentDashboard } from "@/components/dashboard/StudentDashboard";
-import { DashboardAnalyticsCards } from "@/components/dashboard/DashboardAnalyticsCards";
+import { DashboardLatestNotifications } from "@/components/dashboard/StudentDashboardSidebar";
+import { DashboardAnalyticsCards, DashboardGuestPrompt } from "@/components/dashboard/DashboardAnalyticsCards";
 import { DashboardActivitySection } from "@/components/dashboard/DashboardActivitySection";
 import { DashboardSystemAuditSection } from "@/components/dashboard/DashboardSystemAuditSection";
 
@@ -36,79 +39,85 @@ export function DashboardView() {
   const canAudit = session.can("audit.view");
 
   const publicClubs = useQuery({
-    queryKey: ["dashboard", "public-clubs"],
+    queryKey: qk.dashboard("public-clubs"),
     queryFn: () => apiModel.publicClubs("", "", 0, 100),
     enabled: canQuery,
   });
   const publicEvents = useQuery({
-    queryKey: ["dashboard", "public-events"],
+    queryKey: qk.dashboard("public-events"),
     queryFn: () => apiModel.publicEvents(0, 10),
     enabled: canQuery,
   });
   const memberships = useQuery({
-    queryKey: ["dashboard", "memberships"],
+    queryKey: qk.dashboard("memberships"),
     queryFn: () => apiModel.myMemberships(),
     enabled: canQuery,
   });
   const myApplications = useQuery({
-    queryKey: ["dashboard", "my-applications"],
+    queryKey: qk.dashboard("my-applications"),
     queryFn: () => apiModel.myApplications(),
     enabled: canQuery,
   });
   const myTasks = useQuery({
-    queryKey: ["dashboard", "my-tasks"],
+    queryKey: qk.dashboard("my-tasks"),
     queryFn: () => apiModel.myTasks(),
     enabled: canQuery,
   });
   const myCalendar = useQuery({
-    queryKey: ["dashboard", "my-calendar"],
+    queryKey: qk.dashboard("my-calendar"),
     queryFn: () => apiModel.myCalendar(),
     enabled: canQuery,
   });
   const notifications = useQuery({
-    queryKey: ["dashboard", "notifications"],
+    queryKey: qk.dashboard("notifications"),
     queryFn: () => apiModel.notifications(),
     enabled: canQuery,
   });
 
   const managedClubScope = session.clubsWith(CLUB_MANAGEMENT_KEYS);
   const managedClubs = useQuery({
-    queryKey: ["dashboard", "manageable-clubs"],
+    queryKey: qk.dashboard("manageable-clubs"),
     queryFn: () => apiModel.clubs("", "", 0, 100),
     enabled: canQuery && (canManageClubs || canAdminUsers),
   });
   const visibleManagedClubs = (managedClubs.data?.items ?? []).filter(
     (club) => managedClubScope.global || managedClubScope.ids.has(club.id),
   );
-  // one request: the backend counts per status across every club the caller may review
   const reviewSummary = useQuery({
-    queryKey: ["dashboard", "application-review-summary"],
+    queryKey: qk.dashboard("application-review-summary"),
     queryFn: apiModel.applicationReviewSummary,
     enabled: canQuery && canReviewApps,
   });
 
   const systemUsers = useQuery({
-    queryKey: ["dashboard", "system-users-count"],
+    queryKey: qk.dashboard("system-users-count"),
     queryFn: () => apiModel.users("", 0, 1),
     enabled: canQuery && canAdminUsers,
   });
   const systemStats = useQuery({
-    queryKey: ["dashboard", "system-statistics"],
+    queryKey: qk.dashboard("system-statistics"),
     queryFn: apiModel.systemStatistics,
     enabled: canQuery && canAdminUsers,
   });
   const auditLogs = useQuery({
-    queryKey: ["dashboard", "audit-logs"],
+    queryKey: qk.dashboard("audit-logs"),
     queryFn: () => apiModel.auditLogs({ limit: 6 }),
     enabled: canQuery && canAudit,
   });
 
+  const invalidateNotifications = () => {
+    queryClient.invalidateQueries({ queryKey: qk.dashboard("notifications") });
+    queryClient.invalidateQueries({ queryKey: qk.notifications() });
+    queryClient.invalidateQueries({ queryKey: qk.unreadSummary() });
+  };
+
   const markAllRead = useMutation({
     mutationFn: () => apiModel.markAllNotificationsRead(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dashboard", "notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    },
+    onSuccess: invalidateNotifications,
+  });
+  const markOneRead = useMutation({
+    mutationFn: (id: string) => apiModel.markNotificationRead(id),
+    onSuccess: invalidateNotifications,
   });
 
   if (!session.settled) {
@@ -116,42 +125,7 @@ export function DashboardView() {
   }
 
   if (!session.user) {
-    return (
-      <main className="grid min-h-[calc(100svh-48px)] place-items-center bg-background px-5 py-12">
-        <section className="w-full max-w-lg rounded-2xl border border-border bg-card px-7 py-10 text-center shadow-xs sm:px-10">
-          <Image
-            src="/images/vju-logo.png"
-            alt="Logo Trường Đại học Việt Nhật (VJU)"
-            width={56}
-            height={56}
-            className="mx-auto mb-4 size-14 rounded-full bg-white p-0.5 object-contain shadow-xs ring-1 ring-border"
-          />
-          <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
-            CỔNG THÔNG TIN CÂU LẠC BỘ · VJU CLUBHUB
-          </p>
-          <h1 className="mt-3 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Đăng nhập để xem bảng điều khiển
-          </h1>
-          <p className="mx-auto mt-3 max-w-md text-xs leading-relaxed text-muted-foreground">
-            Bảng điều khiển tổng hợp số liệu câu lạc bộ, hồ sơ ứng tuyển, tiến độ công việc, lịch sự kiện và thông báo của bạn.
-          </p>
-          <div className="mt-6 flex justify-center gap-2.5">
-            <Link
-              href="/home?auth=login"
-              className="rounded-lg bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
-            >
-              Đăng nhập
-            </Link>
-            <Link
-              href="/home"
-              className="rounded-lg border border-border px-5 py-2.5 text-xs font-semibold text-foreground hover:bg-muted"
-            >
-              Về trang chủ
-            </Link>
-          </div>
-        </section>
-      </main>
-    );
+    return <DashboardGuestPrompt />;
   }
 
   if (session.mustChangePassword) {
@@ -185,9 +159,6 @@ export function DashboardView() {
   const completedTasksCount = tasksList.filter(
     (t) => t.status === "COMPLETED" || t.status === "DONE" || t.status === "VERIFIED",
   ).length;
-  const inProgressTasksCount = tasksList.filter(
-    (t) => t.status === "IN_PROGRESS" || t.status === "OPEN" || t.status === "TODO",
-  ).length;
   const avgTaskProgress =
     tasksList.length > 0
       ? Math.round(tasksList.reduce((acc, t) => acc + (t.progressPercent || 0), 0) / tasksList.length)
@@ -207,24 +178,24 @@ export function DashboardView() {
   }, {});
   const sortedCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
 
-  const refreshAll = () => {
-    publicClubs.refetch();
-    publicEvents.refetch();
-    memberships.refetch();
-    myApplications.refetch();
-    myTasks.refetch();
-    myCalendar.refetch();
-    notifications.refetch();
-    if (canManageClubs || canAdminUsers) {
-      managedClubs.refetch();
-      if (canReviewApps) reviewSummary.refetch();
-    }
-    if (canAdminUsers) {
-      systemUsers.refetch();
-      systemStats.refetch();
-    }
-    mediaCatalog.refetch();
-    if (canAudit) auditLogs.refetch();
+  const activeQueries = [
+    publicClubs,
+    publicEvents,
+    memberships,
+    myApplications,
+    myTasks,
+    myCalendar,
+    notifications,
+    mediaCatalog,
+    ...(canManageClubs || canAdminUsers ? [managedClubs, ...(canReviewApps ? [reviewSummary] : [])] : []),
+    ...(canAdminUsers ? [systemUsers, systemStats] : []),
+    ...(canAudit ? [auditLogs] : []),
+  ];
+  const isRefreshing = activeQueries.some((q) => q.isFetching && !q.isPending);
+
+  const handleRefresh = async () => {
+    await Promise.all(activeQueries.map((q) => q.refetch()));
+    toast.success("Đã làm mới dữ liệu tổng quan.");
   };
 
   const kpiCards = [
@@ -301,7 +272,8 @@ export function DashboardView() {
       <BreadcrumbToolbar
         crumbs={[{ label: "Trang chủ", href: "/clubs" }, { label: "Tổng quan hệ thống" }]}
         titleBadge={<CountBadge>Trực tiếp</CountBadge>}
-        onRefresh={refreshAll}
+        refreshing={isRefreshing}
+        onRefresh={handleRefresh}
       />
 
       <div className="mx-auto w-full min-w-0 max-w-[1440px] space-y-5 px-4 py-5 sm:px-6">
@@ -325,37 +297,28 @@ export function DashboardView() {
               <h1 className="mt-1 line-clamp-2 wrap-break-word text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
                 Xin chào, {session.user.fullName || session.user.email}
               </h1>
-              <p className="mt-0.5 text-xs text-slate-500">
-                Theo dõi số liệu câu lạc bộ, tiến độ công việc, đơn ứng tuyển và các hoạt động mới nhất trong thời gian thực.
-              </p>
             </div>
           </div>
 
-          <div className="flex w-full shrink-0 items-center gap-3 sm:w-auto">
-            <div className="flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 sm:block sm:w-auto sm:text-right">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">CLB đang quản lý</p>
-              <p className="text-base font-extrabold text-primary sm:mt-0.5">{visibleManagedClubs.length} CLB</p>
-            </div>
-          </div>
+          {(canManageClubs || canAdminUsers) && (
+            <Link
+              href="/management?tab=clubs"
+              className="inline-flex h-9 w-full shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90 sm:w-auto"
+            >
+              Không gian CLB <ArrowRight size={13} />
+            </Link>
+          )}
         </section>
 
         <StatKpiGrid items={kpiCards} />
 
-        <DashboardAnalyticsCards
-          publicClubsPending={publicClubs.isPending}
-          totalClubsCount={totalClubsCount}
-          sortedCategories={sortedCategories}
-          canReviewApps={canReviewApps}
-          relevantAppsCount={relevantAppsTotal}
-          pendingAppsCount={pendingAppsCount}
-          approvedAppsCount={approvedAppsCount}
-          rejectedAppsCount={rejectedAppsCount}
-          myAppsCount={myAppsList.length}
-          visibleManagedClubsCount={visibleManagedClubs.length}
-          avgTaskProgress={avgTaskProgress}
-          inProgressTasksCount={inProgressTasksCount}
-          completedTasksCount={completedTasksCount}
-          totalUpcomingEvents={totalUpcomingEvents}
+        <DashboardLatestNotifications
+          notifications={notifList}
+          loading={notifications.isPending}
+          unreadCount={unreadNotifCount}
+          markAllReadPending={markAllRead.isPending}
+          onMarkAllRead={() => markAllRead.mutate()}
+          onMarkOneRead={(id) => markOneRead.mutate(id)}
         />
 
         <DashboardActivitySection
@@ -370,11 +333,17 @@ export function DashboardView() {
           mediaCatalog={mediaCatalog.data}
           upcomingPublicEvents={upcomingPublicEvents}
           calendarEvents={calendarEvents}
-          unreadNotifCount={unreadNotifCount}
-          notifList={notifList}
-          notificationsPending={notifications.isPending}
-          markAllReadPending={markAllRead.isPending}
-          onMarkAllRead={() => markAllRead.mutate()}
+        />
+
+        <DashboardAnalyticsCards
+          publicClubsPending={publicClubs.isPending}
+          totalClubsCount={totalClubsCount}
+          sortedCategories={sortedCategories}
+          canReviewApps={canReviewApps}
+          relevantAppsCount={relevantAppsTotal}
+          pendingAppsCount={pendingAppsCount}
+          approvedAppsCount={approvedAppsCount}
+          rejectedAppsCount={rejectedAppsCount}
         />
 
         <DashboardSystemAuditSection

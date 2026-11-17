@@ -2,6 +2,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { apiModel } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
 import { Button } from "@/components/ui/button";
@@ -15,8 +16,8 @@ export function FirstLoginPassword({ email }: { email?: string }) {
   const mutation = useMutation({
     mutationFn: () => apiModel.changePassword(current, next),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["me"] });
-      await queryClient.invalidateQueries({ queryKey: ["optional-me"] });
+      await queryClient.invalidateQueries({ queryKey: qk.me() });
+      await queryClient.invalidateQueries({ queryKey: qk.optionalMe() });
     },
   });
   const mismatch = confirmation.length > 0 && confirmation !== next;

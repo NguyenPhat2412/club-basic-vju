@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { ArrowRightLeft, UserMinus, UserPlus, UsersRound } from "lucide-react";
 import { apiModel, Department, DepartmentMember, Membership } from "@/lib/api";
 import { EntityDrawer, Section } from "@/components/shared/Overlays";
@@ -42,7 +43,7 @@ export function DepartmentMembersDrawer({
   const [newDeptMembershipId, setNewDeptMembershipId] = useState("");
 
   const selectedDeptMembers = useQuery({
-    queryKey: ["department-members", selectedDept?.id],
+    queryKey: qk.departmentMembers(selectedDept?.id),
     queryFn: () => apiModel.departmentMembers(selectedDept!.id),
     enabled: !!selectedDept && canViewMembers,
   });

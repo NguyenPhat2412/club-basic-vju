@@ -1,11 +1,12 @@
 'use client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { qk } from "@/lib/api/query-keys";
 import { usersApi } from '@/api/user/users.api';
 import type { CreateUserInput, UpdateUserInput, User, UserStatus } from '@/types/user/user.types';
 
 export function useUsersList(query = '', offset = 0, limit = 20, enabled = true) {
   return useQuery({
-    queryKey: ['users', query, offset, limit],
+    queryKey: qk.users(query, offset, limit),
     queryFn: () => usersApi.users(query, offset, limit),
     enabled,
   });
@@ -13,7 +14,7 @@ export function useUsersList(query = '', offset = 0, limit = 20, enabled = true)
 
 export function useUserNames(enabled = true) {
   const { data } = useQuery({
-    queryKey: ['users', 'lookup'],
+    queryKey: qk.users('lookup'),
     queryFn: () => usersApi.users('', 0, 100),
     enabled,
     staleTime: 60_000,
@@ -25,8 +26,8 @@ export function useUserNames(enabled = true) {
 export function useUserMutations() {
   const queryClient = useQueryClient();
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['users'] });
-    queryClient.invalidateQueries({ queryKey: ['system-statistics'] });
+    queryClient.invalidateQueries({ queryKey: qk.users() });
+    queryClient.invalidateQueries({ queryKey: qk.systemStatistics() });
   };
 
   const createUser = useMutation({

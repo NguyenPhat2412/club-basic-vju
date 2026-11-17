@@ -3,6 +3,7 @@
 import { Suspense, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { Plus, ShieldCheck, UserPlus } from "lucide-react";
 import { apiModel, Department, Membership } from "@/lib/api";
 import { CLUB_WORKSPACE_KEYS, useSession } from "@/hooks/useSession";
@@ -80,7 +81,7 @@ function ClubManagementViewContent() {
   const setErrorMsg = (text: string) => setErrorState((prev) => ({ seq: prev.seq + 1, text }));
 
   const clubs = useQuery({
-    queryKey: ["clubs", "manage"],
+    queryKey: qk.clubs("manage"),
     queryFn: () => apiModel.clubs("", "", 0, 100),
     enabled: session.ready,
   });
@@ -130,13 +131,13 @@ function ClubManagementViewContent() {
   const canCreateClub = session.can("club.create");
 
   const pendingApps = useQuery({
-    queryKey: ["club-applications", activeClubId, "pending-count"],
+    queryKey: qk.clubApplications(activeClubId, "pending-count"),
     queryFn: () => apiModel.clubApplications(activeClubId, { status: "PENDING", limit: 1 }),
     enabled: !!activeClubId && activeTab === "applications" && canViewApplications,
   });
 
   const members = useQuery({
-    queryKey: ["club-members", activeClubId, memberStatusFilter, memberDeptFilter, memberSearch, memberOffset, memberLimit],
+    queryKey: qk.clubMembers(activeClubId, memberStatusFilter, memberDeptFilter, memberSearch, memberOffset, memberLimit),
     queryFn: () =>
       apiModel.clubMemberships(activeClubId, memberStatusFilter, memberOffset, memberLimit, {
         departmentId: memberDeptFilter || undefined,
@@ -147,13 +148,13 @@ function ClubManagementViewContent() {
   });
 
   const activeMembersForTasks = useQuery({
-    queryKey: ["club-members", activeClubId, "ACTIVE-tasks"],
+    queryKey: qk.clubMembers(activeClubId, "ACTIVE-tasks"),
     queryFn: () => apiModel.clubMemberships(activeClubId, "ACTIVE", 0, 100),
     enabled: !!activeClubId && activeTab === "tasks" && canViewMembers,
   });
 
   const departments = useQuery({
-    queryKey: ["departments", activeClubId],
+    queryKey: qk.departments(activeClubId),
     queryFn: () => apiModel.departments(activeClubId),
     enabled: !!activeClubId && session.canInClub("department.view", activeClubId),
   });
@@ -161,7 +162,7 @@ function ClubManagementViewContent() {
   const canViewDeptMembers = session.canInClub("department.member.view", activeClubId);
   const assignmentQueries = useQueries({
     queries: activeDepartments.map((d) => ({
-      queryKey: ["department-members", d.id],
+      queryKey: qk.departmentMembers(d.id),
       queryFn: () => apiModel.departmentMembers(d.id),
       enabled: activeTab === "members" && session.canInDepartment("department.member.view", activeClubId, d.id),
     })),
@@ -176,10 +177,9 @@ function ClubManagementViewContent() {
   }
 
   const refreshMembers = () => {
-    queryClient.invalidateQueries({ queryKey: ["club-members", activeClubId] });
-    queryClient.invalidateQueries({ queryKey: ["memberships", activeClubId] });
-    queryClient.invalidateQueries({ queryKey: ["department-members"] });
-    queryClient.invalidateQueries({ queryKey: ["club-positions", activeClubId] });
+    queryClient.invalidateQueries({ queryKey: qk.clubMembers(activeClubId) });
+    queryClient.invalidateQueries({ queryKey: qk.departmentMembers() });
+    queryClient.invalidateQueries({ queryKey: qk.clubPositions(activeClubId) });
   };
 
   const assign = useMutation({
@@ -210,7 +210,7 @@ function ClubManagementViewContent() {
       );
       setErrorMsg("");
       refreshMembers();
-      queryClient.invalidateQueries({ queryKey: ["membership", memberId] });
+      queryClient.invalidateQueries({ queryKey: qk.membership(memberId) });
     },
   });
 
@@ -260,26 +260,26 @@ function ClubManagementViewContent() {
         }
         onRefresh={() => {
           clubs.refetch();
-          if (activeTab === "overview") queryClient.invalidateQueries({ queryKey: ["club-statistics", activeClubId] });
-          if (activeTab === "applications") queryClient.invalidateQueries({ queryKey: ["club-applications", activeClubId] });
+          if (activeTab === "overview") queryClient.invalidateQueries({ queryKey: qk.clubStatistics(activeClubId) });
+          if (activeTab === "applications") queryClient.invalidateQueries({ queryKey: qk.clubApplications(activeClubId) });
           if (activeTab === "forms") {
-            queryClient.invalidateQueries({ queryKey: ["club-application-forms", activeClubId] });
-            queryClient.invalidateQueries({ queryKey: ["club-application-form", activeClubId] });
+            queryClient.invalidateQueries({ queryKey: qk.clubApplicationForms(activeClubId) });
+            queryClient.invalidateQueries({ queryKey: qk.clubApplicationForm(activeClubId) });
           }
           if (activeTab === "members") refreshMembers();
           if (activeTab === "departments") {
-            queryClient.invalidateQueries({ queryKey: ["departments", activeClubId] });
-            queryClient.invalidateQueries({ queryKey: ["club-positions", activeClubId] });
-            queryClient.invalidateQueries({ queryKey: ["department-members"] });
+            queryClient.invalidateQueries({ queryKey: qk.departments(activeClubId) });
+            queryClient.invalidateQueries({ queryKey: qk.clubPositions(activeClubId) });
+            queryClient.invalidateQueries({ queryKey: qk.departmentMembers() });
           }
-          if (activeTab === "events") queryClient.invalidateQueries({ queryKey: ["events", activeClubId] });
-          if (activeTab === "tasks") queryClient.invalidateQueries({ queryKey: ["tasks", activeClubId] });
-          if (activeTab === "documents") queryClient.invalidateQueries({ queryKey: ["documents"] });
+          if (activeTab === "events") queryClient.invalidateQueries({ queryKey: qk.clubEvents(activeClubId) });
+          if (activeTab === "tasks") queryClient.invalidateQueries({ queryKey: qk.clubTasks(activeClubId) });
+          if (activeTab === "documents") queryClient.invalidateQueries({ queryKey: qk.documents() });
           if (activeTab === "chat") {
-            queryClient.invalidateQueries({ queryKey: ["club-channels", activeClubId] });
-            queryClient.invalidateQueries({ queryKey: ["channel-messages"] });
-            queryClient.invalidateQueries({ queryKey: ["channel-pinned-messages"] });
-            queryClient.invalidateQueries({ queryKey: ["channel-summaries"] });
+            queryClient.invalidateQueries({ queryKey: qk.clubChannels(activeClubId) });
+            queryClient.invalidateQueries({ queryKey: qk.channelMessages() });
+            queryClient.invalidateQueries({ queryKey: qk.channelPinnedMessages() });
+            queryClient.invalidateQueries({ queryKey: qk.channelSummaries() });
           }
         }}
       />
@@ -366,9 +366,9 @@ function ClubManagementViewContent() {
           setNotice(`Đã thành lập câu lạc bộ "${created.name}" (${created.code}).`);
           setErrorMsg("");
           setClubId(created.id);
-          queryClient.invalidateQueries({ queryKey: ["clubs"] });
-          queryClient.invalidateQueries({ queryKey: ["home", "public-clubs"] });
-          queryClient.invalidateQueries({ queryKey: ["dashboard", "public-clubs"] });
+          queryClient.invalidateQueries({ queryKey: qk.clubs() });
+          queryClient.invalidateQueries({ queryKey: qk.home("public-clubs") });
+          queryClient.invalidateQueries({ queryKey: qk.dashboard("public-clubs") });
         }}
       />
       <ClubMemberDetailDrawer memberId={memberId} clubId={activeClubId} clubName={currentClub?.name} onClose={() => setMemberId(null)} memberOf={memberOf} departmentsByMember={departmentsByMember} activeDepartments={activeDepartments} busy={status.isPending} canUpdate={canUpdateMember} canRemove={canRemoveMember} onStatus={(id, value) => status.mutate({ id, value })} onRequestLeave={setConfirmingLeave} />

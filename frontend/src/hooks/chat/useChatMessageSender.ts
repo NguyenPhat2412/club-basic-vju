@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import {
   apiModel,
   ChatAttachment,
@@ -133,7 +134,7 @@ export function useChatMessageSender({
         const uploaded = await uploadPromise;
         if (job.stagedSnapshot.length > 0) {
           queryClient.setQueryData<Page<ChatMessage>>(
-            ["channel-messages", job.targetChannelId],
+            qk.channelMessages(job.targetChannelId),
             (old) =>
               old
                 ? {
@@ -158,7 +159,7 @@ export function useChatMessageSender({
         .then((created) => {
           failedJobsRef.current.delete(job.clientTempId);
           queryClient.setQueryData<Page<ChatMessage>>(
-            ["channel-messages", job.targetChannelId],
+            qk.channelMessages(job.targetChannelId),
             (old) => {
               const base = old ?? getCachedChannelWindow(job.targetChannelId, userId)?.page;
               const reconciled = reconcileIncomingChatMessage(base, created);
@@ -176,7 +177,7 @@ export function useChatMessageSender({
           const errText = describeError(err);
           failedJobsRef.current.set(job.clientTempId, job);
           queryClient.setQueryData<Page<ChatMessage>>(
-            ["channel-messages", job.targetChannelId],
+            qk.channelMessages(job.targetChannelId),
             (old) => {
               if (!old) return old;
               return {
@@ -254,7 +255,7 @@ export function useChatMessageSender({
       createdAt: job.createdAt,
     };
 
-    queryClient.setQueryData<Page<ChatMessage>>(["channel-messages", job.targetChannelId], (old) => {
+    queryClient.setQueryData<Page<ChatMessage>>(qk.channelMessages(job.targetChannelId), (old) => {
       const base = old ?? getCachedChannelWindow(job.targetChannelId, userId)?.page;
       return base
         ? { ...base, items: [optimisticMsg, ...base.items], total: base.total + 1 }
@@ -270,7 +271,7 @@ export function useChatMessageSender({
       if (!job) return;
       onError("");
       queryClient.setQueryData<Page<ChatMessage>>(
-        ["channel-messages", job.targetChannelId],
+        qk.channelMessages(job.targetChannelId),
         (old) =>
           old
             ? {
@@ -302,7 +303,7 @@ export function useChatMessageSender({
           if (s.previewUrl.startsWith("blob:")) URL.revokeObjectURL(s.previewUrl);
         }
       }
-      queryClient.setQueryData<Page<ChatMessage>>(["channel-messages", channelId], (old) =>
+      queryClient.setQueryData<Page<ChatMessage>>(qk.channelMessages(channelId), (old) =>
         old
           ? {
               ...old,

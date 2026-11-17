@@ -102,6 +102,38 @@ class SystemSettingsApiTest extends ApiIntegrationTest {
 
         problem(put(SETTINGS), adminToken, Map.of("maxPendingApplications", 3, "reapplyCooldownDays", 7, "maxActiveClubs", 0,
                 "documentMaxFileMb", 21), 400, "VALIDATION_ERROR");
+
+        // OTP & SMTP settings round-trip without exposing raw smtpPassword
+        assertThat(current.path("otpExpiryMinutes").asInt()).isEqualTo(5);
+        assertThat(current.path("otpMaxSendCount").asInt()).isEqualTo(5);
+        assertThat(current.path("otpResendCooldownSeconds").asInt()).isEqualTo(60);
+        assertThat(current.path("otpMaxVerifyAttempts").asInt()).isEqualTo(5);
+        assertThat(current.path("smtpPasswordConfigured").asBoolean()).isFalse();
+
+        problem(put(SETTINGS + "/smtp-test"), adminToken, Map.of("recipientEmail", "admin@test.local"),
+                409, "SMTP_NOT_CONFIGURED");
+
+        settingsWith(Map.ofEntries(
+                Map.entry("otpExpiryMinutes", 10),
+                Map.entry("otpMaxSendCount", 8),
+                Map.entry("otpResendCooldownSeconds", 30),
+                Map.entry("otpMaxVerifyAttempts", 4),
+                Map.entry("smtpHost", "smtp.gmail.com"),
+                Map.entry("smtpPort", 587),
+                Map.entry("smtpUsername", "clubhub@vju.ac.vn"),
+                Map.entry("smtpPassword", "super-secret-app-password"),
+                Map.entry("smtpFromEmail", "clubhub@vju.ac.vn"),
+                Map.entry("smtpFromName", "VJU ClubHub Official"),
+                Map.entry("smtpStartTls", true)));
+        JsonNode withSmtp = call(get(SETTINGS), adminToken, null, 200);
+        assertThat(withSmtp.path("otpExpiryMinutes").asInt()).isEqualTo(10);
+        assertThat(withSmtp.path("otpMaxSendCount").asInt()).isEqualTo(8);
+        assertThat(withSmtp.path("otpResendCooldownSeconds").asInt()).isEqualTo(30);
+        assertThat(withSmtp.path("otpMaxVerifyAttempts").asInt()).isEqualTo(4);
+        assertThat(withSmtp.path("smtpHost").asText()).isEqualTo("smtp.gmail.com");
+        assertThat(withSmtp.path("smtpPasswordConfigured").asBoolean()).isTrue();
+        assertThat(withSmtp.has("smtpPassword")).isFalse();
+        assertThat(withSmtp.toString()).doesNotContain("super-secret-app-password");
     }
 
     @Test

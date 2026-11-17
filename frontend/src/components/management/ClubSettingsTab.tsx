@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { Bell, Building2, Lock, LockOpen, Save, Send } from "lucide-react";
 import { apiModel, Club, Department } from "@/lib/api";
 import { clubSlugFromCode, toApiMediaUrl } from "@/lib/media";
@@ -52,9 +53,9 @@ export function ClubSettingsTab({
   const allowedNotifDepts = departments.filter((d) => notifScope.all || notifScope.ids.has(d.id));
 
   const refreshClubs = () => {
-    queryClient.invalidateQueries({ queryKey: ["clubs"] });
-    queryClient.invalidateQueries({ queryKey: ["home", "public-clubs"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard", "public-clubs"] });
+    queryClient.invalidateQueries({ queryKey: qk.clubs() });
+    queryClient.invalidateQueries({ queryKey: qk.home("public-clubs") });
+    queryClient.invalidateQueries({ queryKey: qk.dashboard("public-clubs") });
   };
 
   const saveClub = useMutation({

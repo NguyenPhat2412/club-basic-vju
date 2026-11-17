@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { Calendar, Eye, FilterX, Pencil, Plus, Search, X } from "lucide-react";
 import { apiModel, ClubEvent, Department, EventRegistration } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
@@ -61,7 +62,7 @@ export function EventsTab({
   const queryLimit = hasClientFilter ? 100 : limit;
 
   const events = useQuery({
-    queryKey: ["club-events", clubId, deptFilter, statusFilter, queryOffset, queryLimit],
+    queryKey: qk.clubEvents(clubId, deptFilter, statusFilter, queryOffset, queryLimit),
     queryFn: () =>
       apiModel.clubEvents(clubId, {
         departmentId: deptFilter || undefined,
@@ -74,7 +75,7 @@ export function EventsTab({
   });
 
   const allClubEvents = useQuery({
-    queryKey: ["club-events", clubId, "summary-counts"],
+    queryKey: qk.clubEvents(clubId, "summary-counts"),
     queryFn: () => apiModel.clubEvents(clubId, { limit: 100 }),
     enabled: !!clubId,
   });
@@ -118,11 +119,11 @@ export function EventsTab({
   };
 
   const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["club-events", clubId] });
-    queryClient.invalidateQueries({ queryKey: ["club-statistics", clubId] });
+    queryClient.invalidateQueries({ queryKey: qk.clubEvents(clubId) });
+    queryClient.invalidateQueries({ queryKey: qk.clubStatistics(clubId) });
     if (selected) {
-      queryClient.invalidateQueries({ queryKey: ["event-registrations", selected.id] });
-      queryClient.invalidateQueries({ queryKey: ["event-attendances", selected.id] });
+      queryClient.invalidateQueries({ queryKey: qk.eventRegistrations(selected.id) });
+      queryClient.invalidateQueries({ queryKey: qk.eventAttendances(selected.id) });
     }
   };
 

@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ReactNode, Suspense, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { authApi } from "@/api/auth/auth.api";
 import { buildNavigationSections, resolveActiveNavMeta } from "@/config/navigation";
 import {
@@ -117,10 +118,10 @@ function AppShellInner({ children }: { children: ReactNode }) {
     await queryClient.cancelQueries();
     const { clearChatMessageCache } = await import("@/lib/chat-message-cache");
     clearChatMessageCache();
-    queryClient.setQueryData(["optional-me"], null);
-    queryClient.setQueryData(["me"], null);
-    queryClient.removeQueries({ queryKey: ["me", "permissions"] });
-    queryClient.removeQueries({ queryKey: ["optional-me", "permissions"] });
+    queryClient.setQueryData(qk.optionalMe(), null);
+    queryClient.setQueryData(qk.me(), null);
+    queryClient.removeQueries({ queryKey: qk.me("permissions") });
+    queryClient.removeQueries({ queryKey: qk.optionalMe("permissions") });
     await authApi.logout().catch(() => undefined);
     queryClient.clear();
     router.replace("/home");
@@ -225,7 +226,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
         <main
           key={locale}
           data-design-system="admin-v1"
-          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto bg-background"
+          className="@container flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto bg-background"
         >
           {session.user && session.mustChangePassword ? (
             <FirstLoginPassword email={session.user.email} />

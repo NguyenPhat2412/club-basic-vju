@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { AlertTriangle, Calendar, ClipboardCheck, Eye, FilterX, MapPin, Send } from "lucide-react";
 import { apiModel, TaskItem } from "@/lib/api";
 import { BreadcrumbToolbar, SegmentedTabs } from "@/components/shared/BreadcrumbToolbar";
@@ -34,11 +35,11 @@ export function ScheduleView() {
   const [notice, setNotice] = useState("");
 
   const myTasks = useQuery({
-    queryKey: ["my-tasks", statusFilter, overdueOnly, offset, limit],
+    queryKey: qk.myTasks(statusFilter, overdueOnly, offset, limit),
     queryFn: () => apiModel.myTasks({ status: statusFilter || undefined, overdue: overdueOnly ? true : undefined, offset, limit }),
   });
   const myCalendar = useQuery({
-    queryKey: ["my-calendar"],
+    queryKey: qk.myCalendar(),
     queryFn: () => apiModel.myCalendar(),
     enabled: tab === "calendar",
   });
@@ -91,9 +92,9 @@ export function ScheduleView() {
     onSuccess: (updated) => {
       setNotice(`Đã cập nhật tiến độ công việc "${updated.title}".`);
       setSelectedTask(updated);
-      queryClient.invalidateQueries({ queryKey: ["my-tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["my-calendar"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: qk.myTasks() });
+      queryClient.invalidateQueries({ queryKey: qk.myCalendar() });
+      queryClient.invalidateQueries({ queryKey: qk.dashboard() });
     },
   });
 

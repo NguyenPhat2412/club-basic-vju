@@ -5,6 +5,8 @@ export const API_ROUTES = {
     register: '/auth/register',
     google: '/auth/google',
     googleConfig: '/auth/google/config',
+    forgotPassword: '/auth/forgot-password',
+    resetPassword: '/auth/reset-password',
     logout: '/auth/logout',
     changePassword: '/auth/change-password',
     me: '/auth/me',

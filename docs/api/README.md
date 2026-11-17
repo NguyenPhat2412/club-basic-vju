@@ -1,4 +1,4 @@
-# VJU Club Management System — Swagger / OpenAPI Inventory (157 Endpoints)
+# VJU Club Management System — Swagger / OpenAPI Inventory (161 Endpoints)
 
 The backend assigned to this system is `backend/springboot` (Spring Boot 4.1.1 / Java 21 / PostgreSQL 16).
 
@@ -12,7 +12,7 @@ The backend assigned to this system is `backend/springboot` (Spring Boot 4.1.1 /
 
 - **Source catalog:** [`docs/api/catalog.yml`](catalog.yml) (synced with `backend/springboot/src/main/resources/api/catalog.yml`)
 - **Source OpenAPI contract:** [`docs/api/openapi.yaml`](openapi.yaml) (synced with `backend/springboot/src/main/resources/api/phase1-openapi.yaml`)
-- **All 157 endpoints** across **21 modules** are marked `IMPLEMENTED` and verified by automated PostgreSQL integration tests and static OpenAPI 3.1 contract checks (`16/16 Pass`).
+- **All 161 endpoints** across **21 modules** are marked `IMPLEMENTED` and verified by automated PostgreSQL integration tests and static OpenAPI 3.1 contract checks (`16/16 Pass`).
 
 ## Authentication, Realtime WebSocket & Conventions
 
@@ -27,7 +27,7 @@ The backend assigned to this system is `backend/springboot` (Spring Boot 4.1.1 /
 
 ---
 
-## Complete Swagger API Endpoint List (157 Endpoints)
+## Complete Swagger API Endpoint List (161 Endpoints)
 
 | # | Module | Operation ID | Method | Path | Permission / Auth | Summary | Status |
 |---:|---|---|---|---|---|---|---|
@@ -188,6 +188,10 @@ The backend assigned to this system is `backend/springboot` (Spring Boot 4.1.1 /
 | 155 | `chat-realtime` | `chat.updateQuickReply` | **PUT** | `/api/v1/clubs/{clubId}/quick-replies/{replyId}` | `chat.send` | Update a quick reply template | `IMPLEMENTED` |
 | 156 | `chat-realtime` | `chat.deleteQuickReply` | **DELETE** | `/api/v1/clubs/{clubId}/quick-replies/{replyId}` | `chat.send` | Delete a quick reply template | `IMPLEMENTED` |
 | 157 | `notification` | `notification.unreadSummary` | **GET** | `/api/v1/users/me/notifications/unread-summary` | `AUTHENTICATED` | Get total unread notifications and unread chat messages across clubs | `IMPLEMENTED` |
+| 158 | `chat-realtime` | `chat.toggleReaction` | **PUT** | `/api/v1/channels/{channelId}/messages/{messageId}/reactions` | `chat.send` | Toggle emoji reaction on a chat message | `IMPLEMENTED` |
+| 159 | `authentication` | `auth.forgotPassword` | **POST** | `/api/v1/auth/forgot-password` | `PUBLIC` | Request a 6-digit OTP password reset code via email | `IMPLEMENTED` |
+| 160 | `authentication` | `auth.resetPassword` | **POST** | `/api/v1/auth/reset-password` | `PUBLIC` | Verify 6-digit OTP and set a new password | `IMPLEMENTED` |
+| 161 | `setting` | `systemSettings.testSmtp` | **PUT** | `/api/v1/system-settings/smtp-test` | `setting.update` | Send a branded 3-tone test OTP email using configured SMTP settings | `IMPLEMENTED` |
 
 ---
 

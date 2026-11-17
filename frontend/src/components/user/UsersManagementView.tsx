@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import {
   Ban,
   CheckCircle2,
@@ -51,26 +52,27 @@ export function UsersManagementView() {
   const [notice, setNotice] = useState("");
 
   const users = useQuery({
-    queryKey: ["users", search, offset, limit],
+    queryKey: qk.users(search, offset, limit),
     queryFn: () => apiModel.users(search, offset, limit),
     placeholderData: keepPreviousData,
     enabled: session.can("user.view"),
   });
   const sysStats = useQuery({
-    queryKey: ["system-statistics"],
+    queryKey: qk.systemStatistics(),
     queryFn: () => apiModel.systemStatistics(),
     enabled: session.can("user.view"),
   });
 
   const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["users"] });
-    queryClient.invalidateQueries({ queryKey: ["system-statistics"] });
+    queryClient.invalidateQueries({ queryKey: qk.users() });
+    queryClient.invalidateQueries({ queryKey: qk.systemStatistics() });
   };
 
   const canAssign = session.can("permission.assign");
   const canUpdateUser = session.can("user.update");
   const canDeleteUser = session.can("user.delete");
-  const options = useRoleOptions(canAssign);
+  const canLoadRoles = canAssign && (session.can("role.view") || session.can("role.manage"));
+  const options = useRoleOptions({ loadClubs: canAssign || session.can("permission.view"), loadRoles: canLoadRoles });
   const google = useGoogleSignIn();
   const googleDomains = google.data?.enabled ? google.data.allowedDomains : [];
   const isGoogleEmail = (email: string) =>

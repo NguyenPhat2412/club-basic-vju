@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { ShieldPlus } from "lucide-react";
 import { apiModel, PermissionGroup, Role, Scope } from "@/lib/api";
 import { describeError } from "@/components/shared/ListPage";
@@ -49,7 +50,7 @@ export function CreateRoleModal({
     onSuccess: async (role) => {
       setNewRole(EMPTY_NEW_ROLE);
       setNewKeys(new Set());
-      await queryClient.invalidateQueries({ queryKey: ["roles"] });
+      await queryClient.invalidateQueries({ queryKey: qk.roles() });
       onCreated(role);
       onClose();
     },

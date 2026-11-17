@@ -47,4 +47,37 @@ public class SystemSettings extends TimestampedEntity {
 
     @Column(name = "avatar_max_mb", nullable = false)
     private int avatarMaxMb = 5;
+
+    @Column(name = "otp_expiry_minutes", nullable = false)
+    private int otpExpiryMinutes = 5;
+
+    @Column(name = "otp_max_send_count", nullable = false)
+    private int otpMaxSendCount = 5;
+
+    @Column(name = "otp_resend_cooldown_seconds", nullable = false)
+    private int otpResendCooldownSeconds = 60;
+
+    @Column(name = "otp_max_verify_attempts", nullable = false)
+    private int otpMaxVerifyAttempts = 5;
+
+    @Column(name = "smtp_host", length = 255)
+    private String smtpHost;
+
+    @Column(name = "smtp_port", nullable = false)
+    private int smtpPort = 587;
+
+    @Column(name = "smtp_username", length = 255)
+    private String smtpUsername;
+
+    @Column(name = "smtp_password", length = 500)
+    private String smtpPassword;
+
+    @Column(name = "smtp_from_email", length = 320)
+    private String smtpFromEmail;
+
+    @Column(name = "smtp_from_name", nullable = false, length = 120)
+    private String smtpFromName = "VJU ClubHub";
+
+    @Column(name = "smtp_start_tls", nullable = false)
+    private boolean smtpStartTls = true;
 }

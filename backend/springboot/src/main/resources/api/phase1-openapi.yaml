@@ -203,6 +203,72 @@ paths:
                 clientId: 123456789-abc.apps.googleusercontent.com
                 allowedDomains:
                 - st.vju.ac.vn
+  /auth/forgot-password:
+    post:
+      operationId: auth.forgotPassword
+      summary: Request a 6-digit OTP password reset code via email
+      tags:
+      - Auth
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      security: []
+      description: 'Tạo mã xác thực OTP 6 chữ số (băm BCrypt lưu DB) theo giới hạn cấu hình trong /system-settings
+        (otpExpiryMinutes, otpResendCooldownSeconds, otpMaxSendCount, otpMaxVerifyAttempts) và gửi email HTML định dạng
+        3 tông màu VJU ClubHub tới người dùng. Luôn trả cấu trúc ForgotPasswordOtpResponse đồng nhất cho email không tồn tại
+        hoặc vô hiệu hoá để chống dò quét tài khoản; trả 429 OTP_COOLDOWN_ACTIVE hoặc OTP_SEND_LIMIT_EXCEEDED nếu vượt tần suất.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+            example:
+              email: sinhvien@st.vju.ac.vn
+      responses:
+        '200':
+          description: OTP challenge policy returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForgotPasswordOtpResponse'
+              example:
+                expirySeconds: 300
+                resendCooldownSeconds: 60
+                maxVerifyAttempts: 5
+                mailConfigured: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /auth/reset-password:
+    post:
+      operationId: auth.resetPassword
+      summary: Verify 6-digit OTP and set a new password
+      tags:
+      - Auth
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      security: []
+      description: 'Xác minh mã OTP 6 chữ số còn hiệu lực, kiểm tra số lần thử tối đa (otpMaxVerifyAttempts, ghi nhận trong
+        transaction độc lập), đặt mật khẩu mới và thu hồi toàn bộ phiên đăng nhập cũ của tài khoản. Trả 400 OTP_INVALID hoặc
+        OTP_EXPIRED, 403 ACCOUNT_LOCKED, hoặc 429 OTP_MAX_ATTEMPTS_EXCEEDED.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordWithOtpRequest'
+            example:
+              email: sinhvien@st.vju.ac.vn
+              otp: '842916'
+              newPassword: NewStrongPassword123!
+      responses:
+        '204':
+          description: Password reset completed and existing sessions revoked
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /auth/logout:
     post:
       operationId: auth.logout
@@ -2736,6 +2802,27 @@ paths:
         '400': {$ref: '#/components/responses/BadRequest'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
+  /system-settings/smtp-test:
+    put:
+      operationId: systemSettings.testSmtp
+      summary: Send a branded 3-tone test OTP email using configured SMTP settings
+      tags: [SystemSettings]
+      x-permission: setting.update
+      x-scope: GLOBAL
+      x-implementation-status: IMPLEMENTED
+      description: Gửi email kiểm tra kết nối máy chủ SMTP và xem trước giao diện thư mã xác thực OTP 3 tông màu VJU ClubHub.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TestSmtpEmailRequest'}
+      responses:
+        '204':
+          description: Test email sent successfully
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
   /audit-logs:
     get:
       operationId: audit.list
@@ -5328,7 +5415,7 @@ components:
           items: {$ref: '#/components/schemas/MyClubApplicationSummary'}
     SystemSettings:
       type: object
-      required: [maxPendingApplications, reapplyCooldownDays, maxActiveClubs, attendanceEditWindowHours, allowSelfRegistration, attendanceOpensBeforeMinutes, eventTaskGraceDays, chatSummariesPerHour, chatMaxMessageLength, documentMaxFileMb, clubImageMaxMb, avatarMaxMb]
+      required: [maxPendingApplications, reapplyCooldownDays, maxActiveClubs, attendanceEditWindowHours, allowSelfRegistration, attendanceOpensBeforeMinutes, eventTaskGraceDays, chatSummariesPerHour, chatMaxMessageLength, documentMaxFileMb, clubImageMaxMb, avatarMaxMb, otpExpiryMinutes, otpMaxSendCount, otpResendCooldownSeconds, otpMaxVerifyAttempts, smtpPort, smtpPasswordConfigured, smtpFromName, smtpStartTls]
       properties:
         maxPendingApplications: {type: integer, minimum: 0, maximum: 100, description: Số đơn PENDING tối đa của một sinh viên trên mọi CLB; 0 = không giới hạn}
         reapplyCooldownDays: {type: integer, minimum: 0, maximum: 365, description: Số ngày chờ sau khi bị từ chối mới được nộp lại cùng CLB; 0 = không chờ}
@@ -5342,6 +5429,17 @@ components:
         documentMaxFileMb: {type: integer, minimum: 1, maximum: 20, description: Dung lượng tối đa (MB) của tài liệu và file đính kèm đơn}
         clubImageMaxMb: {type: integer, minimum: 1, maximum: 20, description: Dung lượng tối đa (MB) của logo/ảnh bìa CLB}
         avatarMaxMb: {type: integer, minimum: 1, maximum: 20, description: Dung lượng tối đa (MB) của ảnh đại diện}
+        otpExpiryMinutes: {type: integer, minimum: 1, maximum: 60, description: Thời gian hiệu lực (phút) của một mã OTP khôi phục mật khẩu}
+        otpMaxSendCount: {type: integer, minimum: 1, maximum: 30, description: Số lần tối đa một tài khoản được yêu cầu gửi mã OTP trong 60 phút}
+        otpResendCooldownSeconds: {type: integer, minimum: 0, maximum: 600, description: Số giây phải chờ giữa hai lần gửi mã OTP liên tiếp; 0 = không chờ}
+        otpMaxVerifyAttempts: {type: integer, minimum: 1, maximum: 15, description: Số lần nhập sai tối đa trước khi mã OTP tự động huỷ}
+        smtpHost: {type: [string, 'null'], maxLength: 255, description: Máy chủ gửi thư SMTP (ví dụ smtp.gmail.com)}
+        smtpPort: {type: integer, minimum: 1, maximum: 65535, description: Cổng kết nối SMTP (mặc định 587 cho STARTTLS)}
+        smtpUsername: {type: [string, 'null'], maxLength: 255, description: Tài khoản đăng nhập máy chủ SMTP}
+        smtpPasswordConfigured: {type: boolean, description: Đã lưu mật khẩu ứng dụng SMTP hay chưa (không trả mật khẩu thô)}
+        smtpFromEmail: {type: [string, 'null'], format: email, maxLength: 320, description: Địa chỉ email người gửi hiển thị}
+        smtpFromName: {type: string, maxLength: 120, description: Tên hiển thị người gửi (mặc định VJU ClubHub)}
+        smtpStartTls: {type: boolean, description: Bật mã hoá STARTTLS khi gửi thư qua SMTP}
         updatedAt: {type: string, format: date-time}
         updatedBy: {type: [string, 'null'], format: uuid}
     UpdateSystemSettingsRequest:
@@ -5360,6 +5458,23 @@ components:
         documentMaxFileMb: {type: [integer, 'null'], minimum: 1, maximum: 20}
         clubImageMaxMb: {type: [integer, 'null'], minimum: 1, maximum: 20}
         avatarMaxMb: {type: [integer, 'null'], minimum: 1, maximum: 20}
+        otpExpiryMinutes: {type: [integer, 'null'], minimum: 1, maximum: 60}
+        otpMaxSendCount: {type: [integer, 'null'], minimum: 1, maximum: 30}
+        otpResendCooldownSeconds: {type: [integer, 'null'], minimum: 0, maximum: 600}
+        otpMaxVerifyAttempts: {type: [integer, 'null'], minimum: 1, maximum: 15}
+        smtpHost: {type: [string, 'null'], maxLength: 255}
+        smtpPort: {type: [integer, 'null'], minimum: 1, maximum: 65535}
+        smtpUsername: {type: [string, 'null'], maxLength: 255}
+        smtpPassword: {type: [string, 'null'], format: password, maxLength: 500}
+        clearSmtpPassword: {type: [boolean, 'null']}
+        smtpFromEmail: {type: [string, 'null'], format: email, maxLength: 320}
+        smtpFromName: {type: [string, 'null'], maxLength: 120}
+        smtpStartTls: {type: [boolean, 'null']}
+    TestSmtpEmailRequest:
+      type: object
+      required: [recipientEmail]
+      properties:
+        recipientEmail: {type: string, format: email, maxLength: 320}
     FormFieldDefinition:
       type: object
       required: [key, label, type, required]
@@ -5796,6 +5911,44 @@ components:
       examples:
       - currentPassword: DemoPassword123!
         newPassword: NewDemoPassword456!
+    ForgotPasswordRequest:
+      type: object
+      required:
+      - email
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        studentCode:
+          type:
+          - string
+          - 'null'
+          maxLength: 50
+        note:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+      examples:
+      - email: sinhvien@st.vju.ac.vn
+        studentCode: '23110209'
+        note: Em quên mật khẩu đăng nhập hệ thống CLB, nhờ quản trị viên hỗ trợ đặt lại.
+    ForgotPasswordOtpResponse:
+      type: object
+      required: [expirySeconds, resendCooldownSeconds, maxVerifyAttempts, mailConfigured]
+      properties:
+        expirySeconds: {type: integer, minimum: 60}
+        resendCooldownSeconds: {type: integer, minimum: 0}
+        maxVerifyAttempts: {type: integer, minimum: 1}
+        mailConfigured: {type: boolean}
+    ResetPasswordWithOtpRequest:
+      type: object
+      required: [email, otp, newPassword]
+      properties:
+        email: {type: string, format: email, maxLength: 320}
+        otp: {type: string, minLength: 6, maxLength: 6, pattern: '^\d{6}$'}
+        newPassword: {type: string, format: password, minLength: 8, maxLength: 72}
     AuthResponse:
       type: object
       required:

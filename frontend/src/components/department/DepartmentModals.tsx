@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { ArrowRightLeft, Building2, Pencil, ShieldCheck, UserMinus } from "lucide-react";
 import { apiModel, ClubPositionSlot, Department, DepartmentMember, Membership } from "@/lib/api";
 import { ModalShell } from "@/components/shared/Overlays";
@@ -110,7 +111,7 @@ export function AssignPositionModal({
   const [assignReason, setAssignReason] = useState("");
 
   const deptMembersForSlot = useQuery({
-    queryKey: ["dept-members", assigningSlot?.departmentId],
+    queryKey: qk.departmentMembers(assigningSlot?.departmentId),
     queryFn: () => apiModel.departmentMembers(assigningSlot!.departmentId!),
     enabled: !!assigningSlot?.departmentId,
   });

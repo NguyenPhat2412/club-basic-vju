@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import {
   AlertTriangle,
   ArrowRight,
@@ -46,14 +47,14 @@ export function QuickActionCenter() {
   const canGlobalRoles = session.can("role.manage") || session.hasGlobal("role.view");
 
   const reviewSummary = useQuery({
-    queryKey: ["dashboard", "application-review-summary"],
+    queryKey: qk.dashboard("application-review-summary"),
     queryFn: apiModel.applicationReviewSummary,
     enabled: canQuery && canReviewApps,
     staleTime: 30_000,
   });
 
   const myTasks = useQuery({
-    queryKey: ["dashboard", "my-tasks"],
+    queryKey: qk.dashboard("my-tasks"),
     queryFn: () => apiModel.myTasks(),
     enabled: canQuery,
     staleTime: 30_000,

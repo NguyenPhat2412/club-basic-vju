@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { Bell, Calendar, CheckCheck, MapPin, Pencil, Settings2, UserCheck, Users } from "lucide-react";
 import { apiModel, AttendanceStatus, ClubEvent, EventRegistration } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
@@ -43,7 +44,7 @@ export function EventAttendanceDrawer({
   const [attendanceReason, setAttendanceReason] = useState("");
 
   const registrations = useQuery({
-    queryKey: ["event-registrations", selected?.id],
+    queryKey: qk.eventRegistrations(selected?.id),
     queryFn: () => apiModel.eventRegistrations(selected!.id),
     enabled: !!selected,
   });
@@ -57,7 +58,7 @@ export function EventAttendanceDrawer({
       session.canInDepartment("event.update", clubId, selected.departmentId));
 
   const attendances = useQuery({
-    queryKey: ["event-attendances", selected?.id],
+    queryKey: qk.eventAttendances(selected?.id),
     queryFn: () => apiModel.eventAttendances(selected!.id),
     enabled: !!selected && canAttend,
   });

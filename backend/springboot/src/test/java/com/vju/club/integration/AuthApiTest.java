@@ -370,4 +370,97 @@ class AuthApiTest extends ApiIntegrationTest {
         user("an.nguyen@st.vju.ac.vn");
         call(post("/api/v1/auth/login"), null, Map.of("email", "an.nguyen@st.vju.ac.vn", "password", PASSWORD), 200);
     }
+
+    @Test
+    void forgotPasswordOtpFlowEnforcesSystemSettingsLimitsResetsPasswordAndEndsOldSessions() throws Exception {
+        db.update("INSERT INTO user_roles(user_id, role_id, scope, granted_by) "
+                + "SELECT ?, id, 'GLOBAL', ? FROM roles WHERE code = 'SYSTEM_ADMIN'", admin, admin);
+        db.update("UPDATE users SET student_code = '23110209' WHERE id = ?", member);
+
+        problem(post("/api/v1/auth/forgot-password"), null, Map.of("email", "not-an-email"), 400, "VALIDATION_ERROR");
+
+        // Unknown email returns identical 200 policy envelope without writing OTP, audit, or notification
+        JsonNode ghostPolicy = call(post("/api/v1/auth/forgot-password"), null,
+                Map.of("email", "unknown@test.local", "studentCode", "00000000"), 200);
+        assertThat(ghostPolicy.path("expirySeconds").asInt()).isEqualTo(300);
+        assertThat(ghostPolicy.path("resendCooldownSeconds").asInt()).isEqualTo(60);
+        assertThat(ghostPolicy.path("maxVerifyAttempts").asInt()).isEqualTo(5);
+        assertThat(count("SELECT count(*) FROM password_reset_otps")).isZero();
+        assertThat(count("SELECT count(*) FROM audit_logs WHERE action = 'USER_PASSWORD_RESET'")).isZero();
+        assertThat(count("SELECT count(*) FROM notifications WHERE user_id = ?", admin)).isZero();
+
+        // First OTP request succeeds; immediate resend within 60s cooldown is rejected
+        JsonNode policy = call(post("/api/v1/auth/forgot-password"), null, Map.of(
+                "email", "MEMBER@test.local",
+                "studentCode", "23110209",
+                "note", "Em quên mật khẩu đăng nhập CLB"), 200);
+        assertThat(policy.path("expirySeconds").asInt()).isEqualTo(300);
+        problem(post("/api/v1/auth/forgot-password"), null, Map.of("email", "member@test.local"),
+                429, "OTP_COOLDOWN_ACTIVE");
+
+        // Configure tight OTP limits via /api/v1/system-settings (cooldown=0s, maxSendCount=2, maxVerifyAttempts=2)
+        call(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/system-settings"),
+                adminToken,
+                Map.of(
+                        "maxPendingApplications", 3,
+                        "reapplyCooldownDays", 7,
+                        "maxActiveClubs", 0,
+                        "otpExpiryMinutes", 5,
+                        "otpMaxSendCount", 2,
+                        "otpResendCooldownSeconds", 0,
+                        "otpMaxVerifyAttempts", 2),
+                200);
+
+        // Second send succeeds; third send in the rolling hour hits OTP_SEND_LIMIT_EXCEEDED
+        call(post("/api/v1/auth/forgot-password"), null, Map.of("email", "member@test.local"), 200);
+        problem(post("/api/v1/auth/forgot-password"), null, Map.of("email", "member@test.local"),
+                429, "OTP_SEND_LIMIT_EXCEEDED");
+
+        // Wrong OTP increments attempts in REQUIRES_NEW transaction and locks out on 2nd failure
+        problem(post("/api/v1/auth/reset-password"), null,
+                Map.of("email", "member@test.local", "otp", "000000", "newPassword", "BrandNew123!"),
+                400, "OTP_INVALID");
+        assertThat(db.queryForObject(
+                "SELECT attempts FROM password_reset_otps WHERE user_id = ? AND invalidated_at IS NULL ORDER BY created_at DESC LIMIT 1",
+                Integer.class, member)).isEqualTo(1);
+        problem(post("/api/v1/auth/reset-password"), null,
+                Map.of("email", "member@test.local", "otp", "111111", "newPassword", "BrandNew123!"),
+                429, "OTP_MAX_ATTEMPTS_EXCEEDED");
+
+        // Raise maxSendCount to 3, issue a known OTP hash, verify session revocation & password reset
+        call(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/system-settings"),
+                adminToken,
+                Map.of(
+                        "maxPendingApplications", 3,
+                        "reapplyCooldownDays", 7,
+                        "maxActiveClubs", 0,
+                        "otpExpiryMinutes", 5,
+                        "otpMaxSendCount", 3,
+                        "otpResendCooldownSeconds", 0,
+                        "otpMaxVerifyAttempts", 3),
+                200);
+        String oldSession = login("member@test.local", PASSWORD);
+        call(post("/api/v1/auth/forgot-password"), null, Map.of("email", "member@test.local"), 200);
+        db.update("UPDATE password_reset_otps SET otp_hash = ? WHERE user_id = ? AND invalidated_at IS NULL AND consumed_at IS NULL",
+                passwords.encode("654321"), member);
+
+        call(post("/api/v1/auth/reset-password"), null,
+                Map.of("email", "MEMBER@test.local", "otp", "654321", "newPassword", "ResetPass999!"),
+                204);
+
+        // Consumed OTP cannot be reused; old session is revoked; new password signs in cleanly
+        problem(post("/api/v1/auth/reset-password"), null,
+                Map.of("email", "member@test.local", "otp", "654321", "newPassword", "AnotherPass999!"),
+                400, "OTP_INVALID");
+        problem(get("/api/v1/auth/me"), oldSession, null, 401, "UNAUTHORIZED");
+        problem(post("/api/v1/auth/login"), null, Map.of("email", "member@test.local", "password", PASSWORD),
+                401, "INVALID_CREDENTIALS");
+        call(get("/api/v1/auth/me"), login("member@test.local", "ResetPass999!"), null, 200);
+
+        JsonNode adminNotifications = call(get("/api/v1/users/me/notifications"), adminToken, null, 200);
+        assertThat(adminNotifications.path("total").asInt()).isEqualTo(1);
+        JsonNode item = adminNotifications.path("items").get(0);
+        assertThat(item.path("title").asText()).isEqualTo("Yêu cầu đặt lại mật khẩu: member@test.local");
+        assertThat(item.path("message").asText()).contains("23110209").contains("khớp hồ sơ");
+    }
 }

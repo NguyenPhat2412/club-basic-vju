@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { Check, ClipboardList, X } from "lucide-react";
 import { apiModel, Application, ApplicationForm, Department } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
@@ -169,7 +170,7 @@ export function UpsertApplicationModal({
   const [pendingAttachments, setPendingAttachments] = useState<PendingApplicationAttachment[]>([]);
 
   const usersListQuery = useQuery({
-    queryKey: ["users", "for-application-create"],
+    queryKey: qk.users("for-application-create"),
     queryFn: () => apiModel.users("", 0, 100),
     enabled: session.ready && canViewUsers && modalMode === "create",
   });

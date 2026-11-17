@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { Lock, LockOpen, Pencil, UserCheck, UsersRound } from "lucide-react";
 import { apiModel, ClubPositionSlot, Department, DepartmentMember } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
@@ -46,19 +47,19 @@ export function DepartmentsTab({
   const canViewClubMembers = session.canInClub("member.view", clubId);
 
   const departments = useQuery({
-    queryKey: ["departments", clubId],
+    queryKey: qk.departments(clubId),
     queryFn: () => apiModel.departments(clubId),
     enabled: !!clubId && canViewDepts,
   });
 
   const structure = useQuery({
-    queryKey: ["club-positions", clubId],
+    queryKey: qk.clubPositions(clubId),
     queryFn: () => apiModel.clubPositions(clubId),
     enabled: !!clubId && canViewDepts,
   });
 
   const activeMembers = useQuery({
-    queryKey: ["memberships", clubId, "ACTIVE"],
+    queryKey: qk.clubMembers(clubId, "ACTIVE"),
     queryFn: () => apiModel.clubMemberships(clubId, "ACTIVE"),
     enabled: !!clubId && canViewClubMembers && (!!assigningSlot || !!selectedDept),
   });
@@ -74,10 +75,10 @@ export function DepartmentsTab({
     : false;
 
   const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["departments", clubId] });
-    queryClient.invalidateQueries({ queryKey: ["club-positions", clubId] });
-    queryClient.invalidateQueries({ queryKey: ["department-members"] });
-    queryClient.invalidateQueries({ queryKey: ["club-members", clubId] });
+    queryClient.invalidateQueries({ queryKey: qk.departments(clubId) });
+    queryClient.invalidateQueries({ queryKey: qk.clubPositions(clubId) });
+    queryClient.invalidateQueries({ queryKey: qk.departmentMembers() });
+    queryClient.invalidateQueries({ queryKey: qk.clubMembers(clubId) });
   };
 
   const toggleStatus = useMutation({

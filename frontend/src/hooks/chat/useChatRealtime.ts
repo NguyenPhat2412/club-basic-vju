@@ -1,9 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Client, IFrame, IMessage } from '@stomp/stompjs';
+import type { Client, IFrame, IMessage } from '@stomp/stompjs';
 import { useQueryClient } from '@tanstack/react-query';
-import { API_BASE } from '@/lib/api/client';
 import { chatApi } from '@/api/chat/chat.api';
 import {
   applyChannelDeliveredReceipt,
@@ -20,6 +19,8 @@ import {
   saveCachedChannelWindow,
   saveCachedPinnedMessages,
 } from '@/lib/chat-message-cache';
+import { qk } from '@/lib/api/query-keys';
+import { acquireStompConnection } from '@/lib/realtime/stomp-connection';
 import type { Page } from '@/types/common.types';
 import type { ChatChannel, ChatMessage, ChatRealtimeEvent } from '@/types/chat/chat.types';
 
@@ -37,20 +38,7 @@ type ScopedWsError = {
   message: string;
 };
 
-export function resolveWsBrokerUrl(apiBase: string = API_BASE): string {
-  const trimmed = apiBase.replace(/\/+$/, '');
-  if (trimmed.startsWith('https://')) {
-    return `wss://${trimmed.slice('https://'.length)}/api/v1/ws`;
-  }
-  if (trimmed.startsWith('http://')) {
-    return `ws://${trimmed.slice('http://'.length)}/api/v1/ws`;
-  }
-  if (typeof window !== 'undefined') {
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${proto}//${window.location.host}${trimmed}/api/v1/ws`;
-  }
-  return 'ws://localhost:8080/api/v1/ws';
-}
+export { resolveWsBrokerUrl } from '@/lib/realtime/stomp-connection';
 
 export function useChatRealtime({
   clubId,
@@ -74,7 +62,6 @@ export function useChatRealtime({
   const userIdRef = useRef(currentUserId);
   const lastTypingSentRef = useRef(0);
   const lastMarkedReadIdRef = useRef<string>('');
-  const hadConnectedOnceRef = useRef(false);
 
   useEffect(() => {
     activeChannelRef.current = activeChannelId;
@@ -92,7 +79,7 @@ export function useChatRealtime({
       }
 
       if (event.type === 'CHANNEL_CREATED' && event.clubId === clubIdRef.current) {
-        queryClient.invalidateQueries({ queryKey: ['club-channels', clubIdRef.current] });
+        queryClient.invalidateQueries({ queryKey: qk.clubChannels(clubIdRef.current) });
         return;
       }
 
@@ -120,7 +107,7 @@ export function useChatRealtime({
         event.channelId
       ) {
         queryClient.setQueryData<Page<ChatMessage>>(
-          ['channel-messages', event.channelId],
+          qk.channelMessages(event.channelId),
           (old) => {
             const base = old ?? getCachedChannelWindow(event.channelId, userIdRef.current)?.page;
             if (!base) return old;
@@ -166,7 +153,7 @@ export function useChatRealtime({
             ? Boolean(incoming.pinned)
             : event.type === 'MESSAGE_PINNED';
         queryClient.setQueryData<ChatMessage[]>(
-          ['channel-pinned-messages', event.channelId],
+          qk.channelPinnedMessages(event.channelId),
           (old) => {
             const base = old ?? getCachedPinnedMessages(event.channelId, userIdRef.current)?.items;
             const next = reconcilePinnedChatMessage(base, incoming, isPinned);
@@ -180,7 +167,7 @@ export function useChatRealtime({
           }
         );
         queryClient.setQueryData<Page<ChatMessage>>(
-          ['channel-messages', event.channelId],
+          qk.channelMessages(event.channelId),
           (old) => {
             const base = old ?? getCachedChannelWindow(event.channelId, userIdRef.current)?.page;
             if (!base) return old;
@@ -209,12 +196,12 @@ export function useChatRealtime({
         preloadChannelMedia([incoming], 8);
 
         if (event.type === 'SUMMARY_POSTED') {
-          queryClient.invalidateQueries({ queryKey: ['channel-summaries', event.channelId] });
+          queryClient.invalidateQueries({ queryKey: qk.channelSummaries(event.channelId) });
         }
 
         let insertedNew = false;
         queryClient.setQueryData<Page<ChatMessage>>(
-          ['channel-messages', event.channelId],
+          qk.channelMessages(event.channelId),
           (old) => {
             const base = old ?? getCachedChannelWindow(event.channelId, userIdRef.current)?.page;
             const reconciled = reconcileIncomingChatMessage(base, incoming);
@@ -252,7 +239,7 @@ export function useChatRealtime({
 
         if (event.clubId === clubIdRef.current) {
           queryClient.setQueryData<ChatChannel[]>(
-            ['club-channels', clubIdRef.current],
+            qk.clubChannels(clubIdRef.current),
             (channels) => {
               if (!channels) return channels;
               return channels.map((ch) => {
@@ -281,23 +268,17 @@ export function useChatRealtime({
   useEffect(() => {
     if (!enabled || typeof window === 'undefined') return;
 
-    const client = new Client({
-      brokerURL: resolveWsBrokerUrl(),
-      reconnectDelay: 3_000,
-      heartbeatIncoming: 15_000,
-      heartbeatOutgoing: 15_000,
-      onConnect: () => {
-        const isReconnect = hadConnectedOnceRef.current;
-        hadConnectedOnceRef.current = true;
+    const handle = acquireStompConnection({
+      subscriptions: [{ destination: '/user/queue/chat-events', callback: handleEvent, id: 'user-chat-events' }],
+      onConnect: (isReconnect) => {
         setScopedError(null);
         setRawStatus('connected');
-        client.subscribe('/user/queue/chat-events', handleEvent, { id: 'user-chat-events' });
         if (isReconnect) {
           if (clubIdRef.current) {
-            queryClient.invalidateQueries({ queryKey: ['club-channels', clubIdRef.current] });
+            queryClient.invalidateQueries({ queryKey: qk.clubChannels(clubIdRef.current) });
           }
           if (activeChannelRef.current) {
-            queryClient.invalidateQueries({ queryKey: ['channel-messages', activeChannelRef.current] });
+            queryClient.invalidateQueries({ queryKey: qk.channelMessages(activeChannelRef.current) });
           }
         }
       },
@@ -311,7 +292,8 @@ export function useChatRealtime({
             message: 'Phiên kết nối thời gian thực đã hết hạn. Vui lòng tải lại trang.',
           });
           setRawStatus('disconnected');
-          client.deactivate();
+          // Shared socket: an expired session is dead for every consumer, so stop reconnecting for all.
+          void handle.client.deactivate();
           return;
         }
         if (code.startsWith('PERMISSION_DENIED')) {
@@ -323,14 +305,11 @@ export function useChatRealtime({
         setRawStatus('disconnected');
       },
     });
-
-    client.activate();
-    clientRef.current = client;
+    clientRef.current = handle.client;
 
     return () => {
       clientRef.current = null;
-      hadConnectedOnceRef.current = false;
-      client.deactivate();
+      handle.release();
     };
   }, [enabled, handleEvent, queryClient]);
 

@@ -1,13 +1,14 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { X } from "lucide-react";
 import { getPresentationLocale } from "@/i18n/config";
 import { translateKey, translateUiText } from "@/i18n/translator";
-import { apiModel, Club, Role, RoleAssignmentInput, Scope } from "@/lib/api";
+import { apiModel, Club, Role, Scope } from "@/lib/api";
 import { FormField, Select } from "@/components/ui/input";
+import { EMPTY_ROLE_DRAFT, RoleDraft, toAssignment } from "@/utils/access/user-access-draft";
 
-export type RoleDraft = { roleId: string; clubId: string; departmentId: string };
-export const EMPTY_ROLE_DRAFT: RoleDraft = { roleId: "", clubId: "", departmentId: "" };
+export { EMPTY_ROLE_DRAFT, type RoleDraft, toAssignment };
 
 const SCOPE_LABELS: Record<Scope, string> = { GLOBAL: "Toàn hệ thống", CLUB: "Theo CLB", DEPARTMENT: "Theo ban" };
 
@@ -20,17 +21,15 @@ export function scopeLabel(scope: Scope) {
   return translateKey(getPresentationLocale(), `scope.${scope}`, undefined, SCOPE_LABELS[scope]);
 }
 
-export function toAssignment(draft: RoleDraft, roles: Role[]): RoleAssignmentInput | null {
-  const role = roles.find((r) => r.id === draft.roleId);
-  if (!role) return null;
-  if (role.scope === "GLOBAL") return { roleId: role.id, scope: "GLOBAL" };
-  if (role.scope === "CLUB") return draft.clubId ? { roleId: role.id, scope: "CLUB", clubId: draft.clubId } : null;
-  return draft.departmentId ? { roleId: role.id, scope: "DEPARTMENT", departmentId: draft.departmentId } : null;
-}
-
-export function useRoleOptions(enabled = true) {
-  const roles = useQuery({ queryKey: ["roles"], queryFn: apiModel.roles, enabled, staleTime: 60_000 });
-  const clubs = useQuery({ queryKey: ["clubs", "all"], queryFn: () => apiModel.clubs("", "", 0, 100), enabled, staleTime: 60_000 });
+export function useRoleOptions(
+  enabledOrOpts: boolean | { loadClubs?: boolean; loadRoles?: boolean } = true
+) {
+  const loadRoles =
+    typeof enabledOrOpts === "boolean" ? enabledOrOpts : Boolean(enabledOrOpts.loadRoles);
+  const loadClubs =
+    typeof enabledOrOpts === "boolean" ? enabledOrOpts : Boolean(enabledOrOpts.loadClubs);
+  const roles = useQuery({ queryKey: qk.roles(), queryFn: apiModel.roles, enabled: loadRoles, staleTime: 60_000 });
+  const clubs = useQuery({ queryKey: qk.clubs("all"), queryFn: () => apiModel.clubs("", "", 0, 100), enabled: loadClubs, staleTime: 60_000 });
   return {
     roles: (roles.data ?? []).filter((r) => r.active),
     clubs: clubs.data?.items ?? [],
@@ -48,7 +47,7 @@ export function RolePicker({ value, onChange, roles, clubs, onRemove }: {
   const role = roles.find((r) => r.id === value.roleId);
   const needsClub = role?.scope === "CLUB" || role?.scope === "DEPARTMENT";
   const departments = useQuery({
-    queryKey: ["departments", value.clubId],
+    queryKey: qk.departments(value.clubId),
     queryFn: () => apiModel.departments(value.clubId),
     enabled: role?.scope === "DEPARTMENT" && !!value.clubId,
   });
@@ -72,9 +71,9 @@ export function RolePicker({ value, onChange, roles, clubs, onRemove }: {
         </FormField>
       )}
       {role?.scope === "DEPARTMENT" && (
-        <FormField label="Ban" required>
+        <FormField label="Ban" optional>
           <Select value={value.departmentId} disabled={!value.clubId} onChange={(e) => onChange({ ...value, departmentId: e.target.value })}>
-            <option value="">{value.clubId ? "Chọn ban…" : "Chọn CLB trước"}</option>
+            <option value="">{value.clubId ? "Toàn CLB (không giới hạn ban)" : "Chọn CLB trước"}</option>
             {(departments.data?.items ?? []).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
           </Select>
         </FormField>

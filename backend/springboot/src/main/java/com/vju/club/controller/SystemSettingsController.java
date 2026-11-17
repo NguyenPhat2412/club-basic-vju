@@ -1,12 +1,14 @@
 package com.vju.club.controller;
 
 import com.vju.club.common.ApiPaths;
-import com.vju.club.security.Actor;
-import com.vju.club.dto.response.SystemSettingsResponse;
+import com.vju.club.dto.request.TestSmtpEmailRequest;
 import com.vju.club.dto.request.UpdateSystemSettingsRequest;
+import com.vju.club.dto.response.SystemSettingsResponse;
+import com.vju.club.security.Actor;
 import com.vju.club.service.SystemSettingsService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,5 +29,11 @@ public class SystemSettingsController {
     @PutMapping(ApiPaths.SYSTEM_SETTINGS)
     public SystemSettingsResponse update(Actor actor, @Valid @RequestBody UpdateSystemSettingsRequest request) {
         return service.update(actor, request);
+    }
+
+    @PutMapping(ApiPaths.SYSTEM_SETTINGS_SMTP_TEST)
+    public ResponseEntity<Void> testSmtp(Actor actor, @Valid @RequestBody TestSmtpEmailRequest request) {
+        service.sendTestEmail(actor, request);
+        return ResponseEntity.noContent().build();
     }
 }

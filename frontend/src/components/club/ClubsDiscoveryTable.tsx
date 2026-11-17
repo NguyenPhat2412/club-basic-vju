@@ -55,9 +55,9 @@ export function ClubDiscoveryGuestBanner({
           </div>
         </div>
         <div className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white/90 p-3">
-          <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-emerald-600/12 text-xs font-extrabold text-emerald-700"><Send size={13} /></span>
+          <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary/12 text-xs font-extrabold text-primary"><Send size={13} /></span>
           <div className="min-w-0">
-            <p className="flex items-center gap-1 text-xs font-bold text-slate-900">3. Nộp đơn trực tuyến <CheckCircle2 size={12} className="text-emerald-600" /></p>
+            <p className="flex items-center gap-1 text-xs font-bold text-slate-900">3. Nộp đơn trực tuyến <CheckCircle2 size={12} className="text-primary" /></p>
             <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">Điền form ứng tuyển (kèm CV/minh chứng nếu có) và nhận thông báo duyệt đơn.</p>
           </div>
         </div>

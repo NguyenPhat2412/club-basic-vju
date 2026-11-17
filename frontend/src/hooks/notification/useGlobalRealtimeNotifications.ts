@@ -2,12 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { Client, IMessage } from "@stomp/stompjs";
+import type { IMessage } from "@stomp/stompjs";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiModel } from "@/lib/api";
+import { qk } from "@/lib/api/query-keys";
 import { toast } from "@/components/ui/toast";
 import { targetHrefForNotification } from "@/forms/notification/notification-links";
-import { resolveWsBrokerUrl } from "@/hooks/chat/useChatRealtime";
+import { acquireStompConnection } from "@/lib/realtime/stomp-connection";
 import type { ChatChannel, ChatRealtimeEvent } from "@/types/chat/chat.types";
 import type { Page } from "@/types/common.types";
 import type {
@@ -16,7 +17,6 @@ import type {
   NotificationUnreadSummary,
 } from "@/types/notification/notification.types";
 
-export const UNREAD_SUMMARY_QUERY_KEY = ["notifications", "unread-summary"] as const;
 
 let activeViewedChatChannelId: string | null = null;
 const seenNotificationIds = new Set<string>();
@@ -43,7 +43,7 @@ function rememberId(set: Set<string>, id: string): boolean {
 
 export function useUnreadNotificationSummary(enabled: boolean) {
   return useQuery({
-    queryKey: UNREAD_SUMMARY_QUERY_KEY,
+    queryKey: qk.unreadSummary(),
     queryFn: apiModel.unreadNotificationSummary,
     enabled,
     staleTime: 20_000,
@@ -79,7 +79,7 @@ export function useGlobalRealtimeNotifications({
         return;
       }
 
-      queryClient.setQueryData<NotificationUnreadSummary>(UNREAD_SUMMARY_QUERY_KEY, (prev) => ({
+      queryClient.setQueryData<NotificationUnreadSummary>(qk.unreadSummary(), (prev) => ({
         unreadNotifications: event.unreadCount,
         unreadChatMessages: prev?.unreadChatMessages ?? 0,
         latestUnreadClubId: prev?.latestUnreadClubId ?? null,
@@ -87,14 +87,14 @@ export function useGlobalRealtimeNotifications({
       }));
 
       if (event.type === "NOTIFICATION_READ_SYNC") {
-        queryClient.invalidateQueries({ queryKey: ["notifications"] });
+        queryClient.invalidateQueries({ queryKey: qk.notifications() });
         return;
       }
 
       const notif = event.notification;
       if (!notif || !rememberId(seenNotificationIds, notif.id)) return;
 
-      queryClient.setQueriesData<Page<Notification>>({ queryKey: ["notifications"] }, (old) => {
+      queryClient.setQueriesData<Page<Notification>>({ queryKey: qk.notifications() }, (old) => {
         if (!old?.items || old.offset !== 0) return old;
         if (old.items.some((item) => item.id === notif.id)) return old;
         return {
@@ -143,14 +143,14 @@ export function useGlobalRealtimeNotifications({
       if (getActiveViewedChatChannel() === event.channelId) return;
       if (!rememberId(seenChatMessageIds, incoming.id)) return;
 
-      queryClient.setQueryData<NotificationUnreadSummary>(UNREAD_SUMMARY_QUERY_KEY, (prev) => ({
+      queryClient.setQueryData<NotificationUnreadSummary>(qk.unreadSummary(), (prev) => ({
         unreadNotifications: prev?.unreadNotifications ?? 0,
         unreadChatMessages: (prev?.unreadChatMessages ?? 0) + 1,
         latestUnreadClubId: event.clubId,
         latestUnreadChannelId: event.channelId,
       }));
 
-      queryClient.setQueryData<ChatChannel[]>(["club-channels", event.clubId], (channels) => {
+      queryClient.setQueryData<ChatChannel[]>(qk.clubChannels(event.clubId), (channels) => {
         if (!channels) return channels;
         return channels.map((ch) => {
           if (ch.id !== event.channelId) return ch;
@@ -179,30 +179,18 @@ export function useGlobalRealtimeNotifications({
       });
     };
 
-    let reconnected = false;
-    const client = new Client({
-      brokerURL: resolveWsBrokerUrl(),
-      reconnectDelay: 4_000,
-      heartbeatIncoming: 20_000,
-      heartbeatOutgoing: 20_000,
-      onConnect: () => {
-        client.subscribe("/user/queue/notifications", handleNotificationFrame, {
-          id: "global-user-notifications",
-        });
-        client.subscribe("/user/queue/chat-events", handleChatFrame, {
-          id: "global-user-chat-events",
-        });
-        if (reconnected) {
-          queryClient.invalidateQueries({ queryKey: UNREAD_SUMMARY_QUERY_KEY });
-          queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    const handle = acquireStompConnection({
+      subscriptions: [
+        { destination: "/user/queue/notifications", callback: handleNotificationFrame, id: "global-user-notifications" },
+        { destination: "/user/queue/chat-events", callback: handleChatFrame, id: "global-user-chat-events" },
+      ],
+      onConnect: (isReconnect) => {
+        if (isReconnect) {
+          queryClient.invalidateQueries({ queryKey: qk.unreadSummary() });
+          queryClient.invalidateQueries({ queryKey: qk.notifications() });
         }
-        reconnected = true;
       },
     });
-
-    client.activate();
-    return () => {
-      client.deactivate();
-    };
+    return () => handle.release();
   }, [currentUserId, enabled, queryClient]);
 }

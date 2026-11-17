@@ -21,8 +21,8 @@ const CHANNEL_TYPE_LABELS: Record<string, string> = {
 };
 
 const WS_DOT: Record<WsConnectionStatus, { label: string; dot: string }> = {
-  connected: { label: "Trực tuyến", dot: "bg-emerald-500" },
-  connecting: { label: "Đang kết nối…", dot: "bg-amber-500 animate-pulse" },
+  connected: { label: "Trực tuyến", dot: "bg-primary" },
+  connecting: { label: "Đang kết nối…", dot: "bg-slate-500 animate-pulse" },
   disconnected: { label: "Ngoại tuyến", dot: "bg-slate-400" },
 };
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import {
   AlertTriangle,
   BarChart3,
@@ -61,7 +62,7 @@ export function OverviewTab({
   const isValidRange = !fromDate || !toDate || fromDate <= toDate;
 
   const stats = useQuery({
-    queryKey: ["club-statistics", clubId, fromDate, toDate],
+    queryKey: qk.clubStatistics(clubId, fromDate, toDate),
     queryFn: () =>
       apiModel.clubStatistics(clubId, {
         from: toStartIso(fromDate),
@@ -223,7 +224,7 @@ export function OverviewTab({
                 </p>
               </div>
             </div>
-            <Badge tone="neutral" className="border-emerald-200 bg-emerald-50 text-emerald-800" dot={false}>
+            <Badge tone="primary" dot={false}>
               Tỷ lệ duyệt: {d.approvalRate ?? 0}%
             </Badge>
           </div>
@@ -279,7 +280,7 @@ export function OverviewTab({
                 </p>
               </div>
             </div>
-            <Badge tone="neutral" className="border-emerald-200 bg-emerald-50 text-emerald-800" dot={false}>
+            <Badge tone="primary" dot={false}>
               Có mặt: {d.attendanceRate ?? 0}%
             </Badge>
           </div>
@@ -358,8 +359,8 @@ function MetricCard({ label, value, sub, icon }: { label: string; value: number;
 const MINI_TONES = {
   default: "text-foreground",
   primary: "text-primary",
-  emerald: "text-emerald-700",
-  amber: "text-amber-700",
+  emerald: "text-slate-900",
+  amber: "text-slate-700",
   rose: "text-rose-700",
   muted: "text-muted-foreground",
 } as const;

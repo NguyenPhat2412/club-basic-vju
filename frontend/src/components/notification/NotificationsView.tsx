@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { Bell, CheckCheck, ExternalLink, Eye, FilterX, Search, X } from "lucide-react";
 import { apiModel, Notification } from "@/lib/api";
 import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
@@ -16,7 +17,6 @@ import { Badge, CountBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { targetHrefForNotification } from "@/forms/notification/notification-links";
-import { UNREAD_SUMMARY_QUERY_KEY } from "@/hooks/notification/useGlobalRealtimeNotifications";
 import { formatDateTime, formatDay, formatTime } from "@/lib/utils";
 
 export const targetHrefFor = targetHrefForNotification;
@@ -36,21 +36,21 @@ export function NotificationsView() {
   const queryLimit = hasClientFilter ? 100 : limit;
 
   const list = useQuery({
-    queryKey: ["notifications", queryOffset, queryLimit],
+    queryKey: qk.notifications(queryOffset, queryLimit),
     queryFn: () => apiModel.notifications(queryOffset, queryLimit),
     placeholderData: keepPreviousData,
   });
 
   const detail = useQuery({
-    queryKey: ["notifications", "detail", selectedId],
+    queryKey: qk.notifications("detail", selectedId),
     queryFn: () => apiModel.notificationDetail(selectedId!),
     enabled: !!selectedId,
   });
 
   const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    queryClient.invalidateQueries({ queryKey: UNREAD_SUMMARY_QUERY_KEY });
-    queryClient.invalidateQueries({ queryKey: ["dashboard", "notifications"] });
+    queryClient.invalidateQueries({ queryKey: qk.notifications() });
+    queryClient.invalidateQueries({ queryKey: qk.unreadSummary() });
+    queryClient.invalidateQueries({ queryKey: qk.dashboard("notifications") });
   };
 
   const markRead = useMutation({ mutationFn: apiModel.markNotificationRead, onSuccess: refresh });

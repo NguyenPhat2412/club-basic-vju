@@ -3,6 +3,7 @@
 import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { Compass, Eye, FilterX, MapPin, UserCheck, XCircle } from "lucide-react";
 import { apiModel, MyEventParticipation, PublicEvent } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
@@ -56,12 +57,12 @@ function EventsPortalContent() {
   const [now] = useState(() => Date.now());
 
   const publicEvents = useQuery({
-    queryKey: ["events-portal", "public"],
+    queryKey: qk.eventsPortal("public"),
     queryFn: () => apiModel.publicEvents(0, 50),
   });
 
   const memberships = useQuery({
-    queryKey: ["events-portal", "memberships"],
+    queryKey: qk.eventsPortal("memberships"),
     queryFn: () => apiModel.myMemberships({ status: "ACTIVE", limit: 50 }),
     enabled: isLoggedIn,
   });
@@ -73,14 +74,14 @@ function EventsPortalContent() {
 
   const memberClubEventQueries = useQueries({
     queries: [...activeClubIds].map((clubId) => ({
-      queryKey: ["events-portal", "club-events", clubId],
+      queryKey: qk.eventsPortal("club-events", clubId),
       queryFn: () => apiModel.clubEvents(clubId, { limit: 50 }),
       enabled: isLoggedIn,
     })),
   });
 
   const myHistory = useQuery({
-    queryKey: ["my-event-registrations", regStatusFilter, roleFilter, historyOffset, historyLimit],
+    queryKey: qk.myEventRegistrations(regStatusFilter, roleFilter, historyOffset, historyLimit),
     queryFn: () =>
       apiModel.myEventRegistrations({
         status: regStatusFilter || undefined,
@@ -92,7 +93,7 @@ function EventsPortalContent() {
   });
 
   const myAllActiveRegs = useQuery({
-    queryKey: ["my-event-registrations", "active-lookup"],
+    queryKey: qk.myEventRegistrations("active-lookup"),
     queryFn: () => apiModel.myEventRegistrations({ status: "REGISTERED", limit: 100 }),
     enabled: isLoggedIn,
   });
@@ -148,10 +149,10 @@ function EventsPortalContent() {
   };
 
   const refreshAll = () => {
-    queryClient.invalidateQueries({ queryKey: ["events-portal"] });
-    queryClient.invalidateQueries({ queryKey: ["my-event-registrations"] });
-    queryClient.invalidateQueries({ queryKey: ["my-calendar"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    queryClient.invalidateQueries({ queryKey: qk.eventsPortal() });
+    queryClient.invalidateQueries({ queryKey: qk.myEventRegistrations() });
+    queryClient.invalidateQueries({ queryKey: qk.myCalendar() });
+    queryClient.invalidateQueries({ queryKey: qk.dashboard() });
   };
 
   const registerMutation = useMutation({

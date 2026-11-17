@@ -60,10 +60,10 @@ test("globals.css defines the complete 60/30/10 VJU ClubHub color token contract
   );
 });
 
-test("frontend source contains zero off-palette Tailwind color classes (purple, blue, sky, teal, indigo, violet, fuchsia, pink, cyan, orange)", () => {
+test("frontend source contains zero off-palette Tailwind color classes (emerald, green, lime, purple, blue, sky, teal, indigo, violet, fuchsia, pink, cyan, orange)", () => {
   const files = collectSourceFiles(SRC_ROOT, [".ts", ".tsx", ".css"]);
   const offPaletteRe =
-    /\b(?:bg|text|border|from|via|to|ring)-(?:purple|blue|sky|teal|indigo|violet|fuchsia|pink|cyan|orange)(?:-[0-9]{2,3})?(?:\/[0-9]+)?\b/g;
+    /\b(?:bg|text|border|from|via|to|ring)-(?:emerald|green|lime|purple|blue|sky|teal|indigo|violet|fuchsia|pink|cyan|orange)(?:-[0-9]{2,3})?(?:\/[0-9]+)?\b/g;
 
   const violations: string[] = [];
   for (const abs of files) {

@@ -2,6 +2,7 @@
 
 import type { Dispatch, SetStateAction } from "react";
 import type { QueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { apiModel, describeError, type ChatMessage, type Page } from "@/lib/api";
 import { toggleOptimisticMessageReaction } from "@/forms/chat/chat-emojis";
 import {
@@ -26,7 +27,7 @@ export function useChatMessageActions({
   onError: (msg: string) => void;
 }) {
   const replaceMessageInCaches = (targetChId: string, updatedMsg: ChatMessage) => {
-    queryClient.setQueryData<Page<ChatMessage>>(["channel-messages", targetChId], (old) => {
+    queryClient.setQueryData<Page<ChatMessage>>(qk.channelMessages(targetChId), (old) => {
       if (!old) return old;
       const next = {
         ...old,
@@ -44,7 +45,7 @@ export function useChatMessageActions({
       };
     });
     if (updatedMsg.pinned) {
-      queryClient.setQueryData<ChatMessage[]>(["channel-pinned-messages", targetChId], (old) => {
+      queryClient.setQueryData<ChatMessage[]>(qk.channelPinnedMessages(targetChId), (old) => {
         if (!old) return old;
         const next = reconcilePinnedChatMessage(old, updatedMsg, true);
         saveCachedPinnedMessages(targetChId, next, userId, activeChannelId || targetChId);
@@ -59,7 +60,7 @@ export function useChatMessageActions({
       pinned: nextPinned,
       pinnedAt: nextPinned ? new Date().toISOString() : null,
     };
-    queryClient.setQueryData<ChatMessage[]>(["channel-pinned-messages", targetChId], (old) => {
+    queryClient.setQueryData<ChatMessage[]>(qk.channelPinnedMessages(targetChId), (old) => {
       const next = reconcilePinnedChatMessage(old, updatedMsg, nextPinned);
       saveCachedPinnedMessages(targetChId, next, userId, activeChannelId || targetChId);
       return next;

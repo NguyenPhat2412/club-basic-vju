@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, ClipboardCheck, ClipboardList, Compass, UsersRound } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { apiModel, ApplicationSummary, User } from "@/lib/api";
 import { clubSlugFromCode } from "@/lib/media";
 import { describeError } from "@/components/shared/ListPage";
@@ -12,12 +13,14 @@ import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
 import { ClubAvatar, useClubMediaCatalog } from "@/components/shared/ClubMedia";
 import { StatSummaryStrip } from "@/components/shared/StatCards";
 import { Badge, StatusBadge } from "@/components/ui/badge";
+import { toast } from "@/components/ui/toast";
 import { formatDateTime, formatDay } from "@/lib/utils";
 import {
+  buildStudentUpcomingEvents,
   DashboardEmptyHint,
+  DashboardLatestNotifications,
   DashboardSectionPanel,
   StudentDashboardSidebar,
-  StudentUpcomingEvent,
 } from "./StudentDashboardSidebar";
 
 const DONE_TASKS = new Set(["DONE", "COMPLETED", "VERIFIED", "CANCELLED"]);
@@ -27,39 +30,46 @@ export function StudentDashboard({ user }: { user: User }) {
   const [now] = useState(() => Date.now());
   const mediaCatalog = useClubMediaCatalog(true);
 
-  const memberships = useQuery({ queryKey: ["dashboard", "memberships"], queryFn: () => apiModel.myMemberships() });
+  const memberships = useQuery({ queryKey: qk.dashboard("memberships"), queryFn: () => apiModel.myMemberships() });
   const applications = useQuery({
-    queryKey: ["dashboard", "my-applications"],
+    queryKey: qk.dashboard("my-applications"),
     queryFn: () => apiModel.myApplications(),
   });
-  const tasks = useQuery({ queryKey: ["dashboard", "my-tasks"], queryFn: () => apiModel.myTasks() });
-  const calendar = useQuery({ queryKey: ["dashboard", "my-calendar"], queryFn: () => apiModel.myCalendar() });
+  const tasks = useQuery({ queryKey: qk.dashboard("my-tasks"), queryFn: () => apiModel.myTasks() });
+  const calendar = useQuery({ queryKey: qk.dashboard("my-calendar"), queryFn: () => apiModel.myCalendar() });
   const publicEvents = useQuery({
-    queryKey: ["dashboard", "public-events"],
+    queryKey: qk.dashboard("public-events"),
     queryFn: () => apiModel.publicEvents(0, 10),
   });
   const publicClubs = useQuery({
-    queryKey: ["dashboard", "public-clubs"],
+    queryKey: qk.dashboard("public-clubs"),
     queryFn: () => apiModel.publicClubs("", "", 0, 100),
   });
   const notifications = useQuery({
-    queryKey: ["dashboard", "notifications"],
+    queryKey: qk.dashboard("notifications"),
     queryFn: () => apiModel.notifications(),
   });
+
+  const invalidateNotifications = () => {
+    queryClient.invalidateQueries({ queryKey: qk.dashboard("notifications") });
+    queryClient.invalidateQueries({ queryKey: qk.notifications() });
+    queryClient.invalidateQueries({ queryKey: qk.unreadSummary() });
+  };
 
   const cancel = useMutation({
     mutationFn: (id: string) => apiModel.cancelApplication(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dashboard", "my-applications"] });
-      queryClient.invalidateQueries({ queryKey: ["my-applications"] });
+      queryClient.invalidateQueries({ queryKey: qk.dashboard("my-applications") });
+      queryClient.invalidateQueries({ queryKey: qk.myApplications() });
     },
   });
   const markAllRead = useMutation({
     mutationFn: () => apiModel.markAllNotificationsRead(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dashboard", "notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    },
+    onSuccess: invalidateNotifications,
+  });
+  const markOneRead = useMutation({
+    mutationFn: (id: string) => apiModel.markNotificationRead(id),
+    onSuccess: invalidateNotifications,
   });
 
   const myClubs = (memberships.data?.items ?? []).filter((m) => m.status !== "LEFT");
@@ -73,32 +83,7 @@ export function StudentDashboard({ user }: { user: User }) {
   const busyClubIds = new Set([...myClubs.map((m) => m.clubId), ...pendingApps.map((a) => a.clubId)]);
   const suggestedClubs = (publicClubs.data?.items ?? []).filter((c) => !busyClubIds.has(c.id)).slice(0, 3);
 
-  const upcoming = new Map<string, StudentUpcomingEvent>();
-  for (const item of calendar.data ?? []) {
-    if (item.itemType === "EVENT" && new Date(item.endTime).getTime() > now) {
-      upcoming.set(item.id, {
-        id: item.id,
-        title: item.title,
-        clubName: item.clubName,
-        location: item.location,
-        startTime: item.startTime,
-        mine: true,
-      });
-    }
-  }
-  for (const event of publicEvents.data?.items ?? []) {
-    if (!upcoming.has(event.id) && new Date(event.endTime).getTime() > now) {
-      upcoming.set(event.id, {
-        id: event.id,
-        title: event.title,
-        clubName: event.clubName,
-        location: event.location,
-        startTime: event.startTime,
-        mine: false,
-      });
-    }
-  }
-  const events = [...upcoming.values()].sort((a, b) => a.startTime.localeCompare(b.startTime)).slice(0, 5);
+  const events = buildStudentUpcomingEvents(calendar.data ?? [], publicEvents.data?.items ?? [], now);
 
   const loading = memberships.isPending || applications.isPending;
   const nextStep = loading
@@ -127,14 +112,29 @@ export function StudentDashboard({ user }: { user: User }) {
     if (confirm(`Huỷ đơn đăng ký vào ${app.clubName}?`)) cancel.mutate(app.id);
   };
 
-  const refreshAll = () =>
-    [memberships, applications, tasks, calendar, publicEvents, publicClubs, notifications].forEach((q) => q.refetch());
+  const activeQueries = [
+    memberships,
+    applications,
+    tasks,
+    calendar,
+    publicEvents,
+    publicClubs,
+    notifications,
+    mediaCatalog,
+  ];
+  const isRefreshing = activeQueries.some((q) => q.isFetching && !q.isPending);
+
+  const handleRefresh = async () => {
+    await Promise.all(activeQueries.map((q) => q.refetch()));
+    toast.success("Đã làm mới dữ liệu tổng quan.");
+  };
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
       <BreadcrumbToolbar
         crumbs={[{ label: "Trang chủ", href: "/home" }, { label: "Tổng quan của tôi" }]}
-        onRefresh={refreshAll}
+        refreshing={isRefreshing}
+        onRefresh={handleRefresh}
       />
 
       <div className="mx-auto w-full max-w-[1200px] space-y-5 px-4 py-5 sm:px-6">
@@ -152,9 +152,10 @@ export function StudentDashboard({ user }: { user: User }) {
                 <h1 className="break-words text-base font-bold tracking-tight text-slate-900 sm:truncate sm:text-xl">
                   Xin chào, {user.fullName || user.email}
                 </h1>
+                <StatusBadge status={user.status || "ACTIVE"} />
                 {user.studentCode && <Badge tone="primary">{user.studentCode}</Badge>}
               </div>
-              <p className="mt-1 text-xs leading-relaxed text-slate-600 sm:text-sm">
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">
                 {nextStep?.text ?? "Đang tải…"}
               </p>
             </div>
@@ -162,7 +163,7 @@ export function StudentDashboard({ user }: { user: User }) {
           {nextStep && (
             <Link
               href={nextStep.href}
-              className="inline-flex h-10 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90 sm:w-auto"
+              className="inline-flex h-9 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90 sm:w-auto"
             >
               {nextStep.action} <ArrowRight size={14} />
             </Link>
@@ -190,14 +191,64 @@ export function StudentDashboard({ user }: { user: User }) {
             {
               label: "Sự kiện sắp tới",
               value: calendar.isPending && publicEvents.isPending ? "—" : events.length,
-              valueClassName: "text-emerald-700",
+              valueClassName: "text-slate-900",
               href: "/events",
             },
           ]}
         />
 
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+        <DashboardLatestNotifications
+          notifications={notifList}
+          loading={notifications.isPending}
+          unreadCount={unread}
+          markAllReadPending={markAllRead.isPending}
+          onMarkAllRead={() => markAllRead.mutate()}
+          onMarkOneRead={(id) => markOneRead.mutate(id)}
+        />
+
+        <div className="grid gap-5 @4xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
           <div className="min-w-0 space-y-5">
+            {myApps.length > 0 && (
+              <DashboardSectionPanel
+                icon={<ClipboardList size={15} />}
+                title="Đơn đăng ký của tôi"
+                href="/applications"
+                linkLabel="Tất cả đơn"
+              >
+                <ul className="divide-y divide-slate-100">
+                  {myApps.slice(0, 5).map((app) => (
+                    <li key={app.id} className="flex flex-wrap items-center justify-between gap-2.5 py-3 sm:gap-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-900">{app.clubName}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          Nộp ngày {formatDay(app.createdAt)}
+                          {app.reviewedAt && ` · Xét ngày ${formatDay(app.reviewedAt)}`}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <StatusBadge status={app.status} />
+                        {app.status === "PENDING" && (
+                          <button
+                            type="button"
+                            onClick={() => confirmCancel(app)}
+                            disabled={cancel.isPending}
+                            className="rounded-md px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+                          >
+                            Huỷ đơn
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {cancel.isError && (
+                  <p role="alert" className="mt-2 text-xs text-rose-700">
+                    {describeError(cancel.error)}
+                  </p>
+                )}
+              </DashboardSectionPanel>
+            )}
+
             {activeClubs.length === 0 && !memberships.isPending ? (
               <DashboardSectionPanel
                 icon={<Compass size={15} />}
@@ -279,47 +330,6 @@ export function StudentDashboard({ user }: { user: User }) {
               </DashboardSectionPanel>
             )}
 
-            {myApps.length > 0 && (
-              <DashboardSectionPanel
-                icon={<ClipboardList size={15} />}
-                title="Đơn đăng ký của tôi"
-                href="/applications"
-                linkLabel="Tất cả đơn"
-              >
-                <ul className="divide-y divide-slate-100">
-                  {myApps.slice(0, 5).map((app) => (
-                    <li key={app.id} className="flex flex-wrap items-center justify-between gap-2.5 py-3 sm:gap-4">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-slate-900">{app.clubName}</p>
-                        <p className="mt-0.5 text-xs text-slate-500">
-                          Nộp ngày {formatDay(app.createdAt)}
-                          {app.reviewedAt && ` · Xét ngày ${formatDay(app.reviewedAt)}`}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <StatusBadge status={app.status} />
-                        {app.status === "PENDING" && (
-                          <button
-                            type="button"
-                            onClick={() => confirmCancel(app)}
-                            disabled={cancel.isPending}
-                            className="rounded-md px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
-                          >
-                            Huỷ đơn
-                          </button>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-                {cancel.isError && (
-                  <p role="alert" className="mt-2 text-xs text-rose-700">
-                    {describeError(cancel.error)}
-                  </p>
-                )}
-              </DashboardSectionPanel>
-            )}
-
             {openTasks.length > 0 && (
               <DashboardSectionPanel
                 icon={<ClipboardCheck size={15} />}
@@ -356,11 +366,6 @@ export function StudentDashboard({ user }: { user: User }) {
           <StudentDashboardSidebar
             events={events}
             eventsLoading={calendar.isPending || publicEvents.isPending}
-            notifications={notifList}
-            notificationsLoading={notifications.isPending}
-            unreadCount={unread}
-            markAllReadPending={markAllRead.isPending}
-            onMarkAllRead={() => markAllRead.mutate()}
           />
         </div>
       </div>

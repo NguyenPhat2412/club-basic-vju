@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { Settings } from "lucide-react";
 import { apiModel, SystemSettings, SystemSettingsInput } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
@@ -15,7 +16,9 @@ import {
   createSystemSettingsDraft,
   hasSystemSettingsChanged,
   SYSTEM_SETTINGS_GROUPS,
+  toSystemSettingsPayload,
 } from "@/forms/settings/settings-form";
+import { SystemSmtpCard } from "./SystemSmtpCard";
 
 export function SystemSettingsView() {
   const session = useSession();
@@ -23,7 +26,7 @@ export function SystemSettingsView() {
   const canEdit = session.can("setting.update");
   const [notice, setNotice] = useState<{ seq: number; text: string } | null>(null);
   const settings = useQuery({
-    queryKey: ["system-settings"],
+    queryKey: qk.systemSettings(),
     queryFn: apiModel.systemSettings,
     enabled: session.ready && canView,
   });
@@ -38,10 +41,16 @@ export function SystemSettingsView() {
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
-      <BreadcrumbToolbar crumbs={[{ label: "Quản trị hệ thống" }, { label: "Cài đặt hệ thống" }]} onRefresh={() => settings.refetch()} />
+      <BreadcrumbToolbar
+        crumbs={[{ label: "Quản trị hệ thống" }, { label: "Cài đặt hệ thống" }]}
+        refreshing={settings.isFetching}
+        onRefresh={() => settings.refetch()}
+      />
       {notice && <Notice key={notice.seq} tone="success">{notice.text}</Notice>}
       <div className="w-full space-y-4 px-4 py-5 sm:px-6 lg:px-8">
-        <p className="text-sm text-slate-600">Các thay đổi có hiệu lực ngay sau khi lưu.</p>
+        <p className="text-sm text-slate-600">
+          Các thay đổi giới hạn nghiệp vụ, chính sách mã OTP và máy chủ gửi email có hiệu lực ngay sau khi lưu.
+        </p>
         {settings.isPending ? (
           <LoadingRows rows={3} />
         ) : settings.isError ? (
@@ -51,6 +60,7 @@ export function SystemSettingsView() {
             key={settings.data.updatedAt ?? "default"}
             current={settings.data}
             canEdit={canEdit}
+            defaultRecipientEmail={session.user?.email ?? ""}
             onSaved={(saved) =>
               setNotice((prev) => ({
                 seq: (prev?.seq ?? 0) + 1,
@@ -67,18 +77,21 @@ export function SystemSettingsView() {
 function SettingsForm({
   current,
   canEdit,
+  defaultRecipientEmail,
   onSaved,
 }: {
   current: SystemSettings;
   canEdit: boolean;
+  defaultRecipientEmail: string;
   onSaved: (saved: SystemSettings) => void;
 }) {
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState<SystemSettingsInput>(() => createSystemSettingsDraft(current));
   const save = useMutation({
-    mutationFn: () => apiModel.updateSystemSettings(draft),
+    mutationFn: () => apiModel.updateSystemSettings(toSystemSettingsPayload(draft)),
     onSuccess: (saved) => {
-      queryClient.setQueryData(["system-settings"], saved);
+      queryClient.setQueryData(qk.systemSettings(), saved);
+      setDraft(createSystemSettingsDraft(saved));
       onSaved(saved);
     },
   });
@@ -92,7 +105,7 @@ function SettingsForm({
   return (
     <form onSubmit={submit} className="space-y-4">
       {/* columns (masonry) instead of a grid: cards of different heights stack without row gaps */}
-      <div className="gap-4 lg:columns-2 2xl:columns-3">
+      <div className="gap-4 @3xl:columns-2 @6xl:columns-3">
         {SYSTEM_SETTINGS_GROUPS.map((group) => (
           <section key={group.title} className="mb-4 break-inside-avoid overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs">
             <h3 className="border-b border-slate-100 bg-slate-50/70 px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-primary">{group.title}</h3>
@@ -142,13 +155,23 @@ function SettingsForm({
           </section>
         ))}
       </div>
+
+      <SystemSmtpCard
+        current={current}
+        draft={draft}
+        canEdit={canEdit}
+        hasUnsavedChanges={changed}
+        defaultRecipientEmail={defaultRecipientEmail}
+        onChange={setDraft}
+      />
+
       {save.isError && <Notice tone="error">{describeError(save.error)}</Notice>}
-      <div className="sticky bottom-0 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
+      <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
         <span className="text-[11px] text-slate-500">
           {save.isSuccess && !changed ? "Đã lưu." : current.updatedAt ? `Cập nhật ${formatDateTime(current.updatedAt)}` : ""}
         </span>
         {canEdit ? (
-          <Button type="submit" size="sm" disabled={!changed || save.isPending}>{save.isPending ? "Đang lưu…" : "Lưu"}</Button>
+          <Button type="submit" size="sm" disabled={!changed || save.isPending}>{save.isPending ? "Đang lưu…" : "Lưu cài đặt"}</Button>
         ) : (
           <span className="text-xs text-slate-500">Chỉ có quyền xem</span>
         )}

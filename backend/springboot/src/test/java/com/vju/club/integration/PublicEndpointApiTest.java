@@ -18,8 +18,9 @@ class PublicEndpointApiTest extends ApiIntegrationTest {
     @Test
     void exactlyTheAnnotatedHandlersArePublic() {
         assertThat(SecurityConfigAccess.publicRoutes(handlerMapping)).containsExactlyInAnyOrder(
-                "POST /api/v1/auth/login", "POST /api/v1/auth/register", "GET /api/v1/auth/csrf",
-                "POST /api/v1/auth/google", "GET /api/v1/auth/google/config",
+                "POST /api/v1/auth/login", "POST /api/v1/auth/register",
+                "POST /api/v1/auth/forgot-password", "POST /api/v1/auth/reset-password",
+                "GET /api/v1/auth/csrf", "POST /api/v1/auth/google", "GET /api/v1/auth/google/config",
                 "GET /api/v1/api-catalog", "GET /api-docs/phase1.yaml",
                 "GET /api/v1/public/clubs", "GET /api/v1/public/clubs/categories", "GET /api/v1/public/clubs/{clubId}",
                 "GET /api/v1/public/clubs/{clubId}/logo", "GET /api/v1/public/clubs/{clubId}/cover", "GET /api/v1/public/events",
@@ -33,6 +34,10 @@ class PublicEndpointApiTest extends ApiIntegrationTest {
         call(get("/api/v1/public/clubs"), null, null, 200);
         call(get("/api/v1/public/clubs/" + clubA), null, null, 200);
         call(get("/api/v1/public/events"), null, null, 200);
+        call(post("/api/v1/auth/forgot-password"), null, Map.of("email", "ghost@test.local"), 200);
+        problem(post("/api/v1/auth/reset-password"), null,
+                Map.of("email", "ghost@test.local", "otp", "123456", "newPassword", "BrandNew123!"),
+                400, "OTP_INVALID");
         problem(post("/api/v1/auth/login"), null, Map.of("email", "member@test.local", "password", "wrong-password"),
                 401, "INVALID_CREDENTIALS");
         problem(get("/api/v1/auth/me"), null, null, 401, "UNAUTHORIZED");

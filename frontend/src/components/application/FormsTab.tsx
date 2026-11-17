@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import {
   Eye,
   FilePlus2,
@@ -58,14 +59,14 @@ export function FormsTab({
   const [formDraft, setFormDraft] = useState<UpsertApplicationFormInput>(EMPTY_FORM_DRAFT);
 
   const forms = useQuery({
-    queryKey: ["club-application-forms", clubId],
+    queryKey: qk.clubApplicationForms(clubId),
     queryFn: () => apiModel.clubApplicationForms(clubId),
     enabled: !!clubId,
   });
 
   const refreshForms = () => {
-    queryClient.invalidateQueries({ queryKey: ["club-application-forms", clubId] });
-    queryClient.invalidateQueries({ queryKey: ["club-application-form", clubId] });
+    queryClient.invalidateQueries({ queryKey: qk.clubApplicationForms(clubId) });
+    queryClient.invalidateQueries({ queryKey: qk.clubApplicationForm(clubId) });
   };
 
   const deleteFormMutation = useMutation({

@@ -1,5 +1,5 @@
 "use client";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { Plus, RefreshCw, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ type Props = {
   search?: { value: string; onChange: (value: string) => void; placeholder?: string };
   extraActions?: ReactNode;
   onRefresh?: () => void;
+  refreshing?: boolean;
   addLabel?: string;
   onAdd?: () => void;
   addDisabled?: boolean;
@@ -24,12 +25,31 @@ export function BreadcrumbToolbar({
   search,
   extraActions,
   onRefresh,
+  refreshing = false,
   addLabel,
   onAdd,
   addDisabled,
   compact = false,
 }: Props) {
   const pageTitle = crumbs[crumbs.length - 1]?.label ?? "";
+  const [spinning, setSpinning] = useState(false);
+  const spinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (spinTimerRef.current) clearTimeout(spinTimerRef.current);
+    };
+  }, []);
+
+  const isSpinning = refreshing || spinning;
+
+  const handleRefresh = () => {
+    if (!onRefresh || refreshing || spinning) return;
+    setSpinning(true);
+    if (spinTimerRef.current) clearTimeout(spinTimerRef.current);
+    spinTimerRef.current = setTimeout(() => setSpinning(false), 450);
+    onRefresh();
+  };
 
   return (
     <div
@@ -43,7 +63,12 @@ export function BreadcrumbToolbar({
         <span className="truncate text-[13.5px] font-bold text-slate-900">{pageTitle}</span>
         {titleBadge && <span className="shrink-0">{titleBadge}</span>}
       </div>
-      <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-2 sm:w-auto">
+      <div
+        className={cn(
+          "flex min-w-0 flex-wrap items-center justify-end gap-2",
+          search ? "w-full sm:w-auto" : "ml-auto shrink-0",
+        )}
+      >
         {search && (
           <div className="relative w-full sm:w-56">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -73,11 +98,16 @@ export function BreadcrumbToolbar({
             variant="outline"
             size="icon"
             aria-label="Tải lại"
+            aria-busy={isSpinning}
+            disabled={refreshing}
             title="Tải lại dữ liệu"
-            onClick={onRefresh}
-            className="size-9 shrink-0 rounded-lg border-slate-200 bg-white text-slate-600 hover:border-primary/30 hover:bg-primary/8 hover:text-primary"
+            onClick={handleRefresh}
+            className={cn(
+              "size-9 shrink-0 rounded-lg border-slate-200 bg-white text-slate-600 hover:border-primary/30 hover:bg-primary/8 hover:text-primary",
+              isSpinning && "border-primary/30 bg-primary/8 text-primary",
+            )}
           >
-            <RefreshCw size={14} />
+            <RefreshCw size={14} className={cn(isSpinning && "animate-spin text-primary")} />
           </Button>
         )}
         {onAdd && (

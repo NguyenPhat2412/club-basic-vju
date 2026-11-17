@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { KeyRound, Plus, Trash2 } from "lucide-react";
 import { apiModel, Department } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
@@ -42,30 +43,30 @@ export function ClubMemberAccessSection({
   const inThisClub = (cid?: string, did?: string) => cid === clubId || (!!did && deptMap.has(did));
 
   const rolesQuery = useQuery({
-    queryKey: ["roles", "club-access"],
+    queryKey: qk.roles("club-access"),
     queryFn: () => apiModel.roles(),
     enabled: canAssign && canRoleView,
   });
   const groupsQuery = useQuery({
-    queryKey: ["permission-groups", "club-access"],
+    queryKey: qk.permissionGroups("club-access"),
     queryFn: () => apiModel.permissionGroups(),
     enabled: canView || canAssign,
   });
   const userRolesQuery = useQuery({
-    queryKey: ["user-roles", userId, clubId],
+    queryKey: qk.userRoles(userId, clubId),
     queryFn: () => apiModel.userRoles(userId),
     enabled: canView && !!userId,
   });
   const userPermsQuery = useQuery({
-    queryKey: ["user-permissions", userId, clubId],
+    queryKey: qk.userPermissions(userId, clubId),
     queryFn: () => apiModel.userPermissions(userId),
     enabled: canView && !!userId,
   });
 
   const refreshAccess = () => {
-    queryClient.invalidateQueries({ queryKey: ["user-roles", userId] });
-    queryClient.invalidateQueries({ queryKey: ["user-permissions", userId] });
-    queryClient.invalidateQueries({ queryKey: ["club-positions", clubId] });
+    queryClient.invalidateQueries({ queryKey: qk.userRoles(userId) });
+    queryClient.invalidateQueries({ queryKey: qk.userPermissions(userId) });
+    queryClient.invalidateQueries({ queryKey: qk.clubPositions(clubId) });
   };
 
   const grantableRoles = useMemo<Role[]>(() => {
@@ -266,7 +267,7 @@ export function ClubMemberAccessSection({
           )}
         </div>
 
-        {msg && <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{msg}</p>}
+        {msg && <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-medium text-slate-900">{msg}</p>}
         {err && <p className="text-xs text-destructive">{err}</p>}
       </div>
     </Section>

@@ -36,33 +36,44 @@ export function AvatarField({
 
   return (
     <FormField label="Ảnh đại diện">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/25 p-2.5">
-        <div className="flex min-w-0 items-center gap-3">
-          {url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={url} alt="" className="size-12 shrink-0 rounded-full border border-border object-cover" />
-          ) : (
-            <span className="grid size-12 shrink-0 place-items-center rounded-full bg-primary text-base font-bold text-primary-foreground">
-              {(fallbackName || "?").slice(0, 1).toUpperCase()}
-            </span>
-          )}
-          <div className="min-w-0">
-            <p className="truncate text-xs font-semibold text-foreground">
-              {url ? "Đã thiết lập ảnh đại diện" : "Chưa có ảnh đại diện"}
-            </p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">Hỗ trợ PNG, JPG, WEBP, GIF (tối đa 5 MB)</p>
+      <div className="@container rounded-xl border border-border/60 bg-muted/25 p-2.5 sm:p-3">
+        <div className="flex flex-col gap-2.5 @sm:flex-row @sm:items-center @sm:justify-between">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            {url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={url} alt="" className="size-11 shrink-0 rounded-full border border-border object-cover sm:size-12" />
+            ) : (
+              <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-base font-bold text-primary-foreground sm:size-12">
+                {(fallbackName || "?").slice(0, 1).toUpperCase()}
+              </span>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold text-foreground">
+                {url ? "Đã thiết lập ảnh đại diện" : "Chưa có ảnh đại diện"}
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                PNG, JPG, WEBP, GIF · tối đa 5 MB
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Button type="button" variant="secondary" size="sm" disabled={mutation.isPending} onClick={() => fileInput.current?.click()}>
-            {mutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-            {mutation.isPending ? "Đang tải lên…" : url ? "Đổi ảnh" : "Tải ảnh lên"}
-          </Button>
-          {url && (
-            <Button type="button" variant="outline" size="sm" onClick={() => onChange("")} aria-label="Xoá ảnh đại diện">
-              <X size={14} />
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="w-full @sm:w-auto"
+              disabled={mutation.isPending}
+              onClick={() => fileInput.current?.click()}
+            >
+              {mutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+              {mutation.isPending ? "Đang tải lên…" : url ? "Đổi ảnh" : "Tải ảnh lên"}
             </Button>
-          )}
+            {url && (
+              <Button type="button" variant="outline" size="sm" onClick={() => onChange("")} aria-label="Xoá ảnh đại diện">
+                <X size={14} />
+              </Button>
+            )}
+          </div>
         </div>
         <input
           ref={fileInput}

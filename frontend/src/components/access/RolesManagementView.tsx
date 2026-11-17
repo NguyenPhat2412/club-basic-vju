@@ -2,6 +2,7 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import {
   CheckSquare,
   KeyRound,
@@ -42,9 +43,9 @@ export function RolesManagementView() {
   const queryClient = useQueryClient();
   const canView = session.can("role.view");
   const canManage = session.can("role.manage");
-  const roles = useQuery({ queryKey: ["roles"], queryFn: apiModel.roles, enabled: canView });
+  const roles = useQuery({ queryKey: qk.roles(), queryFn: apiModel.roles, enabled: canView });
   const groups = useQuery({
-    queryKey: ["permission-groups"],
+    queryKey: qk.permissionGroups(),
     queryFn: apiModel.permissionGroups,
     enabled: canView && session.can("permission.view"),
   });
@@ -122,9 +123,9 @@ export function RolesManagementView() {
         `Đã lưu phân quyền cho ${dirtyRoles.map(roleLabel).join(", ")}. Giao diện của các tài khoản mang vai trò này đã được cập nhật ngay.`
       );
       setDraft({});
-      await queryClient.invalidateQueries({ queryKey: ["roles"] });
-      await queryClient.invalidateQueries({ queryKey: ["me", "permissions"] });
-      await queryClient.invalidateQueries({ queryKey: ["optional-me", "permissions"] });
+      await queryClient.invalidateQueries({ queryKey: qk.roles() });
+      await queryClient.invalidateQueries({ queryKey: qk.me("permissions") });
+      await queryClient.invalidateQueries({ queryKey: qk.optionalMe("permissions") });
     },
   });
 

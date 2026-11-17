@@ -221,7 +221,7 @@ export function HomeWorkspaceShowcase({
                         {sampleClub ? <DbText value={sampleClub.name} /> : w.recSampleClubFallback}
                       </p>
                     </div>
-                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+                    <span className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary">
                       {w.recOpenBadge}
                     </span>
                   </div>
@@ -270,7 +270,7 @@ export function HomeWorkspaceShowcase({
                       <CalendarCheck2 size={17} className="shrink-0 text-primary" />
                       <span>{w.evHeaderTitle}</span>
                     </div>
-                    <span className="text-xs font-semibold text-emerald-700">{w.evHeaderBadge}</span>
+                    <span className="text-xs font-semibold text-primary">{w.evHeaderBadge}</span>
                   </div>
 
                   {previewEvents.length > 0 ? (
@@ -316,7 +316,7 @@ export function HomeWorkspaceShowcase({
 
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-sm">
                   <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
-                    <CheckCircle2 size={14} className="shrink-0 text-emerald-600" />
+                    <CheckCircle2 size={14} className="shrink-0 text-primary" />
                     {w.evFooterNote}
                   </span>
                   <Link
@@ -339,7 +339,7 @@ export function HomeWorkspaceShowcase({
                         <MessageSquareText size={16} className="shrink-0 text-primary" />
                         {w.opsChannelName}
                       </span>
-                      <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+                      <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-xs font-semibold text-primary">
                         {w.opsOnlineBadge}
                       </span>
                     </div>

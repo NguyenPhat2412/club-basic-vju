@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { Check, ClipboardList, FilterX, Lock, Paperclip, Pencil, Plus, Search, Upload, X } from "lucide-react";
 import { apiModel, Application, ApplicationForm } from "@/lib/api";
 import { ApplicationFilesList } from "@/components/shared/ApplicationFileView";
@@ -130,7 +131,7 @@ export function ApplicationDetailDrawer({
   onError: (msg: string) => void;
 }) {
   const detailQuery = useQuery({
-    queryKey: ["club-application-detail", clubId, selectedAppId],
+    queryKey: qk.clubApplicationDetail(clubId, selectedAppId),
     queryFn: () => apiModel.clubApplicationDetail(clubId, selectedAppId!),
     enabled: !!clubId && !!selectedAppId && canViewDetail,
   });

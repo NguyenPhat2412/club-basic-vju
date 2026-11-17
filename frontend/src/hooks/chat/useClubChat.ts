@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { qk } from "@/lib/api/query-keys";
 import { chatApi } from '@/api/chat/chat.api';
 import {
   getCachedChannelWindow,
@@ -14,7 +15,7 @@ import type { ChatChannel } from '@/types/chat/chat.types';
 
 export function useClubChannels(clubId: string, enabled = true) {
   return useQuery({
-    queryKey: ['club-channels', clubId],
+    queryKey: qk.clubChannels(clubId),
     queryFn: () => chatApi.clubChannels(clubId),
     enabled: Boolean(clubId && enabled),
   });
@@ -27,7 +28,7 @@ export function useChannelMessages(
   userId?: string
 ) {
   return useQuery({
-    queryKey: ['channel-messages', channelId],
+    queryKey: qk.channelMessages(channelId),
     queryFn: async ({ signal }) => {
       const page = await chatApi.channelMessages(channelId, 0, limit, undefined, signal);
       saveCachedChannelWindow(channelId, page, userId, channelId);
@@ -47,7 +48,7 @@ export function useChannelPinnedMessages(
   userId?: string
 ) {
   return useQuery({
-    queryKey: ['channel-pinned-messages', channelId],
+    queryKey: qk.channelPinnedMessages(channelId),
     queryFn: async ({ signal }) => {
       const items = await chatApi.pinnedMessages(channelId, signal);
       saveCachedPinnedMessages(channelId, items, userId, channelId);
@@ -72,7 +73,7 @@ export function useWarmClubChannels(
     (targetChannelId: string) => {
       if (!targetChannelId) return;
       void queryClient.prefetchQuery({
-        queryKey: ['channel-messages', targetChannelId],
+        queryKey: qk.channelMessages(targetChannelId),
         queryFn: async ({ signal }) => {
           const page = await chatApi.channelMessages(targetChannelId, 0, limit, undefined, signal);
           saveCachedChannelWindow(targetChannelId, page, userId, activeChannelId || targetChannelId);
@@ -82,7 +83,7 @@ export function useWarmClubChannels(
         staleTime: 25_000,
       });
       void queryClient.prefetchQuery({
-        queryKey: ['channel-pinned-messages', targetChannelId],
+        queryKey: qk.channelPinnedMessages(targetChannelId),
         queryFn: async ({ signal }) => {
           const items = await chatApi.pinnedMessages(targetChannelId, signal);
           saveCachedPinnedMessages(targetChannelId, items, userId, activeChannelId || targetChannelId);
@@ -111,7 +112,7 @@ export function useWarmClubChannels(
 
 export function useClubQuickReplies(clubId: string, enabled = true) {
   return useQuery({
-    queryKey: ['club-quick-replies', clubId],
+    queryKey: qk.clubQuickReplies(clubId),
     queryFn: () => chatApi.clubQuickReplies(clubId),
     enabled: Boolean(clubId && enabled),
     staleTime: 60_000,

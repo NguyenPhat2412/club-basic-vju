@@ -86,8 +86,8 @@ export function MyEventsHistorySection({
         items={[
           { label: "Tổng lượt đăng ký", value: total },
           { label: "Đang giữ chỗ (REGISTERED)", value: activeRegistrationsCount, valueClassName: "text-primary" },
-          { label: "Đã tính tham gia (Có mặt / Muộn)", value: attendedTotal, valueClassName: "text-emerald-700" },
-          { label: "Tham gia vai trò CTV", value: ctvTotal, valueClassName: "text-amber-700" },
+          { label: "Đã tính tham gia (Có mặt / Muộn)", value: attendedTotal, valueClassName: "text-slate-900" },
+          { label: "Tham gia vai trò CTV", value: ctvTotal, valueClassName: "text-slate-700" },
         ]}
       />
 

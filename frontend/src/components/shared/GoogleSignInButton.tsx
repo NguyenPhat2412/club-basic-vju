@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { qk } from "@/lib/api/query-keys";
 import { apiModel, type AuthUserEnvelope } from "@/lib/api";
 import { describeError } from "@/components/shared/ListPage";
 
@@ -43,7 +44,7 @@ function loadGoogleScript() {
 
 export function useGoogleSignIn() {
   return useQuery({
-    queryKey: ["auth", "google-config"],
+    queryKey: qk.auth("google-config"),
     queryFn: apiModel.googleConfig,
     staleTime: 5 * 60_000,
     retry: 1,
@@ -130,7 +131,11 @@ export function GoogleSignInButton({
       <div
         ref={holder}
         aria-busy={busy}
-        className={busy ? "pointer-events-none flex min-h-10 w-full justify-center overflow-hidden opacity-60" : "flex min-h-10 w-full justify-center overflow-hidden"}
+        className={
+          busy
+            ? "pointer-events-none flex min-h-[44px] w-full max-w-full items-center justify-center py-0.5 opacity-60"
+            : "flex min-h-[44px] w-full max-w-full items-center justify-center py-0.5"
+        }
       />
       {busy && (
         <p className="text-center text-xs text-slate-600">
