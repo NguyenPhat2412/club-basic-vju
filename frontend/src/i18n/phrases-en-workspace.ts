@@ -242,4 +242,9 @@ export const PHRASES_EN_WORKSPACE: Record<string, string> = {
   'Email tài khoản gửi SMTP': 'SMTP Sender Account / Email',
   'Với Gmail, nhập địa chỉ email đầy đủ (VD: ten-ban@gmail.com), không nhập tên ứng dụng.':
     'For Gmail, enter the full email address (e.g., your-name@gmail.com), not the App Password label.',
+  'Nhập địa chỉ email gửi thư (VD: ten-ban@gmail.com)': 'Enter sender email address (e.g., your-name@gmail.com)',
+  'Email hiển thị': 'Display From Email',
+  'Tên người gửi': 'Sender Name',
+  'Xem trước thư OTP': 'OTP Email Preview',
+  'Mã OTP đặt lại mật khẩu': 'Password Reset OTP',
 };

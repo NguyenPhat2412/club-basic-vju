@@ -184,18 +184,36 @@ function AuthModalDialog({
       onClick={onClose}
     >
       <div
-        className="relative my-auto grid max-h-[92dvh] w-full max-w-[460px] overflow-y-auto rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl md:min-h-[595px] md:max-w-[780px] md:grid-cols-[270px_1fr] md:overflow-hidden lg:max-w-[920px] lg:grid-cols-[375px_1fr]"
+        className={cn(
+          "relative my-auto max-h-[92dvh] w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl",
+          mode === "forgot"
+            ? "max-w-[400px]"
+            : "grid max-w-[460px] md:min-h-[595px] md:max-w-[780px] md:grid-cols-[270px_1fr] md:overflow-hidden lg:max-w-[920px] lg:grid-cols-[375px_1fr]",
+        )}
         onClick={(event) => event.stopPropagation()}
       >
-        <AuthModalBanner mode={mode} onClose={onClose} />
+        {mode !== "forgot" && <AuthModalBanner mode={mode} onClose={onClose} />}
 
-        <div className="flex flex-col justify-between p-4 sm:p-6 md:max-h-[92dvh] md:overflow-y-auto lg:p-7">
+        <div
+          className={cn(
+            "flex flex-col justify-between md:max-h-[92dvh] md:overflow-y-auto",
+            mode === "forgot" ? "p-5" : "p-4 sm:p-6 lg:p-7",
+          )}
+        >
           <div>
-            <div className="hidden items-start justify-between gap-3 md:flex">
+            <div className={cn("items-start justify-between gap-3", mode === "forgot" ? "flex" : "hidden md:flex")}>
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-[.14em] text-primary">{eyebrow}</p>
-                <h2 id="auth-modal-title" className="mt-0.5 text-xl font-extrabold tracking-tight text-slate-900 lg:text-2xl">
-                  {heading}
+                <p className="text-[10.5px] font-bold uppercase tracking-[.14em] text-primary">
+                  {mode === "forgot" ? "MÃ OTP BẢO MẬT" : eyebrow}
+                </p>
+                <h2
+                  id="auth-modal-title"
+                  className={cn(
+                    "mt-0.5 font-extrabold tracking-tight text-slate-900",
+                    mode === "forgot" ? "text-lg" : "text-xl lg:text-2xl",
+                  )}
+                >
+                  {mode === "forgot" ? "Đặt lại mật khẩu" : heading}
                 </h2>
               </div>
               <button
@@ -208,28 +226,30 @@ function AuthModalDialog({
               </button>
             </div>
 
-            <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1 md:mt-4">
-              <button
-                type="button"
-                onClick={() => switchMode("login")}
-                className={cn(
-                  "rounded-lg py-2 text-xs font-bold transition-all sm:text-sm",
-                  mode === "login" ? "bg-white text-primary shadow-2xs" : "text-slate-600 hover:text-slate-900",
-                )}
-              >
-                Đăng nhập
-              </button>
-              <button
-                type="button"
-                onClick={() => switchMode("register")}
-                className={cn(
-                  "rounded-lg py-2 text-xs font-bold transition-all sm:text-sm",
-                  mode === "register" ? "bg-white text-primary shadow-2xs" : "text-slate-600 hover:text-slate-900",
-                )}
-              >
-                Hãy gia nhập (Đăng ký)
-              </button>
-            </div>
+            {mode !== "forgot" && (
+              <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1 md:mt-4">
+                <button
+                  type="button"
+                  onClick={() => switchMode("login")}
+                  className={cn(
+                    "rounded-lg py-2 text-xs font-bold transition-all sm:text-sm",
+                    mode === "login" ? "bg-white text-primary shadow-2xs" : "text-slate-600 hover:text-slate-900",
+                  )}
+                >
+                  Đăng nhập
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchMode("register")}
+                  className={cn(
+                    "rounded-lg py-2 text-xs font-bold transition-all sm:text-sm",
+                    mode === "register" ? "bg-white text-primary shadow-2xs" : "text-slate-600 hover:text-slate-900",
+                  )}
+                >
+                  Hãy gia nhập (Đăng ký)
+                </button>
+              </div>
+            )}
 
             {googleOn && mode !== "forgot" && (
               <div className="mt-4 grid gap-2">
@@ -250,7 +270,6 @@ function AuthModalDialog({
           {mode === "forgot" ? (
             <AuthModalForgotForm
               initialEmail={email}
-              allowedDomain={allowedDomain}
               onEmailSync={setEmail}
               onBackToLogin={() => switchMode("login")}
             />

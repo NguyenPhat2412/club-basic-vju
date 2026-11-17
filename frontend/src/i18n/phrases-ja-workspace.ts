@@ -242,4 +242,9 @@ export const PHRASES_JA_WORKSPACE: Record<string, string> = {
   'Email tài khoản gửi SMTP': 'SMTP送信アカウント（メールアドレス）',
   'Với Gmail, nhập địa chỉ email đầy đủ (VD: ten-ban@gmail.com), không nhập tên ứng dụng.':
     'Gmailの場合はアプリ名ではなく、メールアドレス全体（例: your-name@gmail.com）を入力してください。',
+  'Nhập địa chỉ email gửi thư (VD: ten-ban@gmail.com)': '送信元メールアドレスを入力（例: your-name@gmail.com）',
+  'Email hiển thị': '表示メールアドレス',
+  'Tên người gửi': '送信者名',
+  'Xem trước thư OTP': 'OTPメールプレビュー',
+  'Mã OTP đặt lại mật khẩu': 'パスワード再設定OTP',
 };
