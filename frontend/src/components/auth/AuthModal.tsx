@@ -42,6 +42,9 @@ export function AuthModal({
   onClose: () => void;
   onSuccessRedirect?: string | null;
 }) {
+  // Warm Google GSI config + script while browsing /home so modal opens with zero delay.
+  useGoogleSignIn();
+
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -55,7 +58,6 @@ export function AuthModal({
 
   return (
     <AuthModalDialog
-      key={initialMode}
       initialMode={initialMode}
       onClose={onClose}
       onSuccessRedirect={onSuccessRedirect}
@@ -188,7 +190,7 @@ function AuthModalDialog({
           "relative my-auto max-h-[92dvh] w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl",
           mode === "forgot"
             ? "max-w-[400px]"
-            : "grid max-w-[460px] md:min-h-[595px] md:max-w-[780px] md:grid-cols-[270px_1fr] md:overflow-hidden lg:max-w-[920px] lg:grid-cols-[375px_1fr]",
+            : "grid max-w-[432px] md:min-h-[595px] md:max-w-[718px] md:grid-cols-[270px_1fr] md:overflow-hidden lg:max-w-[830px] lg:grid-cols-[374px_1fr]",
         )}
         onClick={(event) => event.stopPropagation()}
       >
@@ -251,17 +253,13 @@ function AuthModalDialog({
               </div>
             )}
 
-            {googleOn && mode !== "forgot" && (
-              <div className="mt-4 grid gap-2">
+            {googleOn && (
+              <div className={cn("mt-4 grid gap-2", mode === "forgot" && "hidden")}>
                 <p className="truncate whitespace-nowrap text-center text-xs font-medium text-slate-600">
                   Sinh viên VJU: Đăng nhập nhanh bằng email{" "}
                   <span className="font-semibold text-slate-800">@{allowedDomain}</span>
                 </p>
-                <GoogleSignInButton
-                  onSignedIn={handleAuthSuccess}
-                  width={360}
-                  mode={mode === "register" ? "signup" : "signin"}
-                />
+                <GoogleSignInButton onSignedIn={handleAuthSuccess} width={400} />
                 <OrDivider />
               </div>
             )}

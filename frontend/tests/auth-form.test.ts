@@ -125,4 +125,13 @@ test("AuthModal forms use noValidate inline validation and stay within the 400-l
     assert.equal(/\bminLength=\{8\}/.test(src), false, "Must not use native minLength={8} browser popup");
     assert.equal(/<(?:Input|PasswordInput)\b[^>]*\brequired\b/.test(src), false, "Must not use native required on Input/PasswordInput");
   }
+
+  const gsiSrc = fs.readFileSync(path.join(process.cwd(), "src/components/shared/GoogleSignInButton.tsx"), "utf8");
+  assert.ok(gsiSrc.split("\n").length <= 400, "GoogleSignInButton.tsx must stay <= 400 lines");
+  assert.equal(
+    /signup_with/.test(gsiSrc),
+    false,
+    "GoogleSignInButton must not toggle signin_with/signup_with across tabs (prevents iframe re-render flicker)",
+  );
+  assert.match(modalSrc, /width=\{400\}/, "AuthModal must render GoogleSignInButton at full 400px column width");
 });
