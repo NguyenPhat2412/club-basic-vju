@@ -176,10 +176,10 @@ class SprintThreeTaskAcceptanceTest extends ApiIntegrationTest {
         // 5. PB-27.2: Reassign task to club member
         JsonNode reassigned = call(patch("/api/v1/tasks/" + ctvTaskId), adminToken, Map.of(
                 "assigneeId", clubMember.toString(),
-                "priority", "URGENT"
+                "priority", "MEDIUM"
         ), 200);
         assertThat(reassigned.path("assigneeId").asText()).isEqualTo(clubMember.toString());
-        assertThat(reassigned.path("priority").asText()).isEqualTo("URGENT");
+        assertThat(reassigned.path("priority").asText()).isEqualTo("MEDIUM");
     }
 
     @Test
