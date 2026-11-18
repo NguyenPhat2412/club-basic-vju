@@ -143,7 +143,7 @@ export function GoogleSignInButton({
         type: "standard",
         theme: "outline",
         size: "large",
-        text: "continue_with",
+        text: "signin_with",
         shape: "rectangular",
         logo_alignment: "left",
         locale: "vi",
