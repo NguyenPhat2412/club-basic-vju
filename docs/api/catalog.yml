@@ -14,6 +14,41 @@ entries:
   authRequired: false
   permission: null
 - method: POST
+  path: /api/v1/auth/register
+  module: authentication
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: POST
+  path: /api/v1/auth/google
+  module: authentication
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: GET
+  path: /api/v1/auth/google/config
+  module: authentication
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: POST
+  path: /api/v1/auth/forgot-password
+  module: authentication
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: POST
+  path: /api/v1/auth/reset-password
+  module: authentication
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: POST
   path: /api/v1/auth/logout
   module: authentication
   backend: backend/springboot
@@ -83,6 +118,62 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: user.active | user.inactive
+- method: POST
+  path: /api/v1/users/me/avatar
+  module: user-profile
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: POST
+  path: /api/v1/users/{userId}/avatar
+  module: user-profile
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: user.update
+- method: GET
+  path: /api/v1/public/clubs
+  module: club
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: GET
+  path: /api/v1/public/clubs/categories
+  module: club
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: GET
+  path: /api/v1/public/clubs/{clubId}
+  module: club
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: GET
+  path: /api/v1/public/clubs/{clubId}/logo
+  module: club
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: GET
+  path: /api/v1/public/avatars/{fileName}
+  module: user-profile
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: GET
+  path: /api/v1/public/clubs/{clubId}/cover
+  module: club
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
 - method: GET
   path: /api/v1/clubs
   module: club
@@ -118,6 +209,20 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: club.active | club.inactive
+- method: POST
+  path: /api/v1/clubs/{clubId}/logo
+  module: club
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: club.update
+- method: POST
+  path: /api/v1/clubs/{clubId}/cover
+  module: club
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: club.update
 - method: GET
   path: /api/v1/clubs/{clubId}/departments
   module: department
@@ -225,6 +330,20 @@ entries:
   permission: permission.assign
 - method: DELETE
   path: /api/v1/users/{userId}/permissions/{permissionId}
+  module: permission-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: permission.revoke
+- method: PATCH
+  path: /api/v1/users/{userId}
+  module: user-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: user.update
+- method: DELETE
+  path: /api/v1/users/{userId}/permissions/by-key/{permissionKey}
   module: permission-management
   backend: backend/springboot
   status: IMPLEMENTED
@@ -343,6 +462,27 @@ entries:
   authRequired: true
   permission: permission.assign
 - method: GET
+  path: /api/v1/system-settings
+  module: setting
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: setting.view
+- method: PUT
+  path: /api/v1/system-settings
+  module: setting
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: setting.update
+- method: PUT
+  path: /api/v1/system-settings/smtp-test
+  module: setting
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: setting.update
+- method: GET
   path: /api/v1/audit-logs
   module: audit
   backend: backend/springboot
@@ -355,9 +495,16 @@ entries:
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: application.create (owner)
+  permission: null
 - method: GET
   path: /api/v1/users/me/applications
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/applications/review-summary
   module: club-application
   backend: backend/springboot
   status: IMPLEMENTED
@@ -376,7 +523,7 @@ entries:
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: application.cancel (owner)
+  permission: null
 - method: GET
   path: /api/v1/clubs/{clubId}/applications
   module: club-application
@@ -414,6 +561,13 @@ entries:
   permission: null
 - method: GET
   path: /api/v1/users/me/notifications
+  module: notification
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/users/me/notifications/{notificationId}
   module: notification
   backend: backend/springboot
   status: IMPLEMENTED
@@ -510,3 +664,465 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: document.view
+- method: GET
+  path: /api/v1/users/me/notifications/unread-summary
+  module: notification
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: PATCH
+  path: /api/v1/users/me/notifications/read-all
+  module: notification
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: POST
+  path: /api/v1/clubs/{clubId}/notifications
+  module: notification
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: notification.send
+- method: GET
+  path: /api/v1/public/events
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: POST
+  path: /api/v1/clubs/{clubId}/events
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.create
+- method: GET
+  path: /api/v1/clubs/{clubId}/events
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.view
+- method: GET
+  path: /api/v1/events/{eventId}
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.view
+- method: PATCH
+  path: /api/v1/clubs/{clubId}/events/{eventId}
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.update
+- method: POST
+  path: /api/v1/events/{eventId}/registrations
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/events/{eventId}/registrations
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.view | event.attendance
+- method: PATCH
+  path: /api/v1/events/{eventId}/registrations/{registrationId}
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.update
+- method: PATCH
+  path: /api/v1/events/{eventId}/registrations/me/cancel
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/users/me/event-registrations
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: POST
+  path: /api/v1/events/{eventId}/notifications
+  module: notification
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: notification.send | event.update
+- method: PUT
+  path: /api/v1/events/{eventId}/attendances
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.attendance | event.attendance_edit
+- method: GET
+  path: /api/v1/events/{eventId}/attendances
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.attendance | event.view
+- method: GET
+  path: /api/v1/users/me/calendar
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: POST
+  path: /api/v1/clubs/{clubId}/tasks
+  module: task
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: task.create
+- method: GET
+  path: /api/v1/clubs/{clubId}/tasks
+  module: task
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: task.view
+- method: GET
+  path: /api/v1/clubs/{clubId}/tasks/summary
+  module: task
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: task.view
+- method: GET
+  path: /api/v1/users/me/tasks
+  module: task
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/tasks/{taskId}
+  module: task
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: PATCH
+  path: /api/v1/tasks/{taskId}
+  module: task
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: task.update | task.create
+- method: POST
+  path: /api/v1/tasks/{taskId}/notifications
+  module: notification
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: notification.send | task.update | task.create
+- method: PATCH
+  path: /api/v1/tasks/{taskId}/progress
+  module: task
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: PATCH
+  path: /api/v1/tasks/{taskId}/verify
+  module: task
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: task.verify
+- method: POST
+  path: /api/v1/clubs/{clubId}/channels
+  module: chat
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.send
+- method: GET
+  path: /api/v1/clubs/{clubId}/channels
+  module: chat
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.view
+- method: POST
+  path: /api/v1/channels/{channelId}/messages
+  module: chat
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.send
+- method: GET
+  path: /api/v1/channels/{channelId}/messages
+  module: chat
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.view
+- method: GET
+  path: /api/v1/channels/{channelId}/pinned-messages
+  module: chat
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.view
+- method: POST
+  path: /api/v1/channels/{channelId}/messages/{messageId}/pin
+  module: chat
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.send
+- method: DELETE
+  path: /api/v1/channels/{channelId}/messages/{messageId}/pin
+  module: chat
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.send
+- method: POST
+  path: /api/v1/channels/{channelId}/summaries
+  module: chat
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.summarize
+- method: GET
+  path: /api/v1/channels/{channelId}/summaries
+  module: chat
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.view
+- method: DELETE
+  path: /api/v1/users/{userId}
+  module: user-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: user.delete
+- method: GET
+  path: /api/v1/clubs/{clubId}/application-form
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/clubs/{clubId}/application-forms
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.manage_form | application.view
+- method: POST
+  path: /api/v1/clubs/{clubId}/application-forms
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.manage_form | application.review
+- method: PUT
+  path: /api/v1/clubs/{clubId}/application-forms/{formId}
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.manage_form | application.review
+- method: DELETE
+  path: /api/v1/clubs/{clubId}/application-forms/{formId}
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.manage_form | application.review
+- method: POST
+  path: /api/v1/clubs/{clubId}/application-forms/{formId}/files
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.manage_form | application.review
+- method: DELETE
+  path: /api/v1/clubs/{clubId}/application-forms/{formId}/files/{fileId}
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.manage_form | application.review
+- method: PUT
+  path: /api/v1/users/me/applications/{applicationId}
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: PUT
+  path: /api/v1/clubs/{clubId}/applications/{applicationId}
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.update | application.review
+- method: POST
+  path: /api/v1/applications/{applicationId}/files
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: DELETE
+  path: /api/v1/applications/{applicationId}/files/{fileId}
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/application-files/{fileId}/download
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/clubs/{clubId}/positions
+  module: role-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: department.view
+- method: PUT
+  path: /api/v1/clubs/{clubId}/positions
+  module: role-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: permission.assign
+- method: DELETE
+  path: /api/v1/clubs/{clubId}/positions/{assignmentId}
+  module: role-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: permission.revoke
+- method: GET
+  path: /api/v1/statistics/system
+  module: statistics
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: user.view
+- method: GET
+  path: /api/v1/clubs/{clubId}/statistics
+  module: statistics
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: club.view | member.view
+- method: GET
+  path: /api/v1/public/i18n/translations
+  module: system
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: POST
+  path: /api/v1/public/i18n/translate-batch
+  module: system
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: GET
+  path: /api/v1/system/documents
+  module: document-vault
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: POST
+  path: /api/v1/system/documents
+  module: document-vault
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: document.upload
+- method: GET
+  path: /api/v1/documents/{documentId}/preview
+  module: document-vault
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: document.view
+- method: POST
+  path: /api/v1/channels/{channelId}/read
+  module: chat-realtime
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.view
+- method: POST
+  path: /api/v1/channels/{channelId}/attachments
+  module: chat-realtime
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.send
+- method: GET
+  path: /api/v1/chat-attachments/{attachmentId}/stream
+  module: chat-realtime
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.view
+- method: GET
+  path: /api/v1/clubs/{clubId}/quick-replies
+  module: chat-realtime
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.view
+- method: POST
+  path: /api/v1/clubs/{clubId}/quick-replies
+  module: chat-realtime
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.send
+- method: PUT
+  path: /api/v1/clubs/{clubId}/quick-replies/{replyId}
+  module: chat-realtime
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.send
+- method: DELETE
+  path: /api/v1/clubs/{clubId}/quick-replies/{replyId}
+  module: chat-realtime
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.send
+- method: PUT
+  path: /api/v1/channels/{channelId}/messages/{messageId}/reactions
+  module: chat-realtime
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.send
