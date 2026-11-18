@@ -1,20 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import {
-  AlertCircle,
-  Bot,
-  Check,
-  CheckCheck,
-  Clock,
-  Download,
-  Eye,
-  FileText,
-  Loader2,
-  Pin,
-  PinOff,
-  Reply,
-  RotateCcw,
-  X,
+  AlertCircle, Bot, Check, CheckCheck, Clock, Download, Eye, FileText,
+  Loader2, MoreHorizontal, Pin, Reply, RotateCcw, X,
 } from "lucide-react";
 import type { ChatMessage } from "@/lib/api";
 import type { PreviewTarget } from "@/components/document/DocumentPreviewModal";
@@ -22,6 +11,7 @@ import { resolveChatMessageStatusMeta } from "@/forms/chat/chat-status-meta";
 import { getTelegramJumbomojiCount } from "@/forms/chat/chat-emojis";
 import { formatChatTimeCompact } from "@/lib/chat-message-cache";
 import { ChatMediaCollage } from "@/components/management/ChatMediaCollage";
+import { ChatInlineEditBox, ChatMessageContextMenu, type ContextMenuAnchor } from "@/components/management/ChatMessageContextMenu";
 import { ChatReactionPills, ChatReactionTrigger } from "@/components/management/ChatMessageReactions";
 import { cn, formatDateTime, formatSize } from "@/lib/utils";
 
@@ -40,26 +30,11 @@ function DeliveryStatusIcon({
   status: ReturnType<typeof resolveChatMessageStatusMeta>["status"];
   bareMedia?: boolean;
 }) {
-  if (status === "uploading") {
-    return <Loader2 size={11} className="shrink-0 animate-spin text-primary" />;
-  }
-  if (status === "sending") {
-    return <Clock size={10.5} className="shrink-0 opacity-80" />;
-  }
-  if (status === "seen") {
-    return (
-      <CheckCheck
-        size={12}
-        className={cn("shrink-0", bareMedia ? "text-white" : "text-primary")}
-      />
-    );
-  }
-  if (status === "delivered") {
-    return <CheckCheck size={12} className="shrink-0 opacity-85" />;
-  }
-  if (status === "sent") {
-    return <Check size={11.5} className="shrink-0 opacity-80" />;
-  }
+  if (status === "uploading") return <Loader2 size={11} className="shrink-0 animate-spin text-primary" />;
+  if (status === "sending") return <Clock size={10.5} className="shrink-0 opacity-80" />;
+  if (status === "seen") return <CheckCheck size={12} className={cn("shrink-0", bareMedia ? "text-white" : "text-primary")} />;
+  if (status === "delivered") return <CheckCheck size={12} className="shrink-0 opacity-85" />;
+  if (status === "sent") return <Check size={11.5} className="shrink-0 opacity-80" />;
   return <AlertCircle size={11} className="shrink-0 text-destructive" />;
 }
 
@@ -71,14 +46,18 @@ export function ChatMessageBubble({
   groupedNext,
   highlighted,
   canSend,
+  canModerate = false,
   onReply,
   onTogglePin,
   onToggleReaction,
+  onEditMessage,
+  onDeleteMessage,
   onJumpToMessage,
   onRetryMessage,
   onDismissFailed,
   onPreviewDoc,
   onDownloadDoc,
+  onNotice,
   onError,
 }: {
   message: ChatMessage;
@@ -88,16 +67,24 @@ export function ChatMessageBubble({
   groupedNext: boolean;
   highlighted?: boolean;
   canSend: boolean;
+  canModerate?: boolean;
   onReply: (msg: ChatMessage) => void;
   onTogglePin: (msg: ChatMessage) => void;
   onToggleReaction: (msg: ChatMessage, emoji: string) => void;
+  onEditMessage: (msg: ChatMessage, nextContent: string) => Promise<void> | void;
+  onDeleteMessage: (msg: ChatMessage) => Promise<void> | void;
   onJumpToMessage: (messageId: string) => void;
   onRetryMessage: (clientTempId: string) => void;
   onDismissFailed: (channelId: string, clientTempId: string) => void;
   onPreviewDoc: (target: PreviewTarget) => void;
   onDownloadDoc: (id: string, name: string) => void;
+  onNotice?: (msg: string) => void;
   onError: (msg: string) => void;
 }) {
+  const [menuAnchor, setMenuAnchor] = useState<ContextMenuAnchor | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editDraft, setEditDraft] = useState(m.content ?? "");
+
   const isBot = m.senderType === "AI_BOT";
   const isMine = !isBot && Boolean(currentUserId) && m.senderId === currentUserId;
   const statusMeta = isMine ? resolveChatMessageStatusMeta(m) : null;
@@ -105,26 +92,33 @@ export function ChatMessageBubble({
   const isPending = statusMeta?.status === "uploading" || statusMeta?.status === "sending";
   const showSender = !isMine && !groupedPrev;
   const showTime = !groupedNext || Boolean(m.optimistic) || isMine;
-  const showExplicitReceiptFooter = Boolean(
-    isMine && statusMeta && !isFailed && (isLatestOwn || isPending)
-  );
+  const showExplicitReceiptFooter = Boolean(isMine && statusMeta && !isFailed && (isLatestOwn || isPending));
   const attachments = m.attachments ?? [];
   const reactions = m.reactions ?? [];
   const myEmojis = new Set(
-    currentUserId
-      ? reactions.filter((r) => r.reactorIds?.includes(currentUserId)).map((r) => r.emoji)
-      : []
+    currentUserId ? reactions.filter((r) => r.reactorIds?.includes(currentUserId)).map((r) => r.emoji) : []
   );
   const mediaCount = attachments.filter((a) => a.mediaKind === "IMAGE" || a.mediaKind === "VIDEO").length;
   const hasText = Boolean(m.content?.trim());
-  const isBareMedia =
-    mediaCount > 0 && mediaCount === attachments.length && !hasText && !m.replyToId && !m.documentId;
+  const isBareMedia = mediaCount > 0 && mediaCount === attachments.length && !hasText && !m.replyToId && !m.documentId;
   const jumbomojiCount = getTelegramJumbomojiCount(
     m.content ?? "",
     attachments.length > 0 || Boolean(m.documentId) || Boolean(m.replyToId)
   );
   const senderLabel = isBot ? "Trợ lý AI CLB" : m.senderFullName || "Thành viên";
-  const canInteract = canSend && !m.optimistic && !isFailed;
+  const canInteract = !m.optimistic && !isFailed && (canSend || canModerate);
+  const canDelete = !m.optimistic && !isFailed && ((isMine && canSend) || canModerate);
+
+  const openBubbleMenu = (x: number, y: number) => {
+    if (canInteract && !editing) setMenuAnchor({ x, y });
+  };
+
+  const submitEdit = () => {
+    const trimmed = editDraft.trim();
+    if (!trimmed) return;
+    setEditing(false);
+    if (trimmed !== m.content.trim()) void onEditMessage(m, trimmed);
+  };
 
   return (
     <div
@@ -140,12 +134,7 @@ export function ChatMessageBubble({
       {!isMine && (
         <div className="w-7 shrink-0 self-start">
           {!groupedPrev && (
-            <div
-              className={cn(
-                "grid h-7 w-7 place-items-center rounded-full text-[10.5px] font-bold shadow-2xs",
-                isBot ? "bg-primary text-primary-foreground" : "bg-primary/12 text-primary"
-              )}
-            >
+            <div className={cn("grid h-7 w-7 place-items-center rounded-full text-[10.5px] font-bold shadow-2xs", isBot ? "bg-primary text-primary-foreground" : "bg-primary/12 text-primary")}>
               {isBot ? <Bot size={14} /> : senderInitials(senderLabel)}
             </div>
           )}
@@ -166,11 +155,20 @@ export function ChatMessageBubble({
 
         <div className={cn("flex max-w-full items-center gap-1", isMine && "flex-row-reverse")}>
           <div
-            onDoubleClick={() => {
-              if (canInteract) onToggleReaction(m, "❤️");
+            onContextMenu={(e) => {
+              if (!canInteract || editing) return;
+              e.preventDefault();
+              openBubbleMenu(e.clientX, e.clientY);
+            }}
+            onClick={(e) => {
+              if (!canInteract || editing) return;
+              if ((e.target as HTMLElement).closest("button, a, input, textarea, video")) return;
+              if (typeof window !== "undefined" && (window.getSelection()?.toString() ?? "").length > 0) return;
+              openBubbleMenu(e.clientX, e.clientY);
             }}
             className={cn(
               "relative max-w-full text-[13px] leading-snug",
+              canInteract && !editing && "cursor-pointer",
               isBareMedia
                 ? "p-0"
                 : cn(
@@ -194,9 +192,7 @@ export function ChatMessageBubble({
                 className="mb-1 flex max-w-full items-center gap-1.5 rounded-lg bg-background/75 px-2 py-0.5 text-left text-[11px] transition-colors hover:bg-background"
               >
                 <span className="h-3.5 w-0.5 shrink-0 rounded-full bg-primary" />
-                <span className="shrink-0 font-semibold text-foreground">
-                  {m.replyToSenderName || "Tin nhắn"}:
-                </span>
+                <span className="shrink-0 font-semibold text-foreground">{m.replyToSenderName || "Tin nhắn"}:</span>
                 <span className="truncate text-muted-foreground">{m.replyToPreview || "…"}</span>
               </button>
             )}
@@ -205,49 +201,38 @@ export function ChatMessageBubble({
               <ChatMediaCollage attachments={attachments} flushTop={isBareMedia || !m.replyToId} onError={onError} />
             )}
 
-            {hasText && (
-              <p
-                className={cn(
-                  "whitespace-pre-line break-words",
-                  attachments.length > 0 && "mt-1.5",
-                  jumbomojiCount === 1 && "py-0.5 text-[34px] leading-none",
-                  jumbomojiCount === 2 && "py-0.5 text-[28px] leading-tight",
-                  jumbomojiCount === 3 && "py-0.5 text-[23px] leading-tight"
-                )}
-              >
-                {m.content}
-              </p>
+            {editing ? (
+              <ChatInlineEditBox value={editDraft} onChange={setEditDraft} onCancel={() => setEditing(false)} onSave={submitEdit} />
+            ) : (
+              hasText && (
+                <p
+                  className={cn(
+                    "whitespace-pre-line break-words",
+                    attachments.length > 0 && "mt-1.5",
+                    jumbomojiCount === 1 && "py-0.5 text-[34px] leading-none",
+                    jumbomojiCount === 2 && "py-0.5 text-[28px] leading-tight",
+                    jumbomojiCount === 3 && "py-0.5 text-[23px] leading-tight"
+                  )}
+                >
+                  {m.content}
+                </p>
+              )
             )}
 
             {m.documentId && (
-              <div
-                className={cn(
-                  "flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/20 bg-background/85 px-2 py-1 text-xs",
-                  hasText && "mt-1.5"
-                )}
-              >
+              <div className={cn("flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/20 bg-background/85 px-2 py-1 text-xs", hasText && "mt-1.5")}>
                 <div className="flex min-w-0 items-center gap-1.5">
                   <FileText size={13} className="shrink-0 text-primary" />
-                  <span className="max-w-[190px] truncate font-semibold text-foreground">
-                    {m.documentName || "Tài liệu CLB"}
-                  </span>
+                  <span className="max-w-[190px] truncate font-semibold text-foreground">{m.documentName || "Tài liệu CLB"}</span>
                   {typeof m.documentSizeBytes === "number" && (
-                    <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
-                      {formatSize(m.documentSizeBytes)}
-                    </span>
+                    <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{formatSize(m.documentSizeBytes)}</span>
                   )}
                 </div>
                 <div className="flex items-center gap-1">
                   {m.documentPreviewable !== false && (
                     <button
                       type="button"
-                      onClick={() =>
-                        onPreviewDoc({
-                          id: m.documentId!,
-                          name: m.documentName || "Tài liệu",
-                          contentType: m.documentContentType,
-                        })
-                      }
+                      onClick={() => onPreviewDoc({ id: m.documentId!, name: m.documentName || "Tài liệu", contentType: m.documentContentType })}
                       className="inline-flex items-center gap-1 rounded border border-border bg-card px-1.5 py-0.5 text-[10.5px] font-semibold hover:bg-muted"
                     >
                       <Eye size={11} /> Xem
@@ -264,7 +249,7 @@ export function ChatMessageBubble({
               </div>
             )}
 
-            {showTime && !isFailed && (
+            {showTime && !isFailed && !editing && (
               <div
                 title={statusMeta ? statusMeta.tooltip : formatDateTime(m.createdAt)}
                 className={cn(
@@ -274,39 +259,40 @@ export function ChatMessageBubble({
                   isBareMedia && isMine && "ml-auto"
                 )}
               >
+                {m.editedAt && <span>(đã sửa)</span>}
                 <span>{formatChatTimeCompact(m.createdAt)}</span>
                 {statusMeta && <DeliveryStatusIcon status={statusMeta.status} bareMedia={isBareMedia} />}
               </div>
             )}
           </div>
 
-          {canInteract && (
+          {canInteract && !editing && (
             <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
-              <ChatReactionTrigger
-                isMine={isMine}
-                myEmojis={myEmojis}
-                onToggleReaction={(emoji) => onToggleReaction(m, emoji)}
-              />
+              {canSend && (
+                <>
+                  <ChatReactionTrigger isMine={isMine} myEmojis={myEmojis} onToggleReaction={(emoji) => onToggleReaction(m, emoji)} />
+                  <button
+                    type="button"
+                    title="Trả lời"
+                    aria-label={`Trả lời ${senderLabel}`}
+                    onClick={() => onReply(m)}
+                    className="grid h-6 w-6 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <Reply size={12} />
+                  </button>
+                </>
+              )}
               <button
                 type="button"
-                title="Trả lời"
-                aria-label={`Trả lời ${senderLabel}`}
-                onClick={() => onReply(m)}
+                title="Tuỳ chọn tin nhắn"
+                aria-label="Tuỳ chọn tin nhắn"
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  openBubbleMenu(rect.left, rect.bottom + 4);
+                }}
                 className="grid h-6 w-6 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
               >
-                <Reply size={12} />
-              </button>
-              <button
-                type="button"
-                title={m.pinned ? "Bỏ ghim tin nhắn" : "Ghim tin nhắn"}
-                aria-label={m.pinned ? "Bỏ ghim tin nhắn" : "Ghim tin nhắn"}
-                onClick={() => onTogglePin(m)}
-                className={cn(
-                  "grid h-6 w-6 place-items-center rounded-full transition-colors hover:bg-muted",
-                  m.pinned ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {m.pinned ? <PinOff size={12} /> : <Pin size={12} />}
+                <MoreHorizontal size={13} />
               </button>
             </div>
           )}
@@ -316,48 +302,29 @@ export function ChatMessageBubble({
           reactions={reactions}
           currentUserId={currentUserId}
           isMine={isMine}
-          canReact={canInteract}
+          canReact={canSend && !m.optimistic && !isFailed}
           onToggleReaction={(emoji) => onToggleReaction(m, emoji)}
         />
 
         {showExplicitReceiptFooter && statusMeta && (
-          <div
-            title={statusMeta.tooltip}
-            className={cn(
-              "mt-0.5 flex items-center gap-1 px-1 text-[10.5px] font-medium",
-              statusMeta.status === "seen" ? "text-primary" : "text-muted-foreground"
-            )}
-          >
+          <div title={statusMeta.tooltip} className={cn("mt-0.5 flex items-center gap-1 px-1 text-[10.5px] font-medium", statusMeta.status === "seen" ? "text-primary" : "text-muted-foreground")}>
             <DeliveryStatusIcon status={statusMeta.status} />
             <span>{statusMeta.detailLabel}</span>
           </div>
         )}
 
         {isFailed && (
-          <div
-            role="alert"
-            title={statusMeta?.tooltip}
-            className="mt-1 flex flex-wrap items-center justify-end gap-1.5 px-1 text-[10.5px] text-destructive"
-          >
+          <div role="alert" title={statusMeta?.tooltip} className="mt-1 flex flex-wrap items-center justify-end gap-1.5 px-1 text-[10.5px] text-destructive">
             <span className="inline-flex items-center gap-1 font-semibold">
               <AlertCircle size={11} />
               <span className="max-w-[260px] truncate">{statusMeta?.detailLabel || "Gửi lỗi"}</span>
             </span>
             {m.clientTempId && (
               <>
-                <button
-                  type="button"
-                  onClick={() => onRetryMessage(m.clientTempId!)}
-                  className="inline-flex items-center gap-0.5 rounded bg-destructive/10 px-1.5 py-0.5 font-semibold text-destructive hover:bg-destructive/15"
-                >
+                <button type="button" onClick={() => onRetryMessage(m.clientTempId!)} className="inline-flex items-center gap-0.5 rounded bg-destructive/10 px-1.5 py-0.5 font-semibold text-destructive hover:bg-destructive/15">
                   <RotateCcw size={10} /> Thử lại
                 </button>
-                <button
-                  type="button"
-                  onClick={() => onDismissFailed(m.channelId, m.clientTempId!)}
-                  aria-label="Xóa tin lỗi"
-                  className="inline-flex items-center text-muted-foreground hover:text-foreground"
-                >
+                <button type="button" onClick={() => onDismissFailed(m.channelId, m.clientTempId!)} aria-label="Xóa tin lỗi" className="inline-flex items-center text-muted-foreground hover:text-foreground">
                   <X size={11} />
                 </button>
               </>
@@ -365,6 +332,22 @@ export function ChatMessageBubble({
           </div>
         )}
       </div>
+
+      <ChatMessageContextMenu
+        anchor={menuAnchor}
+        message={m}
+        isMine={isMine}
+        canSend={canSend}
+        canDelete={canDelete}
+        myEmojis={myEmojis}
+        onClose={() => setMenuAnchor(null)}
+        onToggleReaction={(emoji) => onToggleReaction(m, emoji)}
+        onReply={() => onReply(m)}
+        onStartEdit={isMine && m.senderType === "USER" ? () => { setEditDraft(m.content ?? ""); setEditing(true); } : undefined}
+        onTogglePin={() => onTogglePin(m)}
+        onCopyText={hasText ? () => { void navigator.clipboard?.writeText(m.content).then(() => onNotice?.("Đã sao chép tin nhắn.")); } : undefined}
+        onDelete={() => void onDeleteMessage(m)}
+      />
     </div>
   );
 }

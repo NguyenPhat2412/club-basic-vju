@@ -78,8 +78,37 @@ export function useChatRealtime({
         return;
       }
 
-      if (event.type === 'CHANNEL_CREATED' && event.clubId === clubIdRef.current) {
+      if (
+        (event.type === 'CHANNEL_CREATED' || event.type === 'CHANNEL_DELETED') &&
+        event.clubId === clubIdRef.current
+      ) {
+        if (event.type === 'CHANNEL_DELETED') {
+          queryClient.setQueryData<ChatChannel[]>(qk.clubChannels(clubIdRef.current), (old) => old?.filter((ch) => ch.id !== event.channelId));
+          queryClient.removeQueries({ queryKey: qk.channelMessages(event.channelId) });
+          queryClient.removeQueries({ queryKey: qk.channelPinnedMessages(event.channelId) });
+        }
         queryClient.invalidateQueries({ queryKey: qk.clubChannels(clubIdRef.current) });
+        return;
+      }
+
+      if (event.type === 'MESSAGE_DELETED' && event.channelId && event.message?.id) {
+        const deletedId = event.message.id;
+        queryClient.setQueryData<Page<ChatMessage>>(qk.channelMessages(event.channelId), (old) => {
+          const base = old ?? getCachedChannelWindow(event.channelId, userIdRef.current)?.page;
+          if (!base) return old;
+          const filtered = base.items.filter((m) => m.id !== deletedId);
+          if (filtered.length === base.items.length) return old;
+          const next = { ...base, items: filtered, total: Math.max(0, base.total - 1) };
+          saveCachedChannelWindow(event.channelId, next, userIdRef.current, activeChannelRef.current || event.channelId);
+          return next;
+        });
+        queryClient.setQueryData<ChatMessage[]>(qk.channelPinnedMessages(event.channelId), (old) => {
+          const base = old ?? getCachedPinnedMessages(event.channelId, userIdRef.current)?.items;
+          if (!base) return old;
+          const next = base.filter((m) => m.id !== deletedId);
+          saveCachedPinnedMessages(event.channelId, next, userIdRef.current, activeChannelRef.current || event.channelId);
+          return next;
+        });
         return;
       }
 
@@ -143,13 +172,14 @@ export function useChatRealtime({
       if (
         (event.type === 'MESSAGE_PINNED' ||
           event.type === 'MESSAGE_UNPINNED' ||
-          event.type === 'MESSAGE_REACTION_UPDATED') &&
+          event.type === 'MESSAGE_REACTION_UPDATED' ||
+          event.type === 'MESSAGE_UPDATED') &&
         event.message
       ) {
         const incoming = readRealtimeChatMessage(event.message, event.channelId);
         if (!incoming) return;
         const isPinned =
-          event.type === 'MESSAGE_REACTION_UPDATED'
+          event.type === 'MESSAGE_REACTION_UPDATED' || event.type === 'MESSAGE_UPDATED'
             ? Boolean(incoming.pinned)
             : event.type === 'MESSAGE_PINNED';
         queryClient.setQueryData<ChatMessage[]>(

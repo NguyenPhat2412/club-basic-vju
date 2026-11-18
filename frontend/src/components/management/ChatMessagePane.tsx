@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Bot, ChevronDown, ChevronsDown, Clock, Sparkles, Upload, WifiOff } from "lucide-react";
+import { Bot, ChevronDown, ChevronsDown, Clock, Sparkles, Trash2, Upload, WifiOff } from "lucide-react";
 import type { AiSummary, ChatChannel, ChatMessage, ChatQuickReply, DocumentItem, StagedChatMedia } from "@/lib/api";
 import type { WsConnectionStatus } from "@/hooks/chat/useChatRealtime";
 import type { PreviewTarget } from "@/components/document/DocumentPreviewModal";
@@ -34,6 +34,9 @@ export type ChatMessagePaneProps = {
   wsError?: string;
   canSend: boolean;
   canSummarize: boolean;
+  canModerate: boolean;
+  canDeleteChannel: boolean;
+  onRequestDeleteChannel?: () => void;
   canManageQuickReplies: boolean;
   quickReplies: ChatQuickReply[];
   quickRepliesLoading: boolean;
@@ -43,6 +46,8 @@ export type ChatMessagePaneProps = {
   pinnedMessages: ChatMessage[];
   onTogglePin: (msg: ChatMessage) => void;
   onToggleReaction: (msg: ChatMessage, emoji: string) => void;
+  onEditMessage: (msg: ChatMessage, nextContent: string) => Promise<void> | void;
+  onDeleteMessage: (msg: ChatMessage) => Promise<void> | void;
   onUnpinById: (messageId: string) => void;
   messagesPending: boolean;
   messagesError: unknown;
@@ -77,8 +82,10 @@ export type ChatMessagePaneProps = {
 export function ChatMessagePane(props: ChatMessagePaneProps) {
   const {
     clubId, activeChannel, currentUserId, wsStatus, wsError, canSend, canSummarize,
+    canModerate, canDeleteChannel, onRequestDeleteChannel,
     canManageQuickReplies, quickReplies, quickRepliesLoading, summarizePending,
-    onSummarize, latestSummary, pinnedMessages, onTogglePin, onToggleReaction, onUnpinById,
+    onSummarize, latestSummary, pinnedMessages, onTogglePin, onToggleReaction,
+    onEditMessage, onDeleteMessage, onUnpinById,
     messagesPending, messagesError, onRetryMessages, orderedMessages,
     hasOlder, loadingOlder, onLoadOlder, typingUsers, replyTo, onReply, onClearReply, attachedDoc,
     onOpenDocPicker, onClearAttachedDoc, stagedMedia, onAddFiles, onRemoveStagedMedia,
@@ -244,6 +251,17 @@ export function ChatMessagePane(props: ChatMessagePaneProps) {
               <Sparkles size={12} /> {summarizePending ? "Đang tóm tắt…" : "Tóm tắt AI"}
             </Button>
           )}
+          {canDeleteChannel && onRequestDeleteChannel && (
+            <button
+              type="button"
+              title="Xoá kênh hiện tại"
+              aria-label="Xoá kênh hiện tại"
+              onClick={onRequestDeleteChannel}
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-border/70 bg-background px-2 text-[11px] font-semibold text-destructive hover:border-destructive/30 hover:bg-destructive/10"
+            >
+              <Trash2 size={12} /> <span className="hidden md:inline">Xoá kênh</span>
+            </button>
+          )}
 
           {latestSummary && summaryOpen && (
             <div className="absolute top-full right-0 z-50 mt-1.5 max-h-64 w-[min(420px,calc(100vw-32px))] overflow-y-auto rounded-xl border border-border bg-card p-3 text-xs shadow-xl">
@@ -267,7 +285,7 @@ export function ChatMessagePane(props: ChatMessagePaneProps) {
         <div
           role="status"
           aria-live="polite"
-          className="flex shrink-0 items-center gap-2 border-b border-amber-200 bg-amber-50/90 px-3.5 py-1 text-[11px] text-amber-900"
+          className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/60 px-3.5 py-1 text-[11px] text-foreground"
         >
           <WifiOff size={12} className="shrink-0" />
           <span className="truncate">{wsError || "Kết nối trực tuyến đang tự động kết nối lại…"}</span>
@@ -321,23 +339,15 @@ export function ChatMessagePane(props: ChatMessagePaneProps) {
               : undefined;
             return orderedMessages.map((m, idx) => (
               <ChatMessageBubble
-                key={m.id}
-                message={m}
-                currentUserId={currentUserId}
+                key={m.id} message={m} currentUserId={currentUserId}
                 isLatestOwn={Boolean(latestOwnId && m.id === latestOwnId)}
                 groupedPrev={areMessagesInSameDisplayGroup(orderedMessages[idx - 1], m)}
                 groupedNext={areMessagesInSameDisplayGroup(m, orderedMessages[idx + 1])}
-                highlighted={highlightedId === m.id}
-                canSend={canSend}
-                onReply={onReply}
-                onTogglePin={onTogglePin}
-                onToggleReaction={onToggleReaction}
-                onJumpToMessage={jumpToMessage}
-                onRetryMessage={onRetryMessage}
-                onDismissFailed={onDismissFailed}
-                onPreviewDoc={onPreviewDoc}
-                onDownloadDoc={onDownloadDoc}
-                onError={onError}
+                highlighted={highlightedId === m.id} canSend={canSend} canModerate={canModerate}
+                onReply={onReply} onTogglePin={onTogglePin} onToggleReaction={onToggleReaction}
+                onEditMessage={onEditMessage} onDeleteMessage={onDeleteMessage}
+                onJumpToMessage={jumpToMessage} onRetryMessage={onRetryMessage} onDismissFailed={onDismissFailed}
+                onPreviewDoc={onPreviewDoc} onDownloadDoc={onDownloadDoc} onNotice={onNotice} onError={onError}
               />
             ));
           })()
@@ -346,16 +356,11 @@ export function ChatMessagePane(props: ChatMessagePaneProps) {
 
       {(hasUnreadBelow || showJumpBtn) && (
         <button
-          type="button"
-          onClick={jumpToBottom}
-          title="Xuống tin nhắn mới nhất"
-          aria-label="Xuống tin nhắn mới nhất"
+          type="button" onClick={jumpToBottom} title="Xuống tin nhắn mới nhất" aria-label="Xuống tin nhắn mới nhất"
           className="absolute right-4 bottom-14 z-20 grid h-8 w-8 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-md transition hover:bg-muted hover:text-foreground"
         >
           <ChevronsDown size={16} />
-          {hasUnreadBelow && (
-            <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-card" />
-          )}
+          {hasUnreadBelow && <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-card" />}
         </button>
       )}
 
@@ -367,27 +372,14 @@ export function ChatMessagePane(props: ChatMessagePaneProps) {
 
       {canSend && (
         <ChatComposerBar
-          clubId={clubId}
-          channelName={activeChannel?.name}
-          currentUserId={currentUserId}
-          canManageQuickReplies={canManageQuickReplies}
-          quickReplies={quickReplies}
-          quickRepliesLoading={quickRepliesLoading}
-          replyTo={replyTo}
-          onClearReply={onClearReply}
-          attachedDoc={attachedDoc}
-          onOpenDocPicker={() => onOpenDocPicker()}
-          onClearAttachedDoc={onClearAttachedDoc}
-          stagedMedia={stagedMedia}
-          onAddFiles={onAddFiles}
-          onRemoveStagedMedia={onRemoveStagedMedia}
-          onClearStagedMedia={onClearStagedMedia}
-          content={content}
-          onContentChange={onContentChange}
-          sendPending={sendPending}
-          onSend={onSend}
-          onNotice={onNotice}
-          onError={onError}
+          clubId={clubId} channelName={activeChannel?.name} currentUserId={currentUserId}
+          canManageQuickReplies={canManageQuickReplies} quickReplies={quickReplies} quickRepliesLoading={quickRepliesLoading}
+          replyTo={replyTo} onClearReply={onClearReply} attachedDoc={attachedDoc}
+          onOpenDocPicker={() => onOpenDocPicker()} onClearAttachedDoc={onClearAttachedDoc}
+          stagedMedia={stagedMedia} onAddFiles={onAddFiles}
+          onRemoveStagedMedia={onRemoveStagedMedia} onClearStagedMedia={onClearStagedMedia}
+          content={content} onContentChange={onContentChange} sendPending={sendPending}
+          onSend={onSend} onNotice={onNotice} onError={onError}
         />
       )}
     </section>

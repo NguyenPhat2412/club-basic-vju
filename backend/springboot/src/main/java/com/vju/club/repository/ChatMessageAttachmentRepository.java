@@ -17,4 +17,8 @@ public interface ChatMessageAttachmentRepository extends JpaRepository<ChatMessa
 
     @EntityGraph(attributePaths = {"channel", "uploader", "message"})
     List<ChatMessageAttachment> findByIdIn(Collection<UUID> ids);
+
+    List<ChatMessageAttachment> findByMessage_Id(UUID messageId);
+
+    List<ChatMessageAttachment> findByChannel_Id(UUID channelId);
 }

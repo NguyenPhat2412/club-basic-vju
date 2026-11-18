@@ -59,4 +59,7 @@ public class ChatMessage extends TimestampedEntity {
 
     @Column(name = "delivered_at")
     private OffsetDateTime deliveredAt;
+
+    @Column(name = "edited_at")
+    private OffsetDateTime editedAt;
 }

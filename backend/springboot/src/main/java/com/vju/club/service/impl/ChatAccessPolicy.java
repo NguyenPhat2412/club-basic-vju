@@ -58,4 +58,28 @@ public class ChatAccessPolicy {
         return channel.getDepartment() == null
                 || departmentMemberRepository.isUserInDepartment(channel.getDepartment().getId(), actor.id());
     }
+
+    public boolean canManageChannel(Actor actor, ChatChannel channel) {
+        UUID clubId = channel.getClub().getId();
+        UUID deptId = channel.getDepartment() != null ? channel.getDepartment().getId() : null;
+        if (authorizationService.hasPermission(actor, "club.update", clubId, null)) {
+            return true;
+        }
+        return switch (channel.getChannelType()) {
+            case DEPARTMENT -> (deptId != null && authorizationService.hasPermission(actor, "department.update", clubId, deptId))
+                    || authorizationService.hasPermission(actor, "department.create", clubId, null);
+            case EVENT_THREAD -> authorizationService.hasPermission(actor, "event.update", clubId, null)
+                    || authorizationService.hasPermission(actor, "event.create", clubId, null);
+            case CLUB_GENERAL -> false;
+        };
+    }
+
+    public boolean canModerateMessages(Actor actor, ChatChannel channel) {
+        if (canManageChannel(actor, channel)) {
+            return true;
+        }
+        UUID clubId = channel.getClub().getId();
+        UUID deptId = channel.getDepartment() != null ? channel.getDepartment().getId() : null;
+        return authorizationService.hasPermission(actor, ChatConstants.PERMISSION_SUMMARIZE, clubId, deptId);
+    }
 }

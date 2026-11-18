@@ -162,7 +162,9 @@ public final class ApiPaths {
     // Chat & AI Summaries
     public static final String WS_ENDPOINT = API_V1 + "/ws";
     public static final String CLUB_CHANNELS = "/clubs/{clubId}/channels";
+    public static final String CLUB_CHANNEL_BY_ID = "/clubs/{clubId}/channels/{channelId}";
     public static final String CHANNEL_MESSAGES = "/channels/{channelId}/messages";
+    public static final String CHANNEL_MESSAGE_BY_ID = "/channels/{channelId}/messages/{messageId}";
     public static final String CHANNEL_PINNED_MESSAGES = "/channels/{channelId}/pinned-messages";
     public static final String CHANNEL_MESSAGE_PIN = "/channels/{channelId}/messages/{messageId}/pin";
     public static final String CHANNEL_MESSAGE_REACTIONS = "/channels/{channelId}/messages/{messageId}/reactions";

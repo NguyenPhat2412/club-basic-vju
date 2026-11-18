@@ -31,6 +31,8 @@ export const chatApi = {
     clubId: string,
     body: { name: string; channelType?: string; departmentId?: string; eventId?: string }
   ) => api<ChatChannel>(API_ROUTES.clubs.channels(clubId), { method: 'POST', body: JSON.stringify(body) }),
+  deleteChannel: (clubId: string, channelId: string) =>
+    api<void>(API_ROUTES.clubs.channelItem(clubId, channelId), { method: 'DELETE' }),
   channelMessages: (
     channelId: string,
     offset = 0,
@@ -67,6 +69,13 @@ export const chatApi = {
       body: JSON.stringify(body),
     });
   },
+  updateMessage: (channelId: string, messageId: string, content: string) =>
+    api<ChatMessage>(API_ROUTES.channels.messageItem(channelId, messageId), {
+      method: 'PATCH',
+      body: JSON.stringify({ content }),
+    }),
+  deleteMessage: (channelId: string, messageId: string) =>
+    api<void>(API_ROUTES.channels.messageItem(channelId, messageId), { method: 'DELETE' }),
   uploadChatAttachment: (channelId: string, file: File) => {
     const form = new FormData();
     form.append('file', file);

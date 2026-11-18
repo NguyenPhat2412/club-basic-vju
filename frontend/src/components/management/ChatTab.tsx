@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
-import { Hash, MessageSquare, Plus } from "lucide-react";
+import { MessageSquare, Trash2 } from "lucide-react";
 import { apiModel, ChatChannel, ChatMessage, Department } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
 import { setActiveViewedChatChannel } from "@/hooks/notification/useGlobalRealtimeNotifications";
@@ -14,13 +14,14 @@ import { useChatMessageSender } from "@/hooks/chat/useChatMessageSender";
 import { useChatRealtime } from "@/hooks/chat/useChatRealtime";
 import { filterChannelMessages } from "@/lib/chat-message-cache";
 import { DocumentPreviewModal, PreviewTarget } from "@/components/document/DocumentPreviewModal";
+import { ChatChannelSidebar } from "@/components/management/ChatChannelSidebar";
 import { ChatDocumentPickerModal } from "@/components/management/ChatDocumentPickerModal";
 import { ChatMessagePane } from "@/components/management/ChatMessagePane";
 import { ModalShell } from "@/components/shared/Overlays";
 import { EmptyState, ErrorState, LoadingRows } from "@/components/shared/States";
 import { describeError } from "@/components/shared/ListPage";
 import { FormField, Input, Select } from "@/components/ui/input";
-import { cn, saveBlob } from "@/lib/utils";
+import { saveBlob } from "@/lib/utils";
 
 export function ChatTab({
   clubId,
@@ -38,6 +39,7 @@ export function ChatTab({
   const urlChannelId = useSearchParams().get("channelId") ?? "";
   const [channelId, setChannelId] = useState("");
   const [creating, setCreating] = useState(false);
+  const [channelToDelete, setChannelToDelete] = useState<ChatChannel | null>(null);
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState("CLUB_GENERAL");
   const [newDeptId, setNewDeptId] = useState("");
@@ -50,11 +52,27 @@ export function ChatTab({
   const canSend = session.canInClub("chat.send", clubId);
   const canSummarize = session.canInClub("chat.summarize", clubId);
   const canViewClubDocs = session.canInClub("document.view", clubId);
+  const canUpdateClub = session.canClubWide("club.update", clubId);
   const canCreateChannel =
-    session.canInClub("club.update", clubId) ||
-    session.canInClub("department.create", clubId) ||
+    canUpdateClub ||
+    session.canClubWide("department.create", clubId) ||
     session.canInClub("department.update", clubId) ||
-    session.canInClub("event.create", clubId);
+    session.canClubWide("event.create", clubId);
+
+  const canDeleteChannel = (ch?: ChatChannel) => {
+    if (!ch) return false;
+    if (canUpdateClub) return true;
+    if (ch.channelType === "DEPARTMENT") {
+      return (
+        session.canClubWide("department.create", clubId) ||
+        session.canInDepartment("department.update", clubId, ch.departmentId)
+      );
+    }
+    if (ch.channelType === "EVENT_THREAD") {
+      return session.canClubWide("event.update", clubId) || session.canClubWide("event.create", clubId);
+    }
+    return false;
+  };
 
   const channels = useClubChannels(clubId, Boolean(clubId));
   const quickReplies = useClubQuickReplies(clubId, Boolean(clubId));
@@ -62,6 +80,7 @@ export function ChatTab({
   const activeChannel = (channels.data ?? []).find((c) => c.id === preferredChannelId) ?? channels.data?.[0];
   const activeChannelId = activeChannel?.id ?? "";
   const userId = session.user?.id;
+  const canModerateActive = canDeleteChannel(activeChannel) || canSummarize;
 
   useEffect(() => {
     setActiveViewedChatChannel(activeChannelId || null);
@@ -124,6 +143,23 @@ export function ChatTab({
     onError: (e) => onError(describeError(e)),
   });
 
+  const deleteChannel = useMutation({
+    mutationFn: (target: ChatChannel) => apiModel.deleteChannel(clubId, target.id),
+    onSuccess: (_res, target) => {
+      onNotice(`Đã xoá kênh trao đổi "#${target.name}".`);
+      onError("");
+      setChannelToDelete(null);
+      if (channelId === target.id) setChannelId("");
+      queryClient.setQueryData<ChatChannel[]>(qk.clubChannels(clubId), (old) =>
+        old ? old.filter((ch) => ch.id !== target.id) : old
+      );
+      queryClient.removeQueries({ queryKey: qk.channelMessages(target.id) });
+      queryClient.removeQueries({ queryKey: qk.channelPinnedMessages(target.id) });
+      queryClient.invalidateQueries({ queryKey: qk.clubChannels(clubId) });
+    },
+    onError: (e) => onError(describeError(e)),
+  });
+
   const summarize = useMutation({
     mutationFn: (targetChId: string) =>
       apiModel.summarizeChannel(targetChId, { messageLimit: 50, postToChannel: true }),
@@ -136,12 +172,13 @@ export function ChatTab({
     onError: (e) => onError(describeError(e)),
   });
 
-  const { togglePinMessage, toggleReactionMessage } = useChatMessageActions({
+  const { togglePinMessage, toggleReactionMessage, editMessage, deleteMessage } = useChatMessageActions({
     queryClient,
     activeChannelId,
     userId,
     userFullName: session.user?.fullName,
     setOlderByChannel,
+    onNotice,
     onError,
   });
 
@@ -175,9 +212,7 @@ export function ChatTab({
           ...prev,
           [targetChId]: [...(prev[targetChId] ?? []), ...safeItems],
         }));
-        if (safeItems.length < 30) {
-          setExhaustedChannels((prev) => ({ ...prev, [targetChId]: true }));
-        }
+        if (safeItems.length < 30) setExhaustedChannels((prev) => ({ ...prev, [targetChId]: true }));
       }
     } catch (e) {
       onError(describeError(e));
@@ -210,67 +245,20 @@ export function ChatTab({
           data-testid="chat-split-workspace"
           className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-card lg:grid lg:grid-cols-[224px_minmax(0,1fr)]"
         >
-          <aside className="flex min-h-0 shrink-0 flex-col border-b border-border/60 bg-muted/[0.16] lg:h-full lg:border-r lg:border-b-0">
-            <div className="flex h-11 shrink-0 items-center justify-between border-b border-border/60 px-3">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Kênh ({channels.data.length})
-              </span>
-              {canCreateChannel && (
-                <button
-                  type="button"
-                  onClick={() => setCreating(true)}
-                  aria-label="Tạo kênh mới"
-                  className="inline-flex h-7 items-center gap-1 rounded-md border border-border/70 bg-background px-2 text-[11px] font-semibold text-foreground hover:bg-muted"
-                >
-                  <Plus size={12} /> Tạo kênh
-                </button>
-              )}
-            </div>
-
-            <div className="flex gap-1 overflow-x-auto p-1.5 lg:flex-1 lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden">
-              {channels.data.map((ch) => {
-                const active = ch.id === activeChannelId;
-                const unread = (ch.unreadCount ?? 0) > 0 && !active;
-                return (
-                  <button
-                    key={ch.id}
-                    type="button"
-                    aria-current={active ? "true" : undefined}
-                    onPointerEnter={() => warmChannel(ch.id)}
-                    onFocus={() => warmChannel(ch.id)}
-                    onClick={() => {
-                      if (active) return;
-                      setChannelId(ch.id);
-                      composer.resetComposerAttachments();
-                    }}
-                    className={cn(
-                      "flex shrink-0 flex-col items-start gap-0.5 rounded-lg px-2.5 py-2 text-left text-xs transition-colors lg:w-full",
-                      active
-                        ? "bg-primary/10 font-semibold text-primary"
-                        : "text-foreground/85 hover:bg-muted/70"
-                    )}
-                  >
-                    <span className="flex w-full min-w-0 items-center justify-between gap-1.5">
-                      <span className="flex min-w-0 items-center gap-1.5">
-                        <Hash size={13} className="shrink-0 opacity-75" />
-                        <span className="max-w-[140px] truncate lg:max-w-none">{ch.name}</span>
-                      </span>
-                      {unread && (
-                        <span className="grid min-w-4 place-items-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold leading-none text-primary-foreground">
-                          {ch.unreadCount! > 99 ? "99+" : ch.unreadCount}
-                        </span>
-                      )}
-                    </span>
-                    {ch.departmentName && (
-                      <span className="hidden w-full truncate pl-5 text-[10.5px] font-normal text-muted-foreground lg:block">
-                        {ch.departmentName}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </aside>
+          <ChatChannelSidebar
+            channels={channels.data}
+            activeChannelId={activeChannelId}
+            canCreateChannel={canCreateChannel}
+            canDeleteChannel={canDeleteChannel}
+            onSelectChannel={(id) => {
+              if (id === activeChannelId) return;
+              setChannelId(id);
+              composer.resetComposerAttachments();
+            }}
+            onWarmChannel={warmChannel}
+            onOpenCreateModal={() => setCreating(true)}
+            onRequestDeleteChannel={setChannelToDelete}
+          />
 
           <ChatMessagePane
             clubId={clubId}
@@ -280,6 +268,9 @@ export function ChatTab({
             wsError={wsError}
             canSend={canSend}
             canSummarize={canSummarize}
+            canModerate={canModerateActive}
+            canDeleteChannel={canDeleteChannel(activeChannel)}
+            onRequestDeleteChannel={activeChannel ? () => setChannelToDelete(activeChannel) : undefined}
             canManageQuickReplies={canCreateChannel || canSummarize}
             quickReplies={quickReplies.data ?? []}
             quickRepliesLoading={quickReplies.isPending}
@@ -289,6 +280,11 @@ export function ChatTab({
             pinnedMessages={pinnedMessages}
             onTogglePin={(m) => togglePinMessage(m)}
             onToggleReaction={toggleReactionMessage}
+            onEditMessage={editMessage}
+            onDeleteMessage={(m) => {
+              if (composer.replyTo?.id === m.id) composer.setReplyTo(null);
+              return deleteMessage(m);
+            }}
             onUnpinById={(messageId) => {
               const target =
                 pinnedMessages.find((m) => m.id === messageId) ??
@@ -357,6 +353,20 @@ export function ChatTab({
             </Select>
           </FormField>
         )}
+      </ModalShell>
+
+      <ModalShell
+        open={Boolean(channelToDelete)}
+        onClose={() => setChannelToDelete(null)}
+        title={`Xoá kênh #${channelToDelete?.name ?? ""}`}
+        icon={<Trash2 />}
+        onSubmit={() => channelToDelete && deleteChannel.mutate(channelToDelete)}
+        submitLabel="Xoá vĩnh viễn"
+        submitLoading={deleteChannel.isPending}
+      >
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          Bạn có chắc chắn muốn xoá kênh <strong className="text-foreground">#{channelToDelete?.name}</strong>? Toàn bộ lịch sử tin nhắn, tệp đính kèm và bản tóm tắt AI trong kênh này sẽ bị xoá vĩnh viễn và không thể khôi phục.
+        </p>
       </ModalShell>
 
       <ChatDocumentPickerModal open={pickingDoc} clubId={clubId} canViewClubDocs={canViewClubDocs} onClose={() => setPickingDoc(false)} onSelect={composer.setAttachedDoc} />

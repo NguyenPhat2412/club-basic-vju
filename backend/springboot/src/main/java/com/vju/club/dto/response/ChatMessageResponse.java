@@ -29,6 +29,7 @@ public record ChatMessageResponse(
         int seenCount,
         List<String> seenByNames,
         OffsetDateTime lastSeenAt,
+        OffsetDateTime editedAt,
         String clientTempId,
         OffsetDateTime createdAt
 ) {
@@ -58,6 +59,7 @@ public record ChatMessageResponse(
                 seenCount,
                 seenByNames == null ? List.of() : seenByNames,
                 lastSeenAt,
+                editedAt,
                 tempId,
                 createdAt
         );
@@ -94,6 +96,7 @@ public record ChatMessageResponse(
                 seenCount,
                 seenByNames == null ? List.of() : seenByNames,
                 lastSeenAt,
+                base.editedAt(),
                 base.clientTempId(),
                 base.createdAt()
         );
@@ -126,6 +129,7 @@ public record ChatMessageResponse(
                 base.seenCount(),
                 base.seenByNames() == null ? List.of() : base.seenByNames(),
                 base.lastSeenAt(),
+                base.editedAt(),
                 base.clientTempId(),
                 base.createdAt()
         );

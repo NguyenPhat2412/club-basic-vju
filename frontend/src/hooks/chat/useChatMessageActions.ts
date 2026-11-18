@@ -17,6 +17,7 @@ export function useChatMessageActions({
   userId,
   userFullName,
   setOlderByChannel,
+  onNotice,
   onError,
 }: {
   queryClient: QueryClient;
@@ -24,6 +25,7 @@ export function useChatMessageActions({
   userId?: string;
   userFullName?: string;
   setOlderByChannel: Dispatch<SetStateAction<Record<string, ChatMessage[]>>>;
+  onNotice?: (msg: string) => void;
   onError: (msg: string) => void;
 }) {
   const replaceMessageInCaches = (targetChId: string, updatedMsg: ChatMessage) => {
@@ -52,6 +54,40 @@ export function useChatMessageActions({
         return next;
       });
     }
+  };
+
+  const removeMessageFromCaches = (targetChId: string, messageId: string) => {
+    queryClient.setQueryData<Page<ChatMessage>>(qk.channelMessages(targetChId), (old) => {
+      if (!old) return old;
+      const filtered = old.items
+        .filter((m) => m.id !== messageId)
+        .map((m) =>
+          m.replyToId === messageId
+            ? { ...m, replyToId: undefined, replyToSenderName: undefined, replyToPreview: undefined }
+            : m
+        );
+      const next = {
+        ...old,
+        items: filtered,
+        total: Math.max(0, old.total - (old.items.length - filtered.length)),
+      };
+      saveCachedChannelWindow(targetChId, next, userId, activeChannelId || targetChId);
+      return next;
+    });
+    setOlderByChannel((prev) => {
+      const list = prev[targetChId];
+      if (!list?.some((m) => m.id === messageId)) return prev;
+      return {
+        ...prev,
+        [targetChId]: list.filter((m) => m.id !== messageId),
+      };
+    });
+    queryClient.setQueryData<ChatMessage[]>(qk.channelPinnedMessages(targetChId), (old) => {
+      if (!old) return old;
+      const next = old.filter((m) => m.id !== messageId);
+      saveCachedPinnedMessages(targetChId, next, userId, activeChannelId || targetChId);
+      return next;
+    });
   };
 
   const applyOptimisticPinState = (targetChId: string, msg: ChatMessage, nextPinned: boolean) => {
@@ -99,5 +135,40 @@ export function useChatMessageActions({
       });
   };
 
-  return { togglePinMessage, toggleReactionMessage };
+  const editMessage = async (msg: ChatMessage, nextContent: string) => {
+    const trimmed = nextContent.trim();
+    if (!trimmed || trimmed === msg.content.trim() || msg.optimistic) return;
+    const targetChId = msg.channelId;
+    const snapshot = msg;
+    const optimistic: ChatMessage = {
+      ...msg,
+      content: trimmed,
+      editedAt: new Date().toISOString(),
+    };
+    replaceMessageInCaches(targetChId, optimistic);
+    try {
+      const updated = await apiModel.updateMessage(targetChId, msg.id, trimmed);
+      replaceMessageInCaches(targetChId, { ...optimistic, ...updated, optimistic: false });
+      onNotice?.("Đã cập nhật nội dung tin nhắn.");
+    } catch (e) {
+      replaceMessageInCaches(targetChId, snapshot);
+      onError(describeError(e));
+    }
+  };
+
+  const deleteMessage = async (msg: ChatMessage) => {
+    if (msg.optimistic) return;
+    const targetChId = msg.channelId;
+    removeMessageFromCaches(targetChId, msg.id);
+    try {
+      await apiModel.deleteMessage(targetChId, msg.id);
+      onNotice?.("Đã xoá tin nhắn khỏi kênh.");
+    } catch (e) {
+      void queryClient.invalidateQueries({ queryKey: qk.channelMessages(targetChId) });
+      void queryClient.invalidateQueries({ queryKey: qk.channelPinnedMessages(targetChId) });
+      onError(describeError(e));
+    }
+  };
+
+  return { togglePinMessage, toggleReactionMessage, editMessage, deleteMessage };
 }

@@ -71,6 +71,7 @@ export const API_ROUTES = {
     tasks: (clubId: string) => `/clubs/${clubId}/tasks`,
     tasksSummary: (clubId: string) => `/clubs/${clubId}/tasks/summary`,
     channels: (clubId: string) => `/clubs/${clubId}/channels`,
+    channelItem: (clubId: string, channelId: string) => `/clubs/${clubId}/channels/${channelId}`,
     quickReplies: (clubId: string) => `/clubs/${clubId}/quick-replies`,
     quickReplyItem: (clubId: string, replyId: string) => `/clubs/${clubId}/quick-replies/${replyId}`,
     notifications: (clubId: string) => `/clubs/${clubId}/notifications`,
@@ -90,6 +91,8 @@ export const API_ROUTES = {
   },
   channels: {
     messages: (channelId: string) => `/channels/${channelId}/messages`,
+    messageItem: (channelId: string, messageId: string) =>
+      `/channels/${channelId}/messages/${messageId}`,
     pinnedMessages: (channelId: string) => `/channels/${channelId}/pinned-messages`,
     messagePin: (channelId: string, messageId: string) =>
       `/channels/${channelId}/messages/${messageId}/pin`,

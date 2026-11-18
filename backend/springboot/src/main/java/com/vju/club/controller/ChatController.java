@@ -6,12 +6,14 @@ import com.vju.club.dto.request.MarkChannelReadRequest;
 import com.vju.club.dto.request.SendChatMessageRequest;
 import com.vju.club.dto.request.SummarizeChatRequest;
 import com.vju.club.dto.request.ToggleChatReactionRequest;
+import com.vju.club.dto.request.UpdateChatMessageRequest;
 import com.vju.club.dto.response.AiSummaryResponse;
 import com.vju.club.dto.response.ChatChannelResponse;
 import com.vju.club.dto.response.ChatMessageResponse;
 import com.vju.club.dto.response.PageResponse;
 import com.vju.club.security.Actor;
 import com.vju.club.service.ChatService;
+import com.vju.club.service.impl.ChatModerationService;
 import com.vju.club.service.impl.ChatPinService;
 import com.vju.club.service.impl.ChatReactionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -41,6 +44,7 @@ import java.util.UUID;
 @Tag(name = "Chat & AI Assistant", description = "Kênh trao đổi nội bộ CLB/Ban/Sự kiện qua WebSocket STOMP thời gian thực, đính kèm tài liệu kho tập trung và AI Bot tóm tắt.")
 public class ChatController {
     private final ChatService chatService;
+    private final ChatModerationService chatModerationService;
     private final ChatPinService chatPinService;
     private final ChatReactionService chatReactionService;
 
@@ -58,12 +62,39 @@ public class ChatController {
         return chatService.listChannels(actor, clubId);
     }
 
+    @DeleteMapping(ApiPaths.CLUB_CHANNEL_BY_ID)
+    @Operation(summary = "Xoá kênh trao đổi nội bộ của CLB/Ban và phát realtime tới toàn bộ thành viên")
+    public ResponseEntity<Void> deleteChannel(Actor actor,
+                                              @PathVariable UUID clubId,
+                                              @PathVariable UUID channelId) {
+        chatModerationService.deleteChannel(actor, clubId, channelId);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping(ApiPaths.CHANNEL_MESSAGES)
     @Operation(summary = "Gửi tin nhắn vào kênh chat (hỗ trợ replyToId, đính kèm documentId & đẩy WebSocket tức thì)")
     public ResponseEntity<ChatMessageResponse> sendMessage(Actor actor,
                                                            @PathVariable UUID channelId,
                                                            @Valid @RequestBody SendChatMessageRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(chatService.sendMessage(actor, channelId, request));
+    }
+
+    @PatchMapping(ApiPaths.CHANNEL_MESSAGE_BY_ID)
+    @Operation(summary = "Chỉnh sửa nội dung tin nhắn của chính mình và phát realtime")
+    public ChatMessageResponse updateMessage(Actor actor,
+                                             @PathVariable UUID channelId,
+                                             @PathVariable UUID messageId,
+                                             @Valid @RequestBody UpdateChatMessageRequest request) {
+        return chatModerationService.updateMessage(actor, channelId, messageId, request);
+    }
+
+    @DeleteMapping(ApiPaths.CHANNEL_MESSAGE_BY_ID)
+    @Operation(summary = "Xoá tin nhắn (tự xoá tin nhắn của mình hoặc BCN/Trưởng ban/Admin kiểm duyệt xoá) và phát realtime")
+    public ResponseEntity<Void> deleteMessage(Actor actor,
+                                              @PathVariable UUID channelId,
+                                              @PathVariable UUID messageId) {
+        chatModerationService.deleteMessage(actor, channelId, messageId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping(ApiPaths.CHANNEL_MESSAGES)

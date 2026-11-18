@@ -37,6 +37,10 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
 
     long countByChannel_Id(UUID channelId);
 
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE ChatMessage m SET m.replyTo = null WHERE m.replyTo.id = :messageId")
+    int clearReplyReferences(@Param("messageId") UUID messageId);
+
     @Modifying(flushAutomatically = true)
     @Query(value = """
             UPDATE chat_messages

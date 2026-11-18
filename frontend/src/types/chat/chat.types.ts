@@ -88,6 +88,7 @@ export type ChatMessage = {
   seenCount?: number;
   seenByNames?: string[];
   lastSeenAt?: string | null;
+  editedAt?: string | null;
   deliveryError?: string;
   content: string;
   createdAt: string;
@@ -96,6 +97,8 @@ export type ChatMessage = {
 export type ChatRealtimeEvent = {
   type:
     | 'MESSAGE_CREATED'
+    | 'MESSAGE_UPDATED'
+    | 'MESSAGE_DELETED'
     | 'SUMMARY_POSTED'
     | 'MESSAGE_PINNED'
     | 'MESSAGE_UNPINNED'
@@ -103,7 +106,8 @@ export type ChatRealtimeEvent = {
     | 'CHANNEL_DELIVERED'
     | 'CHANNEL_READ'
     | 'TYPING'
-    | 'CHANNEL_CREATED';
+    | 'CHANNEL_CREATED'
+    | 'CHANNEL_DELETED';
   clubId: string;
   channelId: string;
   actorId?: string;

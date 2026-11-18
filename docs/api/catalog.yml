@@ -860,6 +860,13 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: chat.view
+- method: DELETE
+  path: /api/v1/clubs/{clubId}/channels/{channelId}
+  module: chat
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: club.update
 - method: POST
   path: /api/v1/channels/{channelId}/messages
   module: chat
@@ -874,6 +881,20 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: chat.view
+- method: PATCH
+  path: /api/v1/channels/{channelId}/messages/{messageId}
+  module: chat
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.send
+- method: DELETE
+  path: /api/v1/channels/{channelId}/messages/{messageId}
+  module: chat
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.send
 - method: GET
   path: /api/v1/channels/{channelId}/pinned-messages
   module: chat

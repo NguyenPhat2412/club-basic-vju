@@ -202,6 +202,26 @@ public class ChatMediaService {
         return new StreamedAttachment(att, documentStorage.open(att.getStorageKey()));
     }
 
+    public void deleteAttachmentsForMessage(UUID messageId) {
+        for (ChatMessageAttachment att : attachmentRepository.findByMessage_Id(messageId)) {
+            deleteStorageSilently(att.getStorageKey());
+        }
+    }
+
+    public void deleteAttachmentsForChannel(UUID channelId) {
+        for (ChatMessageAttachment att : attachmentRepository.findByChannel_Id(channelId)) {
+            deleteStorageSilently(att.getStorageKey());
+        }
+    }
+
+    private void deleteStorageSilently(String storageKey) {
+        if (storageKey == null || storageKey.isBlank()) return;
+        try {
+            documentStorage.delete(storageKey);
+        } catch (RuntimeException ignored) {
+        }
+    }
+
     private static String sanitizeFileName(String raw) {
         if (raw == null || raw.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_DOCUMENT_NAME", "File name is required");
