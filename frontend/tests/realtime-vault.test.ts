@@ -231,15 +231,49 @@ test("Option 1 document module navigation and club management tabs wire dedicate
 test("document-filter-meta classifies file formats, maps VJU category labels, filters Club-only vs Dept, and sorts", async () => {
   const {
     classifyDocumentFormat,
+    collectDocumentCategoryOptions,
     filterAndSortDocuments,
     formatDocumentCategoryLabel,
   } = await import("@/forms/document/document-filter-meta");
+  const { fileExtension } = await import("@/lib/utils");
 
   assert.equal(formatDocumentCategoryLabel("semester_plan"), "Kế hoạch học kỳ");
+  assert.equal(formatDocumentCategoryLabel("club.plan"), "Kế hoạch CLB");
   assert.equal(formatDocumentCategoryLabel("club_charter"), "Quy chế hoạt động");
   assert.equal(formatDocumentCategoryLabel("custom.tag"), "custom.tag");
   assert.equal(classifyDocumentFormat({ name: "Plan.pdf", contentType: "application/pdf" }), "pdf");
+  assert.equal(classifyDocumentFormat({ name: "Quy chế CLB v1.0", contentType: "application/pdf" }), "pdf");
+  assert.equal(
+    classifyDocumentFormat({
+      name: "Dự trù kinh phí Gen 3",
+      contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }),
+    "sheet"
+  );
+  assert.equal(
+    classifyDocumentFormat({
+      name: "Biên bản họp",
+      contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }),
+    "word"
+  );
+  assert.equal(
+    classifyDocumentFormat({
+      name: "Slide thuyết trình",
+      contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    }),
+    "slide"
+  );
   assert.equal(classifyDocumentFormat({ name: "Budget.xlsx", contentType: "application/octet-stream" }), "sheet");
+  assert.equal(fileExtension("malware.exe"), "exe");
+  assert.equal(fileExtension("Quy chế v1.0", "application/pdf"), "pdf");
+  assert.equal(
+    fileExtension("Kế hoạch năm", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+    "docx"
+  );
+
+  const catOpts = collectDocumentCategoryOptions([], "", false);
+  assert.equal(catOpts.find((o) => o.value === "semester_plan")?.label, "Kế hoạch học kỳ");
 
   const sample = [
     {

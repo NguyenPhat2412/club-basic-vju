@@ -252,6 +252,11 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
         <BreadcrumbToolbar
           crumbs={[{ label: "Trang chủ", href: "/clubs" }, { label: "Tài liệu & Quy chế" }, { label: isSystemTier ? "Quy chế & Biểu mẫu Trường" : "Kho tài liệu CLB & Ban" }]}
           titleBadge={<CountBadge>{effectiveTotal}</CountBadge>}
+          search={{
+            value: search,
+            onChange: (v) => { setSearch(v); setOffset(0); },
+            placeholder: "Tìm tên tài liệu…",
+          }}
           extraActions={
             <SegmentedTabs
               value={effectiveTier}
@@ -259,6 +264,7 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
               options={[...(allowed.length ? [{ value: "club", label: "Kho CLB & Ban" }] : []), { value: "system", label: "Quy chế Trường" }]}
             />
           }
+          refreshing={documents.isFetching && !documents.isPending}
           onRefresh={() => { documents.refetch(); counts.refetch(); }}
           addLabel="Tải lên"
           onAdd={canUpload && !effectiveTrash ? openUploadModal : undefined}
@@ -277,7 +283,7 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
         canRestore={canRestore} effectiveTrash={effectiveTrash} deletedCount={counts.data?.deleted ?? 0}
         onChangeTrash={(nextTrash) => { setTrash(nextTrash); setOffset(0); }}
         canUpload={canUpload} onOpenUpload={openUploadModal}
-        shownCount={visibleRows.length} totalCount={effectiveTotal} onResetFilters={resetFiltersOnly}
+        onResetFilters={resetFiltersOnly}
       />
 
       {notice && <Notice tone="success">{notice}</Notice>}

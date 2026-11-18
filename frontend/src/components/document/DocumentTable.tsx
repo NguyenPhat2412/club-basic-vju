@@ -54,6 +54,7 @@ export function DocumentTable({
           key: "name",
           header: "Tên tài liệu",
           className: "w-[30%] min-w-[190px] max-w-[260px]",
+          sortValue: (x) => x.name,
           render: (x) => (
             <div className="flex min-w-0 items-center gap-2.5">
               <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-primary/20 bg-primary/8 text-primary">
@@ -76,6 +77,7 @@ export function DocumentTable({
           key: "key",
           header: "Phân loại",
           className: "whitespace-nowrap",
+          sortValue: (x) => formatDocumentCategoryLabel(x.appDetailKey),
           render: (x) =>
             x.appDetailKey ? (
               <Badge tone="primary" dot={false}>
@@ -89,19 +91,25 @@ export function DocumentTable({
           key: "type",
           header: "Định dạng",
           className: "whitespace-nowrap",
-          render: (x) => (
-            <div className="flex items-center gap-1.5">
-              <span className="rounded-md bg-secondary px-2 py-0.5 font-mono text-[10.5px] font-bold uppercase">
-                {fileExtension(x.name, x.contentType)}
-              </span>
-              <span className="font-mono text-xs font-bold text-primary">v{x.version}</span>
-            </div>
-          ),
+          sortValue: (x) => fileExtension(x.name, x.contentType),
+          render: (x) => {
+            const ext = fileExtension(x.name, x.contentType);
+            const displayExt = ext === "file" && x.path ? fileExtension(x.path, x.contentType) : ext;
+            return (
+              <div className="flex items-center gap-1.5">
+                <span className="rounded-md bg-secondary px-2 py-0.5 font-mono text-[10.5px] font-bold uppercase">
+                  {displayExt}
+                </span>
+                <span className="font-mono text-xs font-bold text-primary">v{x.version}</span>
+              </div>
+            );
+          },
         },
         {
           key: "visibility",
           header: "Phạm vi",
           className: "whitespace-nowrap",
+          sortValue: (x) => visibilityMeta(x).label,
           render: (x) => {
             const vis = visibilityMeta(x);
             return <Badge tone={vis.tone}>{vis.label}</Badge>;
@@ -111,12 +119,14 @@ export function DocumentTable({
           key: "size",
           header: "Kích thước",
           className: "whitespace-nowrap font-mono",
+          sortValue: (x) => x.sizeBytes,
           render: (x) => <span>{formatSize(x.sizeBytes)}</span>,
         },
         {
           key: "date",
           header: "Ngày tải lên",
           className: "whitespace-nowrap font-mono text-muted-foreground",
+          sortValue: (x) => x.createdAt,
           render: (x) => <span>{formatDay(x.createdAt)}</span>,
         },
         {

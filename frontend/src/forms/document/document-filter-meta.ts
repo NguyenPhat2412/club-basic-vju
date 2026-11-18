@@ -16,20 +16,24 @@ export const DOCUMENT_FORMAT_OPTIONS: Array<{ value: DocumentFormatFilter; label
 
 export const DOCUMENT_CATEGORY_LABELS: Record<string, string> = {
   semester_plan: "Kế hoạch học kỳ",
+  "club.plan": "Kế hoạch CLB",
   club_charter: "Quy chế hoạt động",
   "club.rules": "Nội quy CLB",
   "system.template": "Biểu mẫu trường",
   "system.charter": "Quy chế trường",
   "dept.plan": "Kế hoạch Ban",
   "event.proposal": "Đề án sự kiện",
+  "event.plan": "Kế hoạch sự kiện",
   "budget.report": "Báo cáo kinh phí",
+  "finance.report": "Báo cáo tài chính",
+  "member.list": "Danh sách thành viên",
   "meeting.minutes": "Biên bản họp",
 };
 
-const WORD_EXTS = new Set(["doc", "docx"]);
-const SHEET_EXTS = new Set(["xls", "xlsx", "csv"]);
-const SLIDE_EXTS = new Set(["ppt", "pptx"]);
-const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "webp", "gif"]);
+const WORD_EXTS = new Set(["doc", "docx", "odt", "rtf"]);
+const SHEET_EXTS = new Set(["xls", "xlsx", "csv", "ods"]);
+const SLIDE_EXTS = new Set(["ppt", "pptx", "odp"]);
+const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "webp", "gif", "svg"]);
 
 export function formatDocumentCategoryLabel(rawKey?: string | null): string {
   const clean = rawKey?.trim() ?? "";
@@ -37,13 +41,26 @@ export function formatDocumentCategoryLabel(rawKey?: string | null): string {
   return DOCUMENT_CATEGORY_LABELS[clean] ?? clean;
 }
 
-export function classifyDocumentFormat(doc: Pick<DocumentItem, "name" | "contentType">): Exclude<DocumentFormatFilter, ""> {
-  const ext = fileExtension(doc.name, doc.contentType).toLowerCase();
+export function classifyDocumentFormat(
+  doc: Pick<DocumentItem, "name" | "contentType"> & { path?: string }
+): Exclude<DocumentFormatFilter, ""> {
+  let ext = fileExtension(doc.name, doc.contentType).toLowerCase();
+  if (ext === "file" && doc.path) {
+    ext = fileExtension(doc.path, doc.contentType).toLowerCase();
+  }
   if (ext === "pdf") return "pdf";
   if (WORD_EXTS.has(ext)) return "word";
   if (SHEET_EXTS.has(ext)) return "sheet";
   if (SLIDE_EXTS.has(ext)) return "slide";
   if (IMAGE_EXTS.has(ext)) return "image";
+
+  const mime = (doc.contentType ?? "").split(";")[0].trim().toLowerCase();
+  if (mime === "application/pdf") return "pdf";
+  if (mime.includes("word") || mime.includes("opendocument.text")) return "word";
+  if (mime.includes("spreadsheet") || mime.includes("excel") || mime === "text/csv") return "sheet";
+  if (mime.includes("presentation") || mime.includes("powerpoint")) return "slide";
+  if (mime.startsWith("image/")) return "image";
+
   return "other";
 }
 
@@ -75,13 +92,10 @@ export function collectDocumentCategoryOptions(
     const key = item.appDetailKey?.trim();
     if (key) keys.add(key);
   }
-  return Array.from(keys).map((key) => {
-    const friendly = DOCUMENT_CATEGORY_LABELS[key];
-    return {
-      value: key,
-      label: friendly ? `${friendly} (${key})` : key,
-    };
-  });
+  return Array.from(keys).map((key) => ({
+    value: key,
+    label: DOCUMENT_CATEGORY_LABELS[key] ?? key,
+  }));
 }
 
 export function filterAndSortDocuments(

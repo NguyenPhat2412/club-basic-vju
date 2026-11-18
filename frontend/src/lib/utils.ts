@@ -61,15 +61,59 @@ export function validateImageUploadFile(file: Pick<File, "name" | "size">, maxMb
   return validateApplicationFile(file, IMAGE_ALLOWED_EXTENSIONS, maxMb * 1024 * 1024);
 }
 
+const MIME_EXTENSION_MAP: Record<string, string> = {
+  "application/pdf": "pdf",
+  "application/msword": "doc",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+  "application/vnd.oasis.opendocument.text": "odt",
+  "application/rtf": "rtf",
+  "application/vnd.ms-excel": "xls",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+  "application/vnd.oasis.opendocument.spreadsheet": "ods",
+  "text/csv": "csv",
+  "application/csv": "csv",
+  "application/vnd.ms-powerpoint": "ppt",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+  "application/vnd.oasis.opendocument.presentation": "odp",
+  "text/plain": "txt",
+  "text/markdown": "md",
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/svg+xml": "svg",
+  "application/zip": "zip",
+  "application/x-zip-compressed": "zip",
+};
+
+const KNOWN_DOCUMENT_EXTENSIONS = new Set([
+  ...VAULT_ALLOWED_EXTENSIONS,
+  "odt", "ods", "odp", "rtf", "svg", "json",
+]);
+
 export function fileExtension(name: string, contentType?: string): string {
-  const dot = name.lastIndexOf(".");
-  if (dot > 0 && dot < name.length - 1) return name.slice(dot + 1).toLowerCase();
-  const mime = (contentType ?? "").split(";")[0].trim().toLowerCase();
-  const map: Record<string, string> = {
-    "application/pdf": "pdf", "text/plain": "txt", "text/csv": "csv", "text/markdown": "md",
-    "image/png": "png", "image/jpeg": "jpg", "image/gif": "gif", "image/webp": "webp", "application/zip": "zip",
-  };
-  return map[mime] ?? "file";
+  const trimmedName = name.trim();
+  const dot = trimmedName.lastIndexOf(".");
+  const rawExt = dot > 0 && dot < trimmedName.length - 1 ? trimmedName.slice(dot + 1).toLowerCase() : "";
+
+  if (contentType === undefined) {
+    return rawExt || "file";
+  }
+
+  if (rawExt && KNOWN_DOCUMENT_EXTENSIONS.has(rawExt)) {
+    return rawExt;
+  }
+
+  const mime = (contentType || "").split(";")[0].trim().toLowerCase();
+  if (MIME_EXTENSION_MAP[mime]) {
+    return MIME_EXTENSION_MAP[mime];
+  }
+
+  if (rawExt && /^(?=.*[a-z])[a-z0-9]{1,8}$/.test(rawExt)) {
+    return rawExt;
+  }
+
+  return "file";
 }
 
 export function validateVaultFile(file: Pick<File, "name" | "size">, expectedExt?: string): string | null {
