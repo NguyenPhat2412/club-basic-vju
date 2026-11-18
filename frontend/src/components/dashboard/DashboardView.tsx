@@ -268,7 +268,7 @@ export function DashboardView() {
   ];
 
   return (
-    <div className="flex min-h-full w-full min-w-0 max-w-full flex-1 flex-col bg-background">
+    <div className="flex min-h-full w-full min-w-0 max-w-full flex-1 flex-col">
       <BreadcrumbToolbar
         crumbs={[{ label: "Trang chủ", href: "/clubs" }, { label: "Tổng quan hệ thống" }]}
         titleBadge={<CountBadge>Trực tiếp</CountBadge>}

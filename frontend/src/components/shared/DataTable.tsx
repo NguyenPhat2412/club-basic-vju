@@ -202,7 +202,7 @@ export function DataTable<T>({
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
                 onKeyDown={onRowClick ? (e) => handleRowKeyDown(e, row, onRowClick) : undefined}
                 className={cn(
-                  "group h-12 text-xs text-slate-800 transition-colors hover:bg-slate-50/80 focus-visible:bg-slate-50 focus-visible:outline-hidden",
+                  "group h-12 bg-white text-xs text-slate-800 transition-colors even:bg-slate-50/60 hover:bg-slate-100/75 focus-visible:bg-slate-100/80 focus-visible:outline-hidden",
                   onRowClick && "cursor-pointer"
                 )}
               >
@@ -212,7 +212,7 @@ export function DataTable<T>({
                     className={cn(
                       "px-2.5 py-2 first:pl-3.5 last:pr-3.5",
                       c.key === "actions" &&
-                        "sticky right-0 bg-white/95 backdrop-blur-xs group-hover:bg-slate-50/95",
+                        "sticky right-0 bg-white/95 backdrop-blur-xs group-even:bg-slate-50/95 group-hover:bg-slate-100/95",
                       c.className
                     )}
                   >

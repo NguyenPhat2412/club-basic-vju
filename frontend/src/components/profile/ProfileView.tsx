@@ -80,7 +80,7 @@ export function ProfileView() {
   };
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-background">
+    <div className="flex min-h-full flex-1 flex-col">
       <BreadcrumbToolbar
         crumbs={[
           { label: "Tổng quan", href: "/dashboard" },

@@ -226,7 +226,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
         <main
           key={locale}
           data-design-system="admin-v1"
-          className="@container flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto bg-background"
+          className="@container workspace-canvas flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto"
         >
           {session.user && session.mustChangePassword ? (
             <FirstLoginPassword email={session.user.email} />

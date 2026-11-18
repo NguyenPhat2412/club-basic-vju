@@ -40,7 +40,7 @@ export function SystemSettingsView() {
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-background">
+    <div className="flex min-h-full flex-1 flex-col">
       <BreadcrumbToolbar
         crumbs={[{ label: "Quản trị hệ thống" }, { label: "Cài đặt hệ thống" }]}
         refreshing={settings.isFetching}

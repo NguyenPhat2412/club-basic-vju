@@ -130,7 +130,7 @@ export function StudentDashboard({ user }: { user: User }) {
   };
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-background">
+    <div className="flex min-h-full flex-1 flex-col">
       <BreadcrumbToolbar
         crumbs={[{ label: "Trang chủ", href: "/home" }, { label: "Tổng quan của tôi" }]}
         refreshing={isRefreshing}
