@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/I18nContext";
 import type { NotificationUnreadSummary } from "@/types/notification/notification.types";
 import type { User } from "@/types/user/user.types";
+import { clearPendingTabClose } from "./WorkspaceTabSpecs";
 
 export function SidebarNav({
   isMobile = false,
@@ -96,6 +97,9 @@ export function SidebarNav({
 
   return (
     <aside
+      onClickCapture={(e) => {
+        if ((e.target as HTMLElement).closest("a")) clearPendingTabClose();
+      }}
       className={cn(
         "flex h-full select-none flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200",
         isMobile ? "w-64 max-w-[82vw] sm:w-72" : isCollapsed ? "w-13" : "w-56"

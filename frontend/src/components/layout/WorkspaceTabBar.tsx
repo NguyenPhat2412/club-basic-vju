@@ -10,8 +10,14 @@ import { useI18n } from "@/providers/I18nContext";
 import { WorkspaceTabItem } from "./WorkspaceTabItem";
 import { WorkspaceTabMenu } from "./WorkspaceTabMenu";
 import {
+  clearPendingTabClose,
+  computeCloseTabTransition,
+  computeOpenTabIds,
   emptySubscribe,
+  getActivePendingTabClose,
   iconForTab,
+  recordPendingTabClose,
+  resolveEffectiveActiveTabId,
   resolveTabId,
   STARTER_PRIORITY,
   subscribeWorkspaceTabs,
@@ -115,7 +121,10 @@ export function WorkspaceTabBar({
     return map;
   }, [authenticated, sections, tr]);
 
-  const activeId = resolveTabId(pathname, currentTab, currentTier);
+  const rawActiveId = resolveTabId(pathname, currentTab, currentTier);
+  const pendingClose = getActivePendingTabClose();
+  const activeId = resolveEffectiveActiveTabId(rawActiveId, pendingClose);
+  const catalogIds = useMemo(() => new Set(catalog.keys()), [catalog]);
 
   const defaultStarterIds = useMemo(() => {
     const picked = STARTER_PRIORITY.filter((id) => catalog.has(id)).slice(0, 9);
@@ -125,15 +134,17 @@ export function WorkspaceTabBar({
     return picked.length > 0 ? picked : Array.from(catalog.keys()).slice(0, 6);
   }, [activeId, catalog]);
 
-  const openIds = useMemo(() => {
-    const base = storedIds && storedIds.length > 0 ? storedIds : defaultStarterIds;
-    const valid = base.filter((id) => catalog.has(id));
-    const ensured = valid.length > 0 ? [...valid] : [...defaultStarterIds];
-    if (catalog.has(activeId) && !ensured.includes(activeId)) {
-      ensured.push(activeId);
-    }
-    return ensured;
-  }, [activeId, catalog, defaultStarterIds, storedIds]);
+  const openIds = useMemo(
+    () =>
+      computeOpenTabIds({
+        storedIds,
+        defaultStarterIds,
+        catalogIds,
+        rawActiveId,
+        pending: pendingClose,
+      }),
+    [catalogIds, defaultStarterIds, pendingClose, rawActiveId, storedIds],
+  );
 
   const persistIds = useCallback(
     (next: string[]) => {
@@ -147,13 +158,23 @@ export function WorkspaceTabBar({
     [storageKey]
   );
 
-  // Sync newly visited active tab to external localStorage
+  // Sync newly visited active tab to external localStorage (ignoring tabs currently closing in flight)
   useEffect(() => {
-    if (!isClient || !storedIds) return;
-    if (catalog.has(activeId) && !storedIds.includes(activeId)) {
-      persistIds([...storedIds.filter((id) => catalog.has(id)), activeId]);
+    const inFlight = getActivePendingTabClose();
+    if (inFlight) {
+      if (!inFlight.closedIds.includes(rawActiveId)) {
+        clearPendingTabClose();
+      } else {
+        return;
+      }
     }
-  }, [activeId, catalog, isClient, persistIds, storedIds]);
+    if (!isClient || !catalog.has(rawActiveId)) return;
+    if (storedIds && !storedIds.includes(rawActiveId)) {
+      persistIds([...storedIds, rawActiveId]);
+    } else if (!storedIds && !defaultStarterIds.includes(rawActiveId)) {
+      persistIds([...defaultStarterIds, rawActiveId]);
+    }
+  }, [catalog, defaultStarterIds, isClient, persistIds, rawActiveId, storedIds]);
 
   const updateScrollState = useCallback(() => {
     const el = stripRef.current;
@@ -201,20 +222,26 @@ export function WorkspaceTabBar({
   };
 
   const activateTab = (spec: WorkspaceTabSpec) => {
+    clearPendingTabClose();
     setHoveredTip(null);
     setMenuOpen(false);
     router.push(buildHref(spec));
   };
 
   const closeTab = (id: string) => {
-    if (openIds.length <= 1) return;
+    const transition = computeCloseTabTransition({
+      openIds,
+      closingId: id,
+      effectiveActiveId: activeId,
+    });
+    if (!transition) return;
     setHoveredTip(null);
-    const idx = openIds.indexOf(id);
-    const next = openIds.filter((item) => item !== id);
-    persistIds(next);
-    if (id === activeId) {
-      const fallbackId = next[Math.min(idx, next.length - 1)] ?? next[0];
-      const fallbackSpec = fallbackId ? catalog.get(fallbackId) : undefined;
+    if (transition.nextActiveId) {
+      recordPendingTabClose(id, transition.nextActiveId);
+    }
+    persistIds(transition.nextIds);
+    if (transition.nextActiveId) {
+      const fallbackSpec = catalog.get(transition.nextActiveId);
       if (fallbackSpec) {
         router.push(buildHref(fallbackSpec));
       }
@@ -222,10 +249,8 @@ export function WorkspaceTabBar({
   };
 
   const closeOtherTabs = () => {
+    clearPendingTabClose();
     const keep = catalog.has(activeId) ? [activeId] : openIds.slice(0, 1);
-    if (authenticated && catalog.has("route:/dashboard") && !keep.includes("route:/dashboard")) {
-      keep.unshift("route:/dashboard");
-    }
     persistIds(keep);
     setMenuOpen(false);
   };
@@ -234,15 +259,21 @@ export function WorkspaceTabBar({
     const fallback = catalog.has("route:/dashboard")
       ? "route:/dashboard"
       : (Array.from(catalog.keys())[0] ?? activeId);
+    if (fallback !== rawActiveId) {
+      recordPendingTabClose(rawActiveId, fallback);
+    } else {
+      clearPendingTabClose();
+    }
     persistIds([fallback]);
     setMenuOpen(false);
     const spec = catalog.get(fallback);
-    if (spec && fallback !== activeId) {
+    if (spec && fallback !== rawActiveId) {
       router.push(buildHref(spec));
     }
   };
 
   const resetStarterTabs = () => {
+    clearPendingTabClose();
     persistIds(defaultStarterIds);
     setMenuOpen(false);
   };

@@ -90,6 +90,91 @@ export function resolveTabId(pathname: string, currentTab: string | null, curren
 export const emptySubscribe = () => () => {};
 export const TABS_SYNC_EVENT = "vju-workspace-tabs-sync";
 
+export type PendingTabClose = {
+  closedIds: string[];
+  targetId: string;
+  expiresAt: number;
+};
+
+let pendingCloseState: PendingTabClose | null = null;
+
+export function recordPendingTabClose(closedId: string, targetId: string, ttlMs = 5_000) {
+  const now = Date.now();
+  const prev = pendingCloseState && now < pendingCloseState.expiresAt ? pendingCloseState.closedIds : [];
+  const nextClosed = prev.includes(closedId) ? prev : [...prev, closedId];
+  pendingCloseState = {
+    closedIds: nextClosed.filter((id) => id !== targetId),
+    targetId,
+    expiresAt: now + ttlMs,
+  };
+}
+
+export function getActivePendingTabClose(now = Date.now()): PendingTabClose | null {
+  if (!pendingCloseState) return null;
+  if (now >= pendingCloseState.expiresAt) {
+    pendingCloseState = null;
+    return null;
+  }
+  return pendingCloseState;
+}
+
+export function clearPendingTabClose() {
+  pendingCloseState = null;
+}
+
+export function resolveEffectiveActiveTabId(
+  rawActiveId: string,
+  pending: PendingTabClose | null,
+): string {
+  if (pending && pending.closedIds.includes(rawActiveId)) {
+    return pending.targetId;
+  }
+  return rawActiveId;
+}
+
+export function computeOpenTabIds({
+  storedIds,
+  defaultStarterIds,
+  catalogIds,
+  rawActiveId,
+  pending,
+}: {
+  storedIds: string[] | null;
+  defaultStarterIds: string[];
+  catalogIds: ReadonlySet<string>;
+  rawActiveId: string;
+  pending: PendingTabClose | null;
+}): string[] {
+  const effectiveActiveId = resolveEffectiveActiveTabId(rawActiveId, pending);
+  const blocked = pending && pending.closedIds.includes(rawActiveId) ? new Set(pending.closedIds) : null;
+  const base = storedIds && storedIds.length > 0 ? storedIds : defaultStarterIds;
+  const valid = base.filter((id) => catalogIds.has(id) && !blocked?.has(id));
+  const ensured = valid.length > 0 ? [...valid] : defaultStarterIds.filter((id) => !blocked?.has(id));
+  if (catalogIds.has(effectiveActiveId) && !ensured.includes(effectiveActiveId)) {
+    ensured.push(effectiveActiveId);
+  }
+  return ensured;
+}
+
+export function computeCloseTabTransition({
+  openIds,
+  closingId,
+  effectiveActiveId,
+}: {
+  openIds: string[];
+  closingId: string;
+  effectiveActiveId: string;
+}): { nextIds: string[]; nextActiveId: string | null } | null {
+  if (openIds.length <= 1 || !openIds.includes(closingId)) return null;
+  const idx = openIds.indexOf(closingId);
+  const nextIds = openIds.filter((item) => item !== closingId);
+  if (closingId !== effectiveActiveId) {
+    return { nextIds, nextActiveId: null };
+  }
+  const fallbackId = nextIds[Math.min(idx, nextIds.length - 1)] ?? nextIds[0] ?? null;
+  return { nextIds, nextActiveId: fallbackId };
+}
+
 export function subscribeWorkspaceTabs(onStoreChange: () => void) {
   if (typeof window === "undefined") return () => {};
   window.addEventListener("storage", onStoreChange);
