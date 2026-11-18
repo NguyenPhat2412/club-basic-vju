@@ -170,7 +170,7 @@ class SprintThreeTaskAcceptanceTest extends ApiIntegrationTest {
                 "assigneeId", ctvUser.toString()
         ), 201);
         UUID ctvTaskId = id(ctvTask);
-        assertThat(ctvTask.path("assignee").path("id").asText()).isEqualTo(ctvUser.toString());
+        assertThat(ctvTask.path("assigneeId").asText()).isEqualTo(ctvUser.toString());
         assertThat(ctvTask.path("eventId").asText()).isEqualTo(eventId.toString());
 
         // 5. PB-27.2: Reassign task to club member
@@ -178,7 +178,7 @@ class SprintThreeTaskAcceptanceTest extends ApiIntegrationTest {
                 "assigneeId", clubMember.toString(),
                 "priority", "URGENT"
         ), 200);
-        assertThat(reassigned.path("assignee").path("id").asText()).isEqualTo(clubMember.toString());
+        assertThat(reassigned.path("assigneeId").asText()).isEqualTo(clubMember.toString());
         assertThat(reassigned.path("priority").asText()).isEqualTo("URGENT");
     }
 
@@ -291,7 +291,7 @@ class SprintThreeTaskAcceptanceTest extends ApiIntegrationTest {
 
         // Task Summary metrics via GET /clubs/{clubId}/tasks/summary
         JsonNode summary = call(get(clubTasks(clubA) + "/summary"), adminToken, null, 200);
-        assertThat(summary.path("totalTasks").asInt()).isGreaterThanOrEqualTo(1);
+        assertThat(summary.path("total").asInt()).isGreaterThanOrEqualTo(1);
         assertThat(summary.path("overdueCount").asInt()).isGreaterThanOrEqualTo(1);
     }
 }
