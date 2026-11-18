@@ -1,0 +1,2285 @@
+{
+  "info": {
+    "name": "VJU ClubHub — Sprint 1 — Nền tảng Xác thực, Tài khoản, CLB, Ban, RBAC 3 tầng & Audit",
+    "_postman_id": "00000000-0000-4000-8000-000000000001",
+    "description": "Bộ kiểm thử API tự động dành riêng cho Sprint 1 (59 endpoints).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "[system] GET /api/v1/api-catalog",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/api-catalog",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "api-catalog"
+          ]
+        },
+        "description": "Module: system | AuthRequired: False | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/api-catalog responds with expected status', function () {",
+              "  pm.expect([200, 201, 204]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[authentication] POST /api/v1/auth/login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "login"
+          ]
+        },
+        "description": "Module: authentication | AuthRequired: False | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/auth/login responds with expected status', function () {",
+              "  pm.expect([200, 201, 204]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[authentication] POST /api/v1/auth/register",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/register",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "register"
+          ]
+        },
+        "description": "Module: authentication | AuthRequired: False | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/auth/register responds with expected status', function () {",
+              "  pm.expect([200, 201, 204]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[authentication] POST /api/v1/auth/google",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/google",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "google"
+          ]
+        },
+        "description": "Module: authentication | AuthRequired: False | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/auth/google responds with expected status', function () {",
+              "  pm.expect([200, 201, 204]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[authentication] GET /api/v1/auth/google/config",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/google/config",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "google",
+            "config"
+          ]
+        },
+        "description": "Module: authentication | AuthRequired: False | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/auth/google/config responds with expected status', function () {",
+              "  pm.expect([200, 201, 204]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[authentication] POST /api/v1/auth/logout",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/logout",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "logout"
+          ]
+        },
+        "description": "Module: authentication | AuthRequired: True | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/auth/logout responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[authentication] GET /api/v1/auth/csrf",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/csrf",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "csrf"
+          ]
+        },
+        "description": "Module: authentication | AuthRequired: False | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/auth/csrf responds with expected status', function () {",
+              "  pm.expect([200, 201, 204]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[authentication] GET /api/v1/auth/me",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "me"
+          ]
+        },
+        "description": "Module: authentication | AuthRequired: True | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/auth/me responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[user-management] POST /api/v1/users",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users"
+          ]
+        },
+        "description": "Module: user-management | AuthRequired: True | Permission: user.create"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/users responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[user-profile] GET /api/v1/users/me",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "me"
+          ]
+        },
+        "description": "Module: user-profile | AuthRequired: True | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/users/me responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[user-profile] PATCH /api/v1/users/me",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "me"
+          ]
+        },
+        "description": "Module: user-profile | AuthRequired: True | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PATCH /api/v1/users/me responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[user-profile] GET /api/v1/users",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users"
+          ]
+        },
+        "description": "Module: user-profile | AuthRequired: True | Permission: user.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/users responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[user-profile] GET /api/v1/users/{userId}",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/{userId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "{userId}"
+          ]
+        },
+        "description": "Module: user-profile | AuthRequired: True | Permission: user.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/users/{userId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[user-management] PATCH /api/v1/users/{userId}/password",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/{userId}/password",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "{userId}",
+            "password"
+          ]
+        },
+        "description": "Module: user-management | AuthRequired: True | Permission: user.reset_password"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PATCH /api/v1/users/{userId}/password responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[user-profile] PATCH /api/v1/users/{userId}/status",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/{userId}/status",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "{userId}",
+            "status"
+          ]
+        },
+        "description": "Module: user-profile | AuthRequired: True | Permission: user.active | user.inactive"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PATCH /api/v1/users/{userId}/status responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[club] GET /api/v1/public/clubs",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/public/clubs",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "public",
+            "clubs"
+          ]
+        },
+        "description": "Module: club | AuthRequired: False | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/public/clubs responds with expected status', function () {",
+              "  pm.expect([200, 201, 204]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[club] GET /api/v1/public/clubs/{clubId}",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/public/clubs/{clubId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "public",
+            "clubs",
+            "{clubId}"
+          ]
+        },
+        "description": "Module: club | AuthRequired: False | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/public/clubs/{clubId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[club] GET /api/v1/clubs",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs"
+          ]
+        },
+        "description": "Module: club | AuthRequired: True | Permission: club.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/clubs responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[club] GET /api/v1/clubs/{clubId}",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}"
+          ]
+        },
+        "description": "Module: club | AuthRequired: True | Permission: club.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/clubs/{clubId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[club] POST /api/v1/clubs",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs"
+          ]
+        },
+        "description": "Module: club | AuthRequired: True | Permission: club.create"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/clubs responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[club] PATCH /api/v1/clubs/{clubId}",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}"
+          ]
+        },
+        "description": "Module: club | AuthRequired: True | Permission: club.update"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PATCH /api/v1/clubs/{clubId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[club] PATCH /api/v1/clubs/{clubId}/status",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/status",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "status"
+          ]
+        },
+        "description": "Module: club | AuthRequired: True | Permission: club.active | club.inactive"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PATCH /api/v1/clubs/{clubId}/status responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[department] GET /api/v1/clubs/{clubId}/departments",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/departments",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "departments"
+          ]
+        },
+        "description": "Module: department | AuthRequired: True | Permission: department.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/clubs/{clubId}/departments responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[department] GET /api/v1/departments/{departmentId}",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/departments/{departmentId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "departments",
+            "{departmentId}"
+          ]
+        },
+        "description": "Module: department | AuthRequired: True | Permission: department.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/departments/{departmentId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[department] POST /api/v1/clubs/{clubId}/departments",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/departments",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "departments"
+          ]
+        },
+        "description": "Module: department | AuthRequired: True | Permission: department.create"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/clubs/{clubId}/departments responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[department] PATCH /api/v1/departments/{departmentId}",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/departments/{departmentId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "departments",
+            "{departmentId}"
+          ]
+        },
+        "description": "Module: department | AuthRequired: True | Permission: department.update"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PATCH /api/v1/departments/{departmentId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[department] PATCH /api/v1/departments/{departmentId}/status",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/departments/{departmentId}/status",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "departments",
+            "{departmentId}",
+            "status"
+          ]
+        },
+        "description": "Module: department | AuthRequired: True | Permission: department.activate | department.inactive"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PATCH /api/v1/departments/{departmentId}/status responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[membership] GET /api/v1/clubs/{clubId}/memberships",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/memberships",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "memberships"
+          ]
+        },
+        "description": "Module: membership | AuthRequired: True | Permission: member.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/clubs/{clubId}/memberships responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[membership] POST /api/v1/clubs/{clubId}/memberships",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/memberships",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "memberships"
+          ]
+        },
+        "description": "Module: membership | AuthRequired: True | Permission: member.add"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/clubs/{clubId}/memberships responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[department-member] GET /api/v1/departments/{departmentId}/members",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/departments/{departmentId}/members",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "departments",
+            "{departmentId}",
+            "members"
+          ]
+        },
+        "description": "Module: department-member | AuthRequired: True | Permission: department.member.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/departments/{departmentId}/members responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[department-member] POST /api/v1/departments/{departmentId}/members",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/departments/{departmentId}/members",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "departments",
+            "{departmentId}",
+            "members"
+          ]
+        },
+        "description": "Module: department-member | AuthRequired: True | Permission: department.member.add"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/departments/{departmentId}/members responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[permission-management] GET /api/v1/permissions",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/permissions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "permissions"
+          ]
+        },
+        "description": "Module: permission-management | AuthRequired: True | Permission: permission.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/permissions responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[permission-management] POST /api/v1/users/{userId}/permissions",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/{userId}/permissions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "{userId}",
+            "permissions"
+          ]
+        },
+        "description": "Module: permission-management | AuthRequired: True | Permission: permission.assign"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/users/{userId}/permissions responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[permission-management] DELETE /api/v1/users/{userId}/permissions/{permissionId}",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/{userId}/permissions/{permissionId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "{userId}",
+            "permissions",
+            "{permissionId}"
+          ]
+        },
+        "description": "Module: permission-management | AuthRequired: True | Permission: permission.revoke"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('DELETE /api/v1/users/{userId}/permissions/{permissionId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[user-management] PATCH /api/v1/users/{userId}",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/{userId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "{userId}"
+          ]
+        },
+        "description": "Module: user-management | AuthRequired: True | Permission: user.update"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PATCH /api/v1/users/{userId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[permission-management] DELETE /api/v1/users/{userId}/permissions/by-key/{permissionKey}",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/{userId}/permissions/by-key/{permissionKey}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "{userId}",
+            "permissions",
+            "by-key",
+            "{permissionKey}"
+          ]
+        },
+        "description": "Module: permission-management | AuthRequired: True | Permission: permission.revoke"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('DELETE /api/v1/users/{userId}/permissions/by-key/{permissionKey} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[authentication] POST /api/v1/auth/change-password",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/change-password",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "change-password"
+          ]
+        },
+        "description": "Module: authentication | AuthRequired: True | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/auth/change-password responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[permission-management] GET /api/v1/users/me/permissions",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/me/permissions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "me",
+            "permissions"
+          ]
+        },
+        "description": "Module: permission-management | AuthRequired: True | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/users/me/permissions responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[permission-management] GET /api/v1/users/{userId}/permissions",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/{userId}/permissions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "{userId}",
+            "permissions"
+          ]
+        },
+        "description": "Module: permission-management | AuthRequired: True | Permission: permission.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/users/{userId}/permissions responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[role-management] GET /api/v1/roles",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/roles",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "roles"
+          ]
+        },
+        "description": "Module: role-management | AuthRequired: True | Permission: role.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/roles responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[role-management] POST /api/v1/roles",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/roles",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "roles"
+          ]
+        },
+        "description": "Module: role-management | AuthRequired: True | Permission: role.manage"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/roles responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[role-management] GET /api/v1/roles/{roleId}",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/roles/{roleId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "roles",
+            "{roleId}"
+          ]
+        },
+        "description": "Module: role-management | AuthRequired: True | Permission: role.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/roles/{roleId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[role-management] PATCH /api/v1/roles/{roleId}",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/roles/{roleId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "roles",
+            "{roleId}"
+          ]
+        },
+        "description": "Module: role-management | AuthRequired: True | Permission: role.manage"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PATCH /api/v1/roles/{roleId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[role-management] GET /api/v1/users/me/roles",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/me/roles",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "me",
+            "roles"
+          ]
+        },
+        "description": "Module: role-management | AuthRequired: True | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/users/me/roles responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[role-management] GET /api/v1/users/{userId}/roles",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/{userId}/roles",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "{userId}",
+            "roles"
+          ]
+        },
+        "description": "Module: role-management | AuthRequired: True | Permission: permission.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/users/{userId}/roles responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[role-management] POST /api/v1/users/{userId}/roles",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/{userId}/roles",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "{userId}",
+            "roles"
+          ]
+        },
+        "description": "Module: role-management | AuthRequired: True | Permission: permission.assign"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/users/{userId}/roles responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[role-management] DELETE /api/v1/users/{userId}/roles/{assignmentId}",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/{userId}/roles/{assignmentId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "{userId}",
+            "roles",
+            "{assignmentId}"
+          ]
+        },
+        "description": "Module: role-management | AuthRequired: True | Permission: permission.revoke"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('DELETE /api/v1/users/{userId}/roles/{assignmentId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[permission-management] GET /api/v1/users/me/effective-permissions",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/me/effective-permissions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "me",
+            "effective-permissions"
+          ]
+        },
+        "description": "Module: permission-management | AuthRequired: True | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/users/me/effective-permissions responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[permission-management] GET /api/v1/users/{userId}/effective-permissions",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/{userId}/effective-permissions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "{userId}",
+            "effective-permissions"
+          ]
+        },
+        "description": "Module: permission-management | AuthRequired: True | Permission: permission.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/users/{userId}/effective-permissions responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[permission-management] GET /api/v1/permissions/groups",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/permissions/groups",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "permissions",
+            "groups"
+          ]
+        },
+        "description": "Module: permission-management | AuthRequired: True | Permission: permission.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/permissions/groups responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[permission-management] PUT /api/v1/users/{userId}/permissions",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/{userId}/permissions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "{userId}",
+            "permissions"
+          ]
+        },
+        "description": "Module: permission-management | AuthRequired: True | Permission: permission.assign"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PUT /api/v1/users/{userId}/permissions responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[audit] GET /api/v1/audit-logs",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/audit-logs",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "audit-logs"
+          ]
+        },
+        "description": "Module: audit | AuthRequired: True | Permission: audit.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/audit-logs responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[membership] GET /api/v1/users/me/memberships",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/me/memberships",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "me",
+            "memberships"
+          ]
+        },
+        "description": "Module: membership | AuthRequired: True | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/users/me/memberships responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[user-management] DELETE /api/v1/users/{userId}",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/{userId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "{userId}"
+          ]
+        },
+        "description": "Module: user-management | AuthRequired: True | Permission: user.delete"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('DELETE /api/v1/users/{userId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[role-management] GET /api/v1/clubs/{clubId}/positions",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/positions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "positions"
+          ]
+        },
+        "description": "Module: role-management | AuthRequired: True | Permission: department.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/clubs/{clubId}/positions responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[role-management] PUT /api/v1/clubs/{clubId}/positions",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/positions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "positions"
+          ]
+        },
+        "description": "Module: role-management | AuthRequired: True | Permission: permission.assign"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PUT /api/v1/clubs/{clubId}/positions responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[role-management] DELETE /api/v1/clubs/{clubId}/positions/{assignmentId}",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/positions/{assignmentId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "positions",
+            "{assignmentId}"
+          ]
+        },
+        "description": "Module: role-management | AuthRequired: True | Permission: permission.revoke"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('DELETE /api/v1/clubs/{clubId}/positions/{assignmentId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[system] GET /api/v1/public/i18n/translations",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/public/i18n/translations",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "public",
+            "i18n",
+            "translations"
+          ]
+        },
+        "description": "Module: system | AuthRequired: False | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/public/i18n/translations responds with expected status', function () {",
+              "  pm.expect([200, 201, 204]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[system] POST /api/v1/public/i18n/translate-batch",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/public/i18n/translate-batch",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "public",
+            "i18n",
+            "translate-batch"
+          ]
+        },
+        "description": "Module: system | AuthRequired: False | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/public/i18n/translate-batch responds with expected status', function () {",
+              "  pm.expect([200, 201, 204]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

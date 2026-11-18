@@ -1,9 +1,4 @@
-
+.DS_Store
 __pycache__/
-*.pyc
-
-# Local-only credentials (bootstrap admin)
-.env.local
-
-# Local worktrees
-.worktrees/
+*.py[cod]
+*.tmp

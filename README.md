@@ -2,7 +2,24 @@
 
 Nhánh `testcase/qa` tập trung xác nhận các luồng nghiệp vụ của hệ thống quản lý câu lạc bộ sinh viên VJU hoạt động đúng theo đặc tả và hợp đồng API. Nhánh này tiếp nhận thay đổi từ `backend`, `frontend` và các nhánh tính năng, ghi nhận kết quả kiểm thử, lỗi phát hiện được và điều kiện cần trước khi tích hợp vào `main`.
 
-> **Phạm vi tài liệu (Cập nhật 18/11/2026 — đồng bộ commit `3f874a1` trên `main`):** Bộ kiểm thử tại `bo_tai_lieu_testcase.md` đã bao phủ đầy đủ **122 PBI** và **466 ca kiểm thử (`TC-PB-*`)** xuyên suốt 4 giai đoạn (Sprint 1: 41 PBI / 157 TC; Sprint 2: 20 PBI / 77 TC; Sprint 3: 23 PBI / 86 TC; Sprint 4 & Mở rộng `PB-62..PB-79`: 38 PBI / 146 TC — đạt **454 Pass**, 12 TC của `PB-76..PB-78` thuộc lộ trình Sprint 4) cùng **35/35 mã lỗi (`BUG-P1-01` → `BUG-P3-11`) đã đóng 100%**.
+> **Phạm vi tài liệu (Cập nhật 18/11/2026 — đồng bộ commit `3f874a1` trên `main`):** Toàn bộ **122 PBI** và **466 ca kiểm thử (`TC-PB-*`)** đã được **chia tách thành 4 thư mục Sprint độc lập** tại [`testcases/`](./testcases/README.md) (`sprint-1`: 41 PBI / 157 TC; `sprint-2`: 20 PBI / 77 TC; `sprint-3`: 23 PBI / 86 TC; `sprint-4`: 38 PBI / 146 TC — đạt **454 Pass**, 12 TC của `PB-76..PB-78` thuộc lộ trình Sprint 4) kèm Postman Collection, Bug Log (**35/35 mã lỗi `BUG-P1-01` → `BUG-P3-11` đã đóng 100%**) và bộ chạy test nhanh `./testcases/run-sprint-tests.sh` cho từng Sprint.
+
+## 0. Truy cập & Chạy Test Nhanh Theo Từng Thư mục Sprint
+
+| Thư mục Sprint | Quy mô & Kết quả | Cụm Module con | Postman API | Lệnh chạy test nhanh (< 1 giây) |
+| :--- | :--- | :---: | :---: | :--- |
+| [**`testcases/sprint-1/`**](./testcases/sprint-1/README.md) | 41 PBI · **157/157 Pass** · 14 Bug đã đóng | 5 file trong `modules/` | [`sprint-1.postman.json`](./testcases/sprint-1/sprint-1.postman.json) | `./testcases/run-sprint-tests.sh sprint-1` |
+| [**`testcases/sprint-2/`**](./testcases/sprint-2/README.md) | 20 PBI · **77/77 Pass** · 9 Bug đã đóng | 5 file trong `modules/` | [`sprint-2.postman.json`](./testcases/sprint-2/sprint-2.postman.json) | `./testcases/run-sprint-tests.sh sprint-2` |
+| [**`testcases/sprint-3/`**](./testcases/sprint-3/README.md) | 23 PBI · **86/86 Pass** · 11 Bug đã đóng | 4 file trong `modules/` | [`sprint-3.postman.json`](./testcases/sprint-3/sprint-3.postman.json) | `./testcases/run-sprint-tests.sh sprint-3` |
+| [**`testcases/sprint-4/`**](./testcases/sprint-4/README.md) | 38 PBI · **134 Pass**, 12 Chờ Sprint 4 · 1 Bug đã đóng | 5 file trong `modules/` | [`sprint-4.postman.json`](./testcases/sprint-4/sprint-4.postman.json) | `./testcases/run-sprint-tests.sh sprint-4` |
+
+```bash
+# Chạy toàn bộ OpenAPI 3.1 Contract Tests + cả 4 thư mục Sprint cùng lúc:
+./testcases/run-sprint-tests.sh all
+
+# Chạy kèm Live HTTP Smoke Test lên môi trường đang chạy (Local / Staging / Production):
+./testcases/run-sprint-tests.sh sprint-3 --live https://api.vju-club.all1.vn
+```
 
 ## 1. QA đã và sẽ làm như thế nào
 

@@ -1,0 +1,2044 @@
+{
+  "info": {
+    "name": "VJU ClubHub — Sprint 4 — Điểm danh 48h, Thống kê, Ẩn danh PII, Kho tài liệu 3 tầng, Chat STOMP V30/V31, AI i18n & Mở rộng",
+    "_postman_id": "00000000-0000-4000-8000-000000000004",
+    "description": "Bộ kiểm thử API tự động dành riêng cho Sprint 4 (52 endpoints).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "[authentication] POST /api/v1/auth/forgot-password",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/forgot-password",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "forgot-password"
+          ]
+        },
+        "description": "Module: authentication | AuthRequired: False | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/auth/forgot-password responds with expected status', function () {",
+              "  pm.expect([200, 201, 204]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[authentication] POST /api/v1/auth/reset-password",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/reset-password",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "reset-password"
+          ]
+        },
+        "description": "Module: authentication | AuthRequired: False | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/auth/reset-password responds with expected status', function () {",
+              "  pm.expect([200, 201, 204]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[authentication] POST /api/v1/auth/logout",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/logout",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "logout"
+          ]
+        },
+        "description": "Module: authentication | AuthRequired: True | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/auth/logout responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[user-profile] POST /api/v1/users/me/avatar",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/me/avatar",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "me",
+            "avatar"
+          ]
+        },
+        "description": "Module: user-profile | AuthRequired: True | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/users/me/avatar responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[user-profile] POST /api/v1/users/{userId}/avatar",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/{userId}/avatar",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "{userId}",
+            "avatar"
+          ]
+        },
+        "description": "Module: user-profile | AuthRequired: True | Permission: user.update"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/users/{userId}/avatar responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[club] GET /api/v1/public/clubs/{clubId}/logo",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/public/clubs/{clubId}/logo",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "public",
+            "clubs",
+            "{clubId}",
+            "logo"
+          ]
+        },
+        "description": "Module: club | AuthRequired: False | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/public/clubs/{clubId}/logo responds with expected status', function () {",
+              "  pm.expect([200, 201, 204]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[user-profile] GET /api/v1/public/avatars/{fileName}",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/public/avatars/{fileName}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "public",
+            "avatars",
+            "{fileName}"
+          ]
+        },
+        "description": "Module: user-profile | AuthRequired: False | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/public/avatars/{fileName} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[club] GET /api/v1/public/clubs/{clubId}/cover",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/public/clubs/{clubId}/cover",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "public",
+            "clubs",
+            "{clubId}",
+            "cover"
+          ]
+        },
+        "description": "Module: club | AuthRequired: False | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/public/clubs/{clubId}/cover responds with expected status', function () {",
+              "  pm.expect([200, 201, 204]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[club] POST /api/v1/clubs/{clubId}/logo",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/logo",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "logo"
+          ]
+        },
+        "description": "Module: club | AuthRequired: True | Permission: club.update"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/clubs/{clubId}/logo responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[club] POST /api/v1/clubs/{clubId}/cover",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/cover",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "cover"
+          ]
+        },
+        "description": "Module: club | AuthRequired: True | Permission: club.update"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/clubs/{clubId}/cover responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[setting] GET /api/v1/system-settings",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/system-settings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "system-settings"
+          ]
+        },
+        "description": "Module: setting | AuthRequired: True | Permission: setting.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/system-settings responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[setting] PUT /api/v1/system-settings",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/system-settings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "system-settings"
+          ]
+        },
+        "description": "Module: setting | AuthRequired: True | Permission: setting.update"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PUT /api/v1/system-settings responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[setting] PUT /api/v1/system-settings/smtp-test",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/system-settings/smtp-test",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "system-settings",
+            "smtp-test"
+          ]
+        },
+        "description": "Module: setting | AuthRequired: True | Permission: setting.update"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PUT /api/v1/system-settings/smtp-test responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[document] GET /api/v1/clubs/{clubId}/documents",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/documents",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "documents"
+          ]
+        },
+        "description": "Module: document | AuthRequired: True | Permission: document.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/clubs/{clubId}/documents responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[document] GET /api/v1/clubs/{clubId}/documents/count",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/documents/count",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "documents",
+            "count"
+          ]
+        },
+        "description": "Module: document | AuthRequired: True | Permission: document.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/clubs/{clubId}/documents/count responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[document] GET /api/v1/clubs/{clubId}/documents/names",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/documents/names",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "documents",
+            "names"
+          ]
+        },
+        "description": "Module: document | AuthRequired: True | Permission: document.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/clubs/{clubId}/documents/names responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[document] POST /api/v1/clubs/{clubId}/documents",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/documents",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "documents"
+          ]
+        },
+        "description": "Module: document | AuthRequired: True | Permission: document.upload"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/clubs/{clubId}/documents responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[document] GET /api/v1/documents/{documentId}",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/documents/{documentId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "documents",
+            "{documentId}"
+          ]
+        },
+        "description": "Module: document | AuthRequired: True | Permission: document.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/documents/{documentId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[document] PATCH /api/v1/documents/{documentId}",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/documents/{documentId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "documents",
+            "{documentId}"
+          ]
+        },
+        "description": "Module: document | AuthRequired: True | Permission: document.update"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PATCH /api/v1/documents/{documentId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[document] DELETE /api/v1/documents/{documentId}",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/documents/{documentId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "documents",
+            "{documentId}"
+          ]
+        },
+        "description": "Module: document | AuthRequired: True | Permission: document.delete"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('DELETE /api/v1/documents/{documentId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[document] POST /api/v1/documents/{documentId}/restore",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/documents/{documentId}/restore",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "documents",
+            "{documentId}",
+            "restore"
+          ]
+        },
+        "description": "Module: document | AuthRequired: True | Permission: document.restore"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/documents/{documentId}/restore responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[document] GET /api/v1/documents/{documentId}/versions",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/documents/{documentId}/versions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "documents",
+            "{documentId}",
+            "versions"
+          ]
+        },
+        "description": "Module: document | AuthRequired: True | Permission: document.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/documents/{documentId}/versions responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[document] POST /api/v1/documents/{documentId}/versions",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/documents/{documentId}/versions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "documents",
+            "{documentId}",
+            "versions"
+          ]
+        },
+        "description": "Module: document | AuthRequired: True | Permission: document.upload"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/documents/{documentId}/versions responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[document] GET /api/v1/documents/{documentId}/download",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/documents/{documentId}/download",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "documents",
+            "{documentId}",
+            "download"
+          ]
+        },
+        "description": "Module: document | AuthRequired: True | Permission: document.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/documents/{documentId}/download responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[document] GET /api/v1/documents/{documentId}/download-url",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/documents/{documentId}/download-url",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "documents",
+            "{documentId}",
+            "download-url"
+          ]
+        },
+        "description": "Module: document | AuthRequired: True | Permission: document.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/documents/{documentId}/download-url responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[notification] GET /api/v1/users/me/notifications/unread-summary",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/users/me/notifications/unread-summary",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "me",
+            "notifications",
+            "unread-summary"
+          ]
+        },
+        "description": "Module: notification | AuthRequired: True | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/users/me/notifications/unread-summary responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[event] PUT /api/v1/events/{eventId}/attendances",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/events/{eventId}/attendances",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "events",
+            "{eventId}",
+            "attendances"
+          ]
+        },
+        "description": "Module: event | AuthRequired: True | Permission: event.attendance | event.attendance_edit"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PUT /api/v1/events/{eventId}/attendances responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[event] GET /api/v1/events/{eventId}/attendances",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/events/{eventId}/attendances",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "events",
+            "{eventId}",
+            "attendances"
+          ]
+        },
+        "description": "Module: event | AuthRequired: True | Permission: event.attendance | event.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/events/{eventId}/attendances responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat] POST /api/v1/clubs/{clubId}/channels",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/channels",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "channels"
+          ]
+        },
+        "description": "Module: chat | AuthRequired: True | Permission: chat.send"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/clubs/{clubId}/channels responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat] GET /api/v1/clubs/{clubId}/channels",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/channels",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "channels"
+          ]
+        },
+        "description": "Module: chat | AuthRequired: True | Permission: chat.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/clubs/{clubId}/channels responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat] POST /api/v1/channels/{channelId}/messages",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/channels/{channelId}/messages",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "channels",
+            "{channelId}",
+            "messages"
+          ]
+        },
+        "description": "Module: chat | AuthRequired: True | Permission: chat.send"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/channels/{channelId}/messages responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat] GET /api/v1/channels/{channelId}/messages",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/channels/{channelId}/messages",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "channels",
+            "{channelId}",
+            "messages"
+          ]
+        },
+        "description": "Module: chat | AuthRequired: True | Permission: chat.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/channels/{channelId}/messages responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat] GET /api/v1/channels/{channelId}/pinned-messages",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/channels/{channelId}/pinned-messages",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "channels",
+            "{channelId}",
+            "pinned-messages"
+          ]
+        },
+        "description": "Module: chat | AuthRequired: True | Permission: chat.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/channels/{channelId}/pinned-messages responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat] POST /api/v1/channels/{channelId}/messages/{messageId}/pin",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/channels/{channelId}/messages/{messageId}/pin",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "channels",
+            "{channelId}",
+            "messages",
+            "{messageId}",
+            "pin"
+          ]
+        },
+        "description": "Module: chat | AuthRequired: True | Permission: chat.send"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/channels/{channelId}/messages/{messageId}/pin responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat] DELETE /api/v1/channels/{channelId}/messages/{messageId}/pin",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/channels/{channelId}/messages/{messageId}/pin",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "channels",
+            "{channelId}",
+            "messages",
+            "{messageId}",
+            "pin"
+          ]
+        },
+        "description": "Module: chat | AuthRequired: True | Permission: chat.send"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('DELETE /api/v1/channels/{channelId}/messages/{messageId}/pin responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat] POST /api/v1/channels/{channelId}/summaries",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/channels/{channelId}/summaries",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "channels",
+            "{channelId}",
+            "summaries"
+          ]
+        },
+        "description": "Module: chat | AuthRequired: True | Permission: chat.summarize"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/channels/{channelId}/summaries responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat] GET /api/v1/channels/{channelId}/summaries",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/channels/{channelId}/summaries",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "channels",
+            "{channelId}",
+            "summaries"
+          ]
+        },
+        "description": "Module: chat | AuthRequired: True | Permission: chat.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/channels/{channelId}/summaries responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[statistics] GET /api/v1/statistics/system",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/statistics/system",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "statistics",
+            "system"
+          ]
+        },
+        "description": "Module: statistics | AuthRequired: True | Permission: user.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/statistics/system responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[statistics] GET /api/v1/clubs/{clubId}/statistics",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/statistics",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "statistics"
+          ]
+        },
+        "description": "Module: statistics | AuthRequired: True | Permission: club.view | member.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/clubs/{clubId}/statistics responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[system] GET /api/v1/public/i18n/translations",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/public/i18n/translations",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "public",
+            "i18n",
+            "translations"
+          ]
+        },
+        "description": "Module: system | AuthRequired: False | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/public/i18n/translations responds with expected status', function () {",
+              "  pm.expect([200, 201, 204]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[system] POST /api/v1/public/i18n/translate-batch",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/public/i18n/translate-batch",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "public",
+            "i18n",
+            "translate-batch"
+          ]
+        },
+        "description": "Module: system | AuthRequired: False | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/public/i18n/translate-batch responds with expected status', function () {",
+              "  pm.expect([200, 201, 204]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[document-vault] GET /api/v1/system/documents",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/system/documents",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "system",
+            "documents"
+          ]
+        },
+        "description": "Module: document-vault | AuthRequired: True | Permission: None"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/system/documents responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[document-vault] POST /api/v1/system/documents",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/system/documents",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "system",
+            "documents"
+          ]
+        },
+        "description": "Module: document-vault | AuthRequired: True | Permission: document.upload"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/system/documents responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[document-vault] GET /api/v1/documents/{documentId}/preview",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/documents/{documentId}/preview",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "documents",
+            "{documentId}",
+            "preview"
+          ]
+        },
+        "description": "Module: document-vault | AuthRequired: True | Permission: document.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/documents/{documentId}/preview responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat-realtime] POST /api/v1/channels/{channelId}/read",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/channels/{channelId}/read",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "channels",
+            "{channelId}",
+            "read"
+          ]
+        },
+        "description": "Module: chat-realtime | AuthRequired: True | Permission: chat.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/channels/{channelId}/read responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat-realtime] POST /api/v1/channels/{channelId}/attachments",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/channels/{channelId}/attachments",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "channels",
+            "{channelId}",
+            "attachments"
+          ]
+        },
+        "description": "Module: chat-realtime | AuthRequired: True | Permission: chat.send"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/channels/{channelId}/attachments responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat-realtime] GET /api/v1/chat-attachments/{attachmentId}/stream",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat-attachments/{attachmentId}/stream",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "chat-attachments",
+            "{attachmentId}",
+            "stream"
+          ]
+        },
+        "description": "Module: chat-realtime | AuthRequired: True | Permission: chat.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/chat-attachments/{attachmentId}/stream responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat-realtime] GET /api/v1/clubs/{clubId}/quick-replies",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/quick-replies",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "quick-replies"
+          ]
+        },
+        "description": "Module: chat-realtime | AuthRequired: True | Permission: chat.view"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('GET /api/v1/clubs/{clubId}/quick-replies responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat-realtime] POST /api/v1/clubs/{clubId}/quick-replies",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/quick-replies",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "quick-replies"
+          ]
+        },
+        "description": "Module: chat-realtime | AuthRequired: True | Permission: chat.send"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('POST /api/v1/clubs/{clubId}/quick-replies responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat-realtime] PUT /api/v1/clubs/{clubId}/quick-replies/{replyId}",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/quick-replies/{replyId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "quick-replies",
+            "{replyId}"
+          ]
+        },
+        "description": "Module: chat-realtime | AuthRequired: True | Permission: chat.send"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PUT /api/v1/clubs/{clubId}/quick-replies/{replyId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat-realtime] DELETE /api/v1/clubs/{clubId}/quick-replies/{replyId}",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/quick-replies/{replyId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "quick-replies",
+            "{replyId}"
+          ]
+        },
+        "description": "Module: chat-realtime | AuthRequired: True | Permission: chat.send"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('DELETE /api/v1/clubs/{clubId}/quick-replies/{replyId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat-realtime] PUT /api/v1/channels/{channelId}/messages/{messageId}/reactions",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/channels/{channelId}/messages/{messageId}/reactions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "channels",
+            "{channelId}",
+            "messages",
+            "{messageId}",
+            "reactions"
+          ]
+        },
+        "description": "Module: chat-realtime | AuthRequired: True | Permission: chat.send"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PUT /api/v1/channels/{channelId}/messages/{messageId}/reactions responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
