@@ -5023,6 +5023,84 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+  /clubs/{clubId}/channels/{channelId}:
+    delete:
+      operationId: chat.deleteChannel
+      summary: Delete a club or department chat channel
+      tags: [Chat]
+      x-permission: club.update
+      x-scope: CLUB
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: channelId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '204':
+          description: Channel deleted
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /channels/{channelId}/messages/{messageId}:
+    patch:
+      operationId: chat.updateMessage
+      summary: Edit own message content in a chat channel
+      tags: [Chat]
+      x-permission: chat.send
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: channelId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: messageId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateChatMessageRequest'}
+      responses:
+        '200':
+          description: Updated message
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ChatMessage'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    delete:
+      operationId: chat.deleteMessage
+      summary: Delete own message or moderate message in a chat channel
+      tags: [Chat]
+      x-permission: chat.send
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: channelId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: messageId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '204':
+          description: Message deleted
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
   /channels/{channelId}/read:
     post:
       operationId: chat.mark_read
@@ -7723,7 +7801,13 @@ components:
           type: array
           items: {type: string}
         lastSeenAt: {type: [string, 'null'], format: date-time}
+        editedAt: {type: [string, 'null'], format: date-time}
         createdAt: {type: string, format: date-time}
+    UpdateChatMessageRequest:
+      type: object
+      required: [content]
+      properties:
+        content: {type: string, minLength: 1, maxLength: 4000}
     ToggleChatReactionRequest:
       type: object
       required: [emoji]

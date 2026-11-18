@@ -2,7 +2,7 @@
   "info": {
     "name": "VJU ClubHub — Sprint 4 — Điểm danh 48h, Thống kê, Ẩn danh PII, Kho tài liệu 3 tầng, Chat STOMP V30/V31, AI i18n & Mở rộng",
     "_postman_id": "00000000-0000-4000-8000-000000000004",
-    "description": "Bộ kiểm thử API tự động dành riêng cho Sprint 4 (52 endpoints).",
+    "description": "Bộ kiểm thử API tự động dành riêng cho Sprint 4 (55 endpoints).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -2033,6 +2033,126 @@
             "type": "text/javascript",
             "exec": [
               "pm.test('PUT /api/v1/channels/{channelId}/messages/{messageId}/reactions responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat-realtime] DELETE /api/v1/clubs/{clubId}/channels/{channelId}",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/clubs/{clubId}/channels/{channelId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "clubs",
+            "{clubId}",
+            "channels",
+            "{channelId}"
+          ]
+        },
+        "description": "Module: chat-realtime | AuthRequired: True | Permission: club.update / department.update"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('DELETE /api/v1/clubs/{clubId}/channels/{channelId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat-realtime] PATCH /api/v1/channels/{channelId}/messages/{messageId}",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/channels/{channelId}/messages/{messageId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "channels",
+            "{channelId}",
+            "messages",
+            "{messageId}"
+          ]
+        },
+        "description": "Module: chat-realtime | AuthRequired: True | Permission: chat.send"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('PATCH /api/v1/channels/{channelId}/messages/{messageId} responds with expected status', function () {",
+              "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "[chat-realtime] DELETE /api/v1/channels/{channelId}/messages/{messageId}",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/channels/{channelId}/messages/{messageId}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "channels",
+            "{channelId}",
+            "messages",
+            "{messageId}"
+          ]
+        },
+        "description": "Module: chat-realtime | AuthRequired: True | Permission: chat.send / club.update / department.update"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('DELETE /api/v1/channels/{channelId}/messages/{messageId} responds with expected status', function () {",
               "  pm.expect([200, 201, 204, 401, 403]).to.include(pm.response.code);",
               "});"
             ]

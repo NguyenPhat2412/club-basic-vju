@@ -2,7 +2,7 @@
 
 Nhánh `testcase/qa` tập trung xác nhận các luồng nghiệp vụ của hệ thống quản lý câu lạc bộ sinh viên VJU hoạt động đúng theo đặc tả và hợp đồng API. Nhánh này tiếp nhận thay đổi từ `backend`, `frontend` và các nhánh tính năng, ghi nhận kết quả kiểm thử, lỗi phát hiện được và điều kiện cần trước khi tích hợp vào `main`.
 
-> **Phạm vi tài liệu (Cập nhật 18/11/2026 — đồng bộ commit `3f874a1` trên `main`):** Toàn bộ **122 PBI** và **466 ca kiểm thử (`TC-PB-*`)** đã được **chia tách thành 4 thư mục Sprint độc lập** tại [`testcases/`](./testcases/README.md) (`sprint-1`: 41 PBI / 157 TC; `sprint-2`: 20 PBI / 77 TC; `sprint-3`: 23 PBI / 86 TC; `sprint-4`: 38 PBI / 146 TC — đạt **454 Pass**, 12 TC của `PB-76..PB-78` thuộc lộ trình Sprint 4) kèm Postman Collection, Bug Log (**35/35 mã lỗi `BUG-P1-01` → `BUG-P3-11` đã đóng 100%**) và bộ chạy test nhanh `./testcases/run-sprint-tests.sh` cho từng Sprint.
+> **Phạm vi tài liệu (Cập nhật 18/11/2026 — đồng bộ commit `103f5c1` trên `main`):** Toàn bộ **123 PBI** và **470 ca kiểm thử (`TC-PB-*`)** đã được **chia tách thành 4 thư mục Sprint độc lập** tại [`testcases/`](./testcases/README.md) (`sprint-1`: 41 PBI / 157 TC; `sprint-2`: 20 PBI / 77 TC; `sprint-3`: 23 PBI / 86 TC; `sprint-4`: 39 PBI / 150 TC — đạt **458 Pass**, 12 TC của `PB-76..PB-78` thuộc lộ trình Sprint 4) kèm Postman Collection, Bug Log (**35/35 mã lỗi `BUG-P1-01` → `BUG-P3-11` đã đóng 100%**) và bộ chạy test nhanh `./testcases/run-sprint-tests.sh` cho từng Sprint.
 
 ## 0. Truy cập & Chạy Test Nhanh Theo Từng Thư mục Sprint
 
@@ -11,7 +11,7 @@ Nhánh `testcase/qa` tập trung xác nhận các luồng nghiệp vụ của h�
 | [**`testcases/sprint-1/`**](./testcases/sprint-1/README.md) | 41 PBI · **157/157 Pass** · 14 Bug đã đóng | 5 file trong `modules/` | [`sprint-1.postman.json`](./testcases/sprint-1/sprint-1.postman.json) | `./testcases/run-sprint-tests.sh sprint-1` |
 | [**`testcases/sprint-2/`**](./testcases/sprint-2/README.md) | 20 PBI · **77/77 Pass** · 9 Bug đã đóng | 5 file trong `modules/` | [`sprint-2.postman.json`](./testcases/sprint-2/sprint-2.postman.json) | `./testcases/run-sprint-tests.sh sprint-2` |
 | [**`testcases/sprint-3/`**](./testcases/sprint-3/README.md) | 23 PBI · **86/86 Pass** · 11 Bug đã đóng | 4 file trong `modules/` | [`sprint-3.postman.json`](./testcases/sprint-3/sprint-3.postman.json) | `./testcases/run-sprint-tests.sh sprint-3` |
-| [**`testcases/sprint-4/`**](./testcases/sprint-4/README.md) | 38 PBI · **134 Pass**, 12 Chờ Sprint 4 · 1 Bug đã đóng | 5 file trong `modules/` | [`sprint-4.postman.json`](./testcases/sprint-4/sprint-4.postman.json) | `./testcases/run-sprint-tests.sh sprint-4` |
+| [**`testcases/sprint-4/`**](./testcases/sprint-4/README.md) | 39 PBI · **138 Pass**, 12 Chờ Sprint 4 · 1 Bug đã đóng | 5 file trong `modules/` | [`sprint-4.postman.json`](./testcases/sprint-4/sprint-4.postman.json) | `./testcases/run-sprint-tests.sh sprint-4` |
 
 ```bash
 # Chạy toàn bộ OpenAPI 3.1 Contract Tests + cả 4 thư mục Sprint cùng lúc:
@@ -42,14 +42,14 @@ QA đối chiếu kết quả với ba nguồn, theo thứ tự phù hợp với
 
 ### Các luồng nghiệp vụ trong đặc tả
 
-| Nhóm | Mã testcase | Nội dung xác nhận & Trạng thái (`main @ 3f874a1`) |
+| Nhóm | Mã testcase | Nội dung xác nhận & Trạng thái (`main @ 103f5c1`) |
 |---|---|---|
 | Nền tảng Xác thực, CLB, Ban, RBAC & Audit (Sprint 1) | `TC-PB-01` → `TC-PB-37` (157 TC) | Đăng ký/Đăng nhập Session + Google OAuth `@st.vju.ac.vn`, Hồ sơ, CLB, Ban, RBAC 3 tầng, Audit bất biến — **157/157 Pass** |
 | Khám phá CLB, Tuyển quân & Thành viên (Sprint 2) | `TC01`–`TC04` / `TC-PB-55` → `TC-PB-35.1` (77 TC) | Tìm/xem CLB (Table \| Cards), Form động, xét duyệt đơn atomic, vòng đời SUSPENDED/LEFT, chuyển ban, thông báo — **77/77 Pass** |
 | Sự kiện, Cộng tác viên (CTV) & Nhiệm vụ / Subtask 1 cấp (Sprint 3) | `TC05`–`TC10` / `TC-PB-57` → `TC-PB-29` (86 TC) | Vòng đời sự kiện, cổng CTV khóa bi quan chống vượt chỗ, giao task/subtask 1 cấp `parentTaskId`, cờ quá hạn — **86/86 Pass** |
-| Mở rộng Thực tế & Sprint 4 (`PB-62` → `PB-79`) | `TC11`–`TC18` / `TC-PB-59` → `TC-PB-79` (146 TC) | Điểm danh 48h, Ẩn danh PII, Kho tài liệu 3 tầng, Chat STOMP V30/V31, Đa ngữ AI VI/EN/JA, DataTable, Security, Quên mật khẩu OTP & Cấu hình SMTP/Gmail V33 (`PB-75`, `PB-79`) — **134 Pass, 12 Chưa chạy (`PB-76..78`)** |
+| Mở rộng Thực tế & Sprint 4 (`PB-62` → `PB-80`) | `TC11`–`TC18` / `TC-PB-59` → `TC-PB-80` (150 TC) | Điểm danh 48h, Ẩn danh PII, Kho tài liệu 3 tầng, Chat STOMP V30/V31/V34 (Menu chuột trái/phải, sửa/xoá kiểm duyệt tin nhắn & xoá kênh `PB-80`), Đa ngữ AI VI/EN/JA, DataTable, Security, Quên mật khẩu OTP & Cấu hình SMTP/Gmail V33 (`PB-75`, `PB-79`) — **138 Pass, 12 Chưa chạy (`PB-76..78`)** |
 
-Toàn bộ **35/35 bản ghi lỗi (`BUG-P1-01` → `BUG-P3-11`)** đã được khắc phục, kiểm thử xác nhận (retest) và đóng trạng thái trên cả `Product Backlog - Sprint 3.xlsx` và `bo_tai_lieu_testcase.md` (đạt **67/67 Frontend Unit Tests Pass** & **16/16 OpenAPI Contract Tests Pass**).
+Toàn bộ **35/35 bản ghi lỗi (`BUG-P1-01` → `BUG-P3-11`)** đã được khắc phục, kiểm thử xác nhận (retest) và đóng trạng thái trên cả `Product Backlog - Sprint 3.xlsx` và `bo_tai_lieu_testcase.md` (đạt **69/69 Frontend Unit Tests Pass** & **16/16 OpenAPI Contract Tests Pass**).
 
 ## 2. Cách triển khai kiểm thử
 
@@ -146,5 +146,5 @@ fix/* ─────────────────────┘        
 
 - README tổng quan: kiến trúc, cách chạy ứng dụng, API, test, Docker và CI.
 - README backend: cài công cụ, cấu hình `.env.local`, chạy backend, test, build JAR/Docker và kiểm thử API.
-- Tài liệu đặc tả hệ thống: vai trò, quy trình nghiệp vụ và testcase `TC01`–`TC18` và bộ 466 ca kiểm thử chi tiết tại `bo_tai_lieu_testcase.md`.
+- Tài liệu đặc tả hệ thống: vai trò, quy trình nghiệp vụ và testcase `TC01`–`TC18` và bộ 470 ca kiểm thử chi tiết tại `bo_tai_lieu_testcase.md`.
 - API contract: `docs/api/openapi.yaml`, catalog và contract tests trong `docs/api/`.

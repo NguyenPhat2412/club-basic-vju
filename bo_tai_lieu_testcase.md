@@ -1,6 +1,6 @@
 # Bộ Tài liệu Testcase Hệ thống Quản lý CLB Sinh viên VJU (CLUB-BASIC-VJU)
 
-> **Đã chuẩn hóa cấu trúc thư mục theo Sprint (18/11/2026 — đồng bộ `main @ 3f874a1`):** Để tra cứu và thực thi kiểm thử nhanh theo từng giai đoạn mà không phải cuộn một tệp lớn, toàn bộ **466 ca kiểm thử (`TC-PB-*`)** và **35 bản ghi lỗi (`BUG-*`)** đã được chia vào 4 thư mục độc lập tại [`testcases/`](./testcases/README.md).
+> **Đã chuẩn hóa cấu trúc thư mục theo Sprint (18/11/2026 — đồng bộ `main @ 103f5c1`):** Để tra cứu và thực thi kiểm thử nhanh theo từng giai đoạn mà không phải cuộn một tệp lớn, toàn bộ **470 ca kiểm thử (`TC-PB-*`)** và **35 bản ghi lỗi (`BUG-*`)** đã được chia vào 4 thư mục độc lập tại [`testcases/`](./testcases/README.md).
 
 ## 1. Bảng Điều hướng Nhanh Theo Từng Sprint
 
@@ -9,7 +9,7 @@
 | **Sprint 1** | [`testcases/sprint-1/`](./testcases/sprint-1/README.md) | [`sprint-1-testcases.md`](./testcases/sprint-1/sprint-1-testcases.md) | [`sprint-1-bugs.md`](./testcases/sprint-1/sprint-1-bugs.md) | [`sprint-1.postman.json`](./testcases/sprint-1/sprint-1.postman.json) | 41 PBI · **157 TC** (**157 Pass**) · **14/14 Bug Đã đóng** |
 | **Sprint 2** | [`testcases/sprint-2/`](./testcases/sprint-2/README.md) | [`sprint-2-testcases.md`](./testcases/sprint-2/sprint-2-testcases.md) | [`sprint-2-bugs.md`](./testcases/sprint-2/sprint-2-bugs.md) | [`sprint-2.postman.json`](./testcases/sprint-2/sprint-2.postman.json) | 20 PBI · **77 TC** (**77 Pass**) · **9/9 Bug Đã đóng** |
 | **Sprint 3** | [`testcases/sprint-3/`](./testcases/sprint-3/README.md) | [`sprint-3-testcases.md`](./testcases/sprint-3/sprint-3-testcases.md) | [`sprint-3-bugs.md`](./testcases/sprint-3/sprint-3-bugs.md) | [`sprint-3.postman.json`](./testcases/sprint-3/sprint-3.postman.json) | 23 PBI · **86 TC** (**86 Pass**) · **11/11 Bug Đã đóng** |
-| **Sprint 4** | [`testcases/sprint-4/`](./testcases/sprint-4/README.md) | [`sprint-4-testcases.md`](./testcases/sprint-4/sprint-4-testcases.md) | [`sprint-4-bugs.md`](./testcases/sprint-4/sprint-4-bugs.md) | [`sprint-4.postman.json`](./testcases/sprint-4/sprint-4.postman.json) | 38 PBI · **146 TC** (**134 Pass**, 12 Chưa chạy) · **1/1 Bug Đã đóng** |
+| **Sprint 4** | [`testcases/sprint-4/`](./testcases/sprint-4/README.md) | [`sprint-4-testcases.md`](./testcases/sprint-4/sprint-4-testcases.md) | [`sprint-4-bugs.md`](./testcases/sprint-4/sprint-4-bugs.md) | [`sprint-4.postman.json`](./testcases/sprint-4/sprint-4.postman.json) | 39 PBI · **150 TC** (**138 Pass**, 12 Chưa chạy) · **1/1 Bug Đã đóng** |
 
 ## 2. Danh mục Chi tiết Các Cụm Module Trong Từng Sprint
 
@@ -33,11 +33,11 @@
 - [Giao nhiệm vụ, Phân rã Subtask 1 cấp, Cập nhật tiến độ % & Cờ quá hạn](./testcases/sprint-3/modules/03-tasks-subtasks-overdue.md) — **27 TC** (27/27 Pass)
 - [Làm rõ nghiệp vụ (PB-57, PB-58), Migration V21 & Kiểm thử E2E biên deadline](./testcases/sprint-3/modules/04-spike-migration-e2e.md) — **14 TC** (14/14 Pass)
 
-### Sprint 4 — Điểm danh 48h, Thống kê, Ẩn danh PII, Kho tài liệu 3 tầng, Chat STOMP V30/V31, AI i18n & Mở rộng
+### Sprint 4 — Điểm danh 48h, Thống kê, Ẩn danh PII, Kho tài liệu 3 tầng, Chat STOMP V30/V31/V34, AI i18n & Mở rộng
 - [Hoàn tất sự kiện (COMPLETED), Điểm danh 4 trạng thái & Cửa sổ sửa hậu kiểm 48h](./testcases/sprint-4/modules/01-attendance-and-events-close.md) — **15 TC** (15/15 Pass)
 - [Thông báo CLB/Ban/Sự kiện/Task, Lịch sử sự kiện, Thống kê khử trùng lặp & Ẩn danh PII](./testcases/sprint-4/modules/02-notifications-stats-and-pii.md) — **30 TC** (30/30 Pass)
 - [Đo tải 20 workers, Rà soát Bảo mật, Backup/Rollback, Bàn giao & Làm rõ PB-59..61](./testcases/sprint-4/modules/03-perf-security-deploy-handoff.md) — **29 TC** (29/29 Pass)
-- [Media CLB, Đa ngữ AI, Kho tài liệu 3 tầng, Chat STOMP V30/V31, Data Table, Security & OTP/SMTP V33](./testcases/sprint-4/modules/04-vault-chat-media-i18n-ui.md) — **60 TC** (60/60 Pass)
+- [Media CLB, Đa ngữ AI, Kho tài liệu 3 tầng, Chat STOMP V30/V31/V34, Data Table, Security & OTP/SMTP V33](./testcases/sprint-4/modules/04-vault-chat-media-i18n-ui.md) — **64 TC** (64/64 Pass)
 - [Lộ trình Cải tiến từ Khảo sát CLB ARC & VAC (Nhắc lịch PV, Quỹ BCN, Biểu mẫu mượn phòng)](./testcases/sprint-4/modules/05-club-interview-roadmap.md) — **12 TC** (0/12 Pass)
 
 ## 3. Lệnh Chạy Kiểm Thử Nhanh Theo Từng Sprint
@@ -46,6 +46,6 @@
 ./testcases/run-sprint-tests.sh sprint-1   # Test nhanh Sprint 1 (157 TC)
 ./testcases/run-sprint-tests.sh sprint-2   # Test nhanh Sprint 2 (77 TC)
 ./testcases/run-sprint-tests.sh sprint-3   # Test nhanh Sprint 3 (86 TC)
-./testcases/run-sprint-tests.sh sprint-4   # Test nhanh Sprint 4 (146 TC)
+./testcases/run-sprint-tests.sh sprint-4   # Test nhanh Sprint 4 (150 TC)
 ./testcases/run-sprint-tests.sh all        # Chạy toàn bộ OpenAPI Contract + 4 Sprint
 ```

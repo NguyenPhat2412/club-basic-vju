@@ -68,12 +68,12 @@ run_one_sprint() {
         FE_TESTS="tests/sprint2.test.ts tests/file-size-limit.test.ts"
         ;;
       sprint-3)
-        BE_TESTS="PhaseThreeAcceptanceTest,PhaseThreeOperationsApiTest,FlowHardeningApiTest,AuthApiTest"
+        BE_TESTS="PhaseThreeAcceptanceTest,PhaseThreeOperationsApiTest,SprintThreeTaskAcceptanceTest,FlowHardeningApiTest,AuthApiTest"
         FE_TESTS="tests/phase34.test.ts tests/auth-form.test.ts tests/color-system-60-30-10.test.ts"
         ;;
       sprint-4)
-        BE_TESTS="PhaseFourAcceptanceTest,DocumentThreeTierAccessTest,GoogleDriveDocumentStorageTest,ChatWebSocketIntegrationTest,ChatMediaAndQuickReplyTest,NotificationRealtimeAndChatUnitTest,SystemSettingsApiTest,UserAvatarApiTest,SecurityAndInputBoundsTest,OtpMailTemplateBuilderTest,ProdProfileStartupTest"
-        FE_TESTS="tests/realtime-vault.test.ts tests/realtime-notifications.test.ts tests/chat-message-status.test.ts tests/chat-tta-media-cache.test.ts tests/i18n-home.test.ts tests/table-filter-views.test.ts tests/security-input-bounds.test.ts tests/club-overview-config.test.ts tests/form-field-meta.test.ts tests/workspace-tabs.test.ts"
+        BE_TESTS="PhaseFourAcceptanceTest,DocumentThreeTierAccessTest,GoogleDriveDocumentStorageTest,ChatWebSocketIntegrationTest,ChatMediaAndQuickReplyTest,NotificationRealtimeAndChatUnitTest,SystemSettingsApiTest,UserAvatarApiTest,SecurityAndInputBoundsTest,OtpMailTemplateBuilderTest,ChatModerationServiceTest,ProdProfileStartupTest"
+        FE_TESTS="tests/realtime-vault.test.ts tests/realtime-notifications.test.ts tests/chat-message-status.test.ts tests/chat-moderation.test.ts tests/chat-tta-media-cache.test.ts tests/i18n-home.test.ts tests/table-filter-views.test.ts tests/security-input-bounds.test.ts tests/club-overview-config.test.ts tests/form-field-meta.test.ts tests/workspace-tabs.test.ts"
         ;;
     esac
     (cd "$CODE_REPO/frontend" && node --import ./tests/register-alias.mjs --test $FE_TESTS)
