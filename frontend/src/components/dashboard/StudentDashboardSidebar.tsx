@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 import { ArrowRight, Bell, Calendar, CheckCheck, MapPin } from "lucide-react";
-import { CalendarItem, NotificationItem, PublicEvent } from "@/lib/api";
+import { NotificationItem } from "@/lib/api";
+import {
+  buildStudentUpcomingEvents,
+  type StudentUpcomingEvent,
+} from "@/forms/dashboard/dashboard-events";
 import {
   notificationReferenceMeta,
   targetHrefForNotification,
@@ -12,47 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn, formatDateTime } from "@/lib/utils";
 
-export interface StudentUpcomingEvent {
-  id: string;
-  title: string;
-  clubName: string;
-  location?: string;
-  startTime: string;
-  mine: boolean;
-}
-
-export function buildStudentUpcomingEvents(
-  calendarItems: CalendarItem[],
-  publicEventItems: PublicEvent[],
-  now: number,
-): StudentUpcomingEvent[] {
-  const upcoming = new Map<string, StudentUpcomingEvent>();
-  for (const item of calendarItems) {
-    if (item.itemType === "EVENT" && new Date(item.endTime).getTime() > now) {
-      upcoming.set(item.id, {
-        id: item.id,
-        title: item.title,
-        clubName: item.clubName,
-        location: item.location,
-        startTime: item.startTime,
-        mine: true,
-      });
-    }
-  }
-  for (const event of publicEventItems) {
-    if (!upcoming.has(event.id) && new Date(event.endTime).getTime() > now) {
-      upcoming.set(event.id, {
-        id: event.id,
-        title: event.title,
-        clubName: event.clubName,
-        location: event.location,
-        startTime: event.startTime,
-        mine: false,
-      });
-    }
-  }
-  return [...upcoming.values()].sort((a, b) => a.startTime.localeCompare(b.startTime)).slice(0, 5);
-}
+export { buildStudentUpcomingEvents, type StudentUpcomingEvent };
 
 export function DashboardSectionPanel({
   icon,
@@ -235,27 +199,34 @@ export function StudentDashboardSidebar({
         ) : (
           <ul className="divide-y divide-slate-100">
             {events.map((event) => (
-              <li key={event.id} className="flex min-w-0 gap-3 py-3">
-                <DateTile iso={event.startTime} />
-                <div className="min-w-0 flex-1">
-                  <p className="line-clamp-2 break-words text-sm font-semibold leading-snug text-slate-900">{event.title}</p>
-                  <p className="mt-0.5 truncate text-xs text-slate-500">
-                    {event.clubName} ·{" "}
-                    {new Date(event.startTime).toLocaleTimeString("vi-VN", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                    {event.location && (
-                      <span className="inline-flex min-w-0 items-center gap-1 text-[11px] text-slate-500">
-                        <MapPin size={11} className="shrink-0" />
-                        <span className="truncate">{event.location}</span>
-                      </span>
-                    )}
-                    {event.mine && <Badge tone="success">Trong lịch của tôi</Badge>}
+              <li key={event.id}>
+                <Link
+                  href="/events"
+                  className="flex min-w-0 gap-3 rounded-lg py-3 transition-colors hover:bg-slate-50/80"
+                >
+                  <DateTile iso={event.startTime} />
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 break-words text-sm font-semibold leading-snug text-slate-900">
+                      {event.title}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">
+                      {event.clubName} ·{" "}
+                      {new Date(event.startTime).toLocaleTimeString("vi-VN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      {event.location && (
+                        <span className="inline-flex min-w-0 items-center gap-1 text-[11px] text-slate-500">
+                          <MapPin size={11} className="shrink-0" />
+                          <span className="truncate">{event.location}</span>
+                        </span>
+                      )}
+                      {event.mine && <Badge tone="success">Trong lịch của tôi</Badge>}
+                    </div>
                   </div>
-                </div>
+                </Link>
               </li>
             ))}
           </ul>

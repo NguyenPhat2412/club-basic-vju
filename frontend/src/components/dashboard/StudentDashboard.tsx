@@ -7,6 +7,7 @@ import { ArrowRight, ClipboardCheck, ClipboardList, Compass, UsersRound } from "
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
 import { apiModel, ApplicationSummary, User } from "@/lib/api";
+import { useUnreadNotificationSummary } from "@/hooks/notification/useGlobalRealtimeNotifications";
 import { clubSlugFromCode } from "@/lib/media";
 import { describeError } from "@/components/shared/ListPage";
 import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
@@ -46,9 +47,10 @@ export function StudentDashboard({ user }: { user: User }) {
     queryFn: () => apiModel.publicClubs("", "", 0, 100),
   });
   const notifications = useQuery({
-    queryKey: qk.dashboard("notifications"),
+    queryKey: qk.notifications(),
     queryFn: () => apiModel.notifications(),
   });
+  const unreadSummary = useUnreadNotificationSummary(true);
 
   const invalidateNotifications = () => {
     queryClient.invalidateQueries({ queryKey: qk.dashboard("notifications") });
@@ -78,7 +80,8 @@ export function StudentDashboard({ user }: { user: User }) {
   const pendingApps = myApps.filter((a) => a.status === "PENDING");
   const openTasks = (tasks.data?.items ?? []).filter((t) => !DONE_TASKS.has(t.status));
   const notifList = notifications.data?.items ?? [];
-  const unread = notifList.filter((n) => !n.read).length;
+  const unread =
+    unreadSummary.data?.unreadNotifications ?? notifList.filter((n) => !n.read).length;
 
   const busyClubIds = new Set([...myClubs.map((m) => m.clubId), ...pendingApps.map((a) => a.clubId)]);
   const suggestedClubs = (publicClubs.data?.items ?? []).filter((c) => !busyClubIds.has(c.id)).slice(0, 3);
@@ -120,6 +123,7 @@ export function StudentDashboard({ user }: { user: User }) {
     publicEvents,
     publicClubs,
     notifications,
+    unreadSummary,
     mediaCatalog,
   ];
   const isRefreshing = activeQueries.some((q) => q.isFetching && !q.isPending);

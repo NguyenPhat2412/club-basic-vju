@@ -15,12 +15,11 @@ import { Badge, StatusBadge } from "@/components/ui/badge";
 import { formatDateTime, formatDay } from "@/lib/utils";
 import {
   ApplicationSummary,
-  CalendarItem,
   ClubItem,
   Membership,
-  PublicEvent,
   TaskItem,
 } from "@/types";
+import type { StudentUpcomingEvent } from "./StudentDashboardSidebar";
 
 interface DashboardActivitySectionProps {
   activeFeedTab: "applications" | "tasks" | "clubs";
@@ -32,8 +31,7 @@ interface DashboardActivitySectionProps {
   myClubList: Membership[];
   allClubs: ClubItem[];
   mediaCatalog?: ClubMediaCatalog;
-  upcomingPublicEvents: PublicEvent[];
-  calendarEvents: CalendarItem[];
+  upcomingEvents: StudentUpcomingEvent[];
 }
 
 export function DashboardActivitySection({
@@ -46,8 +44,7 @@ export function DashboardActivitySection({
   myClubList,
   allClubs,
   mediaCatalog,
-  upcomingPublicEvents,
-  calendarEvents,
+  upcomingEvents,
 }: DashboardActivitySectionProps) {
   return (
     <section className="grid grid-cols-1 gap-4 @4xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.95fr)]">
@@ -150,7 +147,11 @@ export function DashboardActivitySection({
                       <div className="flex items-center gap-2">
                         <StatusBadge status={app.status} />
                         <Link
-                          href={canReviewApps ? "/management?tab=applications" : "/applications"}
+                          href={
+                            canReviewApps
+                              ? `/management?clubId=${app.clubId}&tab=applications`
+                              : "/applications"
+                          }
                           className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-semibold hover:bg-muted"
                         >
                           Xem
@@ -304,22 +305,29 @@ export function DashboardActivitySection({
           </div>
           <Link href="/events" className="text-[11px] font-semibold text-primary hover:underline">Sự kiện & CTV</Link>
         </div>
-        {upcomingPublicEvents.length === 0 && calendarEvents.length === 0 ? (
+        {upcomingEvents.length === 0 ? (
           <p className="py-8 text-center text-xs text-muted-foreground">Chưa có sự kiện nào sắp diễn ra.</p>
         ) : (
           <div className="mt-3 divide-y divide-border">
-            {(upcomingPublicEvents.length > 0 ? upcomingPublicEvents : calendarEvents).slice(0, 5).map((ev) => (
-              <div key={ev.id} className="py-2.5 first:pt-0 last:pb-0">
+            {upcomingEvents.map((ev) => (
+              <Link
+                key={ev.id}
+                href="/events"
+                className="block rounded-lg py-2.5 transition-colors first:pt-0 last:pb-0 hover:bg-secondary/40"
+              >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs font-bold text-foreground">{ev.title}</p>
-                  <StatusBadge status={ev.status} />
+                  <p className="line-clamp-2 text-xs font-bold text-foreground">{ev.title}</p>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {ev.mine && <Badge tone="success">Trong lịch</Badge>}
+                    {ev.status && <StatusBadge status={ev.status} />}
+                  </div>
                 </div>
                 <p className="mt-0.5 text-[11px] font-medium text-primary">{ev.clubName}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
                   <span className="inline-flex items-center gap-1"><Clock size={11} /> {formatDateTime(ev.startTime)}</span>
                   {ev.location && <span className="inline-flex items-center gap-1"><MapPin size={11} /> {ev.location}</span>}
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

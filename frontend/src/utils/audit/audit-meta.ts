@@ -21,12 +21,20 @@ export const RESOURCE_LABELS: Record<string, string> = {
 };
 
 export const ACTION_LABELS: Record<string, string> = {
+  LOGIN: "Đăng nhập",
+  LOGOUT: "Đăng xuất",
   CREATE: "Tạo mới",
   CREATED: "Tạo mới",
   UPDATE: "Cập nhật",
   UPDATED: "Cập nhật",
   DELETE: "Xoá",
   DELETED: "Xoá",
+  ANONYMIZE: "Ẩn danh tài khoản",
+  ANONYMIZED: "Ẩn danh tài khoản",
+  LOCK: "Khoá tài khoản",
+  LOCKED: "Khoá tài khoản",
+  UNLOCK: "Mở khoá tài khoản",
+  UNLOCKED: "Mở khoá tài khoản",
   SOFT_DELETE: "Chuyển vào thùng rác",
   RESTORE: "Khôi phục",
   APPROVE: "Phê duyệt",
@@ -35,10 +43,22 @@ export const ACTION_LABELS: Record<string, string> = {
   REJECTED: "Từ chối",
   CANCEL: "Huỷ bỏ",
   CANCELLED: "Huỷ bỏ",
+  REGISTER: "Đăng ký tham gia",
+  REGISTERED: "Đăng ký tham gia",
+  COMPLETE: "Hoàn tất",
+  COMPLETED: "Hoàn tất",
+  REOPEN: "Mở lại công việc",
+  REOPENED: "Mở lại công việc",
+  MOVE: "Chuyển ban",
+  MOVED: "Chuyển ban",
+  REMOVE: "Gỡ khỏi ban",
+  REMOVED: "Gỡ khỏi ban",
+  GRANT: "Cấp quyền",
+  GRANTED: "Cấp quyền",
   ASSIGN: "Bổ nhiệm vai trò",
   ASSIGNED: "Bổ nhiệm vai trò",
-  REVOKE: "Thu hồi vai trò",
-  REVOKED: "Thu hồi vai trò",
+  REVOKE: "Thu hồi quyền / vai trò",
+  REVOKED: "Thu hồi quyền / vai trò",
   ACTIVATE: "Kích hoạt",
   ACTIVATED: "Kích hoạt",
   DEACTIVATE: "Ngừng hoạt động",
@@ -50,6 +70,18 @@ export const ACTION_LABELS: Record<string, string> = {
   VERIFY: "Nghiệm thu công việc",
   SEND: "Gửi thông báo",
 };
+
+const SCOPE_LABELS: Record<string, string> = {
+  GLOBAL: "Phạm vi toàn hệ thống",
+  SYSTEM: "Phạm vi toàn hệ thống",
+  CLUB: "Phạm vi Câu lạc bộ",
+  DEPARTMENT: "Phạm vi Ban chuyên môn",
+};
+
+export function formatRoleScopeLabel(scope?: string): string {
+  const raw = SCOPE_LABELS[(scope || "").toUpperCase()] ?? scope ?? "";
+  return translateUiText(raw, getPresentationLocale());
+}
 
 export function resourceLabel(resourceType: string): string {
   const raw = RESOURCE_LABELS[resourceType] ?? resourceType;

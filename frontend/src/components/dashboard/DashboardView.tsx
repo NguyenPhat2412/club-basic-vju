@@ -11,6 +11,7 @@ import { qk } from "@/lib/api/query-keys";
 import { apiModel, ApplicationSummary } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { CLUB_MANAGEMENT_KEYS } from "@/hooks/useSession";
+import { useUnreadNotificationSummary } from "@/hooks/notification/useGlobalRealtimeNotifications";
 import { FirstLoginPassword } from "@/components/layout/FirstLoginPassword";
 import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
 import { useClubMediaCatalog } from "@/components/shared/ClubMedia";
@@ -19,7 +20,10 @@ import { LoadingRows } from "@/components/shared/States";
 import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
 import { StudentDashboard } from "@/components/dashboard/StudentDashboard";
-import { DashboardLatestNotifications } from "@/components/dashboard/StudentDashboardSidebar";
+import {
+  buildStudentUpcomingEvents,
+  DashboardLatestNotifications,
+} from "@/components/dashboard/StudentDashboardSidebar";
 import { DashboardAnalyticsCards, DashboardGuestPrompt } from "@/components/dashboard/DashboardAnalyticsCards";
 import { DashboardActivitySection } from "@/components/dashboard/DashboardActivitySection";
 import { DashboardSystemAuditSection } from "@/components/dashboard/DashboardSystemAuditSection";
@@ -29,6 +33,7 @@ const APPLICATION_PERMISSIONS = ["application.view", "application.review", "appl
 export function DashboardView() {
   const queryClient = useQueryClient();
   const session = useOptionalSession();
+  const [now] = useState(() => Date.now());
   const [activeFeedTab, setActiveFeedTab] = useState<"applications" | "tasks" | "clubs">("applications");
   const mediaCatalog = useClubMediaCatalog(true);
 
@@ -69,10 +74,11 @@ export function DashboardView() {
     enabled: canQuery,
   });
   const notifications = useQuery({
-    queryKey: qk.dashboard("notifications"),
+    queryKey: qk.notifications(),
     queryFn: () => apiModel.notifications(),
     enabled: canQuery,
   });
+  const unreadSummary = useUnreadNotificationSummary(canQuery);
 
   const managedClubScope = session.clubsWith(CLUB_MANAGEMENT_KEYS);
   const managedClubs = useQuery({
@@ -89,11 +95,6 @@ export function DashboardView() {
     enabled: canQuery && canReviewApps,
   });
 
-  const systemUsers = useQuery({
-    queryKey: qk.dashboard("system-users-count"),
-    queryFn: () => apiModel.users("", 0, 1),
-    enabled: canQuery && canAdminUsers,
-  });
   const systemStats = useQuery({
     queryKey: qk.dashboard("system-statistics"),
     queryFn: apiModel.systemStatistics,
@@ -166,10 +167,14 @@ export function DashboardView() {
 
   const calendarEvents = myCalendar.data ?? [];
   const upcomingPublicEvents = publicEvents.data?.items ?? [];
-  const totalUpcomingEvents = calendarEvents.length || upcomingPublicEvents.length;
+  const upcomingEvents = buildStudentUpcomingEvents(calendarEvents, upcomingPublicEvents, now);
+  const activePublicEventsCount = upcomingPublicEvents.filter(
+    (ev) => new Date(ev.endTime).getTime() > now,
+  ).length;
 
   const notifList = notifications.data?.items ?? [];
-  const unreadNotifCount = notifList.filter((n) => !n.read).length;
+  const unreadNotifCount =
+    unreadSummary.data?.unreadNotifications ?? notifList.filter((n) => !n.read).length;
 
   const categoryCounts = allClubs.reduce<Record<string, number>>((acc, club) => {
     const cat = club.activityField?.trim() || "Khác";
@@ -186,9 +191,10 @@ export function DashboardView() {
     myTasks,
     myCalendar,
     notifications,
+    unreadSummary,
     mediaCatalog,
     ...(canManageClubs || canAdminUsers ? [managedClubs, ...(canReviewApps ? [reviewSummary] : [])] : []),
-    ...(canAdminUsers ? [systemUsers, systemStats] : []),
+    ...(canAdminUsers ? [systemStats] : []),
     ...(canAudit ? [auditLogs] : []),
   ];
   const isRefreshing = activeQueries.some((q) => q.isFetching && !q.isPending);
@@ -245,22 +251,24 @@ export function DashboardView() {
     },
     {
       label: "Lịch & Sự kiện",
-      value: publicEvents.isPending && myCalendar.isPending ? "—" : totalUpcomingEvents,
-      sub: `${upcomingPublicEvents.length} sự kiện toàn trường`,
+      value: publicEvents.isPending && myCalendar.isPending ? "—" : upcomingEvents.length,
+      sub: `${activePublicEventsCount} sự kiện toàn trường sắp tới`,
       icon: Calendar,
-      href: "/schedule",
+      href: "/events",
       accent: "text-primary bg-primary/8 border-primary/20",
     },
     {
       label: canAdminUsers ? "Tài khoản hệ thống" : "Thông báo chưa đọc",
       value: canAdminUsers
-        ? systemUsers.isPending
+        ? systemStats.isPending
           ? "—"
-          : (systemUsers.data?.total ?? 0)
-        : notifications.isPending
+          : (systemStats.data?.totalUsers ?? 0)
+        : notifications.isPending && unreadSummary.isPending
           ? "—"
           : unreadNotifCount,
-      sub: canAdminUsers ? `${unreadNotifCount} thông báo chưa đọc` : `${notifList.length} thông báo gần đây`,
+      sub: canAdminUsers
+        ? `${systemStats.data?.activeUsers ?? 0} hoạt động · ${unreadNotifCount} TB chưa đọc`
+        : `${notifList.length} thông báo gần đây`,
       icon: canAdminUsers ? Users : Bell,
       href: canAdminUsers ? "/users" : "/notifications",
       accent: "text-slate-700 bg-slate-100 border-slate-200",
@@ -331,8 +339,7 @@ export function DashboardView() {
           myClubList={myClubList}
           allClubs={allClubs}
           mediaCatalog={mediaCatalog.data}
-          upcomingPublicEvents={upcomingPublicEvents}
-          calendarEvents={calendarEvents}
+          upcomingEvents={upcomingEvents}
         />
 
         <DashboardAnalyticsCards
@@ -352,6 +359,9 @@ export function DashboardView() {
           canAudit={canAudit}
           auditLogsPending={auditLogs.isPending}
           auditLogs={auditLogs.data?.items ?? []}
+          allClubs={allClubs}
+          currentUserId={session.user.id}
+          currentUserLabel={session.user.fullName || session.user.email}
         />
       </div>
     </div>
