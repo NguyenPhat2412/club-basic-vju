@@ -116,6 +116,82 @@ public final class OtpMailTemplateBuilder {
         return new RenderedEmail(subject, plainText, html);
     }
 
+    public static RenderedEmail buildNotificationAlert(
+            String recipientName,
+            String recipientEmail,
+            String title,
+            String message) {
+        String displayName = (recipientName == null || recipientName.isBlank()) ? recipientEmail : recipientName.trim();
+        String safeTitle = (title == null || title.isBlank()) ? "Thông báo mới từ CLB" : title.trim();
+        String safeMessage = (message == null || message.isBlank()) ? "" : message.trim();
+        String subject = "[VJU ClubHub] " + safeTitle;
+
+        String plainText = """
+                VJU CLUBHUB
+                Xin chào %s,
+
+                %s
+                %s
+
+                Truy cập hệ thống VJU ClubHub để xem chi tiết.
+                -- Trường Đại học Việt Nhật · ĐHQGHN
+                """.formatted(displayName, safeTitle, safeMessage);
+
+        String html = """
+                <!DOCTYPE html>
+                <html lang="vi">
+                <head>
+                  <meta charset="UTF-8" />
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                  <title>%s</title>
+                </head>
+                <body style="margin:0;padding:0;background-color:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0F172A;">
+                  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F8FAFC;padding:20px 12px;">
+                    <tr>
+                      <td align="center">
+                        <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" border="0" style="max-width:460px;background-color:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">
+                          <tr>
+                            <td style="height:4px;background-color:#8E1F32;font-size:0;line-height:0;">&nbsp;</td>
+                          </tr>
+                          <tr>
+                            <td style="padding:20px 24px;">
+                              <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8E1F32;">
+                                VJU CLUBHUB &middot; THÔNG BÁO
+                              </p>
+                              <h1 style="margin:6px 0 12px 0;font-size:17px;line-height:1.35;font-weight:800;color:#0F172A;">
+                                %s
+                              </h1>
+                              <p style="margin:0 0 12px 0;font-size:13px;line-height:1.55;color:#334155;">
+                                Xin chào <strong>%s</strong>,
+                              </p>
+                              <div style="background-color:#FFF1F2;border:1px solid #FECDD3;border-radius:10px;padding:12px 14px;margin:0 0 14px 0;font-size:13px;line-height:1.55;color:#0F172A;">
+                                %s
+                              </div>
+                              <p style="margin:0;font-size:12px;line-height:1.5;color:#64748B;">
+                                Mở hệ thống VJU ClubHub để xem chi tiết và phản hồi kịp thời.
+                              </p>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding:10px 24px;background-color:#F8FAFC;border-top:1px solid #F1F5F9;font-size:11px;color:#64748B;">
+                              Trường Đại học Việt Nhật &middot; ĐHQGHN
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                </body>
+                </html>
+                """.formatted(
+                escapeHtml(subject),
+                escapeHtml(safeTitle),
+                escapeHtml(displayName),
+                escapeHtml(safeMessage));
+
+        return new RenderedEmail(subject, plainText, html);
+    }
+
     static String escapeHtml(String value) {
         if (value == null || value.isEmpty()) {
             return "";

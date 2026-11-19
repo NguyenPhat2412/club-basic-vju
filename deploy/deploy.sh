@@ -12,12 +12,13 @@ ssh "$HOST" "mkdir -p $APP/releases && test -f $APP/deploy/.env || { echo 'missi
 git archive --format=tar "$REF" | ssh "$HOST" "rm -rf $APP/releases/next && mkdir -p $APP/releases/next && tar -x -C $APP/releases/next"
 ssh "$HOST" "flock /var/lock/vju-club-deploy.lock bash -c 'set -e
   cp $APP/deploy/.env $APP/releases/next/deploy/.env
-  cd $APP/releases/next/deploy
-  docker compose -f compose.prod.yml --env-file .env build
-  docker compose -f compose.prod.yml --env-file .env up -d --remove-orphans
   install -d -m 700 $APP/bin
   install -m 700 $APP/releases/next/deploy/backup/backup-db.sh $APP/releases/next/deploy/backup/restore-db.sh $APP/bin/
   install -m 644 $APP/releases/next/deploy/backup/vju-club-backup.cron /etc/cron.d/vju-club-backup
+  BACKUP_TAG=predeploy $APP/bin/backup-db.sh || echo \"INFO: skipping pre-deploy DB dump (postgres not yet initialized)\"
+  cd $APP/releases/next/deploy
+  docker compose -f compose.prod.yml --env-file .env build
+  docker compose -f compose.prod.yml --env-file .env up -d --remove-orphans
   cd $APP/releases && rm -rf previous && { [ -d current ] && mv current previous || true; } && mv next current
   grep -q \"api/v1/ws\" /etc/nginx/sites-available/vju-club 2>/dev/null || echo \"WARNING: /etc/nginx/sites-available/vju-club is missing api/v1/ws WebSocket Upgrade block\" >&2
   docker compose -f $APP/releases/current/deploy/compose.prod.yml --env-file $APP/deploy/.env ps'"

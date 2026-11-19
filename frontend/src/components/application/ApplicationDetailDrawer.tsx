@@ -6,6 +6,7 @@ import { Check, ClipboardList, FilterX, Lock, Paperclip, Pencil, Plus, Search, U
 import { apiModel, Application, ApplicationForm } from "@/lib/api";
 import { ApplicationFilesList } from "@/components/shared/ApplicationFileView";
 import { ApplicationDetailInfoList } from "@/components/shared/ApplicationFormFields";
+import { ExportReportMenu } from "@/components/shared/ExportReportMenu";
 import { DetailList, EntityDrawer, Section } from "@/components/shared/Overlays";
 import { ErrorState, LoadingRows } from "@/components/shared/States";
 import { describeError } from "@/components/shared/ListPage";
@@ -26,6 +27,7 @@ export function ClubApplicationsFilterBar({
   onClearFilters,
   canCreateForClub,
   onCreateApp,
+  onExport,
 }: {
   search: string;
   onSearchChange: (v: string) => void;
@@ -39,6 +41,7 @@ export function ClubApplicationsFilterBar({
   onClearFilters: () => void;
   canCreateForClub: boolean;
   onCreateApp: () => void;
+  onExport?: (mode: "csv" | "pdf") => Promise<number> | number;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 pt-3 sm:px-6">
@@ -89,6 +92,7 @@ export function ClubApplicationsFilterBar({
             <FilterX size={14} /> Xoá bộ lọc
           </Button>
         )}
+        {onExport && <ExportReportMenu onExport={onExport} />}
         {canCreateForClub && (
           <Button size="sm" onClick={onCreateApp}>
             <Plus size={14} /> Tạo hồ sơ đơn

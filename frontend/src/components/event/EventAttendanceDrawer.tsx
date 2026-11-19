@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
-import { Bell, Calendar, CheckCheck, MapPin, Pencil, Settings2, UserCheck, Users } from "lucide-react";
+import { Bell, Calendar, CheckCheck, MapPin, Pencil, QrCode, Settings2, UserCheck, Users } from "lucide-react";
 import { apiModel, AttendanceStatus, ClubEvent, EventRegistration } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
+import { ExportReportMenu } from "@/components/shared/ExportReportMenu";
 import { DetailList, EntityDrawer, Section } from "@/components/shared/Overlays";
 import { LoadingRows } from "@/components/shared/States";
 import { describeError } from "@/components/shared/ListPage";
@@ -14,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { FormField, Input, Select } from "@/components/ui/input";
 import { formatDateTime } from "@/lib/utils";
 import { EVENT_TYPE_LABELS } from "@/forms/event/event-form";
+import { exportEventAttendanceReport } from "@/utils/export/club-reports";
+import { EventQrOrganizerModal } from "@/components/event/EventQrModals";
 
 export function EventAttendanceDrawer({
   clubId,
@@ -42,6 +45,7 @@ export function EventAttendanceDrawer({
   const [regNote, setRegNote] = useState("");
   const [attendanceDraft, setAttendanceDraft] = useState<Record<string, AttendanceStatus>>({});
   const [attendanceReason, setAttendanceReason] = useState("");
+  const [qrModalOpen, setQrModalOpen] = useState(false);
 
   const registrations = useQuery({
     queryKey: qk.eventRegistrations(selected?.id),
@@ -127,6 +131,24 @@ export function EventAttendanceDrawer({
       footer={
         selected ? (
           <div className="flex flex-wrap items-center gap-2">
+            {canAttend && selected.status !== "DRAFT" && selected.status !== "CANCELLED" && (
+              <Button size="sm" onClick={() => setQrModalOpen(true)}>
+                <QrCode size={14} /> Mã QR điểm danh
+              </Button>
+            )}
+            {allRegistrations.length > 0 && (
+              <ExportReportMenu
+                compact
+                onExport={(mode) =>
+                  exportEventAttendanceReport({
+                    mode,
+                    event: selected,
+                    registrations: allRegistrations,
+                    attendances: attendances.data ?? [],
+                  })
+                }
+              />
+            )}
             {canNotify && (
               <Button size="sm" variant="outline" onClick={onOpenNotify}>
                 <Bell size={14} /> Thông báo Member & CTV
@@ -295,6 +317,13 @@ export function EventAttendanceDrawer({
               </div>
             </Section>
           )}
+          <EventQrOrganizerModal
+            open={qrModalOpen}
+            event={selected}
+            activeRegistrationsCount={activeRegistrations.length}
+            onClose={() => setQrModalOpen(false)}
+            onAttendanceUpdated={onRefresh}
+          />
         </>
       )}
     </EntityDrawer>

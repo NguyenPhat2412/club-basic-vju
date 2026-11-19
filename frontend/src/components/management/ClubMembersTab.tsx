@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { DataTable } from "@/components/shared/DataTable";
+import { ExportReportMenu } from "@/components/shared/ExportReportMenu";
 import { Pagination } from "@/components/shared/Pagination";
 import { EmptyState, ErrorState, LoadingRows } from "@/components/shared/States";
 import { TableRowActions } from "@/components/shared/TableRowActions";
@@ -21,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { formatDay } from "@/lib/utils";
 import { Department, Membership, Page } from "@/types";
+import { exportClubMembersReport } from "@/utils/export/club-reports";
 
 interface ClubMembersTabProps {
   activeClubId: string;
@@ -175,6 +177,21 @@ export function ClubMembersTab({
             </Button>
           )}
         </div>
+        {canViewMembers && Boolean(membersData?.total) && (
+          <ExportReportMenu
+            compact
+            onExport={(mode) =>
+              exportClubMembersReport({
+                mode,
+                clubId: activeClubId,
+                statusFilter: memberStatusFilter,
+                deptFilter: memberDeptFilter,
+                search: memberSearch,
+                departmentsByMember,
+              })
+            }
+          />
+        )}
       </div>
 
       {!canViewMembers ? (

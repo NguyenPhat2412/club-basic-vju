@@ -7,6 +7,7 @@ import type {
   ClubEvent,
   CreateEventInput,
   EventAttendance,
+  EventAttendanceQrToken,
   EventRegistration,
   MyEventParticipation,
   PublicEvent,
@@ -64,6 +65,15 @@ export const eventsApi = {
     api<EventAttendance[]>(`/events/${eventId}/attendances`, {
       method: 'PUT',
       body: JSON.stringify({ items, reason: reason?.trim() || undefined }),
+    }),
+  issueEventAttendanceQrToken: (eventId: string) =>
+    api<EventAttendanceQrToken>(`/events/${eventId}/attendances/qr-token`, {
+      method: 'POST',
+    }),
+  checkInEventWithQr: (eventId: string, token: string) =>
+    api<EventAttendance>(`/events/${eventId}/attendances/qr-check-in`, {
+      method: 'POST',
+      body: JSON.stringify({ token: token.trim() }),
     }),
   myCalendar: (from?: string, to?: string) =>
     api<CalendarItem[]>(

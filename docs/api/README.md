@@ -1,4 +1,4 @@
-# VJU Club Management System — Swagger / OpenAPI Inventory (161 Endpoints)
+# VJU Club Management System — Swagger / OpenAPI Inventory (166 Endpoints)
 
 The backend assigned to this system is `backend/springboot` (Spring Boot 4.1.1 / Java 21 / PostgreSQL 16).
 
@@ -12,7 +12,7 @@ The backend assigned to this system is `backend/springboot` (Spring Boot 4.1.1 /
 
 - **Source catalog:** [`docs/api/catalog.yml`](catalog.yml) (synced with `backend/springboot/src/main/resources/api/catalog.yml`)
 - **Source OpenAPI contract:** [`docs/api/openapi.yaml`](openapi.yaml) (synced with `backend/springboot/src/main/resources/api/phase1-openapi.yaml`)
-- **All 164 endpoints** across **21 modules** are marked `IMPLEMENTED` and verified by automated PostgreSQL integration tests and static OpenAPI 3.1 contract checks (`16/16 Pass`).
+- **All 166 endpoints** across **21 modules** are marked `IMPLEMENTED` and verified by automated PostgreSQL integration tests and static OpenAPI 3.1 contract checks (`16/16 Pass`).
 
 ## Authentication, Realtime WebSocket & Conventions
 
@@ -27,7 +27,7 @@ The backend assigned to this system is `backend/springboot` (Spring Boot 4.1.1 /
 
 ---
 
-## Complete Swagger API Endpoint List (164 Endpoints)
+## Complete Swagger API Endpoint List (166 Endpoints)
 
 | # | Module | Operation ID | Method | Path | Permission / Auth | Summary | Status |
 |---:|---|---|---|---|---|---|---|
@@ -195,6 +195,8 @@ The backend assigned to this system is `backend/springboot` (Spring Boot 4.1.1 /
 | 162 | `chat` | `chat.deleteChannel` | **DELETE** | `/api/v1/clubs/{clubId}/channels/{channelId}` | `club.update` | Delete a club or department chat channel and broadcast `CHANNEL_DELETED` | `IMPLEMENTED` |
 | 163 | `chat` | `chat.updateMessage` | **PATCH** | `/api/v1/channels/{channelId}/messages/{messageId}` | `chat.send` | Edit own message content in a chat channel and broadcast `MESSAGE_UPDATED` | `IMPLEMENTED` |
 | 164 | `chat` | `chat.deleteMessage` | **DELETE** | `/api/v1/channels/{channelId}/messages/{messageId}` | `chat.send` | Delete own message or moderate message in a chat channel and broadcast `MESSAGE_DELETED` | `IMPLEMENTED` |
+| 165 | `event` | `event.issueAttendanceQrToken` | **POST** | `/api/v1/events/{eventId}/attendances/qr-token` | `event.attendance \| event.attendance_edit` | Issue a signed short-lived QR check-in token for an event | `IMPLEMENTED` |
+| 166 | `event` | `event.checkInWithQr` | **POST** | `/api/v1/events/{eventId}/attendances/qr-check-in` | `AUTHENTICATED` | Self check-in to an event using a valid QR attendance token | `IMPLEMENTED` |
 
 ---
 

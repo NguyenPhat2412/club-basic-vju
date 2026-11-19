@@ -17,8 +17,17 @@ permissions:
   deployments: write
 
 jobs:
+  backend-ci:
+    name: Backend CI Gate
+    uses: ./.github/workflows/backend.yml
+
+  frontend-ci:
+    name: Frontend CI Gate
+    uses: ./.github/workflows/frontend.yml
+
   deploy:
     name: Deploy to stagging.vju-club.all1.vn
+    needs: [backend-ci, frontend-ci]
     runs-on: ubuntu-latest
     environment:
       name: stagging

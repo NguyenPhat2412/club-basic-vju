@@ -145,6 +145,8 @@ public final class ApiPaths {
     public static final String EVENT_REGISTRATION_CANCEL_ME = "/events/{eventId}/registrations/me/cancel";
     public static final String MY_EVENT_REGISTRATIONS = "/users/me/event-registrations";
     public static final String EVENT_ATTENDANCES = "/events/{eventId}/attendances";
+    public static final String EVENT_ATTENDANCE_QR_TOKEN = EVENT_ATTENDANCES + "/qr-token";
+    public static final String EVENT_ATTENDANCE_QR_CHECK_IN = EVENT_ATTENDANCES + "/qr-check-in";
     public static final String MY_CALENDAR = "/users/me/calendar";
 
     // Tasks

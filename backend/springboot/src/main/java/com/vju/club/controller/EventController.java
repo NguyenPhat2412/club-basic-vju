@@ -4,10 +4,12 @@ import com.vju.club.annotation.PublicEndpoint;
 import com.vju.club.common.ApiPaths;
 import com.vju.club.dto.request.CreateEventRequest;
 import com.vju.club.dto.request.EventRegistrationRequest;
+import com.vju.club.dto.request.QrAttendanceCheckInRequest;
 import com.vju.club.dto.request.RecordAttendanceRequest;
 import com.vju.club.dto.request.UpdateEventRegistrationRequest;
 import com.vju.club.dto.request.UpdateEventRequest;
 import com.vju.club.dto.response.CalendarItemResponse;
+import com.vju.club.dto.response.EventAttendanceQrTokenResponse;
 import com.vju.club.dto.response.EventAttendanceResponse;
 import com.vju.club.dto.response.EventRegistrationResponse;
 import com.vju.club.dto.response.EventResponse;
@@ -17,6 +19,7 @@ import com.vju.club.enums.EventParticipantType;
 import com.vju.club.enums.EventRegistrationStatus;
 import com.vju.club.enums.EventStatus;
 import com.vju.club.security.Actor;
+import com.vju.club.service.EventAttendanceQrService;
 import com.vju.club.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -47,6 +50,7 @@ import java.util.UUID;
 @Tag(name = "Events & Calendar", description = "Quản lý sự kiện, lịch sinh hoạt, đăng ký tham gia, điểm danh và lịch tổng hợp cá nhân (TC05–TC07)")
 public class EventController {
     private final EventService eventService;
+    private final EventAttendanceQrService eventAttendanceQrService;
 
     @PublicEndpoint(reason = "Public events discovery on landing page")
     @GetMapping(ApiPaths.PUBLIC_EVENTS)
@@ -150,6 +154,25 @@ public class EventController {
     @Operation(summary = "Xem danh sách điểm danh của sự kiện")
     public List<EventAttendanceResponse> listAttendances(Actor actor, @PathVariable UUID eventId) {
         return eventService.listAttendances(actor, eventId);
+    }
+
+    @PostMapping(ApiPaths.EVENT_ATTENDANCE_QR_TOKEN)
+    @Operation(summary = "Tạo mã QR phiên điểm danh có thời hạn cho sự kiện")
+    public ResponseEntity<EventAttendanceQrTokenResponse> issueAttendanceQrToken(
+            Actor actor,
+            @PathVariable UUID eventId) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(eventAttendanceQrService.issueQrToken(actor, eventId));
+    }
+
+    @PostMapping(ApiPaths.EVENT_ATTENDANCE_QR_CHECK_IN)
+    @Operation(summary = "Sinh viên / thành viên tự điểm danh sự kiện qua mã QR")
+    public ResponseEntity<EventAttendanceResponse> checkInWithQr(
+            Actor actor,
+            @PathVariable UUID eventId,
+            @Valid @RequestBody QrAttendanceCheckInRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(eventAttendanceQrService.checkInWithQr(actor, eventId, request));
     }
 
     @GetMapping(ApiPaths.MY_CALENDAR)

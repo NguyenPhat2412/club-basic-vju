@@ -118,4 +118,6 @@ app:
     type: ${CACHE_TYPE:simple}
     ttl: ${CACHE_TTL:10m}
     asset-max-bytes: ${CACHE_ASSET_MAX_BYTES:2097152}
+  qr:
+    secret: ${APP_QR_SECRET:}
     asset-ttl: ${CACHE_ASSET_TTL:6h}

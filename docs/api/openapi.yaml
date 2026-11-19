@@ -4574,6 +4574,56 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+  /events/{eventId}/attendances/qr-token:
+    post:
+      operationId: event.issueAttendanceQrToken
+      summary: Issue a signed short-lived QR check-in token for an event
+      tags: [Event]
+      x-permission: event.attendance | event.attendance_edit
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '201':
+          description: Issued QR attendance token
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EventAttendanceQrToken'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /events/{eventId}/attendances/qr-check-in:
+    post:
+      operationId: event.checkInWithQr
+      summary: Self check-in to an event using a valid QR attendance token
+      tags: [Event]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/QrAttendanceCheckInRequest'}
+      responses:
+        '201':
+          description: Recorded participant attendance via QR
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EventAttendance'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
   /users/me/calendar:
     get:
       operationId: event.myCalendar
@@ -7927,6 +7977,20 @@ components:
           type: object
           additionalProperties: {type: string}
         provider: {type: string}
+    QrAttendanceCheckInRequest:
+      type: object
+      required: [token]
+      properties:
+        token: {type: string, minLength: 1, maxLength: 512}
+    EventAttendanceQrToken:
+      type: object
+      required: [eventId, eventTitle, token, expiresAt, ttlSeconds]
+      properties:
+        eventId: {type: string, format: uuid}
+        eventTitle: {type: string}
+        token: {type: string}
+        expiresAt: {type: string, format: date-time}
+        ttlSeconds: {type: integer}
 tags:
 - name: System
   description: Danh mục và trạng thái API

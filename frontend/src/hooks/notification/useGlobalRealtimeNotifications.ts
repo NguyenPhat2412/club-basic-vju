@@ -8,6 +8,7 @@ import { apiModel } from "@/lib/api";
 import { qk } from "@/lib/api/query-keys";
 import { toast } from "@/components/ui/toast";
 import { targetHrefForNotification } from "@/forms/notification/notification-links";
+import { dispatchBackgroundBrowserNotification } from "@/lib/realtime/browser-notifications";
 import { acquireStompConnection } from "@/lib/realtime/stomp-connection";
 import type { ChatChannel, ChatRealtimeEvent } from "@/types/chat/chat.types";
 import type { Page } from "@/types/common.types";
@@ -113,9 +114,16 @@ export function useGlobalRealtimeNotifications({
         notif.referenceType === "CHAT" && Date.now() - lastChatToastAt < 2_500;
 
       if (!isViewingSameChat && !suppressDuplicateChatToast) {
+        const go = target ? () => routerRef.current.push(target.href) : undefined;
         toast.info(notif.message, {
           title: notif.title,
-          onClick: target ? () => routerRef.current.push(target.href) : undefined,
+          onClick: go,
+        });
+        dispatchBackgroundBrowserNotification({
+          title: notif.title,
+          body: notif.message,
+          tag: `vju-notif-${notif.id}`,
+          onClick: go,
         });
       }
     };
@@ -173,9 +181,16 @@ export function useGlobalRealtimeNotifications({
       const href = `/management?tab=chat&clubId=${event.clubId}&channelId=${event.channelId}`;
 
       lastChatToastAt = Date.now();
+      const goChat = () => routerRef.current.push(href);
       toast.chat(preview, {
         title: `${senderLabel}${channelLabel}`,
-        onClick: () => routerRef.current.push(href),
+        onClick: goChat,
+      });
+      dispatchBackgroundBrowserNotification({
+        title: `${senderLabel}${channelLabel}`,
+        body: preview,
+        tag: `vju-chat-${event.channelId}`,
+        onClick: goChat,
       });
     };
 

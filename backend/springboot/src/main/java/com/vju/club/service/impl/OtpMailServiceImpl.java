@@ -112,6 +112,30 @@ public class OtpMailServiceImpl implements OtpMailService {
         deliver(smtp, recipientEmail, rendered);
     }
 
+    @Override
+    public boolean sendNotificationAlertEmail(
+            String recipientEmail,
+            String recipientName,
+            String title,
+            String message) {
+        if (recipientEmail == null || recipientEmail.isBlank()) {
+            return false;
+        }
+        EffectiveSmtp smtp = resolveSmtp();
+        if (!smtp.configured()) {
+            return false;
+        }
+        try {
+            OtpMailTemplateBuilder.RenderedEmail rendered = OtpMailTemplateBuilder.buildNotificationAlert(
+                    recipientName, recipientEmail.strip(), title, message);
+            deliver(smtp, recipientEmail.strip(), rendered);
+            return true;
+        } catch (Exception ex) {
+            log.warn("Notification email delivery skipped for {}: {}", recipientEmail, ex.getMessage());
+            return false;
+        }
+    }
+
     private void deliver(EffectiveSmtp smtp, String recipientEmail, OtpMailTemplateBuilder.RenderedEmail rendered) {
         try {
             JavaMailSenderImpl sender = new JavaMailSenderImpl();

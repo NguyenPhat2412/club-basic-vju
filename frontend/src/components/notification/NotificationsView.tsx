@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { targetHrefForNotification } from "@/forms/notification/notification-links";
 import { formatDateTime, formatDay, formatTime } from "@/lib/utils";
+import { BrowserNotificationToggle } from "./BrowserNotificationToggle";
 
 export const targetHrefFor = targetHrefForNotification;
 
@@ -94,11 +95,14 @@ export function NotificationsView() {
         crumbs={[{ label: "Trang chủ", href: "/clubs" }, { label: "Cá nhân" }, { label: "Thông báo" }]}
         titleBadge={<CountBadge>{unread} chưa đọc</CountBadge>}
         extraActions={
-          unread > 0 ? (
-            <Button size="sm" variant="outline" disabled={markAllRead.isPending} onClick={() => markAllRead.mutate()}>
-              <CheckCheck size={14} /> Đánh dấu đã đọc tất cả
-            </Button>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            <BrowserNotificationToggle />
+            {unread > 0 && (
+              <Button size="sm" variant="outline" disabled={markAllRead.isPending} onClick={() => markAllRead.mutate()}>
+                <CheckCheck size={14} /> Đánh dấu đã đọc tất cả
+              </Button>
+            )}
+          </div>
         }
         onRefresh={() => {
           list.refetch();

@@ -11,4 +11,10 @@ public interface OtpMailService {
             int maxVerifyAttempts);
 
     void sendTestSmtpEmail(String recipientEmail);
+
+    boolean sendNotificationAlertEmail(
+            String recipientEmail,
+            String recipientName,
+            String title,
+            String message);
 }

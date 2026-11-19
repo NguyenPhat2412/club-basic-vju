@@ -776,6 +776,20 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: event.attendance | event.view
+- method: POST
+  path: /api/v1/events/{eventId}/attendances/qr-token
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.attendance | event.attendance_edit
+- method: POST
+  path: /api/v1/events/{eventId}/attendances/qr-check-in
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
 - method: GET
   path: /api/v1/users/me/calendar
   module: event

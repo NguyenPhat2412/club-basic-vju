@@ -11,6 +11,9 @@ ssh "$HOST" "mkdir -p $APP/releases && test -f $APP/deploy/.env || { echo 'missi
 git archive --format=tar "$REF" | ssh "$HOST" "rm -rf $APP/releases/next && mkdir -p $APP/releases/next && tar -x -C $APP/releases/next"
 ssh "$HOST" "flock /var/lock/vju-club-deploy.lock bash -c 'set -e
   cp $APP/deploy/.env $APP/releases/next/deploy/.env
+  install -d -m 700 $APP/bin
+  install -m 700 $APP/releases/next/deploy/backup/backup-db.sh $APP/releases/next/deploy/backup/restore-db.sh $APP/bin/
+  COMPOSE_PROJECT=vju-club-stagging BACKUP_DIR=$APP/backups/db BACKUP_TAG=predeploy $APP/bin/backup-db.sh || echo \"INFO: skipping stagging pre-deploy DB dump\"
   cd $APP/releases/next/deploy
   docker compose -f compose.prod.yml --env-file .env build
   docker compose -f compose.prod.yml --env-file .env up -d --remove-orphans

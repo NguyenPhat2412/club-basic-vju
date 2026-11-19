@@ -37,6 +37,7 @@ import {
   ApplicationDetailDrawer,
   ClubApplicationsFilterBar,
 } from "@/components/application/ApplicationDetailDrawer";
+import { exportClubApplicationsReport } from "@/utils/export/club-reports";
 
 const LIMIT = 20;
 
@@ -151,28 +152,27 @@ export function ApplicationsTab({
     <div className="flex flex-1 flex-col space-y-3">
       <ClubApplicationsFilterBar
         search={search}
-        onSearchChange={(v) => {
-          setSearch(v);
-          setOffset(0);
-        }}
+        onSearchChange={(v) => { setSearch(v); setOffset(0); }}
         createdFrom={createdFrom}
-        onCreatedFromChange={(v) => {
-          setCreatedFrom(v);
-          setOffset(0);
-        }}
+        onCreatedFromChange={(v) => { setCreatedFrom(v); setOffset(0); }}
         createdTo={createdTo}
-        onCreatedToChange={(v) => {
-          setCreatedTo(v);
-          setOffset(0);
-        }}
+        onCreatedToChange={(v) => { setCreatedTo(v); setOffset(0); }}
         statusFilter={statusFilter}
-        onStatusFilterChange={(v) => {
-          setStatusFilter(v);
-          setOffset(0);
-        }}
+        onStatusFilterChange={(v) => { setStatusFilter(v); setOffset(0); }}
         hasFilters={hasFilters}
         onClearFilters={clearFilters}
         canCreateForClub={canCreateForClub}
+        onExport={
+          canViewList && Boolean(apps.data?.total)
+            ? (mode) =>
+                exportClubApplicationsReport({
+                  mode, clubId, clubName, statusFilter, search,
+                  createdFromIso: startOfDayIso(createdFrom),
+                  createdToIso: endOfDayExclusiveIso(createdTo),
+                  lookupUser: nameOf,
+                })
+            : undefined
+        }
         onCreateApp={openCreateApp}
       />
 

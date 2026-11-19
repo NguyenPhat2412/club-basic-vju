@@ -191,6 +191,8 @@ const MESSAGES: Record<string, string> = {
   INVALID_TASK_STATUS: "Trạng thái công việc không hợp lệ.",
   INVALID_TASK_TITLE: "Tiêu đề công việc không hợp lệ.",
   SYSTEM_SETTINGS_MISSING: "Chưa khởi tạo cấu hình hệ thống. Vui lòng liên hệ quản trị viên.",
+  QR_TOKEN_INVALID: "Mã QR điểm danh không hợp lệ hoặc không thuộc sự kiện này.",
+  QR_TOKEN_EXPIRED: "Mã QR điểm danh đã hết hạn. Vui lòng nhờ Ban tổ chức hiển thị mã mới.",
   DOCUMENT_STORAGE_ERROR: "Kho lưu trữ đang gặp sự cố. Vui lòng thử lại sau.",
   DATA_CONFLICT: "Dữ liệu bị trùng hoặc vừa thay đổi. Vui lòng tải lại.",
   INTERNAL_ERROR: "Hệ thống đang gặp sự cố. Vui lòng thử lại sau.",

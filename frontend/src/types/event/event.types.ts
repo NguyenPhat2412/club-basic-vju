@@ -76,6 +76,14 @@ export type EventAttendance = {
   checkedAt: string;
 };
 
+export type EventAttendanceQrToken = {
+  eventId: string;
+  eventTitle: string;
+  token: string;
+  expiresAt: string;
+  ttlSeconds: number;
+};
+
 export type MyEventParticipation = {
   registrationId: string;
   eventId: string;

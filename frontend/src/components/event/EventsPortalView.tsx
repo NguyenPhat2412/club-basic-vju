@@ -1,10 +1,10 @@
 "use client";
 
 import { Suspense, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
-import { Compass, Eye, FilterX, MapPin, UserCheck, XCircle } from "lucide-react";
+import { Compass, Eye, FilterX, MapPin, QrCode, UserCheck, XCircle } from "lucide-react";
 import { apiModel, MyEventParticipation, PublicEvent } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { BreadcrumbToolbar, SegmentedTabs } from "@/components/shared/BreadcrumbToolbar";
@@ -19,6 +19,7 @@ import { Select } from "@/components/ui/input";
 import { formatDateTime, formatDay } from "@/lib/utils";
 import { EVENT_TYPE_LABELS } from "@/forms/event/event-form";
 import { EventParticipationDrawers } from "./EventParticipationDrawers";
+import { EventQrSelfCheckInModal } from "./EventQrModals";
 import { MyEventsHistorySection } from "./MyEventsHistorySection";
 
 export function EventsPortalView() {
@@ -30,8 +31,11 @@ export function EventsPortalView() {
 }
 
 function EventsPortalContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const requestedEventId = searchParams.get("eventId");
+  const qrCheckinEventId = searchParams.get("checkin");
+  const qrCheckinToken = searchParams.get("token");
   const session = useOptionalSession();
   const queryClient = useQueryClient();
   const isLoggedIn = !!session.user;
@@ -51,10 +55,14 @@ function EventsPortalContent() {
   const [closedDeepLinkId, setClosedDeepLinkId] = useState<string | null>(null);
   const [selectedParticipation, setSelectedParticipation] = useState<MyEventParticipation | null>(null);
   const [registeringEvent, setRegisteringEvent] = useState<PublicEvent | null>(null);
+  const [manualQrOpen, setManualQrOpen] = useState(false);
+  const [dismissedQrKey, setDismissedQrKey] = useState<string | null>(null);
   const [regNote, setRegNote] = useState("");
   const [notice, setNotice] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [now] = useState(() => Date.now());
+  const urlQrKey = qrCheckinEventId && qrCheckinToken ? `${qrCheckinEventId}:${qrCheckinToken}` : null;
+  const qrCheckinOpen = manualQrOpen || Boolean(urlQrKey && dismissedQrKey !== urlQrKey);
 
   const publicEvents = useQuery({
     queryKey: qk.eventsPortal("public"),
@@ -206,14 +214,16 @@ function EventsPortalContent() {
         extraActions={
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             {isLoggedIn && (
-              <SegmentedTabs
-                value={tab}
-                onChange={(v) => { setTab(v); setNotice(""); setErrorMsg(""); }}
-                options={[
-                  { value: "discover", label: "Khám phá sự kiện" },
-                  { value: "mine", label: "Sự kiện & Điểm danh của tôi" },
-                ]}
-              />
+              <>
+                <Button size="sm" variant="outline" onClick={() => setManualQrOpen(true)}>
+                  <QrCode size={14} /> Điểm danh QR
+                </Button>
+                <SegmentedTabs
+                  value={tab}
+                  onChange={(v) => { setTab(v); setNotice(""); setErrorMsg(""); }}
+                  options={[{ value: "discover", label: "Khám phá sự kiện" }, { value: "mine", label: "Sự kiện & Điểm danh của tôi" }]}
+                />
+              </>
             )}
             {tab === "discover" && (
               <>
@@ -340,47 +350,36 @@ function EventsPortalContent() {
         )
       ) : (
         <MyEventsHistorySection
-          items={myHistory.data?.items ?? []}
-          total={myHistory.data?.total ?? 0}
-          activeRegistrationsCount={activeRegByEvent.size}
-          isPending={myHistory.isPending}
-          isError={myHistory.isError}
-          error={myHistory.error}
-          onRetry={() => myHistory.refetch()}
-          regStatusFilter={regStatusFilter}
-          setRegStatusFilter={setRegStatusFilter}
-          roleFilter={roleFilter}
-          setRoleFilter={setRoleFilter}
-          historyOffset={historyOffset}
-          setHistoryOffset={setHistoryOffset}
-          historyLimit={historyLimit}
-          setHistoryLimit={setHistoryLimit}
-          onDiscoverTab={() => setTab("discover")}
-          onSelectParticipation={setSelectedParticipation}
-          canCancelNow={canCancelNow}
-          cancelPending={cancelMutation.isPending}
-          onCancelRegistration={(eventId) => cancelMutation.mutate(eventId)}
+          items={myHistory.data?.items ?? []} total={myHistory.data?.total ?? 0} activeRegistrationsCount={activeRegByEvent.size}
+          isPending={myHistory.isPending} isError={myHistory.isError} error={myHistory.error} onRetry={() => myHistory.refetch()}
+          regStatusFilter={regStatusFilter} setRegStatusFilter={setRegStatusFilter} roleFilter={roleFilter} setRoleFilter={setRoleFilter}
+          historyOffset={historyOffset} setHistoryOffset={setHistoryOffset} historyLimit={historyLimit} setHistoryLimit={setHistoryLimit}
+          onDiscoverTab={() => setTab("discover")} onSelectParticipation={setSelectedParticipation}
+          canCancelNow={canCancelNow} cancelPending={cancelMutation.isPending} onCancelRegistration={(eventId) => cancelMutation.mutate(eventId)}
         />
       )}
 
       <EventParticipationDrawers
+        isLoggedIn={isLoggedIn} activeClubIds={activeClubIds} activeRegByEvent={activeRegByEvent}
+        registeringEvent={registeringEvent} setRegisteringEvent={setRegisteringEvent} regNote={regNote} setRegNote={setRegNote}
+        selectedDiscover={activeSelectedDiscover} setSelectedDiscover={handleSetSelectedDiscover}
+        selectedParticipation={selectedParticipation} setSelectedParticipation={setSelectedParticipation}
+        canRegisterNow={canRegisterNow} canCancelNow={canCancelNow}
+        registerPending={registerMutation.isPending} onRegister={(ev) => registerMutation.mutate(ev)}
+        cancelPending={cancelMutation.isPending} onCancel={(eventId) => cancelMutation.mutate(eventId)}
+      />
+      <EventQrSelfCheckInModal
+        open={qrCheckinOpen}
         isLoggedIn={isLoggedIn}
-        activeClubIds={activeClubIds}
-        activeRegByEvent={activeRegByEvent}
-        registeringEvent={registeringEvent}
-        setRegisteringEvent={setRegisteringEvent}
-        regNote={regNote}
-        setRegNote={setRegNote}
-        selectedDiscover={activeSelectedDiscover}
-        setSelectedDiscover={handleSetSelectedDiscover}
-        selectedParticipation={selectedParticipation}
-        setSelectedParticipation={setSelectedParticipation}
-        canRegisterNow={canRegisterNow}
-        canCancelNow={canCancelNow}
-        registerPending={registerMutation.isPending}
-        onRegister={(ev) => registerMutation.mutate(ev)}
-        cancelPending={cancelMutation.isPending}
-        onCancel={(eventId) => cancelMutation.mutate(eventId)}
+        initialEventId={qrCheckinEventId}
+        initialToken={qrCheckinToken}
+        onClose={() => { setManualQrOpen(false); if (urlQrKey) { setDismissedQrKey(urlQrKey); router.replace("/events"); } }}
+        onSuccess={() => { setNotice("Đã điểm danh sự kiện bằng mã QR thành công!"); refreshAll(); }}
+        onRequestLogin={() => {
+          const params = new URLSearchParams(searchParams.toString());
+          params.set("auth", "login");
+          router.push(`/events?${params.toString()}`);
+        }}
       />
     </ListPage>
   );

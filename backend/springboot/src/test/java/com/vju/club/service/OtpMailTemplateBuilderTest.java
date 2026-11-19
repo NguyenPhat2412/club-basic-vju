@@ -44,4 +44,23 @@ class OtpMailTemplateBuilderTest {
                     .contains(hex);
         }
     }
+
+    @Test
+    void rendersNotificationAlertWithEscapedUserTextAndStrictThreeTonePalette() {
+        var alert = OtpMailTemplateBuilder.buildNotificationAlert(
+                "Trần <BCN>",
+                "bcn@st.vju.ac.vn",
+                "Đơn đăng ký được duyệt",
+                "Chào mừng bạn gia nhập <script>alert(1)</script> CLB!");
+        assertThat(alert.subject()).isEqualTo("[VJU ClubHub] Đơn đăng ký được duyệt");
+        assertThat(alert.html())
+                .contains("Trần &lt;BCN&gt;")
+                .contains("&lt;script&gt;alert(1)&lt;/script&gt;")
+                .doesNotContain("<script>alert(1)</script>");
+
+        Matcher matcher = HEX_COLOR.matcher(alert.html());
+        while (matcher.find()) {
+            assertThat(ALLOWED_THREE_TONE_HEX).contains(matcher.group().toUpperCase());
+        }
+    }
 }

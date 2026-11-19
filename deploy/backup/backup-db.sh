@@ -6,21 +6,27 @@
 set -euo pipefail
 umask 077
 
+COMPOSE_PROJECT=${COMPOSE_PROJECT:-vju-club}
 BACKUP_DIR=${BACKUP_DIR:-/srv/vju-club/backups/db}
+BACKUP_TAG=${BACKUP_TAG:-}
 KEEP_DAILY_DAYS=${KEEP_DAILY_DAYS:-14}
 KEEP_WEEKLY_DAYS=${KEEP_WEEKLY_DAYS:-56}
 MIN_FREE_MB=${MIN_FREE_MB:-1024}
 
 log() { echo "$(date '+%F %T') $*"; }
 
-container=$(docker ps -q -f label=com.docker.compose.project=vju-club -f label=com.docker.compose.service=postgres)
-[ -n "$container" ] || { log "ERROR postgres container is not running"; exit 1; }
+container=$(docker ps -q -f label=com.docker.compose.project="$COMPOSE_PROJECT" -f label=com.docker.compose.service=postgres)
+[ -n "$container" ] || { log "ERROR postgres container for $COMPOSE_PROJECT is not running"; exit 1; }
 
 mkdir -p "$BACKUP_DIR/daily" "$BACKUP_DIR/weekly"
 free_mb=$(df -Pm "$BACKUP_DIR" | awk 'NR==2 {print $4}')
 [ "$free_mb" -ge "$MIN_FREE_MB" ] || { log "ERROR only ${free_mb}MB free in $BACKUP_DIR"; exit 1; }
 
-name="club-$(date '+%Y%m%d-%H%M%S').dump"
+prefix="club"
+if [ -n "$BACKUP_TAG" ]; then
+  prefix="club-${BACKUP_TAG}"
+fi
+name="${prefix}-$(date '+%Y%m%d-%H%M%S').dump"
 partial="$BACKUP_DIR/daily/.$name.partial"
 trap 'rm -f "$partial"' EXIT
 
