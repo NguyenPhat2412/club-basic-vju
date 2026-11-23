@@ -84,7 +84,7 @@ export function ChatReactionTrigger({
           role="dialog"
           aria-label="Thanh cảm xúc nhanh"
           className={cn(
-            "absolute bottom-full z-30 mb-1.5 border border-border/80 bg-card/98 shadow-lg backdrop-blur-xs",
+            "tg-pop-in absolute bottom-full z-30 mb-1.5 border border-border/80 bg-card/98 shadow-lg backdrop-blur-xs",
             expanded ? "w-[224px] rounded-2xl p-1.5" : "rounded-full px-1.5 py-1",
             isMine ? "right-0" : "left-0"
           )}
@@ -204,8 +204,8 @@ export function ChatReactionPills({
               onToggleReaction(r.emoji);
             }}
             className={cn(
-              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11.5px] leading-none transition-all",
-              canReact && "hover:scale-105 active:scale-115",
+              "tg-react-pop inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11.5px] leading-none transition-transform duration-150",
+              canReact && "hover:-translate-y-0.5 hover:scale-105 active:scale-90",
               reactedByMe
                 ? "border-primary/45 bg-primary/14 font-semibold text-primary shadow-2xs"
                 : "border-border/75 bg-card text-foreground hover:border-primary/30 hover:bg-muted/70",

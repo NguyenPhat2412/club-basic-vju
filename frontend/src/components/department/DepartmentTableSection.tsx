@@ -10,6 +10,7 @@ import { RowAction, TableRowActions } from "@/components/shared/TableRowActions"
 import { CountBadge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
+import { resolveMediaUrl } from "@/lib/media";
 
 export function DepartmentTableSection({
   items,
@@ -63,7 +64,7 @@ export function DepartmentTableSection({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-1 flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2 border-y border-border/60 bg-card px-4 py-2.5 sm:px-6">
         <div className="flex flex-1 flex-wrap items-center gap-2">
           <div className="relative min-w-[210px] flex-1 sm:max-w-xs">
@@ -167,17 +168,31 @@ export function DepartmentTableSection({
               },
               {
                 key: "head",
-                header: "Trưởng ban (PB-14.2)",
+                header: "Trưởng ban",
                 sortValue: (d) => deptHeadSlotFor(d.id)?.holders?.[0]?.fullName ?? "",
                 render: (d) => {
                   const holder = deptHeadSlotFor(d.id)?.holders?.[0];
                   if (!holder) {
                     return <span className="text-xs italic text-muted-foreground">Chưa bổ nhiệm</span>;
                   }
+                  const avatarSrc = resolveMediaUrl(holder.avatarUrl);
+                  const displayName = holder.fullName || holder.email;
                   return (
                     <div className="flex min-w-0 items-center gap-2">
+                      {avatarSrc ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={avatarSrc}
+                          alt={displayName}
+                          className="size-7 shrink-0 rounded-full border border-border/70 object-cover"
+                        />
+                      ) : (
+                        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
+                          {displayName.trim().slice(0, 1).toUpperCase()}
+                        </span>
+                      )}
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-bold text-foreground">{holder.fullName || holder.email}</p>
+                        <p className="truncate text-xs font-bold text-foreground">{displayName}</p>
                         <p className="truncate text-[11px] text-muted-foreground">{holder.email}</p>
                       </div>
                       {canRevokePosition && (

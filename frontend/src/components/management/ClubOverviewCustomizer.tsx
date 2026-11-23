@@ -105,24 +105,15 @@ export function ClubOverviewCustomizer({
   return (
     <section
       id="club-overview-customizer"
-      className="min-w-0 space-y-5 rounded-xl border border-border/60 bg-card p-4 sm:p-5 lg:col-span-2"
+      className="min-w-0 space-y-5 rounded-xl border border-border/70 bg-card p-4 sm:p-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-        <div className="flex items-center gap-2.5">
-          <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
-            <LayoutTemplate size={17} />
-          </span>
-          <div>
-            <h3 className="text-sm font-bold text-foreground">
-              Tùy biến Trang Tổng quan & Bản sắc riêng của CLB ({club.code})
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Mỗi câu lạc bộ có thể chọn mô hình đặc thù, bật/tắt khối hiển thị và thiết lập các chỉ số, dấu ấn riêng trên cả trang quản trị lẫn hồ sơ công khai.
-            </p>
-          </div>
+        <div className="flex items-center gap-2">
+          <LayoutTemplate size={16} className="text-primary" />
+          <h3 className="text-sm font-bold text-foreground">Giao diện giới thiệu CLB</h3>
         </div>
         <Button size="sm" disabled={saveConfig.isPending} onClick={() => saveConfig.mutate()}>
-          <Save size={14} /> {saveConfig.isPending ? "Đang lưu…" : "Lưu tùy biến Tổng quan"}
+          <Save size={14} /> {saveConfig.isPending ? "Đang lưu…" : "Lưu giao diện"}
         </Button>
       </div>
 

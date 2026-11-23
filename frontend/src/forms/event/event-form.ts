@@ -10,6 +10,7 @@ export interface EventFormValues {
   endTime: string;
   registrationDeadline: string;
   allowCtv: boolean;
+  requiresSubmission: boolean;
   maxParticipants: string;
   status: string;
 }
@@ -33,12 +34,24 @@ export const EMPTY_EVENT_FORM: EventFormValues = {
   endTime: '',
   registrationDeadline: '',
   allowCtv: true,
+  requiresSubmission: false,
   maxParticipants: '',
   status: 'OPEN_REGISTRATION',
 };
 
 export function emptyEventFormDraft(): EventFormValues {
   return { ...EMPTY_EVENT_FORM };
+}
+
+export function isEventSubmissionLocked(
+  eventStatus: string,
+  registrationDeadline?: string | null,
+  nowMs = Date.now(),
+): boolean {
+  if (eventStatus !== 'OPEN_REGISTRATION') return true;
+  if (!registrationDeadline) return false;
+  const deadlineMs = new Date(registrationDeadline).getTime();
+  return !Number.isNaN(deadlineMs) && nowMs > deadlineMs;
 }
 
 export function toIso(localStr: string): string {
@@ -66,6 +79,7 @@ export function toCreateEventPayload(draft: EventFormValues): CreateEventInput {
     endTime: toIso(draft.endTime),
     registrationDeadline: toIso(draft.registrationDeadline),
     allowCtv: draft.allowCtv,
+    requiresSubmission: draft.requiresSubmission,
     maxParticipants: draft.maxParticipants ? Number(draft.maxParticipants) : undefined,
     status: draft.status || undefined,
   };

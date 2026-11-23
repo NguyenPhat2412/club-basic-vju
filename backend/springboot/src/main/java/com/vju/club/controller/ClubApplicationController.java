@@ -4,6 +4,7 @@ import com.vju.club.common.ApiPaths;
 import com.vju.club.dto.response.PageResponse;
 import com.vju.club.dto.request.CreateClubApplicationRequest;
 import com.vju.club.dto.request.ReviewClubApplicationRequest;
+import com.vju.club.dto.request.ScheduleInterviewRequest;
 import com.vju.club.dto.request.UpdateClubApplicationRequest;
 import com.vju.club.dto.request.UpsertClubApplicationFormRequest;
 import com.vju.club.dto.response.ClubApplicationFileResponse;
@@ -235,6 +236,19 @@ public class ClubApplicationController {
                                           @PathVariable UUID applicationId,
                                           @Valid @RequestBody(required = false) ReviewClubApplicationRequest request) {
         return applicationService.reject(actor, clubId, applicationId, request);
+    }
+
+    @PatchMapping(ApiPaths.CLUB_APPLICATION_INTERVIEW)
+    public ClubApplicationResponse scheduleInterview(Actor actor, @PathVariable UUID clubId,
+                                                     @PathVariable UUID applicationId,
+                                                     @Valid @RequestBody ScheduleInterviewRequest request) {
+        return applicationService.scheduleInterview(actor, clubId, applicationId, request);
+    }
+
+    @PostMapping(ApiPaths.CLUB_APPLICATION_INTERVIEW_REMIND)
+    public ClubApplicationResponse remindInterview(Actor actor, @PathVariable UUID clubId,
+                                                   @PathVariable UUID applicationId) {
+        return applicationService.remindInterview(actor, clubId, applicationId);
     }
 
     private static UploadedFile uploaded(MultipartFile file) {

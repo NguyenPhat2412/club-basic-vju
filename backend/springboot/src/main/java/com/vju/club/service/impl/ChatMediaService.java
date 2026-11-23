@@ -14,9 +14,13 @@ import com.vju.club.error.ApiException;
 import com.vju.club.repository.ChatMessageAttachmentRepository;
 import com.vju.club.repository.UserRepository;
 import com.vju.club.security.Actor;
+import com.vju.club.security.RateLimitDecision;
+import com.vju.club.security.RateLimitService;
 import com.vju.club.storage.DocumentStorage;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,6 +33,8 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.Normalizer;
+import java.time.Clock;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -60,11 +66,56 @@ public class ChatMediaService {
     private final ChatAccessPolicy chatAccessPolicy;
     private final DocumentStorage documentStorage;
 
+    @Autowired(required = false)
+    private RateLimitService rateLimitService;
+    @Autowired(required = false)
+    private ClubStorageQuotaService storageQuotaService;
+    @Autowired(required = false)
+    private com.vju.club.service.SystemSettingsService settingsService;
+    @Autowired(required = false)
+    private Clock clock;
+
+    private static final int DEFAULT_MAX_CHANNELS_PER_CLUB = 30;
+    private static final int DEFAULT_CHAT_MESSAGES_PER_MINUTE = 20;
+
+    public void requireChannelQuota(long currentChannelCount) {
+        int maxChannels = (settingsService != null && settingsService.current() != null)
+                ? settingsService.current().maxChannelsPerClub()
+                : DEFAULT_MAX_CHANNELS_PER_CLUB;
+        if (maxChannels > 0 && currentChannelCount >= maxChannels) {
+            throw new ApiException(HttpStatus.CONFLICT, "CHAT_CHANNEL_LIMIT_REACHED",
+                    "Mỗi câu lạc bộ chỉ được tạo tối đa " + maxChannels + " kênh chat.");
+        }
+    }
+
+    public void requireMessageRateLimit(UUID actorId) {
+        if (rateLimitService == null) {
+            return;
+        }
+        int maxPerMin = (settingsService != null && settingsService.current() != null)
+                ? settingsService.current().chatMessagesPerMinute()
+                : DEFAULT_CHAT_MESSAGES_PER_MINUTE;
+        RateLimitDecision decision = rateLimitService.check("chat-msg:" + actorId, maxPerMin, java.time.Duration.ofMinutes(1));
+        if (!decision.allowed()) {
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "CHAT_RATE_LIMIT_EXCEEDED",
+                    "Bạn gửi tin nhắn quá nhanh (tối đa " + maxPerMin + " tin/phút). Vui lòng thử lại sau "
+                            + decision.retryAfterSeconds() + " giây.");
+        }
+    }
+
     public record StreamedAttachment(ChatMessageAttachment metadata, DocumentStorage.StoredObject stored) { }
 
     @Transactional
     public ChatAttachmentResponse uploadAttachment(Actor actor, UUID channelId, MultipartFile file) {
         ChatChannel channel = chatAccessPolicy.requireChannelAccessById(actor, channelId, ChatConstants.PERMISSION_SEND, true);
+        if (rateLimitService != null) {
+            RateLimitDecision decision = rateLimitService.checkChatUpload(actor.id());
+            if (!decision.allowed()) {
+                throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "CHAT_UPLOAD_RATE_LIMIT_EXCEEDED",
+                        "Bạn đang tải tệp quá nhanh (tối đa " + rateLimitService.chatUploadLimit()
+                                + " tệp / 5 phút). Vui lòng thử lại sau " + decision.retryAfterSeconds() + " giây.");
+            }
+        }
         User uploader = userRepository.findById(actor.id())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User not found"));
         if (file == null || file.isEmpty()) {
@@ -120,6 +171,9 @@ public class ChatMediaService {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "EMPTY_DOCUMENT", "Uploaded file is empty");
             }
             verifyMagicBytes(ext, kind, head, headLen);
+            if (storageQuotaService != null) {
+                storageQuotaService.requireQuotaAvailable(channel.getClub().getId(), totalBytes);
+            }
             try (InputStream storeIn = Files.newInputStream(tempFile)) {
                 documentStorage.put(storageKey, storeIn, totalBytes, resolvedContentType);
             }
@@ -212,6 +266,22 @@ public class ChatMediaService {
         for (ChatMessageAttachment att : attachmentRepository.findByChannel_Id(channelId)) {
             deleteStorageSilently(att.getStorageKey());
         }
+    }
+
+    @Scheduled(fixedDelayString = "${app.chat.orphan-cleanup-interval:3600000}")
+    @Transactional
+    public int purgeOrphanAttachments() {
+        Clock effectiveClock = clock != null ? clock : Clock.systemUTC();
+        OffsetDateTime cutoff = OffsetDateTime.now(effectiveClock).minusHours(24);
+        List<ChatMessageAttachment> orphans = attachmentRepository.findByMessageIsNullAndCreatedAtBefore(cutoff);
+        if (orphans.isEmpty()) {
+            return 0;
+        }
+        for (ChatMessageAttachment orphan : orphans) {
+            deleteStorageSilently(orphan.getStorageKey());
+        }
+        attachmentRepository.deleteAll(orphans);
+        return orphans.size();
     }
 
     private void deleteStorageSilently(String storageKey) {

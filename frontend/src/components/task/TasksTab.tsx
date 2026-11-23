@@ -28,6 +28,7 @@ import {
   NotifyTaskModal,
 } from "@/components/task/TaskFormModals";
 import { TaskDetailDrawer } from "@/components/task/TaskDetailDrawer";
+import { TaskScopeFilter, TaskScopeFilterValue } from "@/components/task/TaskScopeFilter";
 
 export function TasksTab({
   clubId,
@@ -46,6 +47,7 @@ export function TasksTab({
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
+  const [scopeFilter, setScopeFilter] = useState<TaskScopeFilterValue>("ALL");
   const [deptFilter, setDeptFilter] = useState("");
   const [assigneeFilter, setAssigneeFilter] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
@@ -64,12 +66,15 @@ export function TasksTab({
   const createDeptScope = session.departmentsWith(["task.create"], clubId);
   const allowedCreateDepts = departments.filter((d) => createDeptScope.all || createDeptScope.ids.has(d.id));
 
-  const hasClientFilter = Boolean(search.trim() || priorityFilter);
+  const clubWideOnly = scopeFilter === "CLUB_WIDE";
+  const effectiveDeptFilter = scopeFilter === "DEPARTMENT" ? deptFilter : "";
+  const hasClientFilter = Boolean(search.trim() || priorityFilter || (scopeFilter === "DEPARTMENT" && !deptFilter));
   const queryOffset = hasClientFilter ? 0 : offset;
   const queryLimit = hasClientFilter ? 100 : limit;
 
   const filterParams = {
-    departmentId: deptFilter || undefined,
+    departmentId: effectiveDeptFilter || undefined,
+    clubWideOnly: clubWideOnly || undefined,
     status: statusFilter || undefined,
     assigneeId: assigneeFilter || undefined,
     overdue: overdueOnly ? true : undefined,
@@ -78,17 +83,18 @@ export function TasksTab({
   };
 
   const tasks = useQuery({
-    queryKey: qk.clubTasks(clubId, deptFilter, statusFilter, assigneeFilter, overdueOnly, queryOffset, queryLimit),
+    queryKey: qk.clubTasks(clubId, scopeFilter, effectiveDeptFilter, statusFilter, assigneeFilter, overdueOnly, queryOffset, queryLimit),
     queryFn: () => apiModel.clubTasks(clubId, filterParams),
     placeholderData: keepPreviousData,
     enabled: !!clubId,
   });
 
   const summary = useQuery({
-    queryKey: qk.clubTaskSummary(clubId, deptFilter, statusFilter, assigneeFilter, overdueOnly),
+    queryKey: qk.clubTaskSummary(clubId, scopeFilter, effectiveDeptFilter, statusFilter, assigneeFilter, overdueOnly),
     queryFn: () =>
       apiModel.clubTaskSummary(clubId, {
-        departmentId: deptFilter || undefined,
+        departmentId: effectiveDeptFilter || undefined,
+        clubWideOnly: clubWideOnly || undefined,
         status: statusFilter || undefined,
         assigneeId: assigneeFilter || undefined,
         overdue: overdueOnly ? true : undefined,
@@ -114,7 +120,7 @@ export function TasksTab({
     [members, activeEventIdForCandidates, eventRegsForTask.data?.items]
   );
 
-  const hasActiveFilter = Boolean(search.trim() || deptFilter || assigneeFilter || priorityFilter || statusFilter || overdueOnly);
+  const hasActiveFilter = Boolean(search.trim() || scopeFilter !== "ALL" || deptFilter || assigneeFilter || priorityFilter || statusFilter || overdueOnly);
 
   const allTasksForHierarchy = useQuery({
     queryKey: qk.clubTasks(clubId, "", "", false),
@@ -141,6 +147,7 @@ export function TasksTab({
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rawItems.filter((t) => {
+      if (scopeFilter === "DEPARTMENT" && !deptFilter && !t.departmentId) return false;
       if (priorityFilter && t.priority !== priorityFilter) return false;
       if (!q) return true;
       return (
@@ -149,13 +156,13 @@ export function TasksTab({
         (t.departmentName ?? "").toLowerCase().includes(q)
       );
     });
-  }, [rawItems, search, priorityFilter]);
+  }, [rawItems, scopeFilter, deptFilter, search, priorityFilter]);
 
   const visibleRows = hasClientFilter ? filteredItems.slice(offset, offset + limit) : filteredItems;
   const effectiveTotal = hasClientFilter ? filteredItems.length : (tasks.data?.total ?? 0);
 
   const resetFilters = () => {
-    setSearch(""); setDeptFilter(""); setAssigneeFilter("");
+    setSearch(""); setScopeFilter("ALL"); setDeptFilter(""); setAssigneeFilter("");
     setPriorityFilter(""); setStatusFilter(""); setOverdueOnly(false); setOffset(0);
   };
 
@@ -231,10 +238,11 @@ export function TasksTab({
             )}
           </div>
 
-          <Select aria-label="Lọc ban chuyên môn" value={deptFilter} onChange={(e) => { setDeptFilter(e.target.value); setOffset(0); }} className="h-8 w-full text-xs sm:w-40">
-            <option value="">Tất cả ban</option>
-            {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </Select>
+          <TaskScopeFilter
+            scope={scopeFilter} departmentId={deptFilter} departments={departments}
+            onChangeScope={(next) => { setScopeFilter(next); if (next !== "DEPARTMENT") setDeptFilter(""); setOffset(0); }}
+            onChangeDepartment={(id) => { setDeptFilter(id); setOffset(0); }}
+          />
 
           {members.length > 0 && (
             <Select aria-label="Lọc người thực hiện" value={assigneeFilter} onChange={(e) => { setAssigneeFilter(e.target.value); setOffset(0); }} className="h-8 w-full text-xs sm:w-44">
@@ -314,7 +322,7 @@ export function TasksTab({
                   <div className="min-w-0">
                     <p className="truncate font-bold text-foreground" title={t.title}>{t.title}</p>
                     <p className="truncate text-[11px] text-muted-foreground">
-                      {t.departmentName || "Toàn CLB"}{t.eventTitle ? ` · ${t.eventTitle}` : ""}{t.parentTaskTitle ? ` · Việc con: ${t.parentTaskTitle}` : ""}
+                      {t.departmentName || "Công việc chung toàn CLB"}{t.eventTitle ? ` · ${t.eventTitle}` : ""}{t.parentTaskTitle ? ` · Việc con: ${t.parentTaskTitle}` : ""}
                     </p>
                   </div>
                 ),

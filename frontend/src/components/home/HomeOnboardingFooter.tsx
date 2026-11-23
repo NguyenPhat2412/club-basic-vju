@@ -20,7 +20,7 @@ export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFoot
 
   return (
     <>
-      <section id="quy-trinh" className="bg-white py-16 sm:py-22">
+      <section id="quy-trinh" className="scroll-mt-20 border-t border-border/60 bg-white py-16 sm:py-22">
         <div className="mx-auto max-w-[1380px] px-5 sm:px-8 lg:px-12">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
@@ -70,26 +70,16 @@ export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFoot
         </div>
       </section>
 
-      <section id="khoanh-khac" className="bg-secondary py-16 sm:py-22">
+      <section id="khoanh-khac" className="scroll-mt-20 bg-secondary py-16 sm:py-22">
         <div className="mx-auto max-w-[1380px] px-5 sm:px-8 lg:px-12">
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-            <div className="max-w-2xl">
-              <p className="text-sm font-semibold text-primary">{m.galleryFaq.galleryKicker}</p>
-              <h2 className="mt-2 font-serif text-3xl font-semibold leading-[1.15] text-slate-900 sm:text-[40px]">
-                {formatLocalizedCopy(m.galleryFaq.galleryTitle, locale)}
-              </h2>
-              <p className="mt-3 text-base leading-7 text-slate-700">
-                {formatLocalizedCopy(m.galleryFaq.galleryLead, locale)}
-              </p>
-            </div>
-
-            <Link
-              href="/clubs"
-              className="inline-flex shrink-0 items-center gap-2 pb-1 text-sm font-semibold text-primary hover:underline"
-            >
-              <span>{m.galleryFaq.galleryCta}</span>
-              <ArrowRight size={15} />
-            </Link>
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold text-primary">{m.galleryFaq.galleryKicker}</p>
+            <h2 className="mt-2 font-serif text-3xl font-semibold leading-[1.15] text-slate-900 sm:text-[40px]">
+              {formatLocalizedCopy(m.galleryFaq.galleryTitle, locale)}
+            </h2>
+            <p className="mt-3 text-base leading-7 text-slate-700">
+              {formatLocalizedCopy(m.galleryFaq.galleryLead, locale)}
+            </p>
           </div>
 
           <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -125,7 +115,7 @@ export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFoot
         </div>
       </section>
 
-      <section id="hoi-dap" className="bg-white py-16 sm:py-22">
+      <section id="hoi-dap" className="scroll-mt-20 bg-white py-16 sm:py-22">
         <div className="mx-auto grid max-w-[1380px] gap-8 px-5 sm:px-8 lg:grid-cols-12 lg:items-start lg:gap-12 lg:px-12">
           <div className="lg:col-span-5">
             <p className="text-sm font-semibold text-primary">{m.galleryFaq.faqKicker}</p>
@@ -218,12 +208,6 @@ export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFoot
                   <ArrowRight size={16} />
                 </button>
               )}
-              <Link
-                href="/clubs"
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-secondary px-6 text-sm font-semibold text-secondary-foreground transition-colors hover:bg-muted hover:text-primary sm:w-auto"
-              >
-                {m.closing.clubsCta}
-              </Link>
             </div>
           </div>
         </div>

@@ -73,6 +73,13 @@ public class NotificationServiceImpl implements NotificationService {
     private final TaskRepository taskRepository;
     private final PermissionAuthorizationService authorizationService;
     private final AuditService auditService;
+
+    @Autowired(required = false)
+    private com.vju.club.service.SystemSettingsService settingsService;
+    @Autowired(required = false)
+    private com.vju.club.security.RateLimitService rateLimitService;
+
+    private static final int DEFAULT_BROADCAST_COOLDOWN_MINUTES = 5;
     private final NotificationMapper notificationMapper;
 
     @Autowired(required = false)
@@ -196,6 +203,19 @@ public class NotificationServiceImpl implements NotificationService {
                     .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "DEPARTMENT_NOT_FOUND", "Department not found in club"));
             authorizationService.require(actor, PERMISSION_SEND, club.getId(), department.getId());
             recipientIds = departmentMemberRepository.findActiveUserIdsByDepartmentId(department.getId());
+        }
+
+        int cooldownMinutes = (settingsService != null && settingsService.current() != null)
+                ? settingsService.current().broadcastCooldownMinutes()
+                : DEFAULT_BROADCAST_COOLDOWN_MINUTES;
+        if (cooldownMinutes > 0 && rateLimitService != null) {
+            var decision = rateLimitService.check(
+                    "broadcast:" + club.getId(), 1, java.time.Duration.ofMinutes(cooldownMinutes));
+            if (!decision.allowed()) {
+                throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "BROADCAST_COOLDOWN_ACTIVE",
+                        "Mỗi câu lạc bộ cần chờ " + cooldownMinutes + " phút giữa 2 lần phát thông báo hàng loạt. Vui lòng thử lại sau "
+                                + decision.retryAfterSeconds() + " giây.");
+            }
         }
 
         String title = request.title().strip();

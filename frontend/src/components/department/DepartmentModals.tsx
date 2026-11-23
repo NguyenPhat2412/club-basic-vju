@@ -168,8 +168,8 @@ export function AssignPositionModal({
             </p>
             <p className="mt-0.5 text-muted-foreground">
               {assigningSlot.departmentId
-                ? `Chỉ các thành viên đang hoạt động trong "${assigningSlot.departmentName}" mới đủ điều kiện làm Trưởng ban (PB-14.2).`
-                : "Chỉ thành viên đang hoạt động (ACTIVE) của CLB mới đủ điều kiện giữ chức danh Ban Chủ nhiệm (PB-14.1)."}
+                ? `Chỉ các thành viên đang hoạt động trong "${assigningSlot.departmentName}" mới đủ điều kiện làm Trưởng ban.`
+                : "Chỉ thành viên đang hoạt động của CLB mới đủ điều kiện giữ chức danh Ban Chủ nhiệm."}
             </p>
           </div>
 

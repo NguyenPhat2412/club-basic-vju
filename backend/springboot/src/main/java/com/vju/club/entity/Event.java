@@ -53,6 +53,9 @@ public class Event extends TimestampedEntity {
     @Column(name = "allow_ctv", nullable = false)
     private boolean allowCtv;
 
+    @Column(name = "requires_submission", nullable = false)
+    private boolean requiresSubmission;
+
     @Column(name = "max_participants")
     private Integer maxParticipants;
 

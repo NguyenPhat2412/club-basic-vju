@@ -26,6 +26,7 @@ import { describeError } from "@/components/shared/ListPage";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ClubOverviewShowcase } from "@/components/club/ClubOverviewShowcase";
+import { ClubPublicFacebookFeed } from "@/components/club/ClubPublicFacebookFeed";
 import { normalizeClubOverviewConfig } from "@/forms/club/club-overview-config";
 import {
   ApplicationSummary,
@@ -213,6 +214,8 @@ export function ClubRecruitmentDrawer({
                 <ApplicationFilesList files={formInfo.templateFiles} />
               </Section>
             )}
+
+            <ClubPublicFacebookFeed clubId={activeSelected.id} />
 
             <Section title={formInfo?.title || "Biểu mẫu Đơn đăng ký gia nhập CLB"} icon={<Send />}>
               {!user ? (

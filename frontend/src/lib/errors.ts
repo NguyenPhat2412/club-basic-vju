@@ -51,6 +51,16 @@ const MESSAGES: Record<string, string> = {
   UNAUTHORIZED: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
   CSRF_INVALID: "Phiên làm việc đã hết hạn. Vui lòng tải lại trang và thử lại.",
   RATE_LIMIT_EXCEEDED: "Bạn thao tác quá nhanh. Vui lòng đợi một phút rồi thử lại.",
+  CHAT_RATE_LIMIT_EXCEEDED: "Bạn gửi tin nhắn quá nhanh. Vui lòng chờ vài giây rồi thử lại.",
+  CHAT_UPLOAD_RATE_LIMIT_EXCEEDED: "Bạn đang tải tệp lên quá nhanh. Vui lòng chờ ít phút rồi thử lại.",
+  BROADCAST_COOLDOWN_ACTIVE: "Câu lạc bộ vừa phát thông báo hàng loạt. Vui lòng chờ trước khi gửi tiếp.",
+  FACEBOOK_SYNC_COOLDOWN: "Fanpage vừa được đồng bộ. Vui lòng chờ trước khi đồng bộ lại.",
+  CLUB_STORAGE_QUOTA_EXCEEDED: "Câu lạc bộ đã đạt giới hạn dung lượng lưu trữ. Vui lòng xoá bớt tệp cũ hoặc liên hệ quản trị viên.",
+  DOCUMENT_VERSION_LIMIT_REACHED: "Tài liệu này đã đạt số phiên bản lịch sử tối đa cho phép.",
+  CHAT_CHANNEL_LIMIT_REACHED: "Câu lạc bộ đã đạt số kênh chat tối đa cho phép.",
+  DEPARTMENT_LIMIT_REACHED: "Câu lạc bộ đã đạt số ban chuyên môn tối đa cho phép.",
+  EVENT_LIMIT_REACHED: "Câu lạc bộ đã đạt số sự kiện đang hoạt động tối đa cùng lúc.",
+  TASK_LIMIT_REACHED: "Câu lạc bộ đã đạt số công việc đang mở tối đa cùng lúc.",
   PERMISSION_DENIED: "Bạn không có quyền thực hiện thao tác này.",
   CURRENT_PASSWORD_INVALID: "Mật khẩu hiện tại không đúng.",
   VALIDATION_ERROR: "Thông tin nhập chưa hợp lệ. Vui lòng kiểm tra lại.",
@@ -82,6 +92,8 @@ const MESSAGES: Record<string, string> = {
   ATTACHMENTS_DISABLED: "Biểu mẫu này không cho phép đính kèm tệp.",
   MAX_ATTACHMENTS_EXCEEDED: "Đã vượt quá số lượng tệp đính kèm tối đa cho phép.",
   APPLICATION_STATUS_TRANSITION_NOT_ALLOWED: "Không được đổi trạng thái đơn qua màn hình chỉnh sửa; hãy dùng chức năng Duyệt, Từ chối hoặc Huỷ đơn.",
+  INVALID_APPLICATION_STATUS: "Trạng thái đơn hiện tại không cho phép sắp xếp hoặc nhắc lịch phỏng vấn.",
+  INTERVIEW_NOT_SCHEDULED: "Đơn đăng ký chưa có lịch phỏng vấn / gặp mặt để gửi nhắc hẹn.",
   CLUB_APPLICATION_NOT_FOUND: "Không tìm thấy đơn đăng ký.",
   ALREADY_CLUB_MEMBER: "Bạn đã là thành viên của câu lạc bộ này.",
   MEMBERSHIP_ALREADY_EXISTS: "Người này đã là thành viên của câu lạc bộ.",
@@ -208,9 +220,23 @@ const BY_STATUS: Record<number, string> = {
   429: "Bạn thao tác quá nhanh. Vui lòng đợi một chút.",
 };
 
+const SERVER_DETAIL_CODES = new Set([
+  "MISSING_REQUIRED_FORM_FIELD",
+  "CHAT_RATE_LIMIT_EXCEEDED",
+  "CHAT_UPLOAD_RATE_LIMIT_EXCEEDED",
+  "BROADCAST_COOLDOWN_ACTIVE",
+  "FACEBOOK_SYNC_COOLDOWN",
+  "CLUB_STORAGE_QUOTA_EXCEEDED",
+  "DOCUMENT_VERSION_LIMIT_REACHED",
+  "CHAT_CHANNEL_LIMIT_REACHED",
+  "DEPARTMENT_LIMIT_REACHED",
+  "EVENT_LIMIT_REACHED",
+  "TASK_LIMIT_REACHED",
+]);
+
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.code === "MISSING_REQUIRED_FORM_FIELD" && error.message && /[^\x00-\x7F]/.test(error.message)) {
+    if (error.code && SERVER_DETAIL_CODES.has(error.code) && error.message && /[^\x00-\x7F]/.test(error.message)) {
       return error.message;
     }
     if (error.code && MESSAGES[error.code]) return MESSAGES[error.code];

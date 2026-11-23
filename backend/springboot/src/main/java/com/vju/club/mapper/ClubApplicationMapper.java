@@ -68,7 +68,11 @@ public interface ClubApplicationMapper {
                 full.updatedAt(),
                 full.membershipId(),
                 full.membershipStatus(),
-                full.membershipJoinedAt()
+                full.membershipJoinedAt(),
+                full.interviewAt(),
+                full.interviewLocation(),
+                full.interviewNote(),
+                full.interviewReminderSentAt()
         );
     }
 
@@ -107,6 +111,10 @@ public interface ClubApplicationMapper {
     @Mapping(target = "membershipId", source = "membership.id")
     @Mapping(target = "membershipStatus", source = "membership.status")
     @Mapping(target = "membershipJoinedAt", source = "membership.joinedAt")
+    @Mapping(target = "interviewAt", source = "application.interviewAt")
+    @Mapping(target = "interviewLocation", source = "application.interviewLocation")
+    @Mapping(target = "interviewNote", source = "application.interviewNote")
+    @Mapping(target = "interviewReminderSentAt", source = "application.interviewReminderSentAt")
     ClubApplicationResponse toResponse(ClubApplication application, Membership membership,
                                        List<ClubApplicationFileResponse> attachments);
 
@@ -127,6 +135,10 @@ public interface ClubApplicationMapper {
     @Mapping(target = "createdAt", source = "application.createdAt")
     @Mapping(target = "reviewedAt", source = "application.reviewedAt")
     @Mapping(target = "cancelledAt", source = "application.cancelledAt")
+    @Mapping(target = "interviewAt", source = "application.interviewAt")
+    @Mapping(target = "interviewLocation", source = "application.interviewLocation")
+    @Mapping(target = "interviewNote", source = "application.interviewNote")
+    @Mapping(target = "interviewReminderSentAt", source = "application.interviewReminderSentAt")
     ClubApplicationSummaryResponse toSummary(ClubApplication application, int attachmentCount);
 
     default ClubApplicationFileResponse toFileResponse(ClubApplicationFile file) {

@@ -50,12 +50,13 @@ public class TaskController {
     public PageResponse<TaskResponse> listForClub(Actor actor,
                                                   @PathVariable UUID clubId,
                                                   @RequestParam(required = false) UUID departmentId,
+                                                  @RequestParam(required = false) Boolean clubWideOnly,
                                                   @RequestParam(required = false) TaskStatus status,
                                                   @RequestParam(required = false) UUID assigneeId,
                                                   @RequestParam(required = false) Boolean overdue,
                                                   @RequestParam(defaultValue = "0") @Min(0) int offset,
                                                   @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
-        return taskService.listForClub(actor, clubId, departmentId, status, assigneeId, overdue, offset, limit);
+        return taskService.listForClub(actor, clubId, departmentId, clubWideOnly, status, assigneeId, overdue, offset, limit);
     }
 
     @GetMapping(ApiPaths.CLUB_TASKS_SUMMARY)
@@ -63,10 +64,11 @@ public class TaskController {
     public TaskSummaryResponse summarizeForClub(Actor actor,
                                                 @PathVariable UUID clubId,
                                                 @RequestParam(required = false) UUID departmentId,
+                                                @RequestParam(required = false) Boolean clubWideOnly,
                                                 @RequestParam(required = false) TaskStatus status,
                                                 @RequestParam(required = false) UUID assigneeId,
                                                 @RequestParam(required = false) Boolean overdue) {
-        return taskService.summarizeForClub(actor, clubId, departmentId, status, assigneeId, overdue);
+        return taskService.summarizeForClub(actor, clubId, departmentId, clubWideOnly, status, assigneeId, overdue);
     }
 
     @GetMapping(ApiPaths.MY_TASKS)

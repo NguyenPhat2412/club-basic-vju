@@ -68,7 +68,7 @@ export function HomeWorkspaceShowcase({
   };
 
   return (
-    <section id="khong-gian-so" className="bg-secondary py-16 sm:py-22">
+    <section id="khong-gian-so" className="scroll-mt-20 bg-secondary py-16 sm:py-22">
       <div className="mx-auto max-w-[1380px] px-5 sm:px-8 lg:px-12">
         <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
           <div className="max-w-2xl">
@@ -100,12 +100,6 @@ export function HomeWorkspaceShowcase({
                 <ArrowRight size={15} />
               </button>
             )}
-            <Link
-              href="/clubs"
-              className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-200/70 hover:text-primary"
-            >
-              {w.viewDirectoryCta}
-            </Link>
           </div>
         </div>
 

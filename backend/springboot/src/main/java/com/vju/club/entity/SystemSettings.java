@@ -19,7 +19,7 @@ public class SystemSettings extends TimestampedEntity {
     private int reapplyCooldownDays;
 
     @Column(name = "max_active_clubs", nullable = false)
-    private int maxActiveClubs;
+    private int maxActiveClubs = 5;
 
     @Column(name = "attendance_edit_window_hours", nullable = false)
     private int attendanceEditWindowHours = 48;
@@ -39,6 +39,9 @@ public class SystemSettings extends TimestampedEntity {
     @Column(name = "chat_max_message_length", nullable = false)
     private int chatMaxMessageLength = 4000;
 
+    @Column(name = "chat_messages_per_minute", nullable = false)
+    private int chatMessagesPerMinute = 20;
+
     @Column(name = "document_max_file_mb", nullable = false)
     private int documentMaxFileMb = 20;
 
@@ -47,6 +50,30 @@ public class SystemSettings extends TimestampedEntity {
 
     @Column(name = "avatar_max_mb", nullable = false)
     private int avatarMaxMb = 5;
+
+    @Column(name = "club_storage_quota_mb", nullable = false)
+    private int clubStorageQuotaMb = 500;
+
+    @Column(name = "document_max_versions", nullable = false)
+    private int documentMaxVersions = 20;
+
+    @Column(name = "max_channels_per_club", nullable = false)
+    private int maxChannelsPerClub = 30;
+
+    @Column(name = "max_departments_per_club", nullable = false)
+    private int maxDepartmentsPerClub = 20;
+
+    @Column(name = "max_active_events_per_club", nullable = false)
+    private int maxActiveEventsPerClub = 50;
+
+    @Column(name = "max_open_tasks_per_club", nullable = false)
+    private int maxOpenTasksPerClub = 200;
+
+    @Column(name = "broadcast_cooldown_minutes", nullable = false)
+    private int broadcastCooldownMinutes = 5;
+
+    @Column(name = "facebook_sync_cooldown_minutes", nullable = false)
+    private int facebookSyncCooldownMinutes = 2;
 
     @Column(name = "otp_expiry_minutes", nullable = false)
     private int otpExpiryMinutes = 5;

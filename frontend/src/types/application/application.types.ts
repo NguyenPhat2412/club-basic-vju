@@ -83,6 +83,12 @@ export type ReviewApplicationInput = {
   skipDepartmentAssignment?: boolean;
 };
 
+export type ScheduleInterviewInput = {
+  interviewAt: string;
+  interviewLocation: string;
+  interviewNote?: string;
+};
+
 export type UpdateApplicationInput = {
   preferredDepartmentId?: string;
   secondaryDepartmentId?: string;
@@ -119,6 +125,10 @@ export type ApplicationSummary = {
   createdAt: string;
   reviewedAt?: string;
   cancelledAt?: string;
+  interviewAt?: string;
+  interviewLocation?: string;
+  interviewNote?: string;
+  interviewReminderSentAt?: string;
 };
 
 export type ApplicationReviewSummary = {
@@ -155,3 +165,5 @@ export type Application = ApplicationSummary & {
   membershipStatus?: string;
   membershipJoinedAt?: string;
 };
+
+export type ClubApplication = Application;

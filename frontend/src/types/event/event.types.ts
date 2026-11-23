@@ -12,6 +12,7 @@ export type PublicEvent = {
   endTime: string;
   registrationDeadline?: string;
   allowCtv: boolean;
+  requiresSubmission?: boolean;
   maxParticipants?: number;
   status: string;
   completedAt?: string;
@@ -33,6 +34,7 @@ export type CreateEventInput = {
   endTime: string;
   registrationDeadline: string;
   allowCtv?: boolean;
+  requiresSubmission?: boolean;
   maxParticipants?: number;
   status?: string;
 };
@@ -50,6 +52,8 @@ export type EventRegistration = {
   note?: string;
   registeredAt: string;
   cancelledAt?: string;
+  submissionFileName?: string;
+  submissionUploadedAt?: string;
 };
 
 export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
@@ -107,6 +111,9 @@ export type MyEventParticipation = {
   attendanceEditReason?: string;
   checkedAt?: string;
   countedAsAttended: boolean;
+  requiresSubmission?: boolean;
+  submissionFileName?: string;
+  submissionUploadedAt?: string;
 };
 
 export type CalendarItem = {

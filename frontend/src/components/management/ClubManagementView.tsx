@@ -106,7 +106,7 @@ function ClubManagementViewContent() {
     ? tab
     : (visibleTabs[0]?.value ?? "clubs");
 
-  const navigateClubAndTab = (nextClubId: string, nextTab: ClubManagementTabKey) => {
+  const navigateClubAndTab = (nextClubId: string, nextTab: ClubManagementTabKey, section?: string) => {
     setClubId(nextClubId);
     setMemberOffset(0);
     setMemberDeptFilter("");
@@ -115,6 +115,10 @@ function ClubManagementViewContent() {
     setErrorMsg("");
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", nextTab);
+    params.delete("fbSelect");
+    params.delete("fbError");
+    if (section) params.set("section", section);
+    else params.delete("section");
     if (nextClubId) {
       params.set("clubId", nextClubId);
     }
@@ -246,8 +250,8 @@ function ClubManagementViewContent() {
           <>
             {currentClub && <ClubAvatar name={currentClub.name} code={currentClub.code} logoUrl={currentClub.logoUrl} size="sm" className="hidden sm:flex" />}
             {manageable.length > 0 && (
-              <Select aria-label="Chọn CLB" value={activeClubId} onChange={(e) => navigateClubAndTab(e.target.value, activeTab === "clubs" ? "overview" : activeTab)} className="h-9 w-full text-xs sm:w-52">
-                {manageable.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}
+              <Select aria-label="Chọn CLB" value={activeClubId} onChange={(e) => navigateClubAndTab(e.target.value, activeTab === "clubs" ? "overview" : activeTab)} className="h-9 w-full min-w-0 max-w-full text-xs sm:w-64">
+                {manageable.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </Select>
             )}
             {activeTab === "members" && canAddMember && (
@@ -303,7 +307,8 @@ function ClubManagementViewContent() {
           clubId={activeClubId}
           club={currentClub}
           canCustomize={session.canInClub("club.update", activeClubId)}
-          onOpenCustomize={() => navigateClubAndTab(activeClubId, "settings")}
+          onOpenCustomize={() => navigateClubAndTab(activeClubId, "settings", "appearance")}
+          onOpenFacebookSettings={() => navigateClubAndTab(activeClubId, "settings", "facebook")}
         />
       ) : activeTab === "applications" ? (
         <ApplicationsTab clubId={activeClubId} clubName={currentClub?.name} activeDepartments={activeDepartments} onNotice={setNotice} onError={setErrorMsg} onRefreshMembers={refreshMembers} />

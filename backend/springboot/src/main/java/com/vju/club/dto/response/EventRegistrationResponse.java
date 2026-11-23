@@ -15,6 +15,8 @@ public record EventRegistrationResponse(
         String status,
         String note,
         OffsetDateTime registeredAt,
-        OffsetDateTime cancelledAt
+        OffsetDateTime cancelledAt,
+        String submissionFileName,
+        OffsetDateTime submissionUploadedAt
 ) {
 }

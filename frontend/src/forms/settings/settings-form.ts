@@ -47,6 +47,23 @@ export const SYSTEM_SETTINGS_GROUPS: SystemSettingsGroup[] = [
     fields: [
       { kind: 'number', key: 'chatSummariesPerHour', label: 'Lượt tóm tắt AI mỗi giờ', hint: 'Số lần mỗi người được yêu cầu AI tóm tắt trong một giờ (0 = tắt tóm tắt AI).', unit: 'lượt', min: 0, max: 100 },
       { kind: 'number', key: 'chatMaxMessageLength', label: 'Độ dài tin nhắn tối đa', hint: 'Số ký tự tối đa của một tin nhắn trong kênh CLB.', unit: 'ký tự', min: 100, max: 4000 },
+      { kind: 'number', key: 'chatMessagesPerMinute', label: 'Tin nhắn tối đa mỗi phút', hint: 'Giới hạn số tin nhắn mỗi người được gửi trong 1 phút để chống spam kênh chat.', unit: 'tin', min: 1, max: 200 },
+    ],
+  },
+  {
+    title: 'Chống spam & Tần suất',
+    fields: [
+      { kind: 'number', key: 'broadcastCooldownMinutes', label: 'Chờ giữa 2 lần phát thông báo CLB', hint: 'Số phút tối thiểu giữa hai lần gửi thông báo hàng loạt của cùng một CLB (0 = không chờ).', unit: 'phút', min: 0, max: 1440 },
+      { kind: 'number', key: 'facebookSyncCooldownMinutes', label: 'Chờ giữa 2 lần đồng bộ Facebook', hint: 'Số phút tối thiểu giữa hai lần bấm đồng bộ Fanpage Facebook trong cùng một CLB (0 = không chờ).', unit: 'phút', min: 0, max: 1440 },
+    ],
+  },
+  {
+    title: 'Hạn mức tài nguyên mỗi CLB',
+    fields: [
+      { kind: 'number', key: 'maxChannelsPerClub', label: 'Số kênh chat tối đa', hint: 'Số kênh thảo luận tối đa một câu lạc bộ được tạo.', unit: 'kênh', min: 1, max: 200 },
+      { kind: 'number', key: 'maxDepartmentsPerClub', label: 'Số ban chuyên môn tối đa', hint: 'Số ban chuyên môn tối đa trong một câu lạc bộ.', unit: 'ban', min: 1, max: 100 },
+      { kind: 'number', key: 'maxActiveEventsPerClub', label: 'Sự kiện đang hoạt động tối đa', hint: 'Số sự kiện đang mở hoặc nháp cùng lúc (không tính sự kiện đã kết thúc/huỷ).', unit: 'SK', min: 1, max: 500 },
+      { kind: 'number', key: 'maxOpenTasksPerClub', label: 'Công việc đang mở tối đa', hint: 'Số công việc chưa hoàn thành tối đa cùng lúc trong một câu lạc bộ.', unit: 'việc', min: 1, max: 2000 },
     ],
   },
   {
@@ -58,8 +75,10 @@ export const SYSTEM_SETTINGS_GROUPS: SystemSettingsGroup[] = [
     ],
   },
   {
-    title: 'Dung lượng tải lên',
+    title: 'Dung lượng & Lưu trữ',
     fields: [
+      { kind: 'number', key: 'clubStorageQuotaMb', label: 'Hạn mức lưu trữ mỗi CLB', hint: 'Tổng dung lượng tối đa cho kho tài liệu và tệp đính kèm chat của từng CLB.', unit: 'MB', min: 50, max: 10240 },
+      { kind: 'number', key: 'documentMaxVersions', label: 'Phiên bản tối đa / tài liệu', hint: 'Số phiên bản lịch sử tối đa được phép tải lên cho một tài liệu.', unit: 'bản', min: 1, max: 100 },
       { kind: 'number', key: 'documentMaxFileMb', label: 'File tài liệu tối đa', hint: 'Áp dụng cho tài liệu CLB và file đính kèm đơn ứng tuyển.', unit: 'MB', min: 1, max: 20 },
       { kind: 'number', key: 'clubImageMaxMb', label: 'Ảnh logo / ảnh bìa CLB tối đa', hint: 'Dung lượng tối đa của mỗi ảnh logo hoặc ảnh bìa câu lạc bộ.', unit: 'MB', min: 1, max: 20 },
       { kind: 'number', key: 'avatarMaxMb', label: 'Ảnh đại diện tối đa', hint: 'Dung lượng tối đa khi người dùng tải ảnh đại diện lên.', unit: 'MB', min: 1, max: 20 },
@@ -72,17 +91,26 @@ export const SYSTEM_SETTINGS_FIELDS: SystemSettingsFieldMeta[] = SYSTEM_SETTINGS
 export function defaultSystemSettingsInput(): SystemSettingsInput {
   return {
     maxPendingApplications: 3,
-    reapplyCooldownDays: 30,
-    maxActiveClubs: 3,
+    reapplyCooldownDays: 7,
+    maxActiveClubs: 5,
     attendanceEditWindowHours: 48,
     allowSelfRegistration: true,
     attendanceOpensBeforeMinutes: 120,
     eventTaskGraceDays: 7,
     chatSummariesPerHour: 10,
     chatMaxMessageLength: 4000,
+    chatMessagesPerMinute: 20,
     documentMaxFileMb: 20,
     clubImageMaxMb: 10,
     avatarMaxMb: 5,
+    clubStorageQuotaMb: 500,
+    documentMaxVersions: 20,
+    maxChannelsPerClub: 30,
+    maxDepartmentsPerClub: 20,
+    maxActiveEventsPerClub: 50,
+    maxOpenTasksPerClub: 200,
+    broadcastCooldownMinutes: 5,
+    facebookSyncCooldownMinutes: 2,
     otpExpiryMinutes: 5,
     otpMaxSendCount: 5,
     otpResendCooldownSeconds: 60,

@@ -19,6 +19,7 @@ public record EventResponse(
         OffsetDateTime endTime,
         OffsetDateTime registrationDeadline,
         boolean allowCtv,
+        boolean requiresSubmission,
         Integer maxParticipants,
         String status,
         OffsetDateTime completedAt,

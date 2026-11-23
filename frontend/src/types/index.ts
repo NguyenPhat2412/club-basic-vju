@@ -4,6 +4,7 @@ export * from './auth/auth.types';
 export * from './user/user.types';
 export * from './access/access.types';
 export * from './club/club.types';
+export * from './club/facebook.types';
 export * from './department/department.types';
 export * from './application/application.types';
 export * from './event/event.types';

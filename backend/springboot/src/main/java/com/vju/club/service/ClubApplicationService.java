@@ -3,6 +3,7 @@ package com.vju.club.service;
 import com.vju.club.dto.response.PageResponse;
 import com.vju.club.dto.request.CreateClubApplicationRequest;
 import com.vju.club.dto.request.ReviewClubApplicationRequest;
+import com.vju.club.dto.request.ScheduleInterviewRequest;
 import com.vju.club.dto.request.UpdateClubApplicationRequest;
 import com.vju.club.dto.request.UpsertClubApplicationFormRequest;
 import com.vju.club.dto.response.ClubApplicationFileResponse;
@@ -60,4 +61,8 @@ public interface ClubApplicationService {
     ClubApplicationResponse approve(Actor actor, UUID clubId, UUID applicationId, ReviewClubApplicationRequest request);
 
     ClubApplicationResponse reject(Actor actor, UUID clubId, UUID applicationId, ReviewClubApplicationRequest request);
+
+    ClubApplicationResponse scheduleInterview(Actor actor, UUID clubId, UUID applicationId, ScheduleInterviewRequest request);
+
+    ClubApplicationResponse remindInterview(Actor actor, UUID clubId, UUID applicationId);
 }

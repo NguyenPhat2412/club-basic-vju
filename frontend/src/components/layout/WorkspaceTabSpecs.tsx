@@ -32,21 +32,7 @@ export type WorkspaceTabSpec = {
   icon: ReactNode;
 };
 
-export const STARTER_PRIORITY = [
-  "route:/dashboard",
-  "mgmt:clubs",
-  "mgmt:overview",
-  "mgmt:applications",
-  "mgmt:members",
-  "mgmt:events",
-  "mgmt:tasks",
-  "mgmt:chat",
-  "docs:club",
-  "route:/users",
-  "route:/clubs",
-  "route:/events",
-  "route:/schedule",
-];
+export const STARTER_PRIORITY = ["route:/dashboard"];
 
 export function iconForTab(href: string, tab?: string, tier?: string): ReactNode {
   if (tab === "clubs") return <Building2 size={13.5} />;
@@ -72,17 +58,19 @@ export function iconForTab(href: string, tab?: string, tier?: string): ReactNode
   if (href === "/schedule") return <ClipboardCheck size={13.5} />;
   if (href === "/applications") return <ClipboardList size={13.5} />;
   if (href === "/memberships") return <Building2 size={13.5} />;
+  if (href === "/documents") return <FileText size={13.5} />;
   if (href === "/notifications") return <Bell size={13.5} />;
   if (href === "/profile") return <UserCircle size={13.5} />;
   return <Compass size={13.5} />;
 }
 
-export function resolveTabId(pathname: string, currentTab: string | null, currentTier: string | null): string {
+export function resolveTabId(pathname: string, currentTab: string | null, _currentTier?: string | null): string {
+  void _currentTier;
   if (pathname === "/management") {
     return `mgmt:${currentTab || "clubs"}`;
   }
   if (pathname === "/documents") {
-    return `docs:${currentTier === "system" ? "system" : "club"}`;
+    return "route:/documents";
   }
   return `route:${pathname}`;
 }

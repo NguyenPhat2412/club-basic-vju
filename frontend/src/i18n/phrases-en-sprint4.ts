@@ -1,6 +1,8 @@
 export const PHRASES_EN_SPRINT4: Record<string, string> = {
   // Workspace Shell, Multi-Tab Bar, Quick Search & Action Center
   'Tổng quan CLB': 'Club Overview',
+  'Thống kê CLB': 'Club Analytics',
+  'Hoạt động & Tài liệu': 'Activities & Documents',
   'Đơn ứng tuyển': 'Applications',
   'Đơn chờ xét duyệt': 'Pending Applications',
   'Cập nhật tiến độ': 'Update Progress',

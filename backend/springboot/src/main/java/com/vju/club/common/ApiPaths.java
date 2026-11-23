@@ -103,6 +103,8 @@ public final class ApiPaths {
     public static final String CLUB_APPLICATION_BY_ID = "/clubs/{clubId}/applications/{applicationId}";
     public static final String CLUB_APPLICATION_APPROVE = "/clubs/{clubId}/applications/{applicationId}/approve";
     public static final String CLUB_APPLICATION_REJECT = "/clubs/{clubId}/applications/{applicationId}/reject";
+    public static final String CLUB_APPLICATION_INTERVIEW = "/clubs/{clubId}/applications/{applicationId}/interview";
+    public static final String CLUB_APPLICATION_INTERVIEW_REMIND = "/clubs/{clubId}/applications/{applicationId}/interview/remind";
     public static final String MY_APPLICATIONS = "/users/me/applications";
     public static final String APPLICATION_REVIEW_SUMMARY = "/applications/review-summary";
     public static final String MY_APPLICATION_BY_ID = "/users/me/applications/{applicationId}";
@@ -135,6 +137,7 @@ public final class ApiPaths {
 
     // Events & Calendar
     public static final String PUBLIC_EVENTS = "/public/events";
+    public static final String EVENTS_DISCOVER = "/events/discover";
     public static final String PUBLIC_I18N_TRANSLATIONS = "/public/i18n/translations";
     public static final String PUBLIC_I18N_TRANSLATE_BATCH = "/public/i18n/translate-batch";
     public static final String CLUB_EVENTS = "/clubs/{clubId}/events";
@@ -143,6 +146,8 @@ public final class ApiPaths {
     public static final String EVENT_REGISTRATIONS = "/events/{eventId}/registrations";
     public static final String EVENT_REGISTRATION_BY_ID = "/events/{eventId}/registrations/{registrationId}";
     public static final String EVENT_REGISTRATION_CANCEL_ME = "/events/{eventId}/registrations/me/cancel";
+    public static final String EVENT_REGISTRATION_MY_SUBMISSION = "/events/{eventId}/registrations/me/submission";
+    public static final String EVENT_REGISTRATION_SUBMISSION_DOWNLOAD = "/events/{eventId}/registrations/{registrationId}/submission";
     public static final String MY_EVENT_REGISTRATIONS = "/users/me/event-registrations";
     public static final String EVENT_ATTENDANCES = "/events/{eventId}/attendances";
     public static final String EVENT_ATTENDANCE_QR_TOKEN = EVENT_ATTENDANCES + "/qr-token";
@@ -181,6 +186,16 @@ public final class ApiPaths {
     public static final String SYSTEM_SETTINGS = "/system-settings";
     public static final String SYSTEM_SETTINGS_SMTP_TEST = "/system-settings/smtp-test";
     public static final String AUDIT_LOGS = "/audit-logs";
+
+    // Club Facebook Fanpage Integration
+    public static final String CLUB_FACEBOOK = "/clubs/{clubId}/facebook";
+    public static final String CLUB_FACEBOOK_CONNECT_TOKEN = "/clubs/{clubId}/facebook/connect-token";
+    public static final String CLUB_FACEBOOK_SYNC = "/clubs/{clubId}/facebook/sync";
+    public static final String CLUB_FACEBOOK_OAUTH_START = "/clubs/{clubId}/facebook/oauth/start";
+    public static final String CLUB_FACEBOOK_OAUTH_PAGES = "/clubs/{clubId}/facebook/oauth/pages";
+    public static final String CLUB_FACEBOOK_OAUTH_SELECT = "/clubs/{clubId}/facebook/oauth/select";
+    public static final String FACEBOOK_OAUTH_CALLBACK = "/integrations/facebook/oauth/callback";
+    public static final String PUBLIC_CLUB_FACEBOOK_POSTS = "/public/clubs/{clubId}/facebook-posts";
 
     // Swagger / Springdoc UI
     public static final String SWAGGER_UI_HTML = "/swagger-ui.html";

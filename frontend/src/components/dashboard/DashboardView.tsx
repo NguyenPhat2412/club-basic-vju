@@ -27,6 +27,7 @@ import {
 import { DashboardAnalyticsCards, DashboardGuestPrompt } from "@/components/dashboard/DashboardAnalyticsCards";
 import { DashboardActivitySection } from "@/components/dashboard/DashboardActivitySection";
 import { DashboardSystemAuditSection } from "@/components/dashboard/DashboardSystemAuditSection";
+import { UpcomingInterviewsBanner } from "@/components/application/UpcomingInterviewsBanner";
 
 const APPLICATION_PERMISSIONS = ["application.view", "application.review", "application.approve", "application.reject"];
 
@@ -328,6 +329,8 @@ export function DashboardView() {
           onMarkAllRead={() => markAllRead.mutate()}
           onMarkOneRead={(id) => markOneRead.mutate(id)}
         />
+
+        <UpcomingInterviewsBanner applications={myAppsList} nowMs={now} />
 
         <DashboardActivitySection
           activeFeedTab={activeFeedTab}

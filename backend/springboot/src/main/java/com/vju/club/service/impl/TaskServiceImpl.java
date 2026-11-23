@@ -132,6 +132,14 @@ public class TaskServiceImpl implements TaskService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_TASK_DEADLINE", "Task deadline must be in the future");
         }
 
+        int maxOpenTasks = (settingsService != null && settingsService.current() != null)
+                ? settingsService.current().maxOpenTasksPerClub() : 200;
+        if (maxOpenTasks > 0 && taskRepository.countByClub_IdAndStatusIn(
+                clubId, List.of(TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.OVERDUE)) >= maxOpenTasks) {
+            throw new ApiException(HttpStatus.CONFLICT, "TASK_LIMIT_REACHED",
+                    "Mỗi câu lạc bộ chỉ được mở tối đa " + maxOpenTasks + " công việc chưa hoàn thành cùng lúc.");
+        }
+
         Event event = null;
         if (request.eventId() != null) {
             event = eventRepository.findById(request.eventId())
@@ -301,16 +309,19 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<TaskResponse> listForClub(Actor actor, UUID clubId, UUID departmentId, TaskStatus status,
-                                                  UUID assigneeId, Boolean overdue, int offset, int limit) {
-        Club club = validateClubTaskReadAccess(actor, clubId, departmentId);
+    public PageResponse<TaskResponse> listForClub(Actor actor, UUID clubId, UUID departmentId, Boolean clubWideOnly,
+                                                  TaskStatus status, UUID assigneeId, Boolean overdue, int offset, int limit) {
+        boolean onlyClubWide = Boolean.TRUE.equals(clubWideOnly);
+        UUID effectiveDeptId = onlyClubWide ? null : departmentId;
+        Club club = validateClubTaskReadAccess(actor, clubId, effectiveDeptId);
         OffsetDateTime now = OffsetDateTime.now(clock);
         TaskStatus effectiveStatus = status == TaskStatus.OVERDUE ? null : status;
         Boolean effectiveOverdue = status == TaskStatus.OVERDUE ? Boolean.TRUE : overdue;
 
         var page = taskRepository.findByClubFiltered(
                 club.getId(),
-                departmentId,
+                effectiveDeptId,
+                onlyClubWide,
                 effectiveStatus,
                 assigneeId,
                 effectiveOverdue != null,
@@ -323,16 +334,19 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional(readOnly = true)
-    public TaskSummaryResponse summarizeForClub(Actor actor, UUID clubId, UUID departmentId, TaskStatus status,
-                                                UUID assigneeId, Boolean overdue) {
-        Club club = validateClubTaskReadAccess(actor, clubId, departmentId);
+    public TaskSummaryResponse summarizeForClub(Actor actor, UUID clubId, UUID departmentId, Boolean clubWideOnly,
+                                                TaskStatus status, UUID assigneeId, Boolean overdue) {
+        boolean onlyClubWide = Boolean.TRUE.equals(clubWideOnly);
+        UUID effectiveDeptId = onlyClubWide ? null : departmentId;
+        Club club = validateClubTaskReadAccess(actor, clubId, effectiveDeptId);
         OffsetDateTime now = OffsetDateTime.now(clock);
         TaskStatus effectiveStatus = status == TaskStatus.OVERDUE ? null : status;
         Boolean effectiveOverdue = status == TaskStatus.OVERDUE ? Boolean.TRUE : overdue;
 
         List<Task> matching = taskRepository.findAllByClubFiltered(
                 club.getId(),
-                departmentId,
+                effectiveDeptId,
+                onlyClubWide,
                 effectiveStatus,
                 assigneeId,
                 effectiveOverdue != null,

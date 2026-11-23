@@ -78,7 +78,7 @@ export function Select({ className, children, value, defaultValue, onChange, ...
   return (
     <span
       className={cn(
-        "group relative inline-flex h-9 w-full items-center justify-between gap-1.5 rounded-lg border border-slate-200 bg-slate-50/70 px-2.5 text-xs font-medium text-slate-800 shadow-2xs transition-[box-shadow,border-color,background-color] hover:border-slate-300 hover:bg-white focus-within:border-primary focus-within:bg-white focus-within:ring-1 focus-within:ring-primary has-[:disabled]:pointer-events-none has-[:disabled]:opacity-50",
+        "group relative inline-flex h-9 w-full min-w-0 items-center justify-between gap-1.5 overflow-hidden rounded-lg border border-slate-200 bg-slate-50/70 px-2.5 text-xs font-medium text-slate-800 shadow-2xs transition-[box-shadow,border-color,background-color] hover:border-slate-300 hover:bg-white focus-within:border-primary focus-within:bg-white focus-within:ring-1 focus-within:ring-primary has-[:disabled]:pointer-events-none has-[:disabled]:opacity-50",
         className
       )}
     >

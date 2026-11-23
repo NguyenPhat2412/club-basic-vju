@@ -8,9 +8,18 @@ export type SystemSettingsInput = {
   eventTaskGraceDays: number;
   chatSummariesPerHour: number;
   chatMaxMessageLength: number;
+  chatMessagesPerMinute: number;
   documentMaxFileMb: number;
   clubImageMaxMb: number;
   avatarMaxMb: number;
+  clubStorageQuotaMb: number;
+  documentMaxVersions: number;
+  maxChannelsPerClub: number;
+  maxDepartmentsPerClub: number;
+  maxActiveEventsPerClub: number;
+  maxOpenTasksPerClub: number;
+  broadcastCooldownMinutes: number;
+  facebookSyncCooldownMinutes: number;
   otpExpiryMinutes: number;
   otpMaxSendCount: number;
   otpResendCooldownSeconds: number;

@@ -14,4 +14,6 @@ public interface ChatChannelRepository extends JpaRepository<ChatChannel, UUID> 
 
     @EntityGraph(attributePaths = {"club", "department", "event"})
     List<ChatChannel> findByClub_IdOrderByCreatedAtAsc(UUID clubId);
+
+    long countByClub_Id(UUID clubId);
 }

@@ -106,7 +106,7 @@ export function QuickActionCenter() {
     ...(canManageClubs
       ? [
           { label: tr("Danh sách CLB"), sub: tr("Quản lý & trạng thái"), icon: Building2, href: "/management?tab=clubs" },
-          { label: tr("Tổng quan CLB"), sub: tr("Số liệu & báo cáo"), icon: BarChart3, href: "/management?tab=overview" },
+          { label: tr("Thống kê CLB"), sub: tr("Số liệu & báo cáo"), icon: BarChart3, href: "/management?tab=overview" },
         ]
       : []),
     ...(canReviewApps

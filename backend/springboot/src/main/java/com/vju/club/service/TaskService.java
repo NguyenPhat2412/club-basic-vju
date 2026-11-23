@@ -18,11 +18,11 @@ public interface TaskService {
 
     TaskResponse update(Actor actor, UUID taskId, UpdateTaskRequest request);
 
-    PageResponse<TaskResponse> listForClub(Actor actor, UUID clubId, UUID departmentId, TaskStatus status,
-                                           UUID assigneeId, Boolean overdue, int offset, int limit);
+    PageResponse<TaskResponse> listForClub(Actor actor, UUID clubId, UUID departmentId, Boolean clubWideOnly,
+                                           TaskStatus status, UUID assigneeId, Boolean overdue, int offset, int limit);
 
-    TaskSummaryResponse summarizeForClub(Actor actor, UUID clubId, UUID departmentId, TaskStatus status,
-                                         UUID assigneeId, Boolean overdue);
+    TaskSummaryResponse summarizeForClub(Actor actor, UUID clubId, UUID departmentId, Boolean clubWideOnly,
+                                         TaskStatus status, UUID assigneeId, Boolean overdue);
 
     PageResponse<TaskResponse> listMine(Actor actor, TaskStatus status, Boolean overdue, int offset, int limit);
 

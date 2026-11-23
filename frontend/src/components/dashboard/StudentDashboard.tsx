@@ -16,6 +16,7 @@ import { StatSummaryStrip } from "@/components/shared/StatCards";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
 import { formatDateTime, formatDay } from "@/lib/utils";
+import { UpcomingInterviewsBanner } from "@/components/application/UpcomingInterviewsBanner";
 import {
   buildStudentUpcomingEvents,
   DashboardEmptyHint,
@@ -209,6 +210,8 @@ export function StudentDashboard({ user }: { user: User }) {
           onMarkAllRead={() => markAllRead.mutate()}
           onMarkOneRead={(id) => markOneRead.mutate(id)}
         />
+
+        <UpcomingInterviewsBanner applications={myApps} nowMs={now} />
 
         <div className="grid gap-5 @4xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
           <div className="min-w-0 space-y-5">

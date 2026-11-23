@@ -64,9 +64,18 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
         if (request.eventTaskGraceDays() != null) settings.setEventTaskGraceDays(request.eventTaskGraceDays());
         if (request.chatSummariesPerHour() != null) settings.setChatSummariesPerHour(request.chatSummariesPerHour());
         if (request.chatMaxMessageLength() != null) settings.setChatMaxMessageLength(request.chatMaxMessageLength());
+        if (request.chatMessagesPerMinute() != null) settings.setChatMessagesPerMinute(request.chatMessagesPerMinute());
         if (request.documentMaxFileMb() != null) settings.setDocumentMaxFileMb(request.documentMaxFileMb());
         if (request.clubImageMaxMb() != null) settings.setClubImageMaxMb(request.clubImageMaxMb());
         if (request.avatarMaxMb() != null) settings.setAvatarMaxMb(request.avatarMaxMb());
+        if (request.clubStorageQuotaMb() != null) settings.setClubStorageQuotaMb(request.clubStorageQuotaMb());
+        if (request.documentMaxVersions() != null) settings.setDocumentMaxVersions(request.documentMaxVersions());
+        if (request.maxChannelsPerClub() != null) settings.setMaxChannelsPerClub(request.maxChannelsPerClub());
+        if (request.maxDepartmentsPerClub() != null) settings.setMaxDepartmentsPerClub(request.maxDepartmentsPerClub());
+        if (request.maxActiveEventsPerClub() != null) settings.setMaxActiveEventsPerClub(request.maxActiveEventsPerClub());
+        if (request.maxOpenTasksPerClub() != null) settings.setMaxOpenTasksPerClub(request.maxOpenTasksPerClub());
+        if (request.broadcastCooldownMinutes() != null) settings.setBroadcastCooldownMinutes(request.broadcastCooldownMinutes());
+        if (request.facebookSyncCooldownMinutes() != null) settings.setFacebookSyncCooldownMinutes(request.facebookSyncCooldownMinutes());
 
         if (request.otpExpiryMinutes() != null) settings.setOtpExpiryMinutes(request.otpExpiryMinutes());
         if (request.otpMaxSendCount() != null) settings.setOtpMaxSendCount(request.otpMaxSendCount());
@@ -131,9 +140,18 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
         values.put("eventTaskGraceDays", s.getEventTaskGraceDays());
         values.put("chatSummariesPerHour", s.getChatSummariesPerHour());
         values.put("chatMaxMessageLength", s.getChatMaxMessageLength());
+        values.put("chatMessagesPerMinute", s.getChatMessagesPerMinute());
         values.put("documentMaxFileMb", s.getDocumentMaxFileMb());
         values.put("clubImageMaxMb", s.getClubImageMaxMb());
         values.put("avatarMaxMb", s.getAvatarMaxMb());
+        values.put("clubStorageQuotaMb", s.getClubStorageQuotaMb());
+        values.put("documentMaxVersions", s.getDocumentMaxVersions());
+        values.put("maxChannelsPerClub", s.getMaxChannelsPerClub());
+        values.put("maxDepartmentsPerClub", s.getMaxDepartmentsPerClub());
+        values.put("maxActiveEventsPerClub", s.getMaxActiveEventsPerClub());
+        values.put("maxOpenTasksPerClub", s.getMaxOpenTasksPerClub());
+        values.put("broadcastCooldownMinutes", s.getBroadcastCooldownMinutes());
+        values.put("facebookSyncCooldownMinutes", s.getFacebookSyncCooldownMinutes());
         values.put("otpExpiryMinutes", s.getOtpExpiryMinutes());
         values.put("otpMaxSendCount", s.getOtpMaxSendCount());
         values.put("otpResendCooldownSeconds", s.getOtpResendCooldownSeconds());

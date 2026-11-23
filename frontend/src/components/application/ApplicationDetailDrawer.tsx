@@ -13,6 +13,7 @@ import { describeError } from "@/components/shared/ListPage";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { validateApplicationFile } from "@/lib/utils";
+import { ApplicationInterviewSection } from "@/components/application/ApplicationInterviewSection";
 
 export function ClubApplicationsFilterBar({
   search,
@@ -110,6 +111,7 @@ export function ApplicationDetailDrawer({
   onClose,
   canViewDetail,
   canUpdate,
+  canReview = false,
   canApprove,
   canReject,
   activeForm,
@@ -125,6 +127,7 @@ export function ApplicationDetailDrawer({
   onClose: () => void;
   canViewDetail: boolean;
   canUpdate: boolean;
+  canReview?: boolean;
   canApprove: boolean;
   canReject: boolean;
   activeForm?: ApplicationForm | null;
@@ -231,6 +234,18 @@ export function ApplicationDetailDrawer({
                   ),
                 ],
               ]}
+            />
+
+            <ApplicationInterviewSection
+              key={`${detailApp.id}:${detailApp.interviewAt ?? ""}:${detailApp.interviewLocation ?? ""}:${detailApp.interviewNote ?? ""}`}
+              clubId={clubId}
+              application={detailApp}
+              canSchedule={canReview}
+              onUpdated={(updated, msg) => {
+                onFilesChanged(updated, msg);
+                detailQuery.refetch();
+              }}
+              onError={onError}
             />
 
             {detailApp.customAnswers && Object.keys(detailApp.customAnswers).length > 0 && (

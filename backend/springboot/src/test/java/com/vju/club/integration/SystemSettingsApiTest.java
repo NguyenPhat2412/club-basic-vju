@@ -32,7 +32,16 @@ class SystemSettingsApiTest extends ApiIntegrationTest {
         JsonNode current = call(get(SETTINGS), adminToken, null, 200);
         assertThat(current.path("maxPendingApplications").asInt()).isEqualTo(3);
         assertThat(current.path("reapplyCooldownDays").asInt()).isEqualTo(7);
-        assertThat(current.path("maxActiveClubs").asInt()).isZero();
+        assertThat(current.path("maxActiveClubs").asInt()).isEqualTo(5);
+        assertThat(current.path("clubStorageQuotaMb").asInt()).isEqualTo(500);
+        assertThat(current.path("documentMaxVersions").asInt()).isEqualTo(20);
+        assertThat(current.path("maxChannelsPerClub").asInt()).isEqualTo(30);
+        assertThat(current.path("maxDepartmentsPerClub").asInt()).isEqualTo(20);
+        assertThat(current.path("maxActiveEventsPerClub").asInt()).isEqualTo(50);
+        assertThat(current.path("maxOpenTasksPerClub").asInt()).isEqualTo(200);
+        assertThat(current.path("chatMessagesPerMinute").asInt()).isEqualTo(20);
+        assertThat(current.path("broadcastCooldownMinutes").asInt()).isEqualTo(5);
+        assertThat(current.path("facebookSyncCooldownMinutes").asInt()).isEqualTo(2);
 
         problem(put(SETTINGS), adminToken, Map.of("maxPendingApplications", -1, "reapplyCooldownDays", 0, "maxActiveClubs", 0),
                 400, "VALIDATION_ERROR");

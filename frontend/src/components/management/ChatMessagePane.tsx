@@ -1,11 +1,18 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Bot, ChevronDown, ChevronsDown, Clock, Sparkles, Trash2, Upload, WifiOff } from "lucide-react";
 import type { AiSummary, ChatChannel, ChatMessage, ChatQuickReply, DocumentItem, StagedChatMedia } from "@/lib/api";
 import type { WsConnectionStatus } from "@/hooks/chat/useChatRealtime";
 import type { PreviewTarget } from "@/components/document/DocumentPreviewModal";
+import {
+  CHAT_WALLPAPER_CLASS,
+  formatChatDayDivider,
+  isDifferentCalendarDay,
+  useChatAppearance,
+} from "@/forms/chat/chat-appearance";
 import { areMessagesInSameDisplayGroup } from "@/lib/chat-message-cache";
+import { ChatAppearancePopover } from "@/components/management/ChatAppearancePopover";
 import { ChatComposerBar } from "@/components/management/ChatComposerBar";
 import { ChatMessageBubble } from "@/components/management/ChatMessageBubble";
 import { ChatPinnedBar } from "@/components/management/ChatPinnedBar";
@@ -27,56 +34,28 @@ const WS_DOT: Record<WsConnectionStatus, { label: string; dot: string }> = {
 };
 
 export type ChatMessagePaneProps = {
-  clubId: string;
-  activeChannel?: ChatChannel;
-  currentUserId?: string;
-  wsStatus: WsConnectionStatus;
-  wsError?: string;
-  canSend: boolean;
-  canSummarize: boolean;
-  canModerate: boolean;
-  canDeleteChannel: boolean;
+  clubId: string; activeChannel?: ChatChannel; currentUserId?: string;
+  wsStatus: WsConnectionStatus; wsError?: string;
+  canSend: boolean; canSummarize: boolean; canModerate: boolean; canDeleteChannel: boolean;
   onRequestDeleteChannel?: () => void;
-  canManageQuickReplies: boolean;
-  quickReplies: ChatQuickReply[];
-  quickRepliesLoading: boolean;
-  summarizePending: boolean;
-  onSummarize: () => void;
-  latestSummary?: AiSummary;
-  pinnedMessages: ChatMessage[];
-  onTogglePin: (msg: ChatMessage) => void;
+  canManageQuickReplies: boolean; quickReplies: ChatQuickReply[]; quickRepliesLoading: boolean;
+  summarizePending: boolean; onSummarize: () => void; latestSummary?: AiSummary;
+  pinnedMessages: ChatMessage[]; onTogglePin: (msg: ChatMessage) => void;
   onToggleReaction: (msg: ChatMessage, emoji: string) => void;
   onEditMessage: (msg: ChatMessage, nextContent: string) => Promise<void> | void;
   onDeleteMessage: (msg: ChatMessage) => Promise<void> | void;
   onUnpinById: (messageId: string) => void;
-  messagesPending: boolean;
-  messagesError: unknown;
-  onRetryMessages: () => void;
-  orderedMessages: ChatMessage[];
-  hasOlder: boolean;
-  loadingOlder: boolean;
-  onLoadOlder: () => void;
-  typingUsers: string[];
-  replyTo: ChatMessage | null;
-  onReply: (msg: ChatMessage) => void;
-  onClearReply: () => void;
-  attachedDoc: DocumentItem | null;
-  onOpenDocPicker: () => void;
-  onClearAttachedDoc: () => void;
-  stagedMedia: StagedChatMedia[];
-  onAddFiles: (files: FileList | File[]) => void;
-  onRemoveStagedMedia: (localId: string) => void;
-  onClearStagedMedia: () => void;
-  content: string;
-  onContentChange: (value: string) => void;
-  sendPending: boolean;
-  onSend: (overrideText?: string) => void;
-  onRetryMessage: (clientTempId: string) => void;
+  messagesPending: boolean; messagesError: unknown; onRetryMessages: () => void;
+  orderedMessages: ChatMessage[]; hasOlder: boolean; loadingOlder: boolean; onLoadOlder: () => void;
+  typingUsers: string[]; replyTo: ChatMessage | null; onReply: (msg: ChatMessage) => void; onClearReply: () => void;
+  attachedDoc: DocumentItem | null; onOpenDocPicker: () => void; onClearAttachedDoc: () => void;
+  stagedMedia: StagedChatMedia[]; onAddFiles: (files: FileList | File[]) => void;
+  onRemoveStagedMedia: (localId: string) => void; onClearStagedMedia: () => void;
+  content: string; onContentChange: (value: string) => void; sendPending: boolean;
+  onSend: (overrideText?: string) => void; onRetryMessage: (clientTempId: string) => void;
   onDismissFailed: (channelId: string, clientTempId: string) => void;
-  onPreviewDoc: (target: PreviewTarget) => void;
-  onDownloadDoc: (id: string, name: string) => void;
-  onNotice: (msg: string) => void;
-  onError: (msg: string) => void;
+  onPreviewDoc: (target: PreviewTarget) => void; onDownloadDoc: (id: string, name: string) => void;
+  onNotice: (msg: string) => void; onError: (msg: string) => void;
 };
 
 export function ChatMessagePane(props: ChatMessagePaneProps) {
@@ -108,6 +87,7 @@ export function ChatMessagePane(props: ChatMessagePaneProps) {
   const [summaryChannelId, setSummaryChannelId] = useState("");
   const [highlightedId, setHighlightedId] = useState("");
   const [draggingOver, setDraggingOver] = useState(false);
+  const { config: appearance, update: updateAppearance, reset: resetAppearance } = useChatAppearance();
 
   const hasUnreadBelow = unreadChannelId === channelKey;
   const showJumpBtn = jumpChannelId === channelKey;
@@ -162,7 +142,7 @@ export function ChatMessagePane(props: ChatMessagePaneProps) {
 
   const jumpToBottom = () => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: appearance.animations ? "smooth" : "auto" });
     isNearBottomRef.current = true;
     setUnreadChannelId("");
     setJumpChannelId("");
@@ -224,6 +204,7 @@ export function ChatMessagePane(props: ChatMessagePaneProps) {
         </div>
 
         <div ref={summaryRef} className="relative flex shrink-0 items-center gap-1.5">
+          <ChatAppearancePopover config={appearance} onUpdate={updateAppearance} onReset={resetAppearance} />
           {latestSummary && (
             <button
               type="button"
@@ -282,32 +263,31 @@ export function ChatMessagePane(props: ChatMessagePaneProps) {
       <ChatPinnedBar pinnedMessages={pinnedMessages} canPin={canSend} onJumpToMessage={jumpToMessage} onUnpin={onUnpinById} />
 
       {(wsError || wsStatus === "disconnected") && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/60 px-3.5 py-1 text-[11px] text-foreground"
-        >
+        <div role="status" aria-live="polite" className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/60 px-3.5 py-1 text-[11px] text-foreground">
           <WifiOff size={12} className="shrink-0" />
           <span className="truncate">{wsError || "Kết nối trực tuyến đang tự động kết nối lại…"}</span>
         </div>
       )}
 
-      <div
-        key={channelKey}
-        ref={scrollRef}
-        role="log"
-        aria-live="polite"
-        aria-label="Tin nhắn trong kênh"
-        onScroll={(e) => {
-          const el = e.currentTarget;
-          const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
-          const near = dist < 96;
-          isNearBottomRef.current = near;
-          setJumpChannelId(dist > 180 ? channelKey : "");
-          if (near && hasUnreadBelow) setUnreadChannelId("");
-        }}
-        className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto bg-muted/[0.14] px-3.5 py-2.5 [overflow-anchor:none]"
-      >
+      <div className={cn("relative flex min-h-0 flex-1 flex-col overflow-hidden", !appearance.backgroundImage && CHAT_WALLPAPER_CLASS[appearance.wallpaper])}>
+        {appearance.backgroundImage && (
+          <>
+            <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url("${appearance.backgroundImage}")` }} />
+            <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-background" style={{ opacity: appearance.backgroundDim / 100 }} />
+          </>
+        )}
+        <div
+          key={channelKey} ref={scrollRef} role="log" aria-live="polite" aria-label="Tin nhắn trong kênh"
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+            const near = dist < 96;
+            isNearBottomRef.current = near;
+            setJumpChannelId(dist > 180 ? channelKey : "");
+            if (near && hasUnreadBelow) setUnreadChannelId("");
+          }}
+          className="relative z-10 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3.5 py-2.5 [overflow-anchor:none]"
+        >
         {hasOlder && !messagesPending && (
           <div className="mb-2 flex justify-center">
             <button
@@ -337,36 +317,58 @@ export function ChatMessagePane(props: ChatMessagePaneProps) {
             const latestOwnId = currentUserId
               ? [...orderedMessages].reverse().find((item) => item.senderType !== "AI_BOT" && item.senderId === currentUserId)?.id
               : undefined;
-            return orderedMessages.map((m, idx) => (
-              <ChatMessageBubble
-                key={m.id} message={m} currentUserId={currentUserId}
-                isLatestOwn={Boolean(latestOwnId && m.id === latestOwnId)}
-                groupedPrev={areMessagesInSameDisplayGroup(orderedMessages[idx - 1], m)}
-                groupedNext={areMessagesInSameDisplayGroup(m, orderedMessages[idx + 1])}
-                highlighted={highlightedId === m.id} canSend={canSend} canModerate={canModerate}
-                onReply={onReply} onTogglePin={onTogglePin} onToggleReaction={onToggleReaction}
-                onEditMessage={onEditMessage} onDeleteMessage={onDeleteMessage}
-                onJumpToMessage={jumpToMessage} onRetryMessage={onRetryMessage} onDismissFailed={onDismissFailed}
-                onPreviewDoc={onPreviewDoc} onDownloadDoc={onDownloadDoc} onNotice={onNotice} onError={onError}
-              />
-            ));
+            return orderedMessages.map((m, idx) => {
+              const prev = orderedMessages[idx - 1];
+              const showDay = isDifferentCalendarDay(prev?.createdAt, m.createdAt);
+              return (
+                <Fragment key={m.id}>
+                  {showDay && (
+                    <div className="my-2.5 flex justify-center">
+                      <span className="rounded-full border border-border/60 bg-card/85 px-3 py-0.5 text-[10.5px] font-semibold text-muted-foreground shadow-2xs backdrop-blur-xs">
+                        {formatChatDayDivider(m.createdAt)}
+                      </span>
+                    </div>
+                  )}
+                  <ChatMessageBubble
+                    message={m} currentUserId={currentUserId} appearance={appearance}
+                    isLatestOwn={Boolean(latestOwnId && m.id === latestOwnId)}
+                    groupedPrev={!showDay && areMessagesInSameDisplayGroup(prev, m)}
+                    groupedNext={!isDifferentCalendarDay(m.createdAt, orderedMessages[idx + 1]?.createdAt) && areMessagesInSameDisplayGroup(m, orderedMessages[idx + 1])}
+                    highlighted={highlightedId === m.id} canSend={canSend} canModerate={canModerate}
+                    onReply={onReply} onTogglePin={onTogglePin} onToggleReaction={onToggleReaction}
+                    onEditMessage={onEditMessage} onDeleteMessage={onDeleteMessage}
+                    onJumpToMessage={jumpToMessage} onRetryMessage={onRetryMessage} onDismissFailed={onDismissFailed}
+                    onPreviewDoc={onPreviewDoc} onDownloadDoc={onDownloadDoc} onNotice={onNotice} onError={onError}
+                  />
+                </Fragment>
+              );
+            });
           })()
         )}
+        </div>
       </div>
 
       {(hasUnreadBelow || showJumpBtn) && (
         <button
           type="button" onClick={jumpToBottom} title="Xuống tin nhắn mới nhất" aria-label="Xuống tin nhắn mới nhất"
-          className="absolute right-4 bottom-14 z-20 grid h-8 w-8 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-md transition hover:bg-muted hover:text-foreground"
+          className={cn(
+            "absolute right-4 bottom-16 z-20 grid h-9 w-9 place-items-center rounded-full border border-border bg-card/95 text-muted-foreground shadow-lg backdrop-blur-xs transition-transform hover:-translate-y-0.5 hover:bg-card hover:text-primary active:scale-95",
+            appearance.animations && "tg-pop-in"
+          )}
         >
           <ChevronsDown size={16} />
-          {hasUnreadBelow && <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-card" />}
+          {hasUnreadBelow && <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 animate-pulse rounded-full bg-primary ring-2 ring-card" />}
         </button>
       )}
 
       {typingUsers.length > 0 && (
-        <div role="status" aria-live="polite" className="shrink-0 border-t border-border/40 bg-muted/20 px-3.5 py-0.5 text-[11px] italic text-muted-foreground">
-          {typingUsers.join(", ")} đang soạn tin…
+        <div role="status" aria-live="polite" className="flex shrink-0 items-center gap-2 border-t border-border/40 bg-card/90 px-3.5 py-1 text-[11px] font-medium text-muted-foreground">
+          <span className="inline-flex items-center gap-0.5" aria-hidden="true">
+            <span className="tg-typing-dot size-1.5 rounded-full bg-primary" style={{ animationDelay: "0ms" }} />
+            <span className="tg-typing-dot size-1.5 rounded-full bg-primary" style={{ animationDelay: "150ms" }} />
+            <span className="tg-typing-dot size-1.5 rounded-full bg-primary" style={{ animationDelay: "300ms" }} />
+          </span>
+          <span>{typingUsers.join(", ")} đang nhập…</span>
         </div>
       )}
 

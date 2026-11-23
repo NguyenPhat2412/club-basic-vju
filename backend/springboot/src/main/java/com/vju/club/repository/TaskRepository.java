@@ -21,7 +21,8 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
 
     @EntityGraph(attributePaths = {"club", "department", "event", "parentTask", "assignee", "assigner", "verifiedBy"})
     @Query("SELECT t FROM Task t WHERE t.club.id = :clubId "
-            + "AND (:departmentId IS NULL OR t.department.id = :departmentId) "
+            + "AND ((:clubWideOnly = true AND t.department IS NULL) "
+            + "  OR (:clubWideOnly = false AND (:departmentId IS NULL OR t.department.id = :departmentId))) "
             + "AND (:status IS NULL OR t.status = :status) "
             + "AND (:assigneeId IS NULL OR t.assignee.id = :assigneeId) "
             + "AND (:filterOverdue = false "
@@ -29,6 +30,7 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
             + "  OR (:wantOverdue = false AND (t.status NOT IN (com.vju.club.enums.TaskStatus.TODO, com.vju.club.enums.TaskStatus.IN_PROGRESS) OR t.deadline >= :now)))")
     Page<Task> findByClubFiltered(@Param("clubId") UUID clubId,
                                   @Param("departmentId") UUID departmentId,
+                                  @Param("clubWideOnly") boolean clubWideOnly,
                                   @Param("status") TaskStatus status,
                                   @Param("assigneeId") UUID assigneeId,
                                   @Param("filterOverdue") boolean filterOverdue,
@@ -37,7 +39,8 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
                                   Pageable pageable);
 
     @Query("SELECT t FROM Task t WHERE t.club.id = :clubId "
-            + "AND (:departmentId IS NULL OR t.department.id = :departmentId) "
+            + "AND ((:clubWideOnly = true AND t.department IS NULL) "
+            + "  OR (:clubWideOnly = false AND (:departmentId IS NULL OR t.department.id = :departmentId))) "
             + "AND (:status IS NULL OR t.status = :status) "
             + "AND (:assigneeId IS NULL OR t.assignee.id = :assigneeId) "
             + "AND (:filterOverdue = false "
@@ -45,11 +48,22 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
             + "  OR (:wantOverdue = false AND (t.status NOT IN (com.vju.club.enums.TaskStatus.TODO, com.vju.club.enums.TaskStatus.IN_PROGRESS) OR t.deadline >= :now)))")
     List<Task> findAllByClubFiltered(@Param("clubId") UUID clubId,
                                      @Param("departmentId") UUID departmentId,
+                                     @Param("clubWideOnly") boolean clubWideOnly,
                                      @Param("status") TaskStatus status,
                                      @Param("assigneeId") UUID assigneeId,
                                      @Param("filterOverdue") boolean filterOverdue,
                                      @Param("wantOverdue") boolean wantOverdue,
                                      @Param("now") OffsetDateTime now);
+
+    default List<Task> findAllByClubFiltered(UUID clubId,
+                                             UUID departmentId,
+                                             TaskStatus status,
+                                             UUID assigneeId,
+                                             boolean filterOverdue,
+                                             boolean wantOverdue,
+                                             OffsetDateTime now) {
+        return findAllByClubFiltered(clubId, departmentId, false, status, assigneeId, filterOverdue, wantOverdue, now);
+    }
 
     @EntityGraph(attributePaths = {"club", "department", "event", "parentTask", "assignee", "assigner", "verifiedBy"})
     @Query("SELECT t FROM Task t WHERE t.assignee.id = :assigneeId "
@@ -94,4 +108,6 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
 
     @EntityGraph(attributePaths = {"club", "event", "assignee", "assigner"})
     List<Task> findByAssignee_IdAndStatusIn(UUID assigneeId, Collection<TaskStatus> statuses);
+
+    long countByClub_IdAndStatusIn(UUID clubId, Collection<TaskStatus> statuses);
 }

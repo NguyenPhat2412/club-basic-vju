@@ -24,18 +24,40 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
     @EntityGraph(attributePaths = {"club", "department"})
     @Query("SELECT e FROM Event e WHERE e.club.id = :clubId "
             + "AND (:status IS NULL OR e.status = :status) "
-            + "AND (:departmentId IS NULL OR e.department.id = :departmentId)")
+            + "AND (:departmentId IS NULL OR e.department.id = :departmentId) "
+            + "AND (:publicOnly = false OR e.allowCtv = true)")
     Page<Event> findByClub(@Param("clubId") UUID clubId,
                            @Param("status") EventStatus status,
                            @Param("departmentId") UUID departmentId,
+                           @Param("publicOnly") boolean publicOnly,
                            Pageable pageable);
+
+    default Page<Event> findByClub(UUID clubId, EventStatus status, UUID departmentId, Pageable pageable) {
+        return findByClub(clubId, status, departmentId, false, pageable);
+    }
+
+    @EntityGraph(attributePaths = {"club", "department"})
+    @Query("SELECT e FROM Event e WHERE e.club.status = com.vju.club.enums.ClubStatus.ACTIVE "
+            + "AND e.allowCtv = true "
+            + "AND e.status IN (com.vju.club.enums.EventStatus.OPEN_REGISTRATION, "
+            + "com.vju.club.enums.EventStatus.CLOSED_REGISTRATION, "
+            + "com.vju.club.enums.EventStatus.COMPLETED)")
+    Page<Event> findPublicEvents(Pageable pageable);
 
     @EntityGraph(attributePaths = {"club", "department"})
     @Query("SELECT e FROM Event e WHERE e.club.status = com.vju.club.enums.ClubStatus.ACTIVE "
             + "AND e.status IN (com.vju.club.enums.EventStatus.OPEN_REGISTRATION, "
             + "com.vju.club.enums.EventStatus.CLOSED_REGISTRATION, "
             + "com.vju.club.enums.EventStatus.COMPLETED)")
-    Page<Event> findPublicEvents(Pageable pageable);
+    Page<Event> findAllDiscoverableEvents(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"club", "department"})
+    @Query("SELECT e FROM Event e WHERE e.club.status = com.vju.club.enums.ClubStatus.ACTIVE "
+            + "AND (e.allowCtv = true OR e.club.id IN :clubIds) "
+            + "AND e.status IN (com.vju.club.enums.EventStatus.OPEN_REGISTRATION, "
+            + "com.vju.club.enums.EventStatus.CLOSED_REGISTRATION, "
+            + "com.vju.club.enums.EventStatus.COMPLETED)")
+    Page<Event> findDiscoverableEvents(@Param("clubIds") Collection<UUID> clubIds, Pageable pageable);
 
     @EntityGraph(attributePaths = {"club", "department"})
     @Query("SELECT DISTINCT e FROM Event e WHERE "
@@ -51,4 +73,6 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT e FROM Event e WHERE e.id = :id")
     Optional<Event> lockById(@Param("id") UUID id);
+
+    long countByClub_IdAndStatusNotIn(UUID clubId, Collection<EventStatus> statuses);
 }

@@ -12,6 +12,7 @@ import { SmartAuthPrompt } from "@/components/auth/SmartAuthPrompt";
 import { HomeHeaderHero } from "./HomeHeaderHero";
 import { HomeClubsEventsSections } from "./HomeClubsEventsSections";
 import { HomeWorkspaceShowcase } from "./HomeWorkspaceShowcase";
+import { HomeCampusLifeSection } from "./HomeCampusLifeSection";
 import { HomeOnboardingFooter } from "./HomeOnboardingFooter";
 
 export function HomeLandingView({ initialAuthMode }: { initialAuthMode?: AuthModalMode } = {}) {
@@ -117,7 +118,7 @@ function HomeLandingContent({ initialAuthMode }: { initialAuthMode?: AuthModalMo
   };
 
   return (
-    <main className="min-h-svh overflow-x-clip bg-background text-foreground">
+    <main id="top" className="min-h-svh overflow-x-clip bg-background text-foreground">
       <div data-no-i18n="true">
         <HomeHeaderHero
           user={session.user}
@@ -151,6 +152,8 @@ function HomeLandingContent({ initialAuthMode }: { initialAuthMode?: AuthModalMo
           user={session.user}
           openAuthModal={openAuthModal}
         />
+
+        <HomeCampusLifeSection />
 
         <HomeOnboardingFooter user={session.user} openAuthModal={openAuthModal} />
 

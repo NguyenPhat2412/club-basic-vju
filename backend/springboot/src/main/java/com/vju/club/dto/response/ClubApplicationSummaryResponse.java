@@ -16,5 +16,9 @@ public record ClubApplicationSummaryResponse(
         int attachmentCount,
         OffsetDateTime createdAt,
         OffsetDateTime reviewedAt,
-        OffsetDateTime cancelledAt
+        OffsetDateTime cancelledAt,
+        OffsetDateTime interviewAt,
+        String interviewLocation,
+        String interviewNote,
+        OffsetDateTime interviewReminderSentAt
 ) { }

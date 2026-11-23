@@ -274,7 +274,7 @@ export function DeleteUserAccountModal({
     <ModalShell
       open={!!user}
       onClose={onClose}
-      title="Xoá hoặc Ẩn danh dữ liệu tài khoản (PB-38)"
+      title="Xoá hoặc Ẩn danh dữ liệu tài khoản"
       icon={<Trash2 />}
       size="sm"
       submitDanger

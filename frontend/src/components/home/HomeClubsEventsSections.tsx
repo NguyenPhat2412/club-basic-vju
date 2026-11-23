@@ -8,7 +8,6 @@ import { HOME_MESSAGES } from "@/i18n/home-messages";
 import { useI18n } from "@/providers/I18nContext";
 import { ClubItem, EventItem } from "@/types";
 import { DbText, formatLocalizedCopy } from "./DbText";
-import { HomeCampusLifeSection } from "./HomeCampusLifeSection";
 import { HomeClubCard } from "./HomeClubCard";
 import { HomeClubPreviewDialog } from "./HomeClubPreviewDialog";
 import { HomeEventsSection } from "./HomeEventsSection";
@@ -69,7 +68,7 @@ export function HomeClubsEventsSections({
 
   return (
     <>
-      <section className="mx-auto max-w-[1380px] px-5 py-14 sm:px-8 sm:py-20 lg:px-12" id="cau-lac-bo">
+      <section className="mx-auto max-w-[1380px] scroll-mt-20 px-5 py-14 sm:px-8 sm:py-20 lg:px-12" id="cau-lac-bo">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <p className="text-sm font-semibold text-primary">{m.clubsSection.kicker}</p>
@@ -212,8 +211,6 @@ export function HomeClubsEventsSections({
           </div>
         )}
       </section>
-
-      <HomeCampusLifeSection />
 
       <HomeEventsSection featuredEvents={featuredEvents} eventsPending={eventsPending} />
 

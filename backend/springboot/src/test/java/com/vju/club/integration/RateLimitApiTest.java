@@ -10,7 +10,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-@TestPropertySource(properties = {"app.rate-limit.max-requests=3", "app.rate-limit.window=1m"})
+@TestPropertySource(properties = {
+        "app.rate-limit.max-requests=3",
+        "app.rate-limit.window=1m",
+        "app.rate-limit.write-max-requests=3",
+        "app.rate-limit.write-window=1m"
+})
 class RateLimitApiTest extends ApiIntegrationTest {
     private MockHttpServletResponse login(String ip) throws Exception {
         return send(post("/api/v1/auth/login").with(request -> {
@@ -63,5 +68,20 @@ class RateLimitApiTest extends ApiIntegrationTest {
             return request;
         }), null, Map.of("credential", "x"));
         assertThat(throttled.getStatus()).isEqualTo(429);
+    }
+
+    @Test
+    void authenticatedWriteRequestsAreThrottledPerUser() throws Exception {
+        for (int i = 0; i < 3; i++) {
+            MockHttpServletResponse ok = send(post("/api/v1/notifications/read-all"), memberToken, null);
+            assertThat(ok.getStatus()).isNotEqualTo(429);
+        }
+        MockHttpServletResponse throttled = send(post("/api/v1/notifications/read-all"), memberToken, null);
+        assertThat(throttled.getStatus()).isEqualTo(429);
+        assertThat(throttled.getHeader("Retry-After")).isNotBlank();
+        assertThat(json.readTree(throttled.getContentAsString()).path("code").asText()).isEqualTo("RATE_LIMIT_EXCEEDED");
+
+        // GET reads remain allowed even when write bucket is exhausted
+        assertThat(send(get("/api/v1/users/me"), memberToken, null).getStatus()).isEqualTo(200);
     }
 }

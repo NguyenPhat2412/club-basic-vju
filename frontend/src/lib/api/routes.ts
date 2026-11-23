@@ -53,6 +53,13 @@ export const API_ROUTES = {
     status: (id: string) => `/clubs/${id}/status`,
     logo: (id: string) => `/clubs/${id}/logo`,
     cover: (id: string) => `/clubs/${id}/cover`,
+    facebook: (clubId: string) => `/clubs/${clubId}/facebook`,
+    facebookConnectToken: (clubId: string) => `/clubs/${clubId}/facebook/connect-token`,
+    facebookSync: (clubId: string) => `/clubs/${clubId}/facebook/sync`,
+    facebookOAuthStart: (clubId: string) => `/clubs/${clubId}/facebook/oauth/start`,
+    facebookOAuthPages: (clubId: string) => `/clubs/${clubId}/facebook/oauth/pages`,
+    facebookOAuthSelect: (clubId: string) => `/clubs/${clubId}/facebook/oauth/select`,
+    publicFacebookPosts: (clubId: string) => `/public/clubs/${clubId}/facebook-posts`,
     positions: (clubId: string) => `/clubs/${clubId}/positions`,
     positionItem: (clubId: string, assignmentId: string) => `/clubs/${clubId}/positions/${assignmentId}`,
     memberships: (clubId: string) => `/clubs/${clubId}/memberships`,
@@ -66,6 +73,8 @@ export const API_ROUTES = {
     applicationDetail: (clubId: string, applicationId: string) => `/clubs/${clubId}/applications/${applicationId}`,
     applicationApprove: (clubId: string, applicationId: string) => `/clubs/${clubId}/applications/${applicationId}/approve`,
     applicationReject: (clubId: string, applicationId: string) => `/clubs/${clubId}/applications/${applicationId}/reject`,
+    applicationInterview: (clubId: string, applicationId: string) => `/clubs/${clubId}/applications/${applicationId}/interview`,
+    applicationInterviewRemind: (clubId: string, applicationId: string) => `/clubs/${clubId}/applications/${applicationId}/interview/remind`,
     events: (clubId: string) => `/clubs/${clubId}/events`,
     eventDetail: (clubId: string, eventId: string) => `/clubs/${clubId}/events/${eventId}`,
     tasks: (clubId: string) => `/clubs/${clubId}/tasks`,
@@ -104,5 +113,11 @@ export const API_ROUTES = {
   },
   chatAttachments: {
     stream: (attachmentId: string) => `/chat-attachments/${attachmentId}/stream`,
+  },
+  events: {
+    discover: '/events/discover',
+    mySubmission: (eventId: string) => `/events/${eventId}/registrations/me/submission`,
+    submissionDownload: (eventId: string, registrationId: string) =>
+      `/events/${eventId}/registrations/${registrationId}/submission`,
   },
 } as const;

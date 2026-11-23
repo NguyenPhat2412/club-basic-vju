@@ -139,7 +139,7 @@ export function DepartmentsTab({
         ? [
             {
               icon: <UserCheck />,
-              label: headSlot.holders.length ? "Thay thế Trưởng ban (PB-14.2)" : "Bổ nhiệm Trưởng ban (PB-14.2)",
+              label: headSlot.holders.length ? "Thay thế Trưởng ban" : "Bổ nhiệm Trưởng ban",
               onClick: () => setAssigningSlot(headSlot),
             },
           ]
@@ -168,7 +168,7 @@ export function DepartmentsTab({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-1 flex-col gap-4">
       <ClubBoardPositionsSection
         slots={structure.data?.clubPositions ?? []}
         isPending={structure.isPending}

@@ -2,6 +2,11 @@ import { api, apiForm, cleanParams } from '@/lib/api/client';
 import { API_ROUTES } from '@/lib/api/routes';
 import type { Page } from '@/types/common.types';
 import type { Club, ClubInput, Membership } from '@/types/club/club.types';
+import type {
+  ClubFacebookOAuthPageOption,
+  ClubFacebookOverview,
+  ClubFacebookPublicFeed,
+} from '@/types/club/facebook.types';
 
 export const clubsApi = {
   publicClubs: (query = '', category = '', offset = 0, limit = 50) =>
@@ -53,4 +58,28 @@ export const clubsApi = {
   updateMembership: (id: string, status: string) =>
     api<Membership>(`/memberships/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   removeMembership: (id: string) => api<void>(`/memberships/${id}`, { method: 'DELETE' }),
+  clubFacebook: (clubId: string, limit = 20) =>
+    api<ClubFacebookOverview>(`${API_ROUTES.clubs.facebook(clubId)}?${cleanParams({ limit })}`),
+  connectClubFacebookToken: (clubId: string, accessToken: string) =>
+    api<ClubFacebookOverview>(API_ROUTES.clubs.facebookConnectToken(clubId), {
+      method: 'POST',
+      body: JSON.stringify({ accessToken }),
+    }),
+  syncClubFacebook: (clubId: string) =>
+    api<ClubFacebookOverview>(API_ROUTES.clubs.facebookSync(clubId), { method: 'PUT' }),
+  disconnectClubFacebook: (clubId: string) =>
+    api<void>(API_ROUTES.clubs.facebook(clubId), { method: 'DELETE' }),
+  startClubFacebookOAuth: (clubId: string) =>
+    api<{ authorizationUrl: string }>(API_ROUTES.clubs.facebookOAuthStart(clubId)),
+  clubFacebookOAuthPages: (clubId: string, selectionToken: string) =>
+    api<ClubFacebookOAuthPageOption[]>(
+      `${API_ROUTES.clubs.facebookOAuthPages(clubId)}?${cleanParams({ selectionToken })}`
+    ),
+  selectClubFacebookOAuthPage: (clubId: string, selectionToken: string, pageId: string) =>
+    api<ClubFacebookOverview>(API_ROUTES.clubs.facebookOAuthSelect(clubId), {
+      method: 'POST',
+      body: JSON.stringify({ selectionToken, pageId }),
+    }),
+  publicClubFacebookPosts: (clubId: string, limit = 6) =>
+    api<ClubFacebookPublicFeed>(`${API_ROUTES.clubs.publicFacebookPosts(clubId)}?${cleanParams({ limit })}`),
 };

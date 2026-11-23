@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Building2, CalendarCheck2, FileText, ShieldCheck, UserRound, UsersRound } from "lucide-react";
+import { Building2, CalendarCheck2, ShieldCheck, UserRound, UsersRound } from "lucide-react";
 import { getPresentationLocale } from "@/i18n/config";
 import { translateUiText } from "@/i18n/translator";
 import { CLUB_MANAGEMENT_KEYS } from "@/hooks/useSession";
@@ -119,26 +119,6 @@ export function buildNavigationSections(params: {
     visible,
   });
 
-  const documentGroup: NavParentGroup = {
-    id: "grp-documents",
-    label: "Tài liệu & Quy chế",
-    icon: <FileText size={15} />,
-    items: [
-      {
-        href: "/documents?tier=club",
-        tier: "club",
-        label: "Kho tài liệu CLB & Ban",
-        visible: authenticated && (canClubDocs || canStudentClubSpace),
-      },
-      {
-        href: "/documents?tier=system",
-        tier: "system",
-        label: "Quy chế & Biểu mẫu Trường",
-        visible: authenticated,
-      },
-    ],
-  };
-
   const rawSections: NavSection[] =
     canManageClub || canSystemAdmin
       ? [
@@ -150,13 +130,11 @@ export function buildNavigationSections(params: {
                 label: "Cá nhân",
                 icon: <UserRound size={15} />,
                 items: [
-                  { href: "/memberships", label: "CLB đang tham gia", visible: authenticated },
-                  { href: "/clubs", label: "Khám phá câu lạc bộ", visible: true },
+                  { href: "/profile", label: "Hồ sơ cá nhân", visible: authenticated },
+                  { href: "/clubs", label: "Khám phá câu lạc bộ", visible: !canSystemAdmin },
                   { href: "/applications", label: "Đơn đăng ký của tôi", visible: authenticated },
                   { href: "/schedule", label: "Lịch & Công việc của tôi", visible: authenticated },
-                  { href: "/events", label: "Sự kiện & Cộng tác viên", visible: true },
                   { href: "/notifications", label: "Thông báo của tôi", visible: authenticated },
-                  { href: "/profile", label: "Hồ sơ cá nhân", visible: authenticated },
                 ],
               },
               {
@@ -165,7 +143,7 @@ export function buildNavigationSections(params: {
                 icon: <Building2 size={15} />,
                 items: [
                   mgmt("clubs", "Danh sách CLB", canClubOrg),
-                  mgmt("overview", "Tổng quan CLB", canClubOrg),
+                  mgmt("overview", "Thống kê CLB", canClubOrg),
                   mgmt("settings", "Cài đặt CLB", canClubOrg),
                 ],
               },
@@ -175,9 +153,8 @@ export function buildNavigationSections(params: {
                 icon: <UsersRound size={15} />,
                 items: [
                   mgmt("members", "Thành viên", canClubMembers),
-                  mgmt("departments", "Ban chuyên môn", canClubOrg || canClubMembers),
+                  mgmt("departments", "Các ban hoạt động", canClubOrg || canClubMembers),
                   mgmt("applications", "Đơn ứng tuyển", canClubRecruitment),
-                  mgmt("forms", "Biểu mẫu", canClubRecruitment),
                 ],
               },
               {
@@ -187,11 +164,16 @@ export function buildNavigationSections(params: {
                 items: [
                   mgmt("events", "Sự kiện", canClubOps),
                   mgmt("tasks", "Công việc", canClubOps),
-                  mgmt("documents", "Tài liệu CLB", canManageClub && canClubDocs),
+                  {
+                    href: canClubDocs ? "/management?tab=documents" : "/management?tab=forms",
+                    tab: canClubDocs ? "documents" : "forms",
+                    tabs: ["documents", "forms"],
+                    label: "Tài liệu CLB & Biểu mẫu",
+                    visible: canManageClub && (canClubDocs || canClubRecruitment),
+                  },
                   mgmt("chat", "Chat & AI", canClubOps),
                 ],
               },
-              documentGroup,
               {
                 id: "grp-sys",
                 label: "Quản trị hệ thống",
@@ -234,18 +216,15 @@ export function buildNavigationSections(params: {
             groups: [
               {
                 id: "grp-student-activities",
-                label: "Sự kiện & Công việc",
+                label: "Hoạt động & Tài liệu",
                 icon: <CalendarCheck2 size={15} />,
                 items: [
                   { href: "/events", label: "Sự kiện & Cộng tác viên", visible: true },
                   { href: "/schedule", label: "Lịch & Việc của tôi", visible: authenticated },
+                  { href: "/documents", label: "Tài liệu & Quy chế", visible: authenticated },
                 ],
               },
             ],
-          },
-          {
-            id: "sec-student-documents",
-            groups: [documentGroup],
           },
           {
             id: "sec-student-personal",
@@ -309,14 +288,14 @@ export function isNavItemActive(
 const MANAGEMENT_TAB_TITLES: Record<string, string> = {
   clubs: "Danh sách & Quản lý CLB",
   overview: "Thống kê hoạt động CLB",
-  departments: "Phòng ban chuyên môn",
+  departments: "Các ban hoạt động",
   settings: "Thông tin & Cài đặt CLB",
   members: "Thành viên & Phân ban",
   applications: "Hồ sơ ứng tuyển",
   forms: "Biểu mẫu tuyển thành viên",
   events: "Sự kiện & Điểm danh",
   tasks: "Báo cáo công việc",
-  documents: "Kho tài liệu & Quy chế CLB",
+  documents: "Tài liệu CLB & Biểu mẫu",
   chat: "Kênh trao đổi & AI",
 };
 

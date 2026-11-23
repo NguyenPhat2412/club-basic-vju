@@ -2,6 +2,7 @@ package com.vju.club.controller;
 
 import com.vju.club.annotation.PublicEndpoint;
 import com.vju.club.common.ApiPaths;
+import com.vju.club.dto.record.UploadedFile;
 import com.vju.club.dto.request.CreateEventRequest;
 import com.vju.club.dto.request.EventRegistrationRequest;
 import com.vju.club.dto.request.QrAttendanceCheckInRequest;
@@ -27,8 +28,12 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -38,8 +43,11 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -59,6 +67,16 @@ public class EventController {
             @RequestParam(defaultValue = "0") @Min(0) int offset,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
         return eventService.listPublic(offset, limit);
+    }
+
+    @GetMapping(ApiPaths.EVENTS_DISCOVER)
+    @Operation(summary = "Danh sách sự kiện khám phá cho người dùng đã đăng nhập (PB-88 AC01)",
+            description = "Trả về sự kiện công khai (allowCtv=true) và sự kiện nội bộ chỉ thuộc các CLB mà người dùng là thành viên ACTIVE.")
+    public PageResponse<EventResponse> listDiscover(
+            Actor actor,
+            @RequestParam(defaultValue = "0") @Min(0) int offset,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
+        return eventService.listDiscover(actor, offset, limit);
     }
 
     @PostMapping(ApiPaths.CLUB_EVENTS)
@@ -109,6 +127,35 @@ public class EventController {
     @Operation(summary = "Hủy đăng ký tham gia sự kiện của tôi")
     public EventRegistrationResponse cancelRegistration(Actor actor, @PathVariable UUID eventId) {
         return eventService.cancelRegistration(actor, eventId);
+    }
+
+    @PostMapping(value = ApiPaths.EVENT_REGISTRATION_MY_SUBMISSION, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Nộp tệp hồ sơ tham gia sự kiện của tôi (PB-88 AC03)",
+            description = "Yêu cầu đã đăng ký sự kiện và chưa quá registrationDeadline (tự khoá 409 REGISTRATION_CLOSED khi hết hạn).")
+    public EventRegistrationResponse uploadMySubmission(
+            Actor actor,
+            @PathVariable UUID eventId,
+            @RequestPart("file") MultipartFile file) {
+        UploadedFile uploaded = new UploadedFile(file.getOriginalFilename(), file::getInputStream);
+        return eventService.uploadMySubmission(actor, eventId, uploaded);
+    }
+
+    @GetMapping(ApiPaths.EVENT_REGISTRATION_SUBMISSION_DOWNLOAD)
+    @Operation(summary = "Tải xuống tệp hồ sơ đã nộp của đăng ký sự kiện (PB-88 AC03)")
+    public ResponseEntity<InputStreamResource> downloadSubmission(
+            Actor actor,
+            @PathVariable UUID eventId,
+            @PathVariable UUID registrationId) {
+        EventService.EventSubmissionDownload download = eventService.downloadSubmission(actor, eventId, registrationId);
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename(download.fileName(), StandardCharsets.UTF_8)
+                .build();
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(download.contentType()))
+                .contentLength(download.size())
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .header("X-Content-Type-Options", "nosniff")
+                .body(new InputStreamResource(download.content()));
     }
 
     @PatchMapping(ApiPaths.EVENT_REGISTRATION_BY_ID)

@@ -3,9 +3,14 @@ package com.vju.club.integration;
 import com.vju.club.entity.Role;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,6 +26,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 class RoleApiTest extends ApiIntegrationTest {
+    @Autowired DataSource dataSource;
+
     private UUID role(String code) {
         return db.queryForObject("SELECT id FROM roles WHERE code = ?", UUID.class, code);
     }
@@ -388,5 +395,100 @@ class RoleApiTest extends ApiIntegrationTest {
                 Map.of("departmentId", depA2, "name", "Other Dept", "channelType", "DEPARTMENT"), 403, "PERMISSION_DENIED");
         problem(post("/api/v1/clubs/" + clubA + "/channels"), memberToken,
                 Map.of("name", "Club General 2"), 403, "PERMISSION_DENIED");
+    }
+
+    @Test
+    void migrationSeedsDoanVjuWithThreeDepartmentsAndBackfillsOfficerMemberships() throws Exception {
+        String schema = "v35_seed_" + UUID.randomUUID().toString().replace("-", "");
+        try {
+            Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema)
+                    .target("34").load().migrate();
+            try (Connection connection = dataSource.getConnection(); Statement sql = connection.createStatement()) {
+                sql.execute("INSERT INTO " + schema + ".users(email, password_hash, full_name) "
+                        + "VALUES ('officer_v35@test.local', 'hash', 'Officer V35')");
+                sql.execute("INSERT INTO " + schema + ".clubs(code, name) VALUES ('SYNC_CLUB', 'Sync Test Club')");
+                sql.execute("INSERT INTO " + schema + ".departments(club_id, name) "
+                        + "SELECT id, 'Ban Chuyen Mon' FROM " + schema + ".clubs WHERE code = 'SYNC_CLUB'");
+                sql.execute("INSERT INTO " + schema + ".user_roles(user_id, role_id, scope, department_id, granted_by) "
+                        + "SELECT u.id, r.id, 'DEPARTMENT', d.id, u.id "
+                        + "FROM " + schema + ".users u "
+                        + "JOIN " + schema + ".roles r ON r.code = 'DEPARTMENT_HEAD' "
+                        + "JOIN " + schema + ".departments d ON d.name = 'Ban Chuyen Mon' "
+                        + "WHERE u.email = 'officer_v35@test.local'");
+            }
+
+            Flyway latest = Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).load();
+            assertThat(latest.migrate().migrationsExecuted).isGreaterThanOrEqualTo(1);
+            latest.validate();
+            assertThat(latest.migrate().migrationsExecuted).isZero();
+
+            Map<String, Object> doanVju = db.queryForMap(
+                    "SELECT id, code, name, logo_url, cover_url, activity_field, contact_email, status, overview_config "
+                            + "FROM " + schema + ".clubs WHERE code = 'DOANVJU'");
+            assertThat(doanVju.get("name")).isEqualTo("Đoàn Thanh niên Trường Đại học Việt Nhật");
+            assertThat(doanVju.get("logo_url")).isEqualTo("/images/vju-logo.png");
+            assertThat(doanVju.get("cover_url")).isEqualTo("/images/intro/campus-awards.jpg");
+            assertThat(doanVju.get("activity_field")).isEqualTo("Đoàn thể & Điều phối");
+            assertThat(doanVju.get("contact_email")).isEqualTo("doanthanhnien@vju.ac.vn");
+            assertThat(doanVju.get("status")).isEqualTo("ACTIVE");
+            assertThat((String) doanVju.get("overview_config")).contains("VOLUNTEER");
+
+            List<String> seededDepts = db.queryForList(
+                    "SELECT name FROM " + schema + ".departments WHERE club_id = ? ORDER BY name",
+                    String.class,
+                    doanVju.get("id"));
+            assertThat(seededDepts).containsExactlyInAnyOrder(
+                    "Ban Điều phối CLB",
+                    "Ban Truyền thông & Sự kiện",
+                    "Ban Phong trào & Tình nguyện");
+
+            assertThat(count(
+                    "SELECT count(*) FROM " + schema + ".memberships m "
+                            + "JOIN " + schema + ".users u ON u.id = m.user_id "
+                            + "JOIN " + schema + ".clubs c ON c.id = m.club_id "
+                            + "WHERE u.email = 'officer_v35@test.local' AND c.code = 'SYNC_CLUB' "
+                            + "AND m.status = 'ACTIVE' AND m.left_at IS NULL"))
+                    .isEqualTo(1);
+            assertThat(count(
+                    "SELECT count(*) FROM " + schema + ".department_members dm "
+                            + "JOIN " + schema + ".memberships m ON m.id = dm.membership_id "
+                            + "JOIN " + schema + ".users u ON u.id = m.user_id "
+                            + "JOIN " + schema + ".departments d ON d.id = dm.department_id "
+                            + "WHERE u.email = 'officer_v35@test.local' AND d.name = 'Ban Chuyen Mon'"))
+                    .isEqualTo(1);
+        } finally {
+            db.execute("DROP SCHEMA IF EXISTS " + schema + " CASCADE");
+        }
+    }
+
+    @Test
+    void assigningClubOrDepartmentRoleAsSystemAdminAutoSyncsActiveMembershipAndDepartmentLink() throws Exception {
+        UUID clubOfficer = user("club_officer_sync@test.local");
+        UUID deptOfficer = user("dept_officer_sync@test.local");
+
+        assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ?", clubOfficer, clubA)).isZero();
+        assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ?", deptOfficer, clubA)).isZero();
+
+        assign(clubOfficer, "CLUB_PRESIDENT", "CLUB", clubA, null);
+        assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ? AND status = 'ACTIVE' AND left_at IS NULL",
+                clubOfficer, clubA)).isEqualTo(1);
+
+        // Assigning another role in the same club does not duplicate the membership
+        assign(clubOfficer, "CLUB_VICE_PRESIDENT", "CLUB", clubA, null);
+        assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ? AND status = 'ACTIVE'",
+                clubOfficer, clubA)).isEqualTo(1);
+
+        assign(deptOfficer, "DEPARTMENT_HEAD", "DEPARTMENT", null, depA1);
+        assertThat(count("SELECT count(*) FROM memberships WHERE user_id = ? AND club_id = ? AND status = 'ACTIVE' AND left_at IS NULL",
+                deptOfficer, clubA)).isEqualTo(1);
+        assertThat(count("SELECT count(*) FROM department_members dm "
+                + "JOIN memberships m ON m.id = dm.membership_id "
+                + "WHERE m.user_id = ? AND dm.department_id = ? AND dm.club_id = ?",
+                deptOfficer, depA1, clubA)).isEqualTo(1);
+
+        JsonNode myMemberships = call(get("/api/v1/users/me/memberships"), token(deptOfficer), null, 200);
+        assertThat(myMemberships.path("total").asInt()).isEqualTo(1);
+        assertThat(myMemberships.at("/items/0/clubId").asText()).isEqualTo(clubA.toString());
+        assertThat(myMemberships.at("/items/0/departments/0/id").asText()).isEqualTo(depA1.toString());
     }
 }

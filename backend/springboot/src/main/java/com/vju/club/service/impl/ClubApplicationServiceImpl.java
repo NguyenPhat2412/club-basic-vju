@@ -14,6 +14,7 @@ import com.vju.club.repository.ClubRepository;
 import com.vju.club.dto.request.CreateClubApplicationRequest;
 import com.vju.club.dto.request.FormFieldDefinition;
 import com.vju.club.dto.request.ReviewClubApplicationRequest;
+import com.vju.club.dto.request.ScheduleInterviewRequest;
 import com.vju.club.dto.request.UpdateClubApplicationRequest;
 import com.vju.club.dto.request.UpsertClubApplicationFormRequest;
 import com.vju.club.dto.response.ClubApplicationFileResponse;
@@ -66,13 +67,17 @@ import java.io.InputStream;
 import com.vju.club.service.SystemSettingsService;
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -81,6 +86,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ClubApplicationServiceImpl implements ClubApplicationService {
     private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final DateTimeFormatter INTERVIEW_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
     private static final Set<String> VALID_FORM_STATUSES = Set.of("DRAFT", "OPEN", "CLOSED");
     private static final Set<String> VALID_FILE_CATEGORIES = Set.of(
             "FORM_TEMPLATE_DOC",
@@ -163,6 +170,9 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         requireAnyPermission(actor, clubId, "application.manage_form", "application.review");
         Club club = clubRepository.findById(clubId)
                 .orElseThrow(() -> notFound("CLUB_NOT_FOUND", "Club not found"));
+        if (club.getStatus() != ClubStatus.ACTIVE) {
+            throw conflict("CLUB_INACTIVE", "Club is inactive");
+        }
         ClubApplicationForm form = new ClubApplicationForm();
         form.setClub(club);
         applyFormRequest(form, request);
@@ -190,6 +200,9 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
                 "isDefault", form.isDefault()
         );
         applyFormRequest(form, request);
+        if (club.getStatus() != ClubStatus.ACTIVE && "OPEN".equalsIgnoreCase(form.getStatus())) {
+            throw conflict("CLUB_INACTIVE", "Club is inactive");
+        }
         if (form.isDefault()) {
             unsetOtherDefaultForms(clubId, form.getId());
         }
@@ -742,6 +755,111 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         return clubApplicationMapper.toResponse(saved, null, filesForApplication(saved.getId()));
     }
 
+    @Override
+    @Transactional
+    public ClubApplicationResponse scheduleInterview(Actor actor, UUID clubId, UUID applicationId,
+                                                     ScheduleInterviewRequest request) {
+        requireAnyPermission(actor, clubId, "application.review");
+        ClubApplication application = applicationRepository.findForReview(applicationId, clubId)
+                .orElseThrow(() -> notFound("CLUB_APPLICATION_NOT_FOUND", "Club application not found"));
+        ensureInterviewAllowedStatus(application);
+
+        OffsetDateTime normalizedAt = request.interviewAt().withOffsetSameInstant(ZoneOffset.UTC);
+        String normalizedLocation = request.interviewLocation().trim();
+        String normalizedNote = blankToNull(request.interviewNote());
+
+        Map<String, Object> before = interviewAuditValues(application);
+        boolean timeChanged = application.getInterviewAt() == null
+                || !application.getInterviewAt().toInstant().equals(normalizedAt.toInstant());
+        boolean locationChanged = !Objects.equals(application.getInterviewLocation(), normalizedLocation);
+
+        application.setInterviewAt(normalizedAt);
+        application.setInterviewLocation(normalizedLocation);
+        application.setInterviewNote(normalizedNote);
+        if (timeChanged || locationChanged) {
+            application.setInterviewReminderSentAt(null);
+        }
+
+        ClubApplication saved = applicationRepository.saveAndFlush(application);
+        auditService.record(actor.id(), AuditAction.CLUB_APPLICATION_UPDATED, saved.getId(), clubId,
+                before, interviewAuditValues(saved));
+
+        if (notificationService != null) {
+            String formattedTime = formatInterviewTime(normalizedAt);
+            String title = "Lịch phỏng vấn / gặp mặt - " + saved.getClub().getName();
+            StringBuilder msg = new StringBuilder();
+            msg.append(saved.getClub().getName())
+                    .append(" đã sắp xếp lịch phỏng vấn / gặp mặt đầu tiên vào ")
+                    .append(formattedTime)
+                    .append(" tại ")
+                    .append(normalizedLocation)
+                    .append(".");
+            if (normalizedNote != null) {
+                msg.append(" Ghi chú: ").append(normalizedNote);
+            }
+            msg.append(" Xem chi tiết: /applications?applicationId=").append(saved.getId());
+            String eventKey = "app-interview:" + saved.getId() + ":" + normalizedAt.toEpochSecond();
+            notificationService.create(
+                    saved.getApplicant().getId(),
+                    title,
+                    msg.toString(),
+                    "CLUB_APPLICATION",
+                    saved.getId(),
+                    eventKey
+            );
+        }
+        return clubApplicationMapper.toResponse(saved, null, filesForApplication(saved.getId()));
+    }
+
+    @Override
+    @Transactional
+    public ClubApplicationResponse remindInterview(Actor actor, UUID clubId, UUID applicationId) {
+        requireAnyPermission(actor, clubId, "application.review");
+        ClubApplication application = applicationRepository.findForReview(applicationId, clubId)
+                .orElseThrow(() -> notFound("CLUB_APPLICATION_NOT_FOUND", "Club application not found"));
+        ensureInterviewAllowedStatus(application);
+        if (application.getInterviewAt() == null) {
+            throw conflict("INTERVIEW_NOT_SCHEDULED", "Interview schedule has not been set for this application");
+        }
+
+        Map<String, Object> before = interviewAuditValues(application);
+        OffsetDateTime now = now();
+        application.setInterviewReminderSentAt(now);
+        ClubApplication saved = applicationRepository.saveAndFlush(application);
+
+        auditService.record(actor.id(), AuditAction.CLUB_APPLICATION_UPDATED, saved.getId(), clubId,
+                before, interviewAuditValues(saved));
+
+        if (notificationService != null) {
+            String formattedTime = formatInterviewTime(saved.getInterviewAt());
+            String location = saved.getInterviewLocation() != null ? saved.getInterviewLocation() : "địa điểm đã hẹn";
+            String title = "Nhắc lịch phỏng vấn / gặp mặt - " + saved.getClub().getName();
+            StringBuilder msg = new StringBuilder();
+            msg.append("Nhắc lịch hẹn với ")
+                    .append(saved.getClub().getName())
+                    .append(" vào ")
+                    .append(formattedTime)
+                    .append(" tại ")
+                    .append(location)
+                    .append(".");
+            if (saved.getInterviewNote() != null) {
+                msg.append(" Ghi chú: ").append(saved.getInterviewNote());
+            }
+            msg.append(" Xem chi tiết: /applications?applicationId=").append(saved.getId());
+            String eventKey = "app-interview-remind:" + saved.getId() + ":"
+                    + now.truncatedTo(ChronoUnit.HOURS).toEpochSecond();
+            notificationService.create(
+                    saved.getApplicant().getId(),
+                    title,
+                    msg.toString(),
+                    "CLUB_APPLICATION",
+                    saved.getId(),
+                    eventKey
+            );
+        }
+        return clubApplicationMapper.toResponse(saved, null, filesForApplication(saved.getId()));
+    }
+
     // -----------------------------------------------------------------------------------------
     // Private Helpers
     // -----------------------------------------------------------------------------------------
@@ -1174,6 +1292,32 @@ public class ClubApplicationServiceImpl implements ClubApplicationService {
         if (application.getStatus() != ClubApplicationStatus.PENDING) {
             throw conflict("APPLICATION_ALREADY_REVIEWED", "Application has already been reviewed");
         }
+    }
+
+    private static void ensureInterviewAllowedStatus(ClubApplication application) {
+        if (application.getStatus() == ClubApplicationStatus.REJECTED
+                || application.getStatus() == ClubApplicationStatus.CANCELLED) {
+            throw conflict("INVALID_APPLICATION_STATUS",
+                    "Interview scheduling is not allowed for rejected or cancelled applications");
+        }
+    }
+
+    private static String formatInterviewTime(OffsetDateTime interviewAt) {
+        return interviewAt.atZoneSameInstant(VN_ZONE).format(INTERVIEW_TIME_FORMAT);
+    }
+
+    private static Map<String, Object> interviewAuditValues(ClubApplication application) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("status", application.getStatus());
+        values.put("applicantId", application.getApplicant().getId());
+        values.put("clubId", application.getClub().getId());
+        if (application.getInterviewAt() != null) values.put("interviewAt", application.getInterviewAt());
+        if (application.getInterviewLocation() != null) values.put("interviewLocation", application.getInterviewLocation());
+        if (application.getInterviewNote() != null) values.put("interviewNote", application.getInterviewNote());
+        if (application.getInterviewReminderSentAt() != null) {
+            values.put("interviewReminderSentAt", application.getInterviewReminderSentAt());
+        }
+        return values;
     }
 
     private static String normalizeNote(ReviewClubApplicationRequest request) {

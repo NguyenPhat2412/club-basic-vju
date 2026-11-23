@@ -150,6 +150,47 @@
     transform-origin: left center;
     animation: toast-progress linear forwards;
   }
+  .tg-msg-in-mine {
+    transform-origin: bottom right;
+    animation: tg-msg-in-mine 0.26s cubic-bezier(0.22, 1.18, 0.36, 1) both;
+  }
+  .tg-msg-in-other {
+    transform-origin: bottom left;
+    animation: tg-msg-in-other 0.26s cubic-bezier(0.22, 1.18, 0.36, 1) both;
+  }
+  .tg-pop-in {
+    animation: tg-pop-in 0.2s cubic-bezier(0.22, 1.24, 0.36, 1) both;
+  }
+  .tg-react-pop {
+    animation: tg-react-pop 0.3s cubic-bezier(0.22, 1.35, 0.36, 1) both;
+  }
+  .tg-typing-dot {
+    animation: tg-typing-dot 1.15s ease-in-out infinite;
+  }
+  .tg-bg-dots {
+    background-color: color-mix(in oklab, var(--muted) 36%, var(--background));
+    background-image: radial-gradient(color-mix(in oklab, var(--primary) 13%, var(--border)) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+  .tg-bg-diagonal {
+    background-color: color-mix(in oklab, var(--muted) 30%, var(--background));
+    background-image: repeating-linear-gradient(
+      -45deg,
+      color-mix(in oklab, var(--border) 42%, transparent) 0px,
+      color-mix(in oklab, var(--border) 42%, transparent) 1px,
+      transparent 1px,
+      transparent 14px
+    );
+  }
+  .tg-bg-aurora {
+    background-color: color-mix(in oklab, var(--muted) 22%, var(--background));
+    background-image:
+      radial-gradient(circle at 12% 18%, color-mix(in oklab, var(--primary) 9%, transparent), transparent 46%),
+      radial-gradient(circle at 88% 82%, color-mix(in oklab, var(--primary) 7%, transparent), transparent 48%);
+  }
+  .tg-bg-plain {
+    background-color: color-mix(in oklab, var(--muted) 18%, var(--background));
+  }
 }
 
 /* toast enters from the right edge and slides left into place */
@@ -171,6 +212,32 @@
 @keyframes toast-progress {
   from { transform: scaleX(1); }
   to { transform: scaleX(0); }
+}
+
+@keyframes tg-msg-in-mine {
+  from { opacity: 0; transform: translate(8px, 10px) scale(0.94); }
+  to { opacity: 1; transform: translate(0, 0) scale(1); }
+}
+
+@keyframes tg-msg-in-other {
+  from { opacity: 0; transform: translate(-8px, 10px) scale(0.94); }
+  to { opacity: 1; transform: translate(0, 0) scale(1); }
+}
+
+@keyframes tg-pop-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.88); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes tg-react-pop {
+  0% { opacity: 0; transform: scale(0.55); }
+  65% { opacity: 1; transform: scale(1.14); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes tg-typing-dot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-3.5px); opacity: 1; }
 }
 
 ::-webkit-scrollbar { width: 4px; height: 4px; }

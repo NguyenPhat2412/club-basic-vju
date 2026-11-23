@@ -21,13 +21,13 @@ import {
   normalizeClubOverviewConfig,
 } from "@/forms/club/club-overview-config";
 import { ClubOverviewShowcase } from "@/components/club/ClubOverviewShowcase";
+import { ClubFacebookInsightsCard } from "@/components/management/ClubFacebookInsightsCard";
 import { OverviewDepartmentPanel } from "@/components/management/OverviewDepartmentPanel";
 import { EmptyState, ErrorState, LoadingRows } from "@/components/shared/States";
 import { describeError } from "@/components/shared/ListPage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormField, Input } from "@/components/ui/input";
-import { formatDateTime } from "@/lib/utils";
 
 function toStartIso(dateStr: string) {
   if (!dateStr) return undefined;
@@ -50,11 +50,13 @@ export function OverviewTab({
   club,
   canCustomize = false,
   onOpenCustomize,
+  onOpenFacebookSettings,
 }: {
   clubId: string;
   club?: Club;
   canCustomize?: boolean;
   onOpenCustomize?: () => void;
+  onOpenFacebookSettings?: () => void;
 }) {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -127,21 +129,14 @@ export function OverviewTab({
 
       {/* Filter Bar for Period Operational Metrics */}
       <div className="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-border bg-card p-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-sm font-bold text-foreground">
-              Thống kê Hiệu suất Vận hành theo Kỳ
-            </h2>
-            <Badge tone="primary" dot={false}>
-              {d.clubCode}
-            </Badge>
-            <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-              {fromDate || toDate ? `${fromDate || "Đầu kỳ"} → ${toDate || "Hiện tại"}` : "Toàn thời gian"}
-            </span>
-          </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Truy vấn trực tiếp lúc {formatDateTime(d.generatedAt)}. Tách bạch chuẩn xác sự kiện chính thức với bản nháp (DRAFT), thành viên với CTV và đủ 6 trạng thái nhiệm vụ.
-          </p>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <h2 className="text-sm font-bold text-foreground">Thống kê theo kỳ</h2>
+          <Badge tone="primary" dot={false}>
+            {d.clubCode}
+          </Badge>
+          <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+            {fromDate || toDate ? `${fromDate || "Đầu kỳ"} → ${toDate || "Hiện tại"}` : "Toàn thời gian"}
+          </span>
         </div>
 
         <div className="flex w-full flex-wrap items-end gap-2 sm:w-auto">
@@ -215,14 +210,9 @@ export function OverviewTab({
               <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
                 <UserCheck size={15} />
               </span>
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                  Phễu Tuyển thành viên CLB
-                </h3>
-                <p className="text-[11px] text-muted-foreground">
-                  Tổng hợp toàn bộ đơn nộp, duyệt, từ chối và rút đơn trong kỳ
-                </p>
-              </div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                Tuyển thành viên
+              </h3>
             </div>
             <Badge tone="primary" dot={false}>
               Tỷ lệ duyệt: {d.approvalRate ?? 0}%
@@ -243,14 +233,9 @@ export function OverviewTab({
               <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
                 <Calendar size={15} />
               </span>
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                  Thống kê Sự kiện Chính thức
-                </h3>
-                <p className="text-[11px] text-muted-foreground">
-                  Tổng công bố = Đang mở + Đã đóng ĐK + Hoàn thành + Đã huỷ (tách riêng DRAFT)
-                </p>
-              </div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                Sự kiện CLB
+              </h3>
             </div>
             <span className="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-mono text-[11px] font-semibold text-muted-foreground">
               Nháp (DRAFT): {d.draftEvents ?? 0}
@@ -271,14 +256,9 @@ export function OverviewTab({
               <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
                 <CheckCheck size={15} />
               </span>
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                  Đăng ký & Điểm danh (Thành viên vs CTV)
-                </h3>
-                <p className="text-[11px] text-muted-foreground">
-                  Tách bạch rõ Thành viên CLB với Cộng tác viên (CTV) sự kiện mở
-                </p>
-              </div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                Đăng ký &amp; Điểm danh
+              </h3>
             </div>
             <Badge tone="primary" dot={false}>
               Có mặt: {d.attendanceRate ?? 0}%
@@ -308,14 +288,9 @@ export function OverviewTab({
               <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
                 <ClipboardCheck size={15} />
               </span>
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                  Phễu Nhiệm vụ Nội bộ (6 Trạng thái)
-                </h3>
-                <p className="text-[11px] text-muted-foreground">
-                  Đang mở ({d.openTasks}) bao gồm cả việc chờ nghiệm thu (DONE) và quá hạn
-                </p>
-              </div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                Nhiệm vụ nội bộ
+              </h3>
             </div>
             <Badge tone="primary" dot={false}>
               Nghiệm thu: {d.taskCompletionRate ?? 0}%
@@ -339,6 +314,12 @@ export function OverviewTab({
           </div>
         </section>
       </div>
+
+      <ClubFacebookInsightsCard
+        clubId={clubId}
+        canManage={canCustomize}
+        onOpenSettings={onOpenFacebookSettings ?? onOpenCustomize}
+      />
     </div>
   );
 }

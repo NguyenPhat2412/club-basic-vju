@@ -139,6 +139,7 @@ export function EventsTab({
       registrationDeadline: toLocalInput(ev.registrationDeadline),
       maxParticipants: ev.maxParticipants ? String(ev.maxParticipants) : "",
       allowCtv: ev.allowCtv,
+      requiresSubmission: Boolean(ev.requiresSubmission),
       status: ev.status,
       description: ev.description ?? "",
     });
@@ -248,7 +249,8 @@ export function EventsTab({
                     <p className="truncate text-[11px] text-muted-foreground">
                       {EVENT_TYPE_LABELS[ev.eventType] ?? ev.eventType}
                       {ev.departmentName ? ` · ${ev.departmentName}` : ""}
-                      {ev.allowCtv ? " · Mở CTV" : ""}
+                      {ev.allowCtv ? " · Công khai (CTV)" : " · Nội bộ CLB"}
+                      {ev.requiresSubmission ? " · Nộp hồ sơ" : ""}
                     </p>
                   </div>
                 ),

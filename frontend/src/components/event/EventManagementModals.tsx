@@ -43,6 +43,7 @@ export function UpsertEventModal({
         registrationDeadline: toIso(form.registrationDeadline || form.startTime),
         maxParticipants: form.maxParticipants ? Number(form.maxParticipants) : undefined,
         allowCtv: form.allowCtv,
+        requiresSubmission: form.requiresSubmission,
         status: form.status,
         description: form.description.trim() || undefined,
       }),
@@ -65,6 +66,7 @@ export function UpsertEventModal({
         registrationDeadline: toIso(form.registrationDeadline || form.startTime),
         maxParticipants: form.maxParticipants ? Number(form.maxParticipants) : undefined,
         allowCtv: form.allowCtv,
+        requiresSubmission: form.requiresSubmission,
         status: form.status,
         description: form.description.trim() || undefined,
       }),
@@ -187,14 +189,31 @@ export function UpsertEventModal({
           </Select>
         </FormField>
       </div>
+      <FormField
+        label="Phạm vi sự kiện"
+        required
+        hint={
+          form.allowCtv
+            ? "Hiển thị công khai trên Cổng sự kiện, sinh viên toàn trường và CTV có thể đăng ký."
+            : "Ẩn hoàn toàn với người ngoài — chỉ thành viên đang hoạt động trong CLB mới thấy và đăng ký."
+        }
+      >
+        <Select
+          value={form.allowCtv ? "PUBLIC" : "INTERNAL"}
+          onChange={(e) => setForm((f) => ({ ...f, allowCtv: e.target.value === "PUBLIC" }))}
+        >
+          <option value="PUBLIC">Công khai toàn trường — Mở cho SV & CTV</option>
+          <option value="INTERNAL">Nội bộ thành viên CLB</option>
+        </Select>
+      </FormField>
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
           className="size-4 accent-primary"
-          checked={form.allowCtv}
-          onChange={(e) => setForm((f) => ({ ...f, allowCtv: e.target.checked }))}
+          checked={form.requiresSubmission}
+          onChange={(e) => setForm((f) => ({ ...f, requiresSubmission: e.target.checked }))}
         />
-        <span>Cho phép cộng tác viên (CTV) / sinh viên ngoài CLB đăng ký tham gia</span>
+        <span>Yêu cầu nộp tệp hồ sơ xét tuyển (tự khóa khi hết hạn)</span>
       </label>
       <FormField label="Nội dung chi tiết">
         <Textarea

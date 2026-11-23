@@ -113,7 +113,7 @@ export function DocumentFilterBar({
           >
             {allowedClubs.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.code} · {c.name}
+                {c.name}
               </option>
             ))}
           </Select>
@@ -146,12 +146,12 @@ export function DocumentFilterBar({
           {isSystemTier ? (
             <>
               <option value="PUBLIC_INTERNAL">Toàn trường</option>
-              <option value="OFFICERS">Ban chủ nhiệm</option>
+              <option value="OFFICERS">Bảo mật BCN (Sổ Quỹ)</option>
             </>
           ) : (
             <>
               <option value="MEMBERS">Thành viên CLB</option>
-              <option value="OFFICERS">Ban chủ nhiệm</option>
+              <option value="OFFICERS">Bảo mật BCN (Sổ Quỹ)</option>
               <option value="DEPARTMENT_ONLY">Nội bộ Ban</option>
             </>
           )}

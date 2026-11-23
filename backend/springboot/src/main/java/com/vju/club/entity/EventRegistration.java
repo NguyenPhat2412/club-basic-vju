@@ -47,4 +47,19 @@ public class EventRegistration extends TimestampedEntity {
 
     @Column(name = "cancelled_at")
     private OffsetDateTime cancelledAt;
+
+    @Column(name = "submission_file_name", length = 255)
+    private String submissionFileName;
+
+    @Column(name = "submission_storage_key", length = 500)
+    private String submissionStorageKey;
+
+    @Column(name = "submission_content_type", length = 150)
+    private String submissionContentType;
+
+    @Column(name = "submission_size_bytes")
+    private Long submissionSizeBytes;
+
+    @Column(name = "submission_uploaded_at")
+    private OffsetDateTime submissionUploadedAt;
 }

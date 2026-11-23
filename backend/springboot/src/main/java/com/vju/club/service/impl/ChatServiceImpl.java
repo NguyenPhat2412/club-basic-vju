@@ -120,6 +120,7 @@ public class ChatServiceImpl implements ChatService {
                 .filter(d -> d.getClub().getId().equals(clubId))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "DEPARTMENT_NOT_FOUND", "Department not found in club"));
         authorizationService.require(actor, ChatConstants.PERMISSION_SEND, clubId, department == null ? null : department.getId());
+        chatMediaService.requireChannelQuota(channelRepository.countByClub_Id(clubId));
         Event event = request.eventId() == null ? null : eventRepository.findById(request.eventId())
                 .filter(e -> e.getClub().getId().equals(clubId))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found in club"));
@@ -192,6 +193,7 @@ public class ChatServiceImpl implements ChatService {
     @Transactional
     public ChatMessageResponse sendMessage(Actor actor, UUID channelId, SendChatMessageRequest request) {
         ChatChannel channel = chatAccessPolicy.requireChannelAccessById(actor, channelId, ChatConstants.PERMISSION_SEND, true);
+        chatMediaService.requireMessageRateLimit(actor.id());
         User sender = userRepository.findById(actor.id())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User not found"));
 
@@ -385,13 +387,10 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private List<UUID> channelRecipients(ChatChannel channel) {
-        if (channel.getDepartment() != null) {
-            return departmentMemberRepository.findActiveUserIdsByDepartmentId(channel.getDepartment().getId());
-        }
-        return membershipRepository.findActiveUserIdsByClubId(channel.getClub().getId());
+        return channel.getDepartment() != null
+                ? departmentMemberRepository.findActiveUserIdsByDepartmentId(channel.getDepartment().getId())
+                : membershipRepository.findActiveUserIdsByClubId(channel.getClub().getId());
     }
 
-    private static String fit(String text, int max) {
-        return text.length() <= max ? text : text.substring(0, max - 1) + "…";
-    }
+    private static String fit(String text, int max) { return text.length() <= max ? text : text.substring(0, max - 1) + "…"; }
 }

@@ -99,8 +99,8 @@ export function UsersManagementView() {
         user.status === "ACTIVE"
           ? `Đã mở khoá / kích hoạt tài khoản ${user.email}.`
           : user.status === "LOCKED"
-            ? `Đã khoá tạm thời tài khoản ${user.email} (PB-05.3) và đăng xuất mọi phiên.`
-            : `Đã vô hiệu hoá tài khoản ${user.email} (PB-05.4) và đăng xuất mọi phiên.`
+            ? `Đã khoá tạm thời tài khoản ${user.email} và đăng xuất mọi phiên.`
+            : `Đã vô hiệu hoá tài khoản ${user.email} và đăng xuất mọi phiên.`
       );
       setDetail(user);
       refresh();
@@ -112,8 +112,8 @@ export function UsersManagementView() {
       nextStatus !== "ACTIVE" &&
       !confirm(
         nextStatus === "LOCKED"
-          ? `Khoá tạm thời tài khoản ${user.email} (PB-05.3)? Người này sẽ bị đăng xuất ngay.`
-          : `Vô hiệu hoá tài khoản ${user.email} (PB-05.4)? Người này sẽ bị đăng xuất ngay.`
+          ? `Khoá tạm thời tài khoản ${user.email}? Người này sẽ bị đăng xuất ngay.`
+          : `Vô hiệu hoá tài khoản ${user.email}? Người này sẽ bị đăng xuất ngay.`
       )
     )
       return;
@@ -136,13 +136,13 @@ export function UsersManagementView() {
       ? [
           {
             icon: <Lock />,
-            label: "Khoá tạm thời (PB-05.3)",
+            label: "Khoá tạm thời",
             onClick: () => changeStatus(user, "LOCKED"),
             disabled: lock.isPending,
           },
           {
             icon: <Ban />,
-            label: "Vô hiệu hoá (PB-05.4)",
+            label: "Vô hiệu hoá",
             danger: true,
             onClick: () => changeStatus(user, "INACTIVE"),
             disabled: lock.isPending,
@@ -205,8 +205,8 @@ export function UsersManagementView() {
           >
             <option value="ALL">Tất cả trạng thái</option>
             <option value="ACTIVE">Đang hoạt động</option>
-            <option value="LOCKED">Tạm khoá (PB-05.3)</option>
-            <option value="INACTIVE">Vô hiệu hoá (PB-05.4)</option>
+            <option value="LOCKED">Tạm khoá</option>
+            <option value="INACTIVE">Vô hiệu hoá</option>
             <option value="MUST_CHANGE">Chờ đổi mật khẩu</option>
           </Select>
         }

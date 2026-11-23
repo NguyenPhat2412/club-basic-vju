@@ -51,21 +51,21 @@ export function HomeSiteHeader({ user, menuOpen, setMenuOpen, openAuthModal, sig
         </Link>
 
         <nav className="hidden items-center gap-4 lg:flex xl:gap-6" aria-label={m.nav.mainAria}>
-          <Link className="whitespace-nowrap text-[13px] font-bold text-primary xl:text-sm" href="/home">
+          <a className="whitespace-nowrap text-[13px] font-bold text-primary xl:text-sm" href="#top">
             {m.nav.home}
-          </Link>
-          <Link
+          </a>
+          <a
             className="whitespace-nowrap text-[13px] font-semibold text-slate-700 transition-colors hover:text-primary xl:text-sm"
-            href="/clubs"
+            href="#cau-lac-bo"
           >
             {m.nav.clubs}
-          </Link>
-          <Link
+          </a>
+          <a
             className="whitespace-nowrap text-[13px] font-semibold text-slate-700 transition-colors hover:text-primary xl:text-sm"
-            href="/events"
+            href="#su-kien-ctv"
           >
             {m.nav.events}
-          </Link>
+          </a>
           <a
             className="whitespace-nowrap text-[13px] font-semibold text-slate-700 transition-colors hover:text-primary xl:text-sm"
             href="#khong-gian-so"
@@ -74,7 +74,7 @@ export function HomeSiteHeader({ user, menuOpen, setMenuOpen, openAuthModal, sig
           </a>
           <a
             className="whitespace-nowrap text-[13px] font-semibold text-slate-700 transition-colors hover:text-primary xl:text-sm"
-            href="#tin-tuc"
+            href="#lich-su-kien"
           >
             {m.nav.schedule}
           </a>
@@ -159,8 +159,20 @@ export function HomeSiteHeader({ user, menuOpen, setMenuOpen, openAuthModal, sig
 
       {menuOpen && (
         <nav className="absolute left-0 right-0 top-full grid gap-1 bg-white px-5 pb-5 pt-2 lg:hidden">
-          <MobileLink href="/home" onClick={() => setMenuOpen(false)}>
+          <MobileLink href="#top" onClick={() => setMenuOpen(false)}>
             {m.nav.home}
+          </MobileLink>
+          <MobileLink href="#cau-lac-bo" onClick={() => setMenuOpen(false)}>
+            {m.nav.clubs}
+          </MobileLink>
+          <MobileLink href="#su-kien-ctv" onClick={() => setMenuOpen(false)}>
+            {m.nav.events}
+          </MobileLink>
+          <MobileLink href="#khong-gian-so" onClick={() => setMenuOpen(false)}>
+            {m.nav.workspaceMobile}
+          </MobileLink>
+          <MobileLink href="#lich-su-kien" onClick={() => setMenuOpen(false)}>
+            {m.nav.schedule}
           </MobileLink>
           <MobileLink href="/clubs" onClick={() => setMenuOpen(false)}>
             {m.nav.clubsDirectory}
@@ -168,19 +180,16 @@ export function HomeSiteHeader({ user, menuOpen, setMenuOpen, openAuthModal, sig
           <MobileLink href="/events" onClick={() => setMenuOpen(false)}>
             {m.nav.eventsRegister}
           </MobileLink>
-          <MobileLink href="#khong-gian-so" onClick={() => setMenuOpen(false)}>
-            {m.nav.workspaceMobile}
-          </MobileLink>
-          <MobileLink href="/applications" onClick={() => setMenuOpen(false)}>
-            {m.nav.myApplications}
-          </MobileLink>
-          <MobileLink href="/memberships" onClick={() => setMenuOpen(false)}>
-            {m.nav.myClubs}
-          </MobileLink>
           {user ? (
             <>
               <MobileLink href="/dashboard" onClick={() => setMenuOpen(false)}>
                 {m.nav.dashboard}
+              </MobileLink>
+              <MobileLink href="/applications" onClick={() => setMenuOpen(false)}>
+                {m.nav.myApplications}
+              </MobileLink>
+              <MobileLink href="/memberships" onClick={() => setMenuOpen(false)}>
+                {m.nav.myClubs}
               </MobileLink>
               <MobileLink href="/notifications" onClick={() => setMenuOpen(false)}>
                 {m.nav.notifications}
@@ -219,12 +228,17 @@ function MobileLink({
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  const className =
+    "rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100 hover:text-primary";
+  if (href.startsWith("#")) {
+    return (
+      <a href={href} onClick={onClick} className={className}>
+        {children}
+      </a>
+    );
+  }
   return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className="rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100 hover:text-primary"
-    >
+    <Link href={href} onClick={onClick} className={className}>
       {children}
     </Link>
   );

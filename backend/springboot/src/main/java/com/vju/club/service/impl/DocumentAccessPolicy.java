@@ -134,6 +134,14 @@ public class DocumentAccessPolicy {
         authorizationService.require(actor, DocumentConstants.PERMISSION_RESTORE, clubId, null);
     }
 
+    public DocumentVisibility validateAndAuthorizeVisibility(Actor actor, DocumentScope scope, UUID clubId, DocumentVisibility requested) {
+        DocumentVisibility resolved = validateVisibility(scope, requested);
+        if (scope == DocumentScope.CLUB && resolved == DocumentVisibility.OFFICERS && !isClubOfficer(actor, clubId)) {
+            throw forbidden();
+        }
+        return resolved;
+    }
+
     public DocumentVisibility validateVisibility(DocumentScope scope, DocumentVisibility requested) {
         return switch (scope) {
             case SYSTEM -> {

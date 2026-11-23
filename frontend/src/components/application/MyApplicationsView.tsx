@@ -18,6 +18,7 @@ import { Select } from "@/components/ui/input";
 import { formatDay, validateApplicationFile } from "@/lib/utils";
 import { inferApplicantCategory } from "@/forms/application/application-form";
 import { MyApplicationOverlays } from "./MyApplicationOverlays";
+import { UpcomingInterviewsBanner } from "./UpcomingInterviewsBanner";
 
 const LIMIT = 20;
 
@@ -240,6 +241,10 @@ function MyApplicationsContent() {
       />
       {notice && <Notice tone="success">{notice}</Notice>}
       {err && <Notice tone="error">{describeError(err)}</Notice>}
+      <UpcomingInterviewsBanner
+        applications={list.data?.items ?? []}
+        onSelectApplication={openDrawer}
+      />
 
       {list.isPending ? (
         <LoadingRows />

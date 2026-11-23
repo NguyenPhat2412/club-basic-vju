@@ -2,9 +2,9 @@
 
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
-import { Compass, Eye, FilterX, MapPin, QrCode, UserCheck, XCircle } from "lucide-react";
+import { Compass, Eye, FilterX, MapPin, QrCode, Search, UserCheck, X, XCircle } from "lucide-react";
 import { apiModel, MyEventParticipation, PublicEvent } from "@/lib/api";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { BreadcrumbToolbar, SegmentedTabs } from "@/components/shared/BreadcrumbToolbar";
@@ -15,11 +15,12 @@ import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError, ListPage } from "@/components/shared/ListPage";
 import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/input";
+import { Input, Select } from "@/components/ui/input";
 import { formatDateTime, formatDay } from "@/lib/utils";
 import { EVENT_TYPE_LABELS } from "@/forms/event/event-form";
 import { EventParticipationDrawers } from "./EventParticipationDrawers";
 import { EventQrSelfCheckInModal } from "./EventQrModals";
+import { RequiresSubmissionBadge } from "./EventSubmissionBlock";
 import { MyEventsHistorySection } from "./MyEventsHistorySection";
 
 export function EventsPortalView() {
@@ -64,9 +65,9 @@ function EventsPortalContent() {
   const urlQrKey = qrCheckinEventId && qrCheckinToken ? `${qrCheckinEventId}:${qrCheckinToken}` : null;
   const qrCheckinOpen = manualQrOpen || Boolean(urlQrKey && dismissedQrKey !== urlQrKey);
 
-  const publicEvents = useQuery({
-    queryKey: qk.eventsPortal("public"),
-    queryFn: () => apiModel.publicEvents(0, 50),
+  const discoverEvents = useQuery({
+    queryKey: qk.eventsPortal(isLoggedIn ? "discover" : "public", session.user?.id ?? "anon"),
+    queryFn: () => (isLoggedIn ? apiModel.discoverEvents(0, 100) : apiModel.publicEvents(0, 100)),
   });
 
   const memberships = useQuery({
@@ -79,14 +80,6 @@ function EventsPortalContent() {
     () => new Set((memberships.data?.items ?? []).filter((m) => m.status === "ACTIVE").map((m) => m.clubId)),
     [memberships.data?.items],
   );
-
-  const memberClubEventQueries = useQueries({
-    queries: [...activeClubIds].map((clubId) => ({
-      queryKey: qk.eventsPortal("club-events", clubId),
-      queryFn: () => apiModel.clubEvents(clubId, { limit: 50 }),
-      enabled: isLoggedIn,
-    })),
-  });
 
   const myHistory = useQuery({
     queryKey: qk.myEventRegistrations(regStatusFilter, roleFilter, historyOffset, historyLimit),
@@ -117,19 +110,8 @@ function EventsPortalContent() {
   }, [myAllActiveRegs.data?.items]);
 
   const discoverList = useMemo(() => {
-    const merged = new Map<string, PublicEvent>();
-    for (const ev of publicEvents.data?.items ?? []) {
-      merged.set(ev.id, ev);
-    }
-    for (const q of memberClubEventQueries) {
-      for (const ev of q.data?.items ?? []) {
-        if (ev.status !== "DRAFT") {
-          merged.set(ev.id, ev);
-        }
-      }
-    }
     const qLower = search.trim().toLowerCase();
-    return [...merged.values()]
+    return [...(discoverEvents.data?.items ?? [])]
       .filter((ev) => {
         if (ctvFilter === "CTV_ONLY" && !ev.allowCtv) return false;
         if (typeFilter && ev.eventType !== typeFilter) return false;
@@ -137,7 +119,7 @@ function EventsPortalContent() {
         return ev.title.toLowerCase().includes(qLower) || ev.clubName.toLowerCase().includes(qLower) || (ev.location ?? "").toLowerCase().includes(qLower);
       })
       .sort((a, b) => b.startTime.localeCompare(a.startTime));
-  }, [publicEvents.data?.items, memberClubEventQueries, search, ctvFilter, typeFilter]);
+  }, [discoverEvents.data?.items, search, ctvFilter, typeFilter]);
 
   const pagedDiscover = useMemo(() => discoverList.slice(discoverOffset, discoverOffset + discoverLimit), [discoverList, discoverOffset, discoverLimit]);
   const hasDiscoverFilters = Boolean(search.trim() || ctvFilter !== "ALL" || typeFilter);
@@ -210,49 +192,61 @@ function EventsPortalContent() {
             {tab === "discover" ? `${discoverList.length} sự kiện` : `${myHistory.data?.total ?? 0} lượt tham gia`}
           </CountBadge>
         }
-        search={tab === "discover" ? { value: search, onChange: (v) => { setSearch(v); setDiscoverOffset(0); }, placeholder: "Tìm tên sự kiện, CLB, địa điểm…" } : undefined}
         extraActions={
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-            {isLoggedIn && (
-              <>
-                <Button size="sm" variant="outline" onClick={() => setManualQrOpen(true)}>
-                  <QrCode size={14} /> Điểm danh QR
-                </Button>
-                <SegmentedTabs
-                  value={tab}
-                  onChange={(v) => { setTab(v); setNotice(""); setErrorMsg(""); }}
-                  options={[{ value: "discover", label: "Khám phá sự kiện" }, { value: "mine", label: "Sự kiện & Điểm danh của tôi" }]}
-                />
-              </>
-            )}
-            {tab === "discover" && (
-              <>
-                <Select aria-label="Lọc loại sự kiện" value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setDiscoverOffset(0); }} className="h-9 w-full text-xs sm:w-44">
-                  <option value="">Mọi loại hình</option>
-                  {Object.entries(EVENT_TYPE_LABELS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
-                </Select>
-                <Select aria-label="Lọc đối tượng sự kiện" value={ctvFilter} onChange={(e) => { setCtvFilter(e.target.value as "ALL" | "CTV_ONLY"); setDiscoverOffset(0); }} className="h-9 w-full text-xs sm:w-48">
-                  <option value="ALL">Tất cả sự kiện mở</option>
-                  <option value="CTV_ONLY">Mở tuyển Cộng tác viên (CTV)</option>
-                </Select>
-                {hasDiscoverFilters && (
-                  <Button size="sm" variant="outline" onClick={clearDiscoverFilters}><FilterX size={14} /> Xoá lọc</Button>
-                )}
-              </>
-            )}
-          </div>
+          isLoggedIn ? (
+            <>
+              <Button size="sm" variant="outline" onClick={() => setManualQrOpen(true)}>
+                <QrCode size={14} /> Điểm danh QR
+              </Button>
+              <SegmentedTabs
+                value={tab}
+                onChange={(v) => { setTab(v); setNotice(""); setErrorMsg(""); }}
+                options={[{ value: "discover", label: "Khám phá sự kiện" }, { value: "mine", label: "Sự kiện & Điểm danh của tôi" }]}
+              />
+            </>
+          ) : undefined
         }
         onRefresh={refreshAll}
       />
+      {tab === "discover" && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-border/60 bg-card px-4 py-2.5 sm:px-6">
+          <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
+            <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setDiscoverOffset(0); }}
+              placeholder="Tìm tên sự kiện, CLB, địa điểm…"
+              aria-label="Tìm tên sự kiện, CLB, địa điểm"
+              className="h-8 pl-8 pr-7 text-xs"
+            />
+            {search && (
+              <button type="button" aria-label="Xoá tìm kiếm" onClick={() => { setSearch(""); setDiscoverOffset(0); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X size={13} />
+              </button>
+            )}
+          </div>
+          <Select aria-label="Lọc loại sự kiện" value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setDiscoverOffset(0); }} className="h-8 w-full text-xs sm:w-44">
+            <option value="">Mọi loại hình</option>
+            {Object.entries(EVENT_TYPE_LABELS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+          </Select>
+          <Select aria-label="Lọc đối tượng sự kiện" value={ctvFilter} onChange={(e) => { setCtvFilter(e.target.value as "ALL" | "CTV_ONLY"); setDiscoverOffset(0); }} className="h-8 w-full text-xs sm:w-48">
+            <option value="ALL">Tất cả sự kiện mở</option>
+            <option value="CTV_ONLY">Mở tuyển Cộng tác viên (CTV)</option>
+          </Select>
+          {hasDiscoverFilters && (
+            <Button size="sm" variant="outline" className="h-8" onClick={clearDiscoverFilters}><FilterX size={14} /> Xoá lọc</Button>
+          )}
+        </div>
+      )}
 
       {notice && <Notice tone="success">{notice}</Notice>}
       {errorMsg && <Notice tone="error">{errorMsg}</Notice>}
 
       {tab === "discover" ? (
-        publicEvents.isPending ? (
+        discoverEvents.isPending ? (
           <LoadingRows />
-        ) : publicEvents.isError ? (
-          <ErrorState message={describeError(publicEvents.error)} onRetry={() => publicEvents.refetch()} />
+        ) : discoverEvents.isError ? (
+          <ErrorState message={describeError(discoverEvents.error)} onRetry={() => discoverEvents.refetch()} />
         ) : !discoverList.length ? (
           <EmptyState
             icon={<Compass />}
@@ -298,7 +292,12 @@ function EventsPortalContent() {
                   key: "audience",
                   header: "Đối tượng",
                   sortValue: (ev) => Number(ev.allowCtv),
-                  render: (ev) => ev.allowCtv ? <Badge tone="pending">Mở cho SV & CTV</Badge> : <Badge tone="neutral">Nội bộ thành viên CLB</Badge>,
+                  render: (ev) => (
+                    <div className="flex flex-wrap items-center gap-1">
+                      {ev.allowCtv ? <Badge tone="pending">Công khai (SV & CTV)</Badge> : <Badge tone="neutral">Nội bộ thành viên CLB</Badge>}
+                      {ev.requiresSubmission && <RequiresSubmissionBadge />}
+                    </div>
+                  ),
                 },
                 {
                   key: "location",
@@ -367,6 +366,7 @@ function EventsPortalContent() {
         canRegisterNow={canRegisterNow} canCancelNow={canCancelNow}
         registerPending={registerMutation.isPending} onRegister={(ev) => registerMutation.mutate(ev)}
         cancelPending={cancelMutation.isPending} onCancel={(eventId) => cancelMutation.mutate(eventId)}
+        onRefresh={refreshAll} onNotice={setNotice} onError={setErrorMsg}
       />
       <EventQrSelfCheckInModal
         open={qrCheckinOpen}

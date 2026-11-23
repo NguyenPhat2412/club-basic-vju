@@ -111,9 +111,18 @@ class SystemSettingsServiceTest {
         values.put("eventTaskGraceDays", 7);
         values.put("chatSummariesPerHour", 10);
         values.put("chatMaxMessageLength", 4000);
+        values.put("chatMessagesPerMinute", 20);
         values.put("documentMaxFileMb", 20);
         values.put("clubImageMaxMb", 10);
         values.put("avatarMaxMb", 5);
+        values.put("clubStorageQuotaMb", 500);
+        values.put("documentMaxVersions", 20);
+        values.put("maxChannelsPerClub", 30);
+        values.put("maxDepartmentsPerClub", 20);
+        values.put("maxActiveEventsPerClub", 50);
+        values.put("maxOpenTasksPerClub", 200);
+        values.put("broadcastCooldownMinutes", 5);
+        values.put("facebookSyncCooldownMinutes", 2);
         values.put("otpExpiryMinutes", 5);
         values.put("otpMaxSendCount", 5);
         values.put("otpResendCooldownSeconds", 60);

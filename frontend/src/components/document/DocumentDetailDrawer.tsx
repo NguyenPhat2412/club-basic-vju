@@ -1,7 +1,12 @@
 "use client";
 
-import { Download, Eye, FileText, History, Pencil, RotateCcw, Trash2, Upload } from "lucide-react";
+import { Download, Eye, FileText, History, Lock, Pencil, RotateCcw, Trash2, Upload } from "lucide-react";
 import type { DocumentItem, DocumentVersion, DocumentVisibility } from "@/lib/api";
+import {
+  CLUB_CATEGORY_PRESETS,
+  formatDocumentCategoryLabel,
+  SYSTEM_CATEGORY_PRESETS,
+} from "@/forms/document/document-filter-meta";
 import type { PreviewTarget } from "@/components/document/DocumentPreviewModal";
 import { DetailList, EntityDrawer, Section } from "@/components/shared/Overlays";
 import { LoadingRows } from "@/components/shared/States";
@@ -21,13 +26,30 @@ export function visibilityMeta(doc: Pick<DocumentItem, "visibility" | "departmen
     case "PUBLIC_INTERNAL":
       return { label: "Toàn trường", tone: "primary" };
     case "OFFICERS":
-      return { label: "Ban chủ nhiệm", tone: "pending" };
+      return { label: "Bảo mật BCN", tone: "primary" };
     case "DEPARTMENT_ONLY":
       return { label: doc.departmentName ? `Ban: ${doc.departmentName}` : "Nội bộ Ban", tone: "primary" };
     case "MEMBERS":
     default:
       return { label: "Thành viên CLB", tone: "neutral" };
   }
+}
+
+export function DocumentVisibilityBadge({
+  doc,
+}: {
+  doc: Pick<DocumentItem, "visibility" | "departmentName">;
+}) {
+  if (doc.visibility === "OFFICERS") {
+    return (
+      <Badge tone="primary" dot={false} className="border-primary/30 bg-primary/10 text-primary">
+        <Lock size={11} className="shrink-0" />
+        Bảo mật BCN
+      </Badge>
+    );
+  }
+  const vis = visibilityMeta(doc);
+  return <Badge tone={vis.tone}>{vis.label}</Badge>;
 }
 
 export function DocumentDetailDrawer({
@@ -87,7 +109,6 @@ export function DocumentDetailDrawer({
   onSaveEdit: (doc: DocumentItem) => void;
   onUploadVersion: (doc: DocumentItem) => void;
 }) {
-  const vis = doc ? visibilityMeta(doc) : null;
   const currentExt = doc ? fileExtension(doc.name, doc.contentType) : "";
   const versionError = versionFile && currentExt ? validateVaultFile(versionFile, currentExt) : null;
   const trimmedKey = editKey.trim();
@@ -155,13 +176,7 @@ export function DocumentDetailDrawer({
                 ],
                 [
                   "Phạm vi & Quyền xem",
-                  vis ? (
-                    <Badge key="vis" tone={vis.tone}>
-                      {vis.label}
-                    </Badge>
-                  ) : (
-                    "—"
-                  ),
+                  doc ? <DocumentVisibilityBadge key="vis" doc={doc} /> : "—",
                 ],
                 [
                   "Phiên bản",
@@ -176,7 +191,7 @@ export function DocumentDetailDrawer({
                     {formatSize(doc.sizeBytes)}
                   </span>,
                 ],
-                ["appDetailKey", doc.appDetailKey || "—"],
+                ["Phân loại", doc.appDetailKey ? formatDocumentCategoryLabel(doc.appDetailKey) : "—"],
                 [
                   "SHA-256",
                   <span key="h" className="break-all font-mono text-[11px]">
@@ -194,8 +209,20 @@ export function DocumentDetailDrawer({
                     <FormField label="Tên tài liệu" required>
                       <Input value={editName} maxLength={200} onChange={(e) => onEditName(e.target.value)} />
                     </FormField>
-                    <FormField label="appDetailKey" hint="Bỏ trống để xoá" error={editKeyError ?? undefined}>
-                      <Input value={editKey} maxLength={100} onChange={(e) => onEditKey(e.target.value)} />
+                    <FormField label="Phân loại tài liệu (appDetailKey)" hint="Bỏ trống để xoá" error={editKeyError ?? undefined}>
+                      <Input
+                        list="vju-doc-category-keys-edit"
+                        value={editKey}
+                        maxLength={100}
+                        onChange={(e) => onEditKey(e.target.value)}
+                      />
+                      <datalist id="vju-doc-category-keys-edit">
+                        {(doc.scope === "SYSTEM" ? SYSTEM_CATEGORY_PRESETS : CLUB_CATEGORY_PRESETS).map((preset) => (
+                          <option key={preset.value} value={preset.value}>
+                            {preset.label}
+                          </option>
+                        ))}
+                      </datalist>
                     </FormField>
                     {doc.scope !== "DEPARTMENT" && canChangeVisibility && (
                       <FormField label="Mức hiển thị" required>
@@ -206,12 +233,12 @@ export function DocumentDetailDrawer({
                           {doc.scope === "SYSTEM" ? (
                             <>
                               <option value="PUBLIC_INTERNAL">Toàn trường (Mọi tài khoản nội bộ)</option>
-                              <option value="OFFICERS">Chỉ Ban chủ nhiệm các CLB & Quản trị</option>
+                              <option value="OFFICERS">Bảo mật riêng Ban Chủ nhiệm (Sổ Quỹ / BCN)</option>
                             </>
                           ) : (
                             <>
                               <option value="MEMBERS">Toàn bộ Thành viên CLB</option>
-                              <option value="OFFICERS">Chỉ Ban chủ nhiệm CLB</option>
+                              <option value="OFFICERS">Bảo mật riêng Ban Chủ nhiệm (Sổ Quỹ / BCN)</option>
                             </>
                           )}
                         </Select>

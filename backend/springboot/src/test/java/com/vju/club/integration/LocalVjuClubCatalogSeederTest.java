@@ -67,6 +67,12 @@ class LocalVjuClubCatalogSeederTest extends ApiIntegrationTest {
         assertThat(publicClubs.path("total").asInt()).isGreaterThanOrEqualTo(12);
 
         var publicEvents = call(get("/api/v1/public/events").param("limit", "50"), null, null, 200);
-        assertThat(publicEvents.path("total").asInt()).isGreaterThanOrEqualTo(12);
+        assertThat(publicEvents.path("total").asInt()).isGreaterThanOrEqualTo(9);
+        for (var item : publicEvents.path("items")) {
+            assertThat(item.path("allowCtv").asBoolean()).isTrue();
+        }
+
+        var discoverAll = call(get("/api/v1/events/discover").param("limit", "50"), adminToken, null, 200);
+        assertThat(discoverAll.path("total").asInt()).isGreaterThanOrEqualTo(12);
     }
 }

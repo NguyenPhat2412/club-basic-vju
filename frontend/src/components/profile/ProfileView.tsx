@@ -1,5 +1,6 @@
 "use client";
 import { AvatarField } from "@/components/user/AvatarField";
+import { ProfileEventsCard } from "./ProfileEventsCard";
 import { ProfileMembershipsCard } from "./ProfileMembershipsCard";
 
 import { FormEvent, useState } from "react";
@@ -90,6 +91,7 @@ export function ProfileView() {
         onRefresh={() => {
           queryClient.invalidateQueries({ queryKey: qk.me() });
           queryClient.invalidateQueries({ queryKey: qk.myMemberships() });
+          queryClient.invalidateQueries({ queryKey: qk.myEventRegistrations() });
         }}
       />
       <div className="mx-auto w-full max-w-[1220px] px-3.5 py-4 sm:px-6 sm:py-6">
@@ -119,7 +121,7 @@ export function ProfileView() {
                   </span>
                 )}
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-primary">THÀNH VIÊN VJU (PB-03)</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-primary">THÀNH VIÊN VJU</p>
                   <h2 className="mt-1 truncate text-lg font-bold tracking-tight sm:text-xl">{user.fullName || user.email}</h2>
                   <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                 </div>
@@ -198,6 +200,7 @@ export function ProfileView() {
 
             <div className="flex min-w-0 flex-col gap-4 @4xl:gap-6">
               <ProfileMembershipsCard />
+              <ProfileEventsCard />
 
               <section className="min-w-0 overflow-hidden rounded-xl border border-border bg-card p-4 sm:p-5 @4xl:p-6">
                 <div className="flex items-center gap-3 border-b border-border pb-4 sm:pb-5">

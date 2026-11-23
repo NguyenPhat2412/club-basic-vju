@@ -65,12 +65,14 @@ export function BreadcrumbToolbar({
       </div>
       <div
         className={cn(
-          "flex min-w-0 flex-wrap items-center justify-end gap-2",
-          search ? "w-full sm:w-auto" : "ml-auto shrink-0",
+          "flex min-w-0 max-w-full flex-wrap items-center gap-2",
+          search
+            ? "w-full justify-start lg:ml-auto lg:w-auto lg:justify-end"
+            : "w-full justify-start sm:ml-auto sm:w-auto sm:justify-end",
         )}
       >
         {search && (
-          <div className="relative w-full sm:w-56">
+          <div className="relative min-w-0 w-full sm:w-56">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               maxLength={200}

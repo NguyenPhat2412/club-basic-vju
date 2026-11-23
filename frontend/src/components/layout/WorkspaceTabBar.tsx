@@ -49,7 +49,7 @@ export function WorkspaceTabBar({
   const { tr } = useI18n();
   const isClient = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
-  const storageKey = `vju.workspace.tabs.v1:${userId || "guest"}`;
+  const storageKey = `vju.workspace.tabs.v2:${userId || "guest"}`;
   const stripRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const tabRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -87,36 +87,20 @@ export function WorkspaceTabBar({
   const catalog = useMemo(() => {
     const map = new Map<string, WorkspaceTabSpec>();
     if (authenticated) {
-      map.set("route:/dashboard", {
-        id: "route:/dashboard",
-        label: tr("Tổng quan"),
-        groupLabel: tr("Bảng điều khiển"),
-        href: "/dashboard",
-        icon: iconForTab("/dashboard"),
-      });
+      map.set("route:/dashboard", { id: "route:/dashboard", label: tr("Tổng quan"), groupLabel: tr("Bảng điều khiển"), href: "/dashboard", icon: iconForTab("/dashboard") });
     }
-
     for (const sec of sections) {
       for (const grp of sec.groups) {
         for (const item of grp.items) {
-          const id = item.tab
-            ? `mgmt:${item.tab}`
-            : item.tier
-              ? `docs:${item.tier}`
-              : `route:${item.href}`;
+          const id = item.tab ? `mgmt:${item.tab}` : item.tier ? `docs:${item.tier}` : `route:${item.href}`;
           if (!map.has(id)) {
-            map.set(id, {
-              id,
-              label: tr(item.label),
-              groupLabel: tr(grp.label),
-              href: item.href,
-              tab: item.tab,
-              tier: item.tier,
-              icon: iconForTab(item.href, item.tab, item.tier),
-            });
+            map.set(id, { id, label: tr(item.label), groupLabel: tr(grp.label), href: item.href, tab: item.tab, tier: item.tier, icon: iconForTab(item.href, item.tab, item.tier) });
           }
         }
       }
+    }
+    if (authenticated && !map.has("route:/documents")) {
+      map.set("route:/documents", { id: "route:/documents", label: tr("Tài liệu & Quy chế"), groupLabel: tr("Hoạt động & Tài liệu"), href: "/documents", icon: iconForTab("/documents") });
     }
     return map;
   }, [authenticated, sections, tr]);
@@ -127,11 +111,11 @@ export function WorkspaceTabBar({
   const catalogIds = useMemo(() => new Set(catalog.keys()), [catalog]);
 
   const defaultStarterIds = useMemo(() => {
-    const picked = STARTER_PRIORITY.filter((id) => catalog.has(id)).slice(0, 9);
+    const picked = STARTER_PRIORITY.filter((id) => catalog.has(id)).slice(0, 2);
     if (catalog.has(activeId) && !picked.includes(activeId)) {
       picked.push(activeId);
     }
-    return picked.length > 0 ? picked : Array.from(catalog.keys()).slice(0, 6);
+    return picked.length > 0 ? picked : Array.from(catalog.keys()).slice(0, 1);
   }, [activeId, catalog]);
 
   const openIds = useMemo(

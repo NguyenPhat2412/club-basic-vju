@@ -11,7 +11,7 @@ export function HomeCampusLifeSection() {
   const m = HOME_MESSAGES[locale];
 
   return (
-    <section id="hoat-dong" className="bg-white py-16 sm:py-22">
+    <section id="lich-su-kien" className="scroll-mt-20 bg-white py-16 sm:py-22">
       <div className="mx-auto grid max-w-[1380px] gap-10 px-5 sm:px-8 lg:grid-cols-[0.86fr_1.14fr] lg:items-center lg:gap-14 lg:px-12">
         <div>
           <p className="text-sm font-semibold text-primary">{m.campusLife.kicker}</p>
@@ -31,17 +31,11 @@ export function HomeCampusLifeSection() {
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Link
-              href="/clubs"
+              href="/events"
               className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
             >
-              <span>{m.campusLife.exploreClubsCta}</span>
+              <span>{m.campusLife.openEventsCta}</span>
               <ArrowRight size={15} />
-            </Link>
-            <Link
-              href="/events"
-              className="inline-flex h-11 items-center gap-2 rounded-xl bg-secondary px-5 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-200/80 hover:text-primary"
-            >
-              {m.campusLife.openEventsCta}
             </Link>
           </div>
         </div>

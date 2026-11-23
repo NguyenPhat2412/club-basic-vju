@@ -3,7 +3,7 @@
 import { Download, Eye, FileText, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import type { DocumentItem } from "@/lib/api";
 import { formatDocumentCategoryLabel } from "@/forms/document/document-filter-meta";
-import { visibilityMeta } from "@/components/document/DocumentDetailDrawer";
+import { DocumentVisibilityBadge, visibilityMeta } from "@/components/document/DocumentDetailDrawer";
 import type { PreviewTarget } from "@/components/document/DocumentPreviewModal";
 import { DataTable } from "@/components/shared/DataTable";
 import { TableRowActions } from "@/components/shared/TableRowActions";
@@ -110,10 +110,7 @@ export function DocumentTable({
           header: "Phạm vi",
           className: "whitespace-nowrap",
           sortValue: (x) => visibilityMeta(x).label,
-          render: (x) => {
-            const vis = visibilityMeta(x);
-            return <Badge tone={vis.tone}>{vis.label}</Badge>;
-          },
+          render: (x) => <DocumentVisibilityBadge doc={x} />,
         },
         {
           key: "size",

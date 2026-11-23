@@ -76,8 +76,12 @@ app:
       create-accounts: ${GOOGLE_CREATE_ACCOUNTS:true}
   rate-limit:
     enabled: ${RATE_LIMIT_ENABLED:true}
-    max-requests: ${RATE_LIMIT_MAX_REQUESTS:60}
+    max-requests: ${RATE_LIMIT_MAX_REQUESTS:15}
     window: ${RATE_LIMIT_WINDOW:1m}
+    write-max-requests: ${RATE_LIMIT_WRITE_MAX_REQUESTS:60}
+    write-window: ${RATE_LIMIT_WRITE_WINDOW:1m}
+    chat-upload-max-requests: ${RATE_LIMIT_CHAT_UPLOAD_MAX_REQUESTS:15}
+    chat-upload-window: ${RATE_LIMIT_CHAT_UPLOAD_WINDOW:5m}
   # Document files. local = a folder on this machine (development); r2 = Cloudflare R2 bucket.
   storage:
     type: ${STORAGE_TYPE:local}
@@ -121,3 +125,11 @@ app:
   qr:
     secret: ${APP_QR_SECRET:}
     asset-ttl: ${CACHE_ASSET_TTL:6h}
+  facebook:
+    app-id: ${FACEBOOK_APP_ID:}
+    app-secret: ${FACEBOOK_APP_SECRET:}
+    graph-version: ${FACEBOOK_GRAPH_VERSION:v22.0}
+    graph-base-url: ${FACEBOOK_GRAPH_BASE_URL:https://graph.facebook.com}
+    token-encryption-key: ${FACEBOOK_TOKEN_ENCRYPTION_KEY:vju-clubhub-local-fb-aes256-key-2026}
+    oauth-redirect-uri: ${FACEBOOK_OAUTH_REDIRECT_URI:http://localhost:8081/api/v1/integrations/facebook/oauth/callback}
+    frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:3000}

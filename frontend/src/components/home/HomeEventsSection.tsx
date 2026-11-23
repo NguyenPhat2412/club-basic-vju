@@ -33,7 +33,10 @@ export function HomeEventsSection({
   );
 
   return (
-    <section id="tin-tuc" className="mx-auto max-w-[1380px] px-5 py-14 sm:px-8 sm:py-20 lg:px-12">
+    <section
+      id="su-kien-ctv"
+      className="mx-auto max-w-[1380px] scroll-mt-20 border-t border-border/60 px-5 py-14 sm:px-8 sm:py-20 lg:px-12"
+    >
       <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
         <div>
           <p className="text-sm font-semibold text-primary">{m.eventsSection.kicker}</p>

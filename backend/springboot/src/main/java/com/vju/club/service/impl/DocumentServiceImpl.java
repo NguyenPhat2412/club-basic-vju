@@ -88,6 +88,8 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentMapper documentMapper;
     @Autowired(required = false)
     private ChatAndVaultNotifier notifier;
+    @Autowired(required = false)
+    private ClubStorageQuotaService storageQuotaService;
 
     @Override
     @Transactional(readOnly = true)
@@ -234,10 +236,11 @@ public class DocumentServiceImpl implements DocumentService {
         if (club.getStatus() != ClubStatus.ACTIVE) throw new ApiException(HttpStatus.CONFLICT, "CLUB_INACTIVE", "Club is inactive");
         Department department = departmentId != null ? requireDepartmentInClub(clubId, departmentId) : null;
         DocumentScope scope = department != null ? DocumentScope.DEPARTMENT : DocumentScope.CLUB;
-        DocumentVisibility resolvedVisibility = accessPolicy.validateVisibility(scope, visibility);
+        DocumentVisibility resolvedVisibility = accessPolicy.validateAndAuthorizeVisibility(actor, scope, clubId, visibility);
         String key = inspector.checkAppDetailKey(appDetailKey);
         InspectedFile inspected = inspector.inspect(name == null || name.isBlank() ? file.originalName() : name, file.content());
         ensureUniqueName(scope, clubId, departmentId, inspected.name(), null);
+        if (storageQuotaService != null) storageQuotaService.requireQuotaAvailable(clubId, inspected.size());
         String path = vaultWriter.store(inspected, file, scope, club.getCode(), departmentId, 1, inspected.name());
         Document document = new Document();
         document.setClub(club);
@@ -271,6 +274,10 @@ public class DocumentServiceImpl implements DocumentService {
                     + " file; a new version cannot be ." + inspected.type().extension());
         }
         if (inspected.sha256().equals(document.getChecksumSha256())) throw new DocumentVersionUnchangedException();
+        if (storageQuotaService != null) {
+            storageQuotaService.requireDocumentVersionAllowed(document.getVersion());
+            storageQuotaService.requireQuotaAvailable(clubIdOf(document), inspected.size());
+        }
         Map<String, Object> before = vaultWriter.snapshot(document);
         int nextVersion = document.getVersion() + 1;
         String clubCode = document.getClub() != null ? document.getClub().getCode() : "SYSTEM";
@@ -301,7 +308,7 @@ public class DocumentServiceImpl implements DocumentService {
         if (request.appDetailKey() != null) document.setAppDetailKey(inspector.checkAppDetailKey(request.appDetailKey()));
         if (request.visibility() != null) {
             if (request.visibility() != document.getVisibility()) accessPolicy.requireVisibilityChange(actor, document);
-            document.setVisibility(accessPolicy.validateVisibility(document.getScope(), request.visibility()));
+            document.setVisibility(accessPolicy.validateAndAuthorizeVisibility(actor, document.getScope(), clubIdOf(document), request.visibility()));
         }
         Document saved = documentRepository.saveAndFlush(document);
         auditService.recordChange(actor.id(), AuditAction.DOCUMENT_UPDATED, documentId, clubIdOf(saved), before, vaultWriter.snapshot(saved));
@@ -331,6 +338,7 @@ public class DocumentServiceImpl implements DocumentService {
         requireActiveClub(document);
         if (!document.isDeleted()) throw new DocumentNotDeletedException();
         ensureUniqueName(document.getScope(), clubIdOf(document), deptIdOf(document), document.getName(), documentId);
+        if (storageQuotaService != null) storageQuotaService.requireDocumentRestoreQuota(clubIdOf(document), documentId);
         Map<String, Object> before = vaultWriter.snapshot(document);
         document.setDeleted(false);
         document.setDeletedAt(null);
@@ -384,15 +392,7 @@ public class DocumentServiceImpl implements DocumentService {
                         "Document has versions 1 to " + document.getVersion()));
     }
 
-    private static UUID clubIdOf(Document document) {
-        return document.getClub() != null ? document.getClub().getId() : null;
-    }
-
-    private static UUID deptIdOf(Document document) {
-        return document.getDepartment() != null ? document.getDepartment().getId() : null;
-    }
-
-    private static ApiException notFound(String code, String message) {
-        return new ApiException(HttpStatus.NOT_FOUND, code, message);
-    }
+    private static UUID clubIdOf(Document document) { return document.getClub() != null ? document.getClub().getId() : null; }
+    private static UUID deptIdOf(Document document) { return document.getDepartment() != null ? document.getDepartment().getId() : null; }
+    private static ApiException notFound(String code, String message) { return new ApiException(HttpStatus.NOT_FOUND, code, message); }
 }

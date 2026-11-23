@@ -1,5 +1,6 @@
 package com.vju.club.service;
 
+import com.vju.club.dto.record.UploadedFile;
 import com.vju.club.dto.request.CreateEventRequest;
 import com.vju.club.dto.request.EventRegistrationRequest;
 import com.vju.club.dto.request.RecordAttendanceRequest;
@@ -16,12 +17,18 @@ import com.vju.club.enums.EventRegistrationStatus;
 import com.vju.club.enums.EventStatus;
 import com.vju.club.security.Actor;
 
+import java.io.InputStream;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
 public interface EventService {
+    record EventSubmissionDownload(String fileName, String contentType, long size, InputStream content) {
+    }
+
     PageResponse<EventResponse> listPublic(int offset, int limit);
+
+    PageResponse<EventResponse> listDiscover(Actor actor, int offset, int limit);
 
     EventResponse create(Actor actor, UUID clubId, CreateEventRequest request);
 
@@ -36,6 +43,10 @@ public interface EventService {
     EventRegistrationResponse cancelRegistration(Actor actor, UUID eventId);
 
     EventRegistrationResponse updateRegistration(Actor actor, UUID eventId, UUID registrationId, UpdateEventRegistrationRequest request);
+
+    EventRegistrationResponse uploadMySubmission(Actor actor, UUID eventId, UploadedFile file);
+
+    EventSubmissionDownload downloadSubmission(Actor actor, UUID eventId, UUID registrationId);
 
     PageResponse<MyEventParticipationResponse> listMyRegistrations(Actor actor, EventRegistrationStatus status,
                                                                    EventParticipantType participantType, int offset, int limit);

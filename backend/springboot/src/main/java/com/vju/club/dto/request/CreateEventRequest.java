@@ -21,6 +21,7 @@ public record CreateEventRequest(
         @NotNull OffsetDateTime endTime,
         @NotNull OffsetDateTime registrationDeadline,
         Boolean allowCtv,
+        Boolean requiresSubmission,
         @Min(1) @Max(100_000) Integer maxParticipants,
         EventStatus status
 ) {

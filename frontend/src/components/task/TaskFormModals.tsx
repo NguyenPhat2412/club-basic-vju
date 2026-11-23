@@ -112,12 +112,16 @@ export function CreateTaskModal({
         </FormField>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Ban chuyên môn" required={!createDeptScopeAll}>
+        <FormField
+          label="Phạm vi / Ban chuyên môn"
+          required={!createDeptScopeAll}
+          hint={!form.departmentId ? "Công việc chung toàn CLB — giao cho mọi thành viên CLB" : undefined}
+        >
           <Select
             value={form.departmentId}
             onChange={(e) => setForm((f) => ({ ...f, departmentId: e.target.value }))}
           >
-            {createDeptScopeAll && <option value="">Toàn câu lạc bộ</option>}
+            {createDeptScopeAll && <option value="">Công việc chung toàn CLB</option>}
             {allowedCreateDepts.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
@@ -218,6 +222,11 @@ export function EditTaskModal({
       <FormField label="Tên công việc" required>
         <Input value={editTitle} maxLength={200} onChange={(e) => setEditTitle(e.target.value)} />
       </FormField>
+      {editingTask && (
+        <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          Phạm vi công việc: <b className="text-foreground">{editingTask.departmentName || "Công việc chung toàn CLB"}</b>
+        </p>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField label="Người nhận việc" required>
           <Select value={editAssigneeId} onChange={(e) => setEditAssigneeId(e.target.value)}>

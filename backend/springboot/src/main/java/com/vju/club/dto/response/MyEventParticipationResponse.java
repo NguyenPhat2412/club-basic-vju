@@ -25,6 +25,9 @@ public record MyEventParticipationResponse(
         String attendanceNote,
         String attendanceEditReason,
         OffsetDateTime checkedAt,
-        boolean countedAsAttended
+        boolean countedAsAttended,
+        boolean requiresSubmission,
+        String submissionFileName,
+        OffsetDateTime submissionUploadedAt
 ) {
 }

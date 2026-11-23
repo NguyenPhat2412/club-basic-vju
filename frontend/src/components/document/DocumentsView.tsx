@@ -1,10 +1,11 @@
 "use client";
 
 import { Suspense, useMemo, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
-import { FileText, Trash2 } from "lucide-react";
+import { BookOpen, FileSpreadsheet, FileText, Trash2 } from "lucide-react";
 import { apiModel, DocumentItem, DocumentVisibility } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
 import {
@@ -18,6 +19,7 @@ import { DocumentFilterBar } from "@/components/document/DocumentFilterBar";
 import { DocumentPreviewModal, PreviewTarget } from "@/components/document/DocumentPreviewModal";
 import { DocumentTable } from "@/components/document/DocumentTable";
 import { DocumentUploadModal } from "@/components/document/DocumentUploadModal";
+import { VjuAdminFormsCard } from "@/components/document/VjuAdminFormsCard";
 import { BreadcrumbToolbar, SegmentedTabs } from "@/components/shared/BreadcrumbToolbar";
 import { ModalShell } from "@/components/shared/Overlays";
 import { Pagination } from "@/components/shared/Pagination";
@@ -101,6 +103,14 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
   const canRestore = isSystemTier ? hasGlobal("document.restore") : session.canInClub("document.restore", activeClubId);
   const canUpdate = isSystemTier ? hasGlobal("document.update") : session.canInClub("document.update", activeClubId);
   const canDelete = isSystemTier ? hasGlobal("document.delete") : session.canInClub("document.delete", activeClubId);
+  const isClubOfficer = hasGlobal("document.view") || canDelete || canRestore;
+  const officerScope = session.clubsWith(["event.create", "event.update", "document.delete", "document.restore", "club.update"]);
+  const manageableClubs = (clubs.data?.items ?? []).filter((c) => officerScope.global || officerScope.ids.has(c.id));
+  const canManageAnyClub = manageableClubs.length > 0;
+  const canOpenForms = Boolean(
+    activeClubId && ["application.manage_form", "application.review", "application.approve"].some((k) => session.canInClub(k, activeClubId))
+  );
+  const formsHref = activeClubId ? `/management?tab=forms&clubId=${encodeURIComponent(activeClubId)}` : "/management?tab=forms";
   const effectiveTrash = trash && canRestore;
 
   const hasClientRefine = scopeFilter === "__CLUB_ONLY__" || Boolean(formatFilter) || sortBy !== "newest";
@@ -252,11 +262,7 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
         <BreadcrumbToolbar
           crumbs={[{ label: "Trang chủ", href: "/clubs" }, { label: "Tài liệu & Quy chế" }, { label: isSystemTier ? "Quy chế & Biểu mẫu Trường" : "Kho tài liệu CLB & Ban" }]}
           titleBadge={<CountBadge>{effectiveTotal}</CountBadge>}
-          search={{
-            value: search,
-            onChange: (v) => { setSearch(v); setOffset(0); },
-            placeholder: "Tìm tên tài liệu…",
-          }}
+          search={{ value: search, onChange: (v) => { setSearch(v); setOffset(0); }, placeholder: "Tìm tên tài liệu…" }}
           extraActions={
             <SegmentedTabs
               value={effectiveTier}
@@ -269,6 +275,33 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
           addLabel="Tải lên"
           onAdd={canUpload && !effectiveTrash ? openUploadModal : undefined}
         />
+      )}
+
+      {isEmbedded && (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 bg-secondary/40 px-4 py-2 sm:px-6">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <FileText size={13} className="shrink-0 text-primary" />
+            Kho tài liệu CLB &amp; Ban
+          </span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Link
+              href="/documents?tier=system"
+              className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-primary"
+            >
+              <BookOpen size={13} className="shrink-0 text-primary" />
+              <span>Quy chế Trường</span>
+            </Link>
+            {canOpenForms && (
+              <Link
+                href={formsHref}
+                className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-primary"
+              >
+                <FileSpreadsheet size={13} className="shrink-0 text-primary" />
+                <span>Biểu mẫu tuyển quân</span>
+              </Link>
+            )}
+          </div>
+        </div>
       )}
 
       <DocumentFilterBar
@@ -286,6 +319,12 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
         onResetFilters={resetFiltersOnly}
       />
 
+      {(isSystemTier || (isEmbedded && canManageAnyClub)) && (
+        <VjuAdminFormsCard
+          clubs={manageableClubs} defaultClubId={activeClubId} canManageAnyClub={canManageAnyClub}
+          requester={session.user ? { fullName: session.user.fullName, studentCode: session.user.studentCode, email: session.user.email } : undefined}
+        />
+      )}
       {notice && <Notice tone="success">{notice}</Notice>}
       {error && <Notice tone="error">{error}</Notice>}
 
@@ -312,7 +351,7 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
       {effectiveTotal > 0 && <Pagination offset={offset} limit={pageLimit} total={effectiveTotal} onOffset={setOffset} onLimit={setPageLimit} />}
 
       <DocumentUploadModal
-        open={uploading} submitting={busy} isSystemTier={isSystemTier} clubCode={club?.code}
+        open={uploading} submitting={busy} isSystemTier={isSystemTier} isClubOfficer={isClubOfficer} clubCode={club?.code}
         canUploadClubWide={canUploadClubWide} uploadableDepts={uploadableDepts} file={file} onFile={setFile}
         uploadDeptId={uploadDeptId} onUploadDeptId={setUploadDeptId} uploadVis={uploadVis} onUploadVis={setUploadVis}
         uploadName={uploadName} onUploadName={setUploadName} appKey={appKey} onAppKey={setAppKey}
@@ -347,5 +386,5 @@ function DocumentsViewInner({ embeddedClubId }: { embeddedClubId?: string }) {
     </>
   );
 
-  return isEmbedded ? <div className="flex flex-col">{body}</div> : <ListPage title="Kho tài liệu tập trung">{body}</ListPage>;
+  return isEmbedded ? <div className="flex flex-1 flex-col">{body}</div> : <ListPage title="Kho tài liệu tập trung">{body}</ListPage>;
 }

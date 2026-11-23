@@ -11,6 +11,10 @@ import java.time.Duration;
 @Setter
 public class RateLimitProperties {
     private boolean enabled = true;
-    private int maxRequests = 60;
+    private int maxRequests = 15;
     private Duration window = Duration.ofMinutes(1);
+    private int writeMaxRequests = 60;
+    private Duration writeWindow = Duration.ofMinutes(1);
+    private int chatUploadMaxRequests = 15;
+    private Duration chatUploadWindow = Duration.ofMinutes(5);
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList, Paperclip, Pencil, Upload, XCircle } from "lucide-react";
+import { CalendarClock, ClipboardList, ExternalLink, MapPin, Paperclip, Pencil, Upload, XCircle } from "lucide-react";
 import { ApplicationFilesList, CustomFieldsInputs } from "@/components/shared/ApplicationFileView";
 import {
   ApplicationDetailInfoList,
@@ -9,7 +9,9 @@ import {
 import { DetailList, EntityDrawer, ModalShell, Section } from "@/components/shared/Overlays";
 import { ErrorState, LoadingRows } from "@/components/shared/States";
 import { describeError } from "@/components/shared/ListPage";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { formatDateTime, safeExternalHref } from "@/lib/utils";
 import {
   Application,
   ApplicationFileItem,
@@ -105,6 +107,51 @@ export function MyApplicationOverlays({
         ) : (
           detailData && (
             <>
+              {detailData.interviewAt &&
+                detailData.status !== "REJECTED" &&
+                detailData.status !== "CANCELLED" && (
+                  <Section title="Lịch phỏng vấn / First Meeting" icon={<CalendarClock />}>
+                    <div className="space-y-1.5 rounded-lg border border-primary/25 bg-primary/[0.04] p-3 text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-bold text-primary">
+                          {formatDateTime(detailData.interviewAt)}
+                        </span>
+                        <Badge tone="primary" dot={false}>
+                          Đã hẹn lịch
+                        </Badge>
+                      </div>
+                      {detailData.interviewLocation && (
+                        <p className="flex items-start gap-1.5 text-foreground">
+                          <MapPin size={13} className="mt-0.5 shrink-0 text-primary" />
+                          {(() => {
+                            const href = safeExternalHref(detailData.interviewLocation);
+                            return href ? (
+                              <a
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 break-all font-medium text-primary underline"
+                              >
+                                {detailData.interviewLocation}
+                                <ExternalLink size={11} className="shrink-0" />
+                              </a>
+                            ) : (
+                              <span className="break-words font-medium">
+                                {detailData.interviewLocation}
+                              </span>
+                            );
+                          })()}
+                        </p>
+                      )}
+                      {detailData.interviewNote && (
+                        <p className="whitespace-pre-line text-muted-foreground">
+                          Ghi chú: {detailData.interviewNote}
+                        </p>
+                      )}
+                    </div>
+                  </Section>
+                )}
+
               <ApplicationDetailInfoList application={detailData} />
 
               {detailData.customAnswers && Object.keys(detailData.customAnswers).length > 0 && (

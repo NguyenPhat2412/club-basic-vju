@@ -39,6 +39,11 @@ public class DepartmentServiceImpl implements DepartmentService {
     private final PermissionAuthorizationService authorizationService;
     private final DepartmentMapper departmentMapper;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.vju.club.service.SystemSettingsService settingsService;
+
+    private static final int DEFAULT_MAX_DEPARTMENTS_PER_CLUB = 20;
+
     @Override
     @Transactional(readOnly = true)
     @RequirePermission(value = DepartmentConstants.PERMISSION_VIEW, clubId = "clubId")
@@ -65,6 +70,11 @@ public class DepartmentServiceImpl implements DepartmentService {
         String name = request.name().trim();
         if (departmentRepository.existsByClub_IdAndNameIgnoreCase(clubId, name)) {
             throw nameTaken();
+        }
+        int maxDepartments = settingsService != null ? settingsService.current().maxDepartmentsPerClub() : DEFAULT_MAX_DEPARTMENTS_PER_CLUB;
+        if (maxDepartments > 0 && departmentRepository.countByClub_Id(clubId) >= maxDepartments) {
+            throw new ApiException(HttpStatus.CONFLICT, "DEPARTMENT_LIMIT_REACHED",
+                    "Mỗi câu lạc bộ chỉ được tạo tối đa " + maxDepartments + " ban chuyên môn.");
         }
         Department department = new Department();
         department.setClub(club);

@@ -552,6 +552,20 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: application.reject | application.review
+- method: PATCH
+  path: /api/v1/clubs/{clubId}/applications/{applicationId}/interview
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.review
+- method: POST
+  path: /api/v1/clubs/{clubId}/applications/{applicationId}/interview/remind
+  module: club-application
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: application.review
 - method: GET
   path: /api/v1/users/me/memberships
   module: membership
@@ -743,6 +757,27 @@ entries:
   permission: event.update
 - method: PATCH
   path: /api/v1/events/{eventId}/registrations/me/cancel
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/events/discover
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: POST
+  path: /api/v1/events/{eventId}/registrations/me/submission
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/events/{eventId}/registrations/{registrationId}/submission
   module: event
   backend: backend/springboot
   status: IMPLEMENTED
@@ -1161,3 +1196,66 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: chat.send
+- method: GET
+  path: /api/v1/clubs/{clubId}/facebook
+  module: club-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: club.view | club.update
+- method: POST
+  path: /api/v1/clubs/{clubId}/facebook/connect-token
+  module: club-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: club.update
+- method: PUT
+  path: /api/v1/clubs/{clubId}/facebook/sync
+  module: club-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: club.update
+- method: DELETE
+  path: /api/v1/clubs/{clubId}/facebook
+  module: club-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: club.update
+- method: GET
+  path: /api/v1/clubs/{clubId}/facebook/oauth/start
+  module: club-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: club.update
+- method: GET
+  path: /api/v1/integrations/facebook/oauth/callback
+  module: club-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: GET
+  path: /api/v1/clubs/{clubId}/facebook/oauth/pages
+  module: club-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: club.update
+- method: POST
+  path: /api/v1/clubs/{clubId}/facebook/oauth/select
+  module: club-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: club.update
+- method: GET
+  path: /api/v1/public/clubs/{clubId}/facebook-posts
+  module: club-management
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null

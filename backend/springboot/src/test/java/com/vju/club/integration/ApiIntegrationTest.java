@@ -71,9 +71,13 @@ abstract class ApiIntegrationTest {
         db.update("UPDATE permissions SET active = true");
         db.update("DELETE FROM roles WHERE NOT system");
         db.update("UPDATE roles SET active = true");
-        db.update("UPDATE system_settings SET max_pending_applications = 3, reapply_cooldown_days = 7, max_active_clubs = 0, attendance_edit_window_hours = 48, "
+        db.update("UPDATE system_settings SET max_pending_applications = 3, reapply_cooldown_days = 7, max_active_clubs = 5, attendance_edit_window_hours = 48, "
                 + "allow_self_registration = TRUE, attendance_opens_before_minutes = 120, event_task_grace_days = 7, "
-                + "chat_summaries_per_hour = 10, chat_max_message_length = 4000, document_max_file_mb = 20, club_image_max_mb = 10, avatar_max_mb = 5, "
+                + "chat_summaries_per_hour = 10, chat_max_message_length = 4000, chat_messages_per_minute = 20, "
+                + "document_max_file_mb = 20, club_image_max_mb = 10, avatar_max_mb = 5, "
+                + "club_storage_quota_mb = 500, document_max_versions = 20, max_channels_per_club = 30, "
+                + "max_departments_per_club = 20, max_active_events_per_club = 50, max_open_tasks_per_club = 200, "
+                + "broadcast_cooldown_minutes = 5, facebook_sync_cooldown_minutes = 2, "
                 + "otp_expiry_minutes = 5, otp_max_send_count = 5, otp_resend_cooldown_seconds = 60, otp_max_verify_attempts = 5, "
                 + "smtp_host = NULL, smtp_port = 587, smtp_username = NULL, smtp_password = NULL, smtp_from_email = NULL, smtp_from_name = 'VJU ClubHub', smtp_start_tls = TRUE");
         admin = user("admin@test.local");

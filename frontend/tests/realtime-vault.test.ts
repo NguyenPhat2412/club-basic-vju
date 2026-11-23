@@ -193,8 +193,8 @@ test("all Realtime Chat & Centralized Vault modules strictly obey the < 400 line
   }
 });
 
-test("Option 1 document module navigation and club management tabs wire dedicated document & permission entries", async () => {
-  const { buildNavigationSections, isNavItemActive } = await import("@/config/navigation");
+test("PB-87 restructured 5-group officer/admin sidebar and preserved student document vault navigation", async () => {
+  const { buildNavigationSections, isNavItemActive, resolveActiveNavMeta } = await import("@/config/navigation");
   const { computeVisibleClubTabs } = await import("@/forms/club/club-form");
   const { CLUB_MANAGEMENT_KEYS, CLUB_WORKSPACE_KEYS } = await import("@/hooks/useSession");
 
@@ -203,7 +203,22 @@ test("Option 1 document module navigation and club management tabs wire dedicate
     assert.ok(CLUB_WORKSPACE_KEYS.includes(key), `Expected ${key} in CLUB_WORKSPACE_KEYS`);
   }
 
-  const officerPerms = new Set(["club.view", "document.view", "document.upload", "permission.view", "permission.assign", "role.view"]);
+  const officerPerms = new Set([
+    "club.view",
+    "club.update",
+    "member.view",
+    "department.view",
+    "application.view",
+    "application.manage_form",
+    "event.view",
+    "task.view",
+    "document.view",
+    "document.upload",
+    "chat.view",
+    "permission.view",
+    "permission.assign",
+    "role.view",
+  ]);
   const officerNav = buildNavigationSections({
     authenticated: true,
     mustChangePassword: false,
@@ -211,21 +226,142 @@ test("Option 1 document module navigation and club management tabs wire dedicate
     hasGlobal: () => false,
   });
   const officerGroups = officerNav.flatMap((s) => s.groups);
-  const docGroup = officerGroups.find((g) => g.id === "grp-documents");
-  assert.ok(docGroup, "Expected dedicated grp-documents sidebar group for Club Officers");
-  assert.deepEqual(docGroup!.items.map((i) => i.href), ["/documents?tier=club", "/documents?tier=system"]);
+  assert.deepEqual(
+    officerGroups.map((g) => g.id),
+    ["grp-personal", "grp-club", "grp-members", "grp-activities"],
+    "Club Officer without global admin perms should see 4 groups and no standalone grp-documents"
+  );
+  assert.equal(officerGroups.some((g) => g.id === "grp-documents"), false, "Officer nav must omit standalone grp-documents");
   assert.equal(officerGroups.some((g) => g.id === "grp-sys"), false, "Club-only role.view should not expose System Admin group");
 
-  const actGroup = officerGroups.find((g) => g.id === "grp-activities");
-  assert.ok(actGroup?.items.some((i) => i.tab === "documents"), "Expected documents tab in grp-activities");
+  const personalGroup = officerGroups.find((g) => g.id === "grp-personal")!;
+  assert.deepEqual(
+    personalGroup.items.map((i) => i.href),
+    ["/profile", "/clubs", "/applications", "/schedule", "/notifications"],
+    "Club Officer Group 1 (Cá nhân) includes /clubs without duplicating inside Câu lạc bộ"
+  );
 
-  assert.equal(isNavItemActive(docGroup!.items[0]!, "/documents", null, "club"), true);
-  assert.equal(isNavItemActive(docGroup!.items[0]!, "/documents", null, "system"), false);
-  assert.equal(isNavItemActive(docGroup!.items[1]!, "/documents", null, "system"), true);
+  const clubGroup = officerGroups.find((g) => g.id === "grp-club")!;
+  assert.deepEqual(
+    clubGroup.items.map((i) => ({ href: i.href, label: i.label })),
+    [
+      { href: "/management?tab=clubs", label: "Danh sách CLB" },
+      { href: "/management?tab=overview", label: "Thống kê CLB" },
+      { href: "/management?tab=settings", label: "Cài đặt CLB" },
+    ]
+  );
+
+  const membersGroup = officerGroups.find((g) => g.id === "grp-members")!;
+  assert.deepEqual(
+    membersGroup.items.map((i) => ({ tab: i.tab, label: i.label })),
+    [
+      { tab: "members", label: "Thành viên" },
+      { tab: "departments", label: "Các ban hoạt động" },
+      { tab: "applications", label: "Đơn ứng tuyển" },
+    ]
+  );
+
+  const actGroup = officerGroups.find((g) => g.id === "grp-activities")!;
+  assert.deepEqual(
+    actGroup.items.map((i) => ({ tab: i.tab, label: i.label })),
+    [
+      { tab: "events", label: "Sự kiện" },
+      { tab: "tasks", label: "Công việc" },
+      { tab: "documents", label: "Tài liệu CLB & Biểu mẫu" },
+      { tab: "chat", label: "Chat & AI" },
+    ]
+  );
+  const docsItem = actGroup.items.find((i) => i.tab === "documents")!;
+  assert.equal(isNavItemActive(docsItem, "/management", "documents"), true);
+  assert.equal(isNavItemActive(docsItem, "/management", "forms"), true);
+  assert.equal(isNavItemActive(docsItem, "/management", "events"), false);
+
+  assert.equal(resolveActiveNavMeta(officerNav, "/management", "departments").pageTitle, "Các ban hoạt động");
+  assert.equal(resolveActiveNavMeta(officerNav, "/management", "documents").pageTitle, "Tài liệu CLB & Biểu mẫu");
+
+  const adminNav = buildNavigationSections({
+    authenticated: true,
+    mustChangePassword: false,
+    can: () => true,
+    hasGlobal: () => true,
+  });
+  const adminGroups = adminNav.flatMap((s) => s.groups);
+  assert.deepEqual(
+    adminGroups.map((g) => g.id),
+    ["grp-personal", "grp-club", "grp-members", "grp-activities", "grp-sys"],
+    "System Admin sidebar must have exactly 5 clean groups"
+  );
+  const adminAllHrefs = adminGroups.flatMap((g) => g.items.map((i) => i.href));
+  assert.equal(
+    adminAllHrefs.includes("/clubs"),
+    false,
+    "System Admin sidebar must omit redundant /clubs since Danh sách CLB already lists all clubs"
+  );
+
+  const studentPerms = new Set(["club.view", "event.view", "document.view"]);
+  const studentNav = buildNavigationSections({
+    authenticated: true,
+    mustChangePassword: false,
+    can: (k) => studentPerms.has(k),
+    hasGlobal: () => false,
+  });
+  const studentGroups = studentNav.flatMap((s) => s.groups);
+  assert.deepEqual(
+    studentGroups.map((g) => g.id),
+    ["grp-student-clubs", "grp-student-activities", "grp-student-personal"],
+    "Student sidebar must be consolidated into 3 clean groups without duplicate document entries"
+  );
+  const studentActGroup = studentGroups.find((g) => g.id === "grp-student-activities")!;
+  const studentDocItem = studentActGroup.items.find((i) => i.href === "/documents");
+  assert.ok(studentDocItem, "Student sidebar must have 1 unified Tài liệu & Quy chế entry");
+  assert.equal(isNavItemActive(studentDocItem!, "/documents", null, "club"), true);
+  assert.equal(isNavItemActive(studentDocItem!, "/documents", null, "system"), true);
+
+  const { STARTER_PRIORITY, resolveTabId } = await import("@/components/layout/WorkspaceTabSpecs");
+  assert.deepEqual(STARTER_PRIORITY, ["route:/dashboard"], "WorkspaceTabBar must only pre-open Tổng quan by default");
+  assert.equal(resolveTabId("/documents", null, "club"), "route:/documents");
+  assert.equal(resolveTabId("/documents", null, "system"), "route:/documents");
 
   const visibleTabs = computeVisibleClubTabs("club-1", (k) => officerPerms.has(k));
   assert.ok(visibleTabs.some((t) => t.value === "documents"), "Expected documents tab in computeVisibleClubTabs");
   assert.ok(visibleTabs.some((t) => t.value === "members"), "Expected members tab when holding permission.assign");
+});
+
+test("PB-87 /home nav anchors match exact 5-section order with zero #tin-tuc and deduplicated /clubs CTAs", () => {
+  const homeDir = path.join(process.cwd(), "src/components/home");
+  const headerSrc = fs.readFileSync(path.join(homeDir, "HomeSiteHeader.tsx"), "utf8");
+  const landingSrc = fs.readFileSync(path.join(homeDir, "HomeLandingView.tsx"), "utf8");
+  const clubsEventsSrc = fs.readFileSync(path.join(homeDir, "HomeClubsEventsSections.tsx"), "utf8");
+  const eventsSrc = fs.readFileSync(path.join(homeDir, "HomeEventsSection.tsx"), "utf8");
+  const workspaceSrc = fs.readFileSync(path.join(homeDir, "HomeWorkspaceShowcase.tsx"), "utf8");
+  const campusSrc = fs.readFileSync(path.join(homeDir, "HomeCampusLifeSection.tsx"), "utf8");
+  const footerSrc = fs.readFileSync(path.join(homeDir, "HomeOnboardingFooter.tsx"), "utf8");
+
+  const expectedAnchors = ["#top", "#cau-lac-bo", "#su-kien-ctv", "#khong-gian-so", "#lich-su-kien"];
+  let prevIdx = -1;
+  for (const anchor of expectedAnchors) {
+    const idx = headerSrc.indexOf(`href="${anchor}"`);
+    assert.ok(idx > prevIdx, `Expected HomeSiteHeader desktop nav to contain ${anchor} in order`);
+    prevIdx = idx;
+  }
+  assert.equal(headerSrc.includes("#tin-tuc"), false, "HomeSiteHeader must not contain broken #tin-tuc anchor");
+  assert.equal(eventsSrc.includes('id="su-kien-ctv"'), true, "HomeEventsSection must expose id=su-kien-ctv");
+  assert.equal(eventsSrc.includes('id="tin-tuc"'), false, "HomeEventsSection must not use legacy id=tin-tuc");
+  assert.equal(landingSrc.includes('id="top"'), true, "HomeLandingView must expose id=top");
+  assert.equal(campusSrc.includes('id="lich-su-kien"'), true, "HomeCampusLifeSection must expose id=lich-su-kien");
+
+  assert.equal(clubsEventsSrc.includes("HomeCampusLifeSection"), false, "HomeCampusLifeSection must not split Clubs and Events");
+  assert.ok(
+    landingSrc.indexOf("<HomeClubsEventsSections") < landingSrc.indexOf("<HomeWorkspaceShowcase") &&
+      landingSrc.indexOf("<HomeWorkspaceShowcase") < landingSrc.indexOf("<HomeCampusLifeSection") &&
+      landingSrc.indexOf("<HomeCampusLifeSection") < landingSrc.indexOf("<HomeOnboardingFooter"),
+    "HomeLandingView must compose sections in exact 5-tab sequence"
+  );
+
+  assert.equal(workspaceSrc.includes("viewDirectoryCta"), false, "Workspace showcase must omit duplicate /clubs CTA");
+  assert.equal(campusSrc.includes("exploreClubsCta"), false, "Campus life section must omit duplicate /clubs CTA");
+  assert.equal(footerSrc.includes("galleryCta"), false, "Gallery header must omit duplicate /clubs CTA");
+  assert.equal(footerSrc.includes("clubsCta"), false, "Closing CTA banner must omit duplicate /clubs CTA");
 });
 
 test("document-filter-meta classifies file formats, maps VJU category labels, filters Club-only vs Dept, and sorts", async () => {

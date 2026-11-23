@@ -91,6 +91,18 @@ public class ClubApplication extends TimestampedEntity {
     @Column(name = "cancelled_at")
     private OffsetDateTime cancelledAt;
 
+    @Column(name = "interview_at")
+    private OffsetDateTime interviewAt;
+
+    @Column(name = "interview_location", length = 500)
+    private String interviewLocation;
+
+    @Column(name = "interview_note", length = 1000)
+    private String interviewNote;
+
+    @Column(name = "interview_reminder_sent_at")
+    private OffsetDateTime interviewReminderSentAt;
+
     @Version
     @Column(nullable = false)
     private long version;

@@ -1,4 +1,4 @@
-import { api, cleanParams } from '@/lib/api/client';
+import { api, apiBlob, apiForm, cleanParams } from '@/lib/api/client';
 import { API_ROUTES } from '@/lib/api/routes';
 import type { Page } from '@/types/common.types';
 import type {
@@ -16,6 +16,8 @@ import type {
 export const eventsApi = {
   publicEvents: (offset = 0, limit = 10) =>
     api<Page<PublicEvent>>(`/public/events?${new URLSearchParams({ offset: String(offset), limit: String(limit) })}`),
+  discoverEvents: (offset = 0, limit = 50) =>
+    api<Page<PublicEvent>>(`${API_ROUTES.events.discover}?${cleanParams({ offset, limit })}`),
   clubEvents: (clubId: string, q: { status?: string; departmentId?: string; offset?: number; limit?: number } = {}) =>
     api<Page<ClubEvent>>(
       `${API_ROUTES.clubs.events(clubId)}?${cleanParams({
@@ -40,6 +42,13 @@ export const eventsApi = {
     }),
   cancelEventRegistration: (eventId: string) =>
     api<EventRegistration>(`/events/${eventId}/registrations/me/cancel`, { method: 'PATCH' }),
+  uploadEventSubmission: (eventId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return apiForm<EventRegistration>(API_ROUTES.events.mySubmission(eventId), form);
+  },
+  downloadEventSubmission: (eventId: string, registrationId: string) =>
+    apiBlob(API_ROUTES.events.submissionDownload(eventId, registrationId)),
   updateEventRegistration: (
     eventId: string,
     registrationId: string,

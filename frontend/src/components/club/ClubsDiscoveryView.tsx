@@ -274,9 +274,6 @@ function ClubsDiscoveryContent() {
         }}
       />
       <div className="mx-auto w-full max-w-7xl flex-1 space-y-5 px-4 py-5 sm:px-6">
-        <p className="text-sm text-slate-600">
-          Khám phá hình ảnh hoạt động thực tế của các câu lạc bộ tại Trường Đại học Việt Nhật và nộp đơn ứng tuyển trực tuyến.
-        </p>
 
         {notice && <div role="status" className="rounded-lg border border-primary/20 bg-primary/8 px-4 py-3 text-xs font-medium text-primary">{notice}</div>}
 

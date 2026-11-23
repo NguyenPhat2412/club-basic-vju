@@ -9,6 +9,7 @@ import { FormField, Textarea } from "@/components/ui/input";
 import { formatDateTime } from "@/lib/utils";
 import { EVENT_TYPE_LABELS } from "@/forms/event/event-form";
 import { MyEventParticipation, PublicEvent } from "@/types";
+import { EventSubmissionBlock } from "./EventSubmissionBlock";
 
 interface EventParticipationDrawersProps {
   isLoggedIn: boolean;
@@ -28,6 +29,9 @@ interface EventParticipationDrawersProps {
   onRegister: (ev: PublicEvent) => void;
   cancelPending: boolean;
   onCancel: (eventId: string) => void;
+  onRefresh: () => void;
+  onNotice: (msg: string) => void;
+  onError: (msg: string) => void;
 }
 
 export function EventParticipationDrawers({
@@ -48,7 +52,11 @@ export function EventParticipationDrawers({
   onRegister,
   cancelPending,
   onCancel,
+  onRefresh,
+  onNotice,
+  onError,
 }: EventParticipationDrawersProps) {
+  const selectedDiscoverReg = selectedDiscover ? activeRegByEvent.get(selectedDiscover.id) : undefined;
   return (
     <>
       <ModalShell
@@ -101,7 +109,8 @@ export function EventParticipationDrawers({
                 ["Câu lạc bộ", selectedDiscover.clubName],
                 ["Trạng thái", <StatusBadge key="s" status={selectedDiscover.status} />],
                 ["Loại hoạt động", EVENT_TYPE_LABELS[selectedDiscover.eventType] ?? selectedDiscover.eventType],
-                ["Đối tượng", selectedDiscover.allowCtv ? "Thành viên CLB & Cộng tác viên (CTV)" : "Thành viên CLB"],
+                ["Đối tượng", selectedDiscover.allowCtv ? "Công khai toàn trường (SV & CTV)" : "Nội bộ thành viên CLB"],
+                ["Hồ sơ xét tuyển", selectedDiscover.requiresSubmission ? "Yêu cầu nộp tệp hồ sơ (tự khoá khi hết hạn)" : "Không yêu cầu"],
                 ["Địa điểm", selectedDiscover.location || "—"],
                 ["Bắt đầu", formatDateTime(selectedDiscover.startTime)],
                 ["Kết thúc", formatDateTime(selectedDiscover.endTime)],
@@ -152,6 +161,20 @@ export function EventParticipationDrawers({
                 </p>
               )}
             </Section>
+            {isLoggedIn && selectedDiscoverReg && (
+              <EventSubmissionBlock
+                eventId={selectedDiscover.id}
+                registrationId={selectedDiscoverReg.registrationId}
+                eventStatus={selectedDiscover.status}
+                registrationDeadline={selectedDiscover.registrationDeadline}
+                requiresSubmission={selectedDiscover.requiresSubmission}
+                submissionFileName={selectedDiscoverReg.submissionFileName}
+                submissionUploadedAt={selectedDiscoverReg.submissionUploadedAt}
+                onUploaded={onRefresh}
+                onNotice={onNotice}
+                onError={onError}
+              />
+            )}
           </>
         )}
       </EntityDrawer>
@@ -181,43 +204,59 @@ export function EventParticipationDrawers({
         }
       >
         {selectedParticipation && (
-          <DetailList
-            rows={[
-              ["Trạng thái sự kiện", <StatusBadge key="es" status={selectedParticipation.eventStatus} />],
-              ["Tư cách tham gia", <StatusBadge key="pt" status={selectedParticipation.participantType} />],
-              ["Vai trò phân công", selectedParticipation.eventRole || "Tham gia chung"],
-              ["Trạng thái đăng ký", <StatusBadge key="rs" status={selectedParticipation.registrationStatus} />],
-              ["Thời gian diễn ra", `${formatDateTime(selectedParticipation.startTime)} → ${formatDateTime(selectedParticipation.endTime)}`],
-              ["Địa điểm", selectedParticipation.location || "—"],
-              ["Đăng ký lúc", formatDateTime(selectedParticipation.registeredAt)],
-              ...(selectedParticipation.cancelledAt
-                ? ([["Huỷ đăng ký lúc", formatDateTime(selectedParticipation.cancelledAt)]] as [string, React.ReactNode][])
-                : []),
-              [
-                "Kết quả điểm danh",
-                selectedParticipation.attendanceStatus ? (
-                  <StatusBadge key="as" status={selectedParticipation.attendanceStatus} />
-                ) : (
-                  "Chưa ghi nhận điểm danh"
-                ),
-              ],
-              [
-                "Ghi nhận tham gia thực tế",
-                selectedParticipation.countedAsAttended
-                  ? "Được tính tham gia (Sự kiện hợp lệ & Có mặt / Đi muộn)"
-                  : "Chưa tính tham gia",
-              ],
-              ...(selectedParticipation.checkedAt
-                ? ([["Thời điểm điểm danh", formatDateTime(selectedParticipation.checkedAt)]] as [string, React.ReactNode][])
-                : []),
-              ...(selectedParticipation.attendanceNote
-                ? ([["Ghi chú điểm danh", selectedParticipation.attendanceNote]] as [string, React.ReactNode][])
-                : []),
-              ...(selectedParticipation.attendanceEditReason
-                ? ([["Lý do điều chỉnh hậu kiểm", selectedParticipation.attendanceEditReason]] as [string, React.ReactNode][])
-                : []),
-            ]}
-          />
+          <>
+            <DetailList
+              rows={[
+                ["Trạng thái sự kiện", <StatusBadge key="es" status={selectedParticipation.eventStatus} />],
+                ["Tư cách tham gia", <StatusBadge key="pt" status={selectedParticipation.participantType} />],
+                ["Vai trò phân công", selectedParticipation.eventRole || "Tham gia chung"],
+                ["Trạng thái đăng ký", <StatusBadge key="rs" status={selectedParticipation.registrationStatus} />],
+                ["Thời gian diễn ra", `${formatDateTime(selectedParticipation.startTime)} → ${formatDateTime(selectedParticipation.endTime)}`],
+                ["Địa điểm", selectedParticipation.location || "—"],
+                ["Đăng ký lúc", formatDateTime(selectedParticipation.registeredAt)],
+                ...(selectedParticipation.cancelledAt
+                  ? ([["Huỷ đăng ký lúc", formatDateTime(selectedParticipation.cancelledAt)]] as [string, React.ReactNode][])
+                  : []),
+                [
+                  "Kết quả điểm danh",
+                  selectedParticipation.attendanceStatus ? (
+                    <StatusBadge key="as" status={selectedParticipation.attendanceStatus} />
+                  ) : (
+                    "Chưa ghi nhận điểm danh"
+                  ),
+                ],
+                [
+                  "Ghi nhận tham gia thực tế",
+                  selectedParticipation.countedAsAttended
+                    ? "Được tính tham gia (Sự kiện hợp lệ & Có mặt / Đi muộn)"
+                    : "Chưa tính tham gia",
+                ],
+                ...(selectedParticipation.checkedAt
+                  ? ([["Thời điểm điểm danh", formatDateTime(selectedParticipation.checkedAt)]] as [string, React.ReactNode][])
+                  : []),
+                ...(selectedParticipation.attendanceNote
+                  ? ([["Ghi chú điểm danh", selectedParticipation.attendanceNote]] as [string, React.ReactNode][])
+                  : []),
+                ...(selectedParticipation.attendanceEditReason
+                  ? ([["Lý do điều chỉnh hậu kiểm", selectedParticipation.attendanceEditReason]] as [string, React.ReactNode][])
+                  : []),
+              ]}
+            />
+            {selectedParticipation.registrationStatus === "REGISTERED" && (
+              <EventSubmissionBlock
+                eventId={selectedParticipation.eventId}
+                registrationId={selectedParticipation.registrationId}
+                eventStatus={selectedParticipation.eventStatus}
+                registrationDeadline={selectedParticipation.registrationDeadline}
+                requiresSubmission={selectedParticipation.requiresSubmission}
+                submissionFileName={selectedParticipation.submissionFileName}
+                submissionUploadedAt={selectedParticipation.submissionUploadedAt}
+                onUploaded={onRefresh}
+                onNotice={onNotice}
+                onError={onError}
+              />
+            )}
+          </>
         )}
       </EntityDrawer>
     </>

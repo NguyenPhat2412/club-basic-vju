@@ -15,6 +15,7 @@ export const DOCUMENT_FORMAT_OPTIONS: Array<{ value: DocumentFormatFilter; label
 ];
 
 export const DOCUMENT_CATEGORY_LABELS: Record<string, string> = {
+  "finance.fund": "Sổ quỹ & Kinh phí (BCN)",
   semester_plan: "Kế hoạch học kỳ",
   "club.plan": "Kế hoạch CLB",
   club_charter: "Quy chế hoạt động",
@@ -29,6 +30,20 @@ export const DOCUMENT_CATEGORY_LABELS: Record<string, string> = {
   "member.list": "Danh sách thành viên",
   "meeting.minutes": "Biên bản họp",
 };
+
+export const CLUB_CATEGORY_PRESETS: Array<{ value: string; label: string; bcnRecommended?: boolean }> = [
+  { value: "finance.fund", label: "Sổ quỹ & Kinh phí (BCN)", bcnRecommended: true },
+  { value: "club.rules", label: "Nội quy CLB" },
+  { value: "semester_plan", label: "Kế hoạch học kỳ" },
+  { value: "event.plan", label: "Kế hoạch sự kiện" },
+  { value: "meeting.minutes", label: "Biên bản họp" },
+  { value: "dept.plan", label: "Kế hoạch Ban" },
+];
+
+export const SYSTEM_CATEGORY_PRESETS: Array<{ value: string; label: string }> = [
+  { value: "system.template", label: "Biểu mẫu trường" },
+  { value: "system.charter", label: "Quy chế trường" },
+];
 
 const WORD_EXTS = new Set(["doc", "docx", "odt", "rtf"]);
 const SHEET_EXTS = new Set(["xls", "xlsx", "csv", "ods"]);
@@ -82,6 +97,7 @@ export function collectDocumentCategoryOptions(
     keys.add("system.template");
     keys.add("system.charter");
   } else {
+    keys.add("finance.fund");
     keys.add("semester_plan");
     keys.add("club_charter");
     keys.add("club.rules");

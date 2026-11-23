@@ -10,9 +10,11 @@ import com.vju.club.entity.Club;
 import com.vju.club.enums.ClubStatus;
 import com.vju.club.repository.ClubRepository;
 import com.vju.club.entity.Department;
+import com.vju.club.entity.DepartmentMember;
 import com.vju.club.enums.DepartmentStatus;
 import com.vju.club.repository.DepartmentRepository;
 import com.vju.club.repository.DepartmentMemberRepository;
+import com.vju.club.entity.Membership;
 import com.vju.club.enums.MembershipStatus;
 import com.vju.club.repository.MembershipRepository;
 import com.vju.club.annotation.RequirePermission;
@@ -202,7 +204,8 @@ public class RoleServiceImpl implements RoleService {
                 .orElseThrow(() -> notFound("CLUB_NOT_FOUND", "Club not found"));
         Department department = request.departmentId() == null ? null : departmentRepository.findById(request.departmentId())
                 .orElseThrow(() -> notFound("DEPARTMENT_NOT_FOUND", "Department not found"));
-        UUID targetClubId = club != null ? club.getId() : (department != null ? department.getClub().getId() : null);
+        Club targetClub = club != null ? club : (department != null ? department.getClub() : null);
+        UUID targetClubId = targetClub == null ? null : targetClub.getId();
         UUID targetDeptId = department == null ? null : department.getId();
         boolean scopedOnly = requireScopedOrGlobal(actor, PermissionConstants.PERMISSION_ASSIGN, targetClubId, targetDeptId);
         if (scopedOnly && targetClubId != null && membershipRepository != null
@@ -229,10 +232,41 @@ public class RoleServiceImpl implements RoleService {
         assignment.setGrantedBy(actorUser);
         assignment.setGrantedAt(OffsetDateTime.now(clock));
         UserRole saved = userRoleRepository.saveAndFlush(assignment);
+        ensureActiveClubMembership(target, targetClub, department);
         audit(actorUser, saved, PermissionAuditAction.GRANT, request.reason());
         auditService.record(actorUser.getId(), AuditAction.ROLE_ASSIGNED, saved.getId(), clubOf(saved), null,
                 assignmentValues(saved, request.reason()));
         return roleMapper.toUserRoleResponse(saved);
+    }
+
+    private void ensureActiveClubMembership(User target, Club targetClub, Department department) {
+        if (targetClub == null || membershipRepository == null) {
+            return;
+        }
+        UUID userId = target.getId();
+        UUID clubId = targetClub.getId();
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        Membership membership = membershipRepository
+                .findFirstByUser_IdAndClub_IdAndStatusNot(userId, clubId, MembershipStatus.LEFT)
+                .orElseGet(() -> {
+                    Membership created = new Membership();
+                    created.setUser(target);
+                    created.setClub(targetClub);
+                    created.setStatus(MembershipStatus.ACTIVE);
+                    created.setJoinedAt(now);
+                    return membershipRepository.saveAndFlush(created);
+                });
+        if (department != null
+                && departmentMemberRepository != null
+                && membership.getStatus() == MembershipStatus.ACTIVE
+                && departmentMemberRepository.findByDepartment_IdAndMembership_Id(department.getId(), membership.getId()).isEmpty()) {
+            DepartmentMember departmentMember = new DepartmentMember();
+            departmentMember.setDepartment(department);
+            departmentMember.setMembership(membership);
+            departmentMember.setClubId(clubId);
+            departmentMember.setJoinedAt(now);
+            departmentMemberRepository.saveAndFlush(departmentMember);
+        }
     }
 
     @Override

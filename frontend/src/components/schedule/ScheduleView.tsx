@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
-import { AlertTriangle, Calendar, ClipboardCheck, Eye, FilterX, MapPin, Send } from "lucide-react";
+import { AlertTriangle, Calendar, ClipboardCheck, Eye, FilterX, MapPin, Search, Send, X } from "lucide-react";
 import { apiModel, TaskItem } from "@/lib/api";
 import { BreadcrumbToolbar, SegmentedTabs } from "@/components/shared/BreadcrumbToolbar";
 import { DataTable } from "@/components/shared/DataTable";
@@ -118,60 +118,70 @@ export function ScheduleView() {
             {tab === "tasks" ? `${myTasks.data?.total ?? 0} việc` : `${filteredCalendar.length} mục lịch`}
           </CountBadge>
         }
-        search={{
-          value: search,
-          onChange: (v) => { setSearch(v); setOffset(0); },
-          placeholder: tab === "tasks" ? "Tìm tên việc, CLB, sự kiện…" : "Tìm nội dung lịch, CLB, địa điểm…",
-        }}
         extraActions={
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-            <SegmentedTabs
-              value={tab}
-              onChange={(v) => { setTab(v); setOffset(0); }}
-              options={[
-                { value: "tasks", label: "Việc được giao" },
-                { value: "calendar", label: "Lịch tổng hợp" },
-              ]}
-            />
-            {tab === "tasks" ? (
-              <>
-                <Select aria-label="Lọc trạng thái công việc" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setOffset(0); }} className="h-9 w-full text-xs sm:w-40">
-                  <option value="">Tất cả trạng thái</option>
-                  <option value="TODO">Chưa bắt đầu</option>
-                  <option value="IN_PROGRESS">Đang thực hiện</option>
-                  <option value="DONE">Chờ nghiệm thu</option>
-                  <option value="COMPLETED">Đã nghiệm thu</option>
-                  <option value="CANCELLED">Đã huỷ</option>
-                </Select>
-                <Select aria-label="Lọc độ ưu tiên" value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className="h-9 w-full text-xs sm:w-36">
-                  <option value="">Mọi ưu tiên</option>
-                  <option value="HIGH">Cao (HIGH)</option>
-                  <option value="MEDIUM">Trung bình</option>
-                  <option value="LOW">Thấp (LOW)</option>
-                </Select>
-                <Button size="sm" variant={overdueOnly ? "destructive" : "outline"} onClick={() => { setOverdueOnly((v) => !v); setOffset(0); }}>
-                  <AlertTriangle size={13} /> {overdueOnly ? "Đang lọc: Quá hạn" : "Quá hạn"}
-                </Button>
-              </>
-            ) : (
-              <Select aria-label="Lọc loại mục lịch" value={calTypeFilter} onChange={(e) => setCalTypeFilter(e.target.value as "" | "EVENT" | "TASK")} className="h-9 w-full text-xs sm:w-44">
-                <option value="">Tất cả mục lịch</option>
-                <option value="EVENT">Sự kiện CLB</option>
-                <option value="TASK">Hạn công việc</option>
-              </Select>
-            )}
-            {hasFilters && (
-              <Button size="sm" variant="outline" onClick={clearFilters}>
-                <FilterX size={13} /> Xoá lọc
-              </Button>
-            )}
-          </div>
+          <SegmentedTabs
+            value={tab}
+            onChange={(v) => { setTab(v); setOffset(0); }}
+            options={[
+              { value: "tasks", label: "Việc được giao" },
+              { value: "calendar", label: "Lịch tổng hợp" },
+            ]}
+          />
         }
         onRefresh={() => {
           myTasks.refetch();
           if (tab === "calendar") myCalendar.refetch();
         }}
       />
+      <div className="flex flex-wrap items-center gap-2 border-b border-border/60 bg-card px-4 py-2.5 sm:px-6">
+        <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
+          <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setOffset(0); }}
+            placeholder={tab === "tasks" ? "Tìm tên việc, CLB, sự kiện…" : "Tìm nội dung lịch, CLB, địa điểm…"}
+            aria-label={tab === "tasks" ? "Tìm tên việc, CLB, sự kiện" : "Tìm nội dung lịch, CLB, địa điểm"}
+            className="h-8 pl-8 pr-7 text-xs"
+          />
+          {search && (
+            <button type="button" aria-label="Xoá tìm kiếm" onClick={() => { setSearch(""); setOffset(0); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X size={13} />
+            </button>
+          )}
+        </div>
+        {tab === "tasks" ? (
+          <>
+            <Select aria-label="Lọc trạng thái công việc" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setOffset(0); }} className="h-8 w-full text-xs sm:w-40">
+              <option value="">Tất cả trạng thái</option>
+              <option value="TODO">Chưa bắt đầu</option>
+              <option value="IN_PROGRESS">Đang thực hiện</option>
+              <option value="DONE">Chờ nghiệm thu</option>
+              <option value="COMPLETED">Đã nghiệm thu</option>
+              <option value="CANCELLED">Đã huỷ</option>
+            </Select>
+            <Select aria-label="Lọc độ ưu tiên" value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className="h-8 w-full text-xs sm:w-36">
+              <option value="">Mọi ưu tiên</option>
+              <option value="HIGH">Cao (HIGH)</option>
+              <option value="MEDIUM">Trung bình</option>
+              <option value="LOW">Thấp (LOW)</option>
+            </Select>
+            <Button size="sm" variant={overdueOnly ? "destructive" : "outline"} className="h-8" onClick={() => { setOverdueOnly((v) => !v); setOffset(0); }}>
+              <AlertTriangle size={13} /> {overdueOnly ? "Đang lọc: Quá hạn" : "Quá hạn"}
+            </Button>
+          </>
+        ) : (
+          <Select aria-label="Lọc loại mục lịch" value={calTypeFilter} onChange={(e) => setCalTypeFilter(e.target.value as "" | "EVENT" | "TASK")} className="h-8 w-full text-xs sm:w-44">
+            <option value="">Tất cả mục lịch</option>
+            <option value="EVENT">Sự kiện CLB</option>
+            <option value="TASK">Hạn công việc</option>
+          </Select>
+        )}
+        {hasFilters && (
+          <Button size="sm" variant="outline" className="h-8" onClick={clearFilters}>
+            <FilterX size={13} /> Xoá lọc
+          </Button>
+        )}
+      </div>
       {notice && <Notice tone="success">{notice}</Notice>}
       {updateProgress.error && <Notice tone="error">{describeError(updateProgress.error)}</Notice>}
 

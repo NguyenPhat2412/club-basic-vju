@@ -48,9 +48,6 @@ export function SystemSettingsView() {
       />
       {notice && <Notice key={notice.seq} tone="success">{notice.text}</Notice>}
       <div className="w-full space-y-4 px-4 py-5 sm:px-6 lg:px-8">
-        <p className="text-sm text-slate-600">
-          Các thay đổi giới hạn nghiệp vụ, chính sách mã OTP và máy chủ gửi email có hiệu lực ngay sau khi lưu.
-        </p>
         {settings.isPending ? (
           <LoadingRows rows={3} />
         ) : settings.isError ? (

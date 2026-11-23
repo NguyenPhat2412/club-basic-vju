@@ -6,11 +6,20 @@ import type { CreateTaskInput, TaskItem, TaskSummary, UpdateTaskInput } from '@/
 export const tasksApi = {
   clubTasks: (
     clubId: string,
-    q: { departmentId?: string; status?: string; assigneeId?: string; overdue?: boolean; offset?: number; limit?: number } = {}
+    q: {
+      departmentId?: string;
+      clubWideOnly?: boolean;
+      status?: string;
+      assigneeId?: string;
+      overdue?: boolean;
+      offset?: number;
+      limit?: number;
+    } = {}
   ) =>
     api<Page<TaskItem>>(
       `${API_ROUTES.clubs.tasks(clubId)}?${cleanParams({
-        departmentId: q.departmentId,
+        departmentId: q.clubWideOnly ? undefined : q.departmentId,
+        clubWideOnly: q.clubWideOnly ? true : undefined,
         status: q.status,
         assigneeId: q.assigneeId,
         overdue: q.overdue,
@@ -20,10 +29,11 @@ export const tasksApi = {
     ),
   clubTaskSummary: (
     clubId: string,
-    q: { departmentId?: string; status?: string; assigneeId?: string; overdue?: boolean } = {}
+    q: { departmentId?: string; clubWideOnly?: boolean; status?: string; assigneeId?: string; overdue?: boolean } = {}
   ) => {
     const qs = cleanParams({
-      departmentId: q.departmentId,
+      departmentId: q.clubWideOnly ? undefined : q.departmentId,
+      clubWideOnly: q.clubWideOnly ? true : undefined,
       status: q.status,
       assigneeId: q.assigneeId,
       overdue: q.overdue,

@@ -9,6 +9,7 @@ import type {
   ApplicationSummary,
   CreateApplicationInput,
   ReviewApplicationInput,
+  ScheduleInterviewInput,
   UpdateApplicationInput,
   UpsertApplicationFormInput,
 } from '@/types/application/application.types';
@@ -116,5 +117,22 @@ export const applicationsApi = {
               internalNote: body.internalNote || undefined,
             }
       ),
+    }),
+  scheduleApplicationInterview: (
+    clubId: string,
+    applicationId: string,
+    payload: ScheduleInterviewInput
+  ) =>
+    api<Application>(API_ROUTES.clubs.applicationInterview(clubId, applicationId), {
+      method: 'PATCH',
+      body: JSON.stringify({
+        interviewAt: payload.interviewAt,
+        interviewLocation: payload.interviewLocation,
+        interviewNote: payload.interviewNote?.trim() || undefined,
+      }),
+    }),
+  remindApplicationInterview: (clubId: string, applicationId: string) =>
+    api<Application>(API_ROUTES.clubs.applicationInterviewRemind(clubId, applicationId), {
+      method: 'POST',
     }),
 };

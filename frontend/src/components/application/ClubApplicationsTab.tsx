@@ -79,12 +79,13 @@ export function ApplicationsTab({
     session.canInClub("application.view_detail", clubId) ||
     session.canInClub("application.review", clubId);
   const canCreateForClub = session.canInClub("application.create", clubId);
+  const canReview = session.canInClub("application.review", clubId);
   const canApprove =
-    session.canInClub("application.approve", clubId) || session.canInClub("application.review", clubId);
+    session.canInClub("application.approve", clubId) || canReview;
   const canReject =
-    session.canInClub("application.reject", clubId) || session.canInClub("application.review", clubId);
+    session.canInClub("application.reject", clubId) || canReview;
   const canUpdate =
-    session.canInClub("application.update", clubId) || session.canInClub("application.review", clubId);
+    session.canInClub("application.update", clubId) || canReview;
 
   const apps = useQuery({
     queryKey: qk.clubApplications(clubId, statusFilter, search, createdFrom, createdTo, offset, limit),
@@ -363,6 +364,7 @@ export function ApplicationsTab({
         onClose={() => setSelectedAppId(null)}
         canViewDetail={canViewDetail}
         canUpdate={canUpdate}
+        canReview={canReview}
         canApprove={canApprove}
         canReject={canReject}
         activeForm={activeFormQuery.data}

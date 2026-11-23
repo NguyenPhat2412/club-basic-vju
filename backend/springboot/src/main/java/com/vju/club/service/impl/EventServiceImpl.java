@@ -4,6 +4,7 @@ import com.vju.club.annotation.RequirePermission;
 import com.vju.club.common.EventConstants;
 import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.config.CacheConfig;
+import com.vju.club.dto.record.UploadedFile;
 import com.vju.club.dto.request.AttendanceItemRequest;
 import com.vju.club.dto.request.CreateEventRequest;
 import com.vju.club.dto.request.EventRegistrationRequest;
@@ -50,6 +51,7 @@ import com.vju.club.service.AuditService;
 import com.vju.club.service.EventService;
 import com.vju.club.service.NotificationService;
 import com.vju.club.service.SystemSettingsService;
+import com.vju.club.storage.DocumentStorage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -59,6 +61,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -67,6 +73,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -92,6 +99,16 @@ public class EventServiceImpl implements EventService {
             EventStatus.CLOSED_REGISTRATION, Set.of(EventStatus.OPEN_REGISTRATION, EventStatus.COMPLETED, EventStatus.CANCELLED));
     private static final Set<TaskStatus> OPEN_TASK_STATUSES = Set.of(TaskStatus.TODO, TaskStatus.IN_PROGRESS);
     private static final Duration MAX_CALENDAR_RANGE = Duration.ofDays(366);
+    private static final long MAX_SUBMISSION_BYTES = 10L * 1024L * 1024L;
+    private static final Map<String, String> ALLOWED_SUBMISSION_TYPES = Map.of(
+            "pdf", "application/pdf",
+            "doc", "application/msword",
+            "docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "png", "image/png",
+            "jpg", "image/jpeg",
+            "jpeg", "image/jpeg",
+            "zip", "application/zip"
+    );
 
     private final EventRepository eventRepository;
     private final EventRegistrationRepository registrationRepository;
@@ -106,6 +123,7 @@ public class EventServiceImpl implements EventService {
     private final NotificationService notificationService;
     private final SystemSettingsService systemSettingsService;
     private final AuditService auditService;
+    private final DocumentStorage documentStorage;
     private final Clock clock;
     private final EventMapper eventMapper;
 
@@ -121,6 +139,27 @@ public class EventServiceImpl implements EventService {
                 .map(eventMapper::toResponse)
                 .toList();
         return new PageResponse<>(items, page.getTotalElements(), offset, limit);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<EventResponse> listDiscover(Actor actor, int offset, int limit) {
+        OffsetLimitRequest pageable = new OffsetLimitRequest(offset, limit, EVENT_SORT);
+        boolean hasGlobalAccess = authorizationService.hasGlobalPermission(actor, EventConstants.PERMISSION_VIEW)
+                || authorizationService.hasGlobalPermission(actor, EventConstants.PERMISSION_UPDATE);
+        if (hasGlobalAccess) {
+            var page = eventRepository.findAllDiscoverableEvents(pageable);
+            return new PageResponse<>(page.getContent().stream().map(eventMapper::toResponse).toList(),
+                    page.getTotalElements(), offset, limit);
+        }
+        Set<UUID> visibleClubIds = new LinkedHashSet<>(membershipRepository.findActiveClubIdsByUserId(actor.id()));
+        visibleClubIds.addAll(authorizationService.getPermittedClubIds(actor, EventConstants.PERMISSION_VIEW));
+        visibleClubIds.addAll(authorizationService.getPermittedClubIds(actor, EventConstants.PERMISSION_UPDATE));
+        var page = visibleClubIds.isEmpty()
+                ? eventRepository.findPublicEvents(pageable)
+                : eventRepository.findDiscoverableEvents(visibleClubIds, pageable);
+        return new PageResponse<>(page.getContent().stream().map(eventMapper::toResponse).toList(),
+                page.getTotalElements(), offset, limit);
     }
 
     @Override
@@ -145,6 +184,14 @@ public class EventServiceImpl implements EventService {
         authorizationService.require(actor, EventConstants.PERMISSION_CREATE, clubId,
                 department == null ? null : department.getId());
 
+        int maxActiveEvents = (systemSettingsService != null && systemSettingsService.current() != null)
+                ? systemSettingsService.current().maxActiveEventsPerClub() : 50;
+        if (maxActiveEvents > 0 && eventRepository.countByClub_IdAndStatusNotIn(
+                clubId, List.of(EventStatus.COMPLETED, EventStatus.CANCELLED)) >= maxActiveEvents) {
+            throw new ApiException(HttpStatus.CONFLICT, "EVENT_LIMIT_REACHED",
+                    "Mỗi câu lạc bộ chỉ được mở tối đa " + maxActiveEvents + " sự kiện đang hoạt động cùng lúc.");
+        }
+
         validateTimes(request.startTime(), request.endTime(), request.registrationDeadline());
         OffsetDateTime createdAt = OffsetDateTime.now(clock);
         if (!request.startTime().isAfter(createdAt) || !request.registrationDeadline().isAfter(createdAt)) {
@@ -163,6 +210,7 @@ public class EventServiceImpl implements EventService {
         event.setEndTime(request.endTime());
         event.setRegistrationDeadline(request.registrationDeadline());
         event.setAllowCtv(Boolean.TRUE.equals(request.allowCtv()));
+        event.setRequiresSubmission(Boolean.TRUE.equals(request.requiresSubmission()));
         event.setMaxParticipants(request.maxParticipants());
         EventStatus initialStatus = request.status() == null ? EventStatus.OPEN_REGISTRATION : request.status();
         if (initialStatus != EventStatus.DRAFT && initialStatus != EventStatus.OPEN_REGISTRATION) {
@@ -232,6 +280,9 @@ public class EventServiceImpl implements EventService {
         if (request.allowCtv() != null) {
             event.setAllowCtv(request.allowCtv());
         }
+        if (request.requiresSubmission() != null) {
+            event.setRequiresSubmission(request.requiresSubmission());
+        }
         if (request.maxParticipants() != null) {
             long registered = registrationRepository.countByEvent_IdAndStatus(eventId, EventRegistrationStatus.REGISTERED);
             if (request.maxParticipants() < registered) {
@@ -287,10 +338,11 @@ public class EventServiceImpl implements EventService {
         Club club = clubRepository.findById(clubId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLUB_NOT_FOUND", "Club not found"));
         boolean canViewAll = authorizationService.hasPermission(actor, EventConstants.PERMISSION_VIEW, club.getId(), departmentId)
+                || authorizationService.hasPermission(actor, EventConstants.PERMISSION_UPDATE, club.getId(), departmentId)
                 || authorizationService.hasPermission(actor, "club.view", club.getId(), null)
                 || membershipRepository.existsByUser_IdAndClub_IdAndStatus(actor.id(), club.getId(), MembershipStatus.ACTIVE);
         EventStatus effectiveStatus = canViewAll ? status : EventStatus.OPEN_REGISTRATION;
-        var page = eventRepository.findByClub(club.getId(), effectiveStatus, departmentId,
+        var page = eventRepository.findByClub(club.getId(), effectiveStatus, departmentId, !canViewAll,
                 new OffsetLimitRequest(offset, limit, EVENT_SORT));
         return new PageResponse<>(page.getContent().stream().map(eventMapper::toResponse).toList(),
                 page.getTotalElements(), offset, limit);
@@ -302,12 +354,14 @@ public class EventServiceImpl implements EventService {
         Event event = eventRepository.findWithRelationsById(eventId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
         UUID clubId = event.getClub().getId();
-        boolean publiclyVisible = event.getClub().getStatus() == ClubStatus.ACTIVE
+        boolean publiclyVisible = event.isAllowCtv()
+                && event.getClub().getStatus() == ClubStatus.ACTIVE
                 && DETAIL_VISIBLE_STATUSES.contains(event.getStatus());
         UUID deptId = event.getDepartment() != null ? event.getDepartment().getId() : null;
         boolean canView = publiclyVisible
                 || registrationRepository.existsByEvent_IdAndUser_Id(eventId, actor.id())
                 || authorizationService.hasPermission(actor, EventConstants.PERMISSION_VIEW, clubId, deptId)
+                || authorizationService.hasPermission(actor, EventConstants.PERMISSION_UPDATE, clubId, deptId)
                 || authorizationService.hasPermission(actor, "club.view", clubId, null)
                 || membershipRepository.existsByUser_IdAndClub_IdAndStatus(actor.id(), clubId, MembershipStatus.ACTIVE);
         if (!canView) {
@@ -461,6 +515,88 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
+    @Transactional
+    public EventRegistrationResponse uploadMySubmission(Actor actor, UUID eventId, UploadedFile file) {
+        Event event = eventRepository.findWithRelationsById(eventId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
+        EventRegistration registration = registrationRepository.findByEvent_IdAndUser_IdAndStatus(
+                        eventId, actor.id(), EventRegistrationStatus.REGISTERED)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "REGISTRATION_NOT_FOUND",
+                        "Bạn chưa đăng ký tham gia sự kiện này"));
+
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        if (event.getStatus() != EventStatus.OPEN_REGISTRATION || now.isAfter(event.getRegistrationDeadline())) {
+            throw new ApiException(HttpStatus.CONFLICT, "REGISTRATION_CLOSED", "Đã quá hạn nộp hồ sơ sự kiện");
+        }
+        if (file == null || file.content() == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "EMPTY_FILE", "Vui lòng chọn tệp hồ sơ cần nộp");
+        }
+        String safeName = sanitizeSubmissionFileName(file.originalName());
+        String ext = extractExtension(safeName);
+        String contentType = ALLOWED_SUBMISSION_TYPES.get(ext);
+        if (contentType == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_FILE_TYPE",
+                    "Chỉ hỗ trợ các định dạng tệp: pdf, doc, docx, png, jpg, jpeg, zip");
+        }
+        byte[] bytes = readSubmissionBytes(file);
+        if (bytes.length == 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "EMPTY_FILE", "Tệp hồ sơ không được để trống");
+        }
+
+        String previousKey = registration.getSubmissionStorageKey();
+        String storageKey = "event-submissions/" + eventId + "/" + registration.getId() + "/" + UUID.randomUUID() + "." + ext;
+        documentStorage.put(storageKey, new ByteArrayInputStream(bytes), bytes.length, contentType);
+
+        Map<String, Object> before = registrationSnapshot(registration);
+        registration.setSubmissionFileName(safeName);
+        registration.setSubmissionStorageKey(storageKey);
+        registration.setSubmissionContentType(contentType);
+        registration.setSubmissionSizeBytes((long) bytes.length);
+        registration.setSubmissionUploadedAt(now);
+        EventRegistration saved = registrationRepository.save(registration);
+
+        if (previousKey != null && !previousKey.isBlank() && !previousKey.equals(storageKey)) {
+            try {
+                documentStorage.delete(previousKey);
+            } catch (RuntimeException ignored) {
+                // Best-effort cleanup of replaced submission object
+            }
+        }
+        auditService.recordChange(actor.id(), AuditAction.EVENT_REGISTRATION_UPDATED, event.getId(),
+                event.getClub().getId(), before, registrationSnapshot(saved));
+        return eventMapper.toRegistrationResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public EventSubmissionDownload downloadSubmission(Actor actor, UUID eventId, UUID registrationId) {
+        EventRegistration registration = registrationRepository.findWithRelationsByIdAndEvent_Id(registrationId, eventId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "REGISTRATION_NOT_FOUND",
+                        "Registration not found for this event"));
+        Event event = registration.getEvent();
+        UUID clubId = event.getClub().getId();
+        UUID deptId = event.getDepartment() == null ? null : event.getDepartment().getId();
+
+        boolean isOwner = actor.id().equals(registration.getUser().getId());
+        boolean isOfficer = authorizationService.hasPermission(actor, EventConstants.PERMISSION_UPDATE, clubId, deptId)
+                || authorizationService.hasPermission(actor, EventConstants.PERMISSION_ATTENDANCE, clubId, deptId)
+                || authorizationService.hasPermission(actor, EventConstants.PERMISSION_VIEW, clubId, deptId);
+        if (!isOwner && !isOfficer) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
+        }
+        if (registration.getSubmissionStorageKey() == null || registration.getSubmissionStorageKey().isBlank()) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "SUBMISSION_NOT_FOUND",
+                    "Chưa có tệp hồ sơ nộp cho đăng ký này");
+        }
+        DocumentStorage.StoredObject stored = documentStorage.open(registration.getSubmissionStorageKey());
+        String fileName = registration.getSubmissionFileName() != null ? registration.getSubmissionFileName() : "submission";
+        String contentType = registration.getSubmissionContentType() != null
+                ? registration.getSubmissionContentType()
+                : "application/octet-stream";
+        return new EventSubmissionDownload(fileName, contentType, stored.size(), stored.content());
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public PageResponse<MyEventParticipationResponse> listMyRegistrations(Actor actor, EventRegistrationStatus status,
                                                                           EventParticipantType participantType,
@@ -507,7 +643,10 @@ public class EventServiceImpl implements EventService {
                     attendance == null ? null : attendance.getNote(),
                     attendance == null ? null : attendance.getEditReason(),
                     attendance == null ? null : attendance.getCheckedAt(),
-                    countedAsAttended
+                    countedAsAttended,
+                    event.isRequiresSubmission(),
+                    reg.getSubmissionFileName(),
+                    reg.getSubmissionUploadedAt()
             ));
         }
         return new PageResponse<>(items, page.getTotalElements(), offset, limit);
@@ -782,6 +921,46 @@ public class EventServiceImpl implements EventService {
         }
     }
 
+    private static String sanitizeSubmissionFileName(String rawName) {
+        if (rawName == null || rawName.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_FILE_NAME", "Tên tệp hồ sơ không hợp lệ");
+        }
+        String normalized = rawName.replace('\\', '/');
+        int slash = normalized.lastIndexOf('/');
+        String baseName = (slash >= 0 ? normalized.substring(slash + 1) : normalized).strip();
+        if (baseName.isEmpty() || baseName.length() > 255) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_FILE_NAME", "Tên tệp hồ sơ không hợp lệ");
+        }
+        return baseName;
+    }
+
+    private static String extractExtension(String fileName) {
+        int dot = fileName.lastIndexOf('.');
+        if (dot <= 0 || dot == fileName.length() - 1) {
+            return "";
+        }
+        return fileName.substring(dot + 1).toLowerCase(Locale.ROOT);
+    }
+
+    private static byte[] readSubmissionBytes(UploadedFile file) {
+        try (InputStream in = file.content().open(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[8192];
+            long total = 0;
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                total += read;
+                if (total > MAX_SUBMISSION_BYTES) {
+                    throw new ApiException(HttpStatus.PAYLOAD_TOO_LARGE, "FILE_TOO_LARGE",
+                            "Kích thước tệp hồ sơ vượt quá giới hạn 10MB");
+                }
+                out.write(buffer, 0, read);
+            }
+            return out.toByteArray();
+        } catch (IOException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "FILE_READ_FAILED", "Không thể đọc tệp hồ sơ tải lên");
+        }
+    }
+
     private static Map<String, Object> snapshot(Event event) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("title", event.getTitle());
@@ -791,6 +970,7 @@ public class EventServiceImpl implements EventService {
         values.put("endTime", event.getEndTime());
         values.put("registrationDeadline", event.getRegistrationDeadline());
         values.put("allowCtv", event.isAllowCtv());
+        values.put("requiresSubmission", event.isRequiresSubmission());
         values.put("completedAt", event.getCompletedAt());
         return values;
     }
@@ -803,6 +983,7 @@ public class EventServiceImpl implements EventService {
         values.put("eventRole", registration.getEventRole());
         values.put("status", registration.getStatus());
         values.put("note", registration.getNote());
+        values.put("submissionFileName", registration.getSubmissionFileName());
         return values;
     }
 

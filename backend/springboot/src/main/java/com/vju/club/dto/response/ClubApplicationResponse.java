@@ -40,5 +40,9 @@ public record ClubApplicationResponse(
         OffsetDateTime updatedAt,
         UUID membershipId,
         String membershipStatus,
-        OffsetDateTime membershipJoinedAt
+        OffsetDateTime membershipJoinedAt,
+        OffsetDateTime interviewAt,
+        String interviewLocation,
+        String interviewNote,
+        OffsetDateTime interviewReminderSentAt
 ) { }
