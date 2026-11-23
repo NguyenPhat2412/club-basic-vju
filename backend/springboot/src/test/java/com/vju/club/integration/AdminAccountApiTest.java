@@ -128,7 +128,7 @@ class AdminAccountApiTest extends ApiIntegrationTest {
                 Map.of("permissionId", permission("user.create"), "scope", "GLOBAL"),
                 403, "GRANT_EXCEEDS_OWN_PERMISSIONS");
 
-        for (String key : new String[]{"club.view", "department.view", "member.view", "document.view"}) {
+        for (String key : new String[]{"club.view", "club.facebook.view", "department.view", "member.view", "document.view"}) {
             grant(member, key, "CLUB", clubA, null);
         }
         call(post("/api/v1/users/" + target + "/roles"), memberToken, clubRole("CLUB_MEMBER", clubA), 201);

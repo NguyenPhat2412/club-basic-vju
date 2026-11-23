@@ -247,19 +247,20 @@ class RoleApiTest extends ApiIntegrationTest {
         assign(member, "CLUB_MEMBER", "CLUB", clubA, null);
 
         JsonNode effective = call(get("/api/v1/users/me/effective-permissions"), memberToken, null, 200);
-        assertThat(effective.size()).isEqualTo(5);
+        assertThat(effective.size()).isEqualTo(6);
         List<String> rows = new ArrayList<>();
         effective.forEach(e -> rows.add(e.path("permissionKey").asText() + "|" + e.path("source").asText() + "|"
                 + e.path("roleCode").asText("")));
         assertThat(rows).containsExactlyInAnyOrder("user.view|DIRECT|", "club.view|ROLE|CLUB_MEMBER",
+                "club.facebook.view|ROLE|CLUB_MEMBER",
                 "department.view|ROLE|CLUB_MEMBER", "member.view|ROLE|CLUB_MEMBER",
                 "document.view|ROLE|CLUB_MEMBER");
 
         db.update("UPDATE permissions SET active = false WHERE permission_key = 'member.view'");
-        assertThat(call(get("/api/v1/users/me/effective-permissions"), memberToken, null, 200).size()).isEqualTo(4);
+        assertThat(call(get("/api/v1/users/me/effective-permissions"), memberToken, null, 200).size()).isEqualTo(5);
 
         problem(get("/api/v1/users/" + admin + "/effective-permissions"), memberToken, null, 403, "PERMISSION_DENIED");
-        assertThat(call(get("/api/v1/users/" + member + "/effective-permissions"), adminToken, null, 200).size()).isEqualTo(4);
+        assertThat(call(get("/api/v1/users/" + member + "/effective-permissions"), adminToken, null, 200).size()).isEqualTo(5);
         problem(get("/api/v1/users/" + UUID.randomUUID() + "/effective-permissions"), adminToken, null, 404, "USER_NOT_FOUND");
     }
 
