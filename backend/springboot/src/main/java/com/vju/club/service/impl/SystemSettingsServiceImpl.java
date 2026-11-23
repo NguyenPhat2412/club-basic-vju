@@ -2,6 +2,7 @@ package com.vju.club.service.impl;
 
 import com.vju.club.annotation.RequirePermission;
 import com.vju.club.common.SettingConstants;
+import com.vju.club.config.RuntimeIntegrationConfig;
 import com.vju.club.dto.request.TestSmtpEmailRequest;
 import com.vju.club.dto.request.UpdateSystemSettingsRequest;
 import com.vju.club.dto.response.SystemSettingsResponse;
@@ -11,6 +12,7 @@ import com.vju.club.error.ApiException;
 import com.vju.club.mapper.SystemSettingsMapper;
 import com.vju.club.repository.SystemSettingsRepository;
 import com.vju.club.security.Actor;
+import com.vju.club.security.TokenCryptoService;
 import com.vju.club.service.AuditService;
 import com.vju.club.service.OtpMailService;
 import com.vju.club.service.SystemSettingsService;
@@ -34,17 +36,23 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
     @Autowired(required = false)
     private OtpMailService otpMailService;
 
+    @Autowired(required = false)
+    private TokenCryptoService tokenCryptoService;
+
+    @Autowired(required = false)
+    private RuntimeIntegrationConfig runtimeIntegrationConfig;
+
     @Override
     @Transactional(readOnly = true)
     public SystemSettingsResponse current() {
-        return settingsMapper.toResponse(find());
+        return toEnrichedResponse(find());
     }
 
     @Override
     @Transactional(readOnly = true)
     @RequirePermission(SettingConstants.PERMISSION_VIEW)
     public SystemSettingsResponse get(Actor actor) {
-        return settingsMapper.toResponse(find());
+        return toEnrichedResponse(find());
     }
 
     @Override
@@ -105,9 +113,94 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
         }
         if (request.smtpStartTls() != null) settings.setSmtpStartTls(request.smtpStartTls());
 
+        if (request.facebookAppId() != null) settings.setFacebookAppId(blankToNull(request.facebookAppId()));
+        if (Boolean.TRUE.equals(request.clearFacebookAppSecret())) {
+            settings.setFacebookAppSecret(null);
+        } else if (request.facebookAppSecret() != null && !request.facebookAppSecret().isBlank()) {
+            settings.setFacebookAppSecret(encryptSecret(request.facebookAppSecret().trim()));
+        }
+        if (request.facebookGraphVersion() != null) settings.setFacebookGraphVersion(blankToNull(request.facebookGraphVersion()));
+        if (request.facebookOauthRedirectUri() != null) settings.setFacebookOauthRedirectUri(blankToNull(request.facebookOauthRedirectUri()));
+        if (request.frontendBaseUrl() != null) settings.setFrontendBaseUrl(blankToNull(request.frontendBaseUrl()));
+
+        if (request.aiBaseUrl() != null) settings.setAiBaseUrl(blankToNull(request.aiBaseUrl()));
+        if (Boolean.TRUE.equals(request.clearAiApiKey())) {
+            settings.setAiApiKey(null);
+        } else if (request.aiApiKey() != null && !request.aiApiKey().isBlank()) {
+            settings.setAiApiKey(encryptSecret(request.aiApiKey().trim()));
+        }
+        if (request.aiModel() != null) settings.setAiModel(blankToNull(request.aiModel()));
+
+        if (request.googleClientId() != null) settings.setGoogleClientId(blankToNull(request.googleClientId()));
+        if (request.googleAllowedDomains() != null) settings.setGoogleAllowedDomains(blankToNull(request.googleAllowedDomains()));
+        if (request.googleCreateAccounts() != null) settings.setGoogleCreateAccounts(request.googleCreateAccounts());
+
         SystemSettings saved = repository.saveAndFlush(settings);
         auditService.record(actor.id(), AuditAction.SYSTEM_SETTINGS_UPDATED, saved.getId(), null, before, values(saved));
-        return settingsMapper.toResponse(saved);
+        return toEnrichedResponse(saved);
+    }
+
+    private SystemSettingsResponse toEnrichedResponse(SystemSettings settings) {
+        SystemSettingsResponse base = settingsMapper.toResponse(settings);
+        if (runtimeIntegrationConfig == null) {
+            return base;
+        }
+        boolean fbReady = runtimeIntegrationConfig.facebook().isOauthConfigured();
+        boolean aiReady = runtimeIntegrationConfig.ai().isConfigured();
+        boolean googleReady = runtimeIntegrationConfig.google().isEnabled();
+        return new SystemSettingsResponse(
+                base.maxPendingApplications(),
+                base.reapplyCooldownDays(),
+                base.maxActiveClubs(),
+                base.attendanceEditWindowHours(),
+                base.allowSelfRegistration(),
+                base.attendanceOpensBeforeMinutes(),
+                base.eventTaskGraceDays(),
+                base.chatSummariesPerHour(),
+                base.chatMaxMessageLength(),
+                base.chatMessagesPerMinute(),
+                base.documentMaxFileMb(),
+                base.clubImageMaxMb(),
+                base.avatarMaxMb(),
+                base.clubStorageQuotaMb(),
+                base.documentMaxVersions(),
+                base.maxChannelsPerClub(),
+                base.maxDepartmentsPerClub(),
+                base.maxActiveEventsPerClub(),
+                base.maxOpenTasksPerClub(),
+                base.broadcastCooldownMinutes(),
+                base.facebookSyncCooldownMinutes(),
+                base.otpExpiryMinutes(),
+                base.otpMaxSendCount(),
+                base.otpResendCooldownSeconds(),
+                base.otpMaxVerifyAttempts(),
+                base.smtpHost(),
+                base.smtpPort(),
+                base.smtpUsername(),
+                base.smtpPasswordConfigured(),
+                base.smtpFromEmail(),
+                base.smtpFromName(),
+                base.smtpStartTls(),
+                base.facebookAppId(),
+                base.facebookAppSecretConfigured(),
+                base.facebookGraphVersion(),
+                base.facebookOauthRedirectUri(),
+                base.frontendBaseUrl(),
+                fbReady,
+                base.aiBaseUrl(),
+                base.aiApiKeyConfigured(),
+                base.aiModel(),
+                aiReady,
+                base.googleClientId(),
+                base.googleAllowedDomains(),
+                base.googleCreateAccounts(),
+                googleReady,
+                base.updatedAt(),
+                base.updatedBy());
+    }
+
+    private String encryptSecret(String raw) {
+        return tokenCryptoService != null ? tokenCryptoService.encrypt(raw) : raw;
     }
 
     @Override
@@ -163,6 +256,17 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
         values.put("smtpFromEmail", s.getSmtpFromEmail());
         values.put("smtpFromName", s.getSmtpFromName());
         values.put("smtpStartTls", s.isSmtpStartTls());
+        values.put("facebookAppId", s.getFacebookAppId());
+        values.put("facebookAppSecretConfigured", s.getFacebookAppSecret() != null && !s.getFacebookAppSecret().isBlank());
+        values.put("facebookGraphVersion", s.getFacebookGraphVersion());
+        values.put("facebookOauthRedirectUri", s.getFacebookOauthRedirectUri());
+        values.put("frontendBaseUrl", s.getFrontendBaseUrl());
+        values.put("aiBaseUrl", s.getAiBaseUrl());
+        values.put("aiApiKeyConfigured", s.getAiApiKey() != null && !s.getAiApiKey().isBlank());
+        values.put("aiModel", s.getAiModel());
+        values.put("googleClientId", s.getGoogleClientId());
+        values.put("googleAllowedDomains", s.getGoogleAllowedDomains());
+        values.put("googleCreateAccounts", s.getGoogleCreateAccounts());
         return values;
     }
 }

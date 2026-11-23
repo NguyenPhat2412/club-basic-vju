@@ -60,6 +60,19 @@ public class UserServiceImpl implements UserService {
     private final GoogleSignInProperties googleSignIn;
     private final UserAccountPurgeSupport purgeSupport;
 
+    @Autowired(required = false)
+    private com.vju.club.config.RuntimeIntegrationConfig runtimeIntegrationConfig;
+
+    private com.vju.club.config.RuntimeIntegrationConfig.EffectiveGoogle effectiveGoogle() {
+        if (runtimeIntegrationConfig != null) {
+            return runtimeIntegrationConfig.google();
+        }
+        return new com.vju.club.config.RuntimeIntegrationConfig.EffectiveGoogle(
+                googleSignIn.getClientId(),
+                googleSignIn.getAllowedDomains(),
+                googleSignIn.isCreateAccounts());
+    }
+
     @Autowired
     public UserServiceImpl(UserRepository userRepository,
                            PermissionAuthorizationService authorizationService,
@@ -108,7 +121,7 @@ public class UserServiceImpl implements UserService {
         if (studentCode != null && userRepository.existsByStudentCodeIgnoreCase(studentCode)) {
             throw new ApiException(HttpStatus.CONFLICT, "STUDENT_CODE_ALREADY_EXISTS", "Student code is already registered");
         }
-        boolean googleAccount = googleSignIn.isGoogleEmail(email);
+        boolean googleAccount = effectiveGoogle().isGoogleEmail(email);
         requireSchoolEmailForStudent(email, studentCode);
         if (!googleAccount && (request.password() == null || request.password().isBlank())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "PASSWORD_REQUIRED", "A password is required for this account");
@@ -136,7 +149,7 @@ public class UserServiceImpl implements UserService {
     public void resetPassword(Actor actor, UUID userId, ResetPasswordRequest request) {
         User user = findUser(userId);
         requireAdminToManageAdmin(actor, userId);
-        if (googleSignIn.isGoogleEmail(user.getEmail())) {
+        if (effectiveGoogle().isGoogleEmail(user.getEmail())) {
             throw new ApiException(HttpStatus.CONFLICT, "PASSWORD_NOT_USED", "This account signs in with Google");
         }
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
@@ -329,7 +342,8 @@ public class UserServiceImpl implements UserService {
     }
 
     private void requireSchoolEmailForStudent(String email, String studentCode) {
-        if (studentCode != null && googleSignIn.isEnabled() && !googleSignIn.isGoogleEmail(email)) {
+        var google = effectiveGoogle();
+        if (studentCode != null && google.isEnabled() && !google.isGoogleEmail(email)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "STUDENT_EMAIL_DOMAIN_REQUIRED",
                     "Student accounts must use a school email address");
         }

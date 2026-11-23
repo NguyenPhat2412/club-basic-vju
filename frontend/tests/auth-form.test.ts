@@ -98,12 +98,23 @@ test("validateLoginFields, validateRegisterFields, and validateForgotPasswordFie
   const baseSettings = {
     ...defaultSystemSettingsInput(),
     smtpPasswordConfigured: true,
+    facebookAppSecretConfigured: false,
+    facebookOauthConfigured: true,
+    aiApiKeyConfigured: false,
+    aiConfigured: false,
+    googleSignInConfigured: false,
   };
   const draft = createSystemSettingsDraft(baseSettings);
   assert.equal(hasSystemSettingsChanged(draft, baseSettings), false);
   assert.equal(hasSystemSettingsChanged({ ...draft, otpExpiryMinutes: 10 }, baseSettings), true);
   assert.equal(hasSystemSettingsChanged({ ...draft, smtpPassword: "new-app-password" }, baseSettings), true);
+  assert.equal(hasSystemSettingsChanged({ ...draft, facebookAppId: "1536758708287043" }, baseSettings), true);
+  assert.equal(hasSystemSettingsChanged({ ...draft, facebookAppSecret: "secret-123" }, baseSettings), true);
   assert.equal(toSystemSettingsPayload({ ...draft, smtpHost: "  smtp.gmail.com  " }).smtpHost, "smtp.gmail.com");
+  assert.equal(
+    toSystemSettingsPayload({ ...draft, facebookAppId: "  1536758708287043  " }).facebookAppId,
+    "1536758708287043",
+  );
 });
 
 test("AuthModal forms use noValidate inline validation and stay within the 400-line limit", () => {

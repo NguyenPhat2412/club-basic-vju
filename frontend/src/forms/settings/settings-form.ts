@@ -123,6 +123,19 @@ export function defaultSystemSettingsInput(): SystemSettingsInput {
     smtpFromEmail: null,
     smtpFromName: 'VJU ClubHub',
     smtpStartTls: true,
+    facebookAppId: null,
+    facebookAppSecret: '',
+    clearFacebookAppSecret: false,
+    facebookGraphVersion: null,
+    facebookOauthRedirectUri: null,
+    frontendBaseUrl: null,
+    aiBaseUrl: null,
+    aiApiKey: '',
+    clearAiApiKey: false,
+    aiModel: null,
+    googleClientId: null,
+    googleAllowedDomains: null,
+    googleCreateAccounts: null,
   };
 }
 
@@ -143,6 +156,19 @@ export function createSystemSettingsDraft(settings?: SystemSettings | null): Sys
   draft.smtpFromEmail = settings.smtpFromEmail ?? null;
   draft.smtpFromName = settings.smtpFromName || 'VJU ClubHub';
   draft.smtpStartTls = settings.smtpStartTls ?? true;
+  draft.facebookAppId = settings.facebookAppId ?? null;
+  draft.facebookAppSecret = '';
+  draft.clearFacebookAppSecret = false;
+  draft.facebookGraphVersion = settings.facebookGraphVersion ?? null;
+  draft.facebookOauthRedirectUri = settings.facebookOauthRedirectUri ?? null;
+  draft.frontendBaseUrl = settings.frontendBaseUrl ?? null;
+  draft.aiBaseUrl = settings.aiBaseUrl ?? null;
+  draft.aiApiKey = '';
+  draft.clearAiApiKey = false;
+  draft.aiModel = settings.aiModel ?? null;
+  draft.googleClientId = settings.googleClientId ?? null;
+  draft.googleAllowedDomains = settings.googleAllowedDomains ?? null;
+  draft.googleCreateAccounts = settings.googleCreateAccounts ?? null;
   return draft;
 }
 
@@ -165,6 +191,19 @@ export function hasSystemSettingsChanged(draft: SystemSettingsInput, current?: S
   if (Boolean(draft.smtpStartTls) !== Boolean(current.smtpStartTls)) return true;
   if (Boolean(draft.smtpPassword && draft.smtpPassword.trim())) return true;
   if (Boolean(draft.clearSmtpPassword) && current.smtpPasswordConfigured) return true;
+  if (normStr(draft.facebookAppId) !== normStr(current.facebookAppId)) return true;
+  if (Boolean(draft.facebookAppSecret && draft.facebookAppSecret.trim())) return true;
+  if (Boolean(draft.clearFacebookAppSecret) && current.facebookAppSecretConfigured) return true;
+  if (normStr(draft.facebookGraphVersion) !== normStr(current.facebookGraphVersion)) return true;
+  if (normStr(draft.facebookOauthRedirectUri) !== normStr(current.facebookOauthRedirectUri)) return true;
+  if (normStr(draft.frontendBaseUrl) !== normStr(current.frontendBaseUrl)) return true;
+  if (normStr(draft.aiBaseUrl) !== normStr(current.aiBaseUrl)) return true;
+  if (Boolean(draft.aiApiKey && draft.aiApiKey.trim())) return true;
+  if (Boolean(draft.clearAiApiKey) && current.aiApiKeyConfigured) return true;
+  if (normStr(draft.aiModel) !== normStr(current.aiModel)) return true;
+  if (normStr(draft.googleClientId) !== normStr(current.googleClientId)) return true;
+  if (normStr(draft.googleAllowedDomains) !== normStr(current.googleAllowedDomains)) return true;
+  if ((draft.googleCreateAccounts ?? null) !== (current.googleCreateAccounts ?? null)) return true;
   return false;
 }
 
@@ -178,5 +217,18 @@ export function toSystemSettingsPayload(draft: SystemSettingsInput): SystemSetti
     clearSmtpPassword: draft.clearSmtpPassword ? true : undefined,
     smtpFromEmail: normStr(draft.smtpFromEmail) || null,
     smtpFromName: normStr(draft.smtpFromName) || 'VJU ClubHub',
+    facebookAppId: normStr(draft.facebookAppId) || null,
+    facebookAppSecret: normStr(draft.facebookAppSecret) || undefined,
+    clearFacebookAppSecret: draft.clearFacebookAppSecret ? true : undefined,
+    facebookGraphVersion: normStr(draft.facebookGraphVersion) || null,
+    facebookOauthRedirectUri: normStr(draft.facebookOauthRedirectUri) || null,
+    frontendBaseUrl: normStr(draft.frontendBaseUrl) || null,
+    aiBaseUrl: normStr(draft.aiBaseUrl) || null,
+    aiApiKey: normStr(draft.aiApiKey) || undefined,
+    clearAiApiKey: draft.clearAiApiKey ? true : undefined,
+    aiModel: normStr(draft.aiModel) || null,
+    googleClientId: normStr(draft.googleClientId) || null,
+    googleAllowedDomains: normStr(draft.googleAllowedDomains) || null,
+    googleCreateAccounts: draft.googleCreateAccounts,
   };
 }

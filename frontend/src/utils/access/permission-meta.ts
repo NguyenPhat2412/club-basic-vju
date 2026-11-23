@@ -90,9 +90,9 @@ export const PERMISSION_META: Record<string, { label: string; description: strin
   "notification.send": { label: "Gửi thông báo hàng loạt", description: "Phát thông báo chung tới toàn bộ câu lạc bộ hoặc từng ban chuyên môn" },
 
   // Phân quyền
-  "permission.view": { label: "Xem vai trò & quyền được gán", description: "Xem danh sách vai trò và phạm vi quyền hạn của từng tài khoản" },
-  "permission.assign": { label: "Gán vai trò cho tài khoản", description: "Bổ nhiệm vai trò cho người dùng theo toàn hệ thống, CLB hoặc ban" },
-  "permission.revoke": { label: "Thu hồi vai trò đã gán", description: "Gỡ bỏ vai trò hiện có của người dùng" },
+  "permission.view": { label: "Xem vai trò & quyền được gán", description: "Xem danh sách vai trò và phạm vi quyền hạn của tài khoản trong hệ thống, CLB hoặc ban" },
+  "permission.assign": { label: "Gán vai trò & ủy quyền cấp dưới", description: "Bổ nhiệm vai trò hoặc cấp trực tiếp các quyền mà chính mình đang nắm giữ cho thành viên cấp dưới (toàn hệ thống, CLB hoặc ban)" },
+  "permission.revoke": { label: "Thu hồi vai trò & quyền đã cấp", description: "Gỡ bỏ vai trò hoặc quyền trực tiếp trong phạm vi và giới hạn quyền hạn của bản thân" },
 
   // Vai trò
   "role.view": { label: "Xem bảng vai trò & phân quyền", description: "Xem danh sách vai trò và bảng ma trận phân quyền hệ thống" },

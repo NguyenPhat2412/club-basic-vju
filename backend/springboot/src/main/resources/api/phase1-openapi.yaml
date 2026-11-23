@@ -5919,7 +5919,7 @@ components:
           items: {$ref: '#/components/schemas/MyClubApplicationSummary'}
     SystemSettings:
       type: object
-      required: [maxPendingApplications, reapplyCooldownDays, maxActiveClubs, attendanceEditWindowHours, allowSelfRegistration, attendanceOpensBeforeMinutes, eventTaskGraceDays, chatSummariesPerHour, chatMaxMessageLength, chatMessagesPerMinute, documentMaxFileMb, clubImageMaxMb, avatarMaxMb, clubStorageQuotaMb, documentMaxVersions, maxChannelsPerClub, maxDepartmentsPerClub, maxActiveEventsPerClub, maxOpenTasksPerClub, broadcastCooldownMinutes, facebookSyncCooldownMinutes, otpExpiryMinutes, otpMaxSendCount, otpResendCooldownSeconds, otpMaxVerifyAttempts, smtpPort, smtpPasswordConfigured, smtpFromName, smtpStartTls]
+      required: [maxPendingApplications, reapplyCooldownDays, maxActiveClubs, attendanceEditWindowHours, allowSelfRegistration, attendanceOpensBeforeMinutes, eventTaskGraceDays, chatSummariesPerHour, chatMaxMessageLength, chatMessagesPerMinute, documentMaxFileMb, clubImageMaxMb, avatarMaxMb, clubStorageQuotaMb, documentMaxVersions, maxChannelsPerClub, maxDepartmentsPerClub, maxActiveEventsPerClub, maxOpenTasksPerClub, broadcastCooldownMinutes, facebookSyncCooldownMinutes, otpExpiryMinutes, otpMaxSendCount, otpResendCooldownSeconds, otpMaxVerifyAttempts, smtpPort, smtpPasswordConfigured, smtpFromName, smtpStartTls, facebookAppSecretConfigured, facebookOauthConfigured, aiApiKeyConfigured, aiConfigured, googleSignInConfigured]
       properties:
         maxPendingApplications: {type: integer, minimum: 0, maximum: 100, description: Số đơn PENDING tối đa của một sinh viên trên mọi CLB; 0 = không giới hạn}
         reapplyCooldownDays: {type: integer, minimum: 0, maximum: 365, description: Số ngày chờ sau khi bị từ chối mới được nộp lại cùng CLB; 0 = không chờ}
@@ -5953,6 +5953,20 @@ components:
         smtpFromEmail: {type: [string, 'null'], format: email, maxLength: 320, description: Địa chỉ email người gửi hiển thị}
         smtpFromName: {type: string, maxLength: 120, description: Tên hiển thị người gửi (mặc định VJU ClubHub)}
         smtpStartTls: {type: boolean, description: Bật mã hoá STARTTLS khi gửi thư qua SMTP}
+        facebookAppId: {type: [string, 'null'], maxLength: 64, description: Facebook App ID dùng cho OAuth kết nối Fanpage (để trống dùng FACEBOOK_APP_ID trong .env)}
+        facebookAppSecretConfigured: {type: boolean, description: Đã lưu Facebook App Secret trong cài đặt hệ thống hay chưa (không trả secret thô)}
+        facebookGraphVersion: {type: [string, 'null'], maxLength: 32, description: Phiên bản Facebook Graph API (mặc định v22.0)}
+        facebookOauthRedirectUri: {type: [string, 'null'], maxLength: 500, description: Callback URL OAuth Facebook đã khai báo trên Meta for Developers}
+        frontendBaseUrl: {type: [string, 'null'], maxLength: 500, description: URL gốc của giao diện Frontend để chuyển hướng sau khi đăng nhập Facebook OAuth}
+        facebookOauthConfigured: {type: boolean, description: Trạng thái hiệu lực của Facebook OAuth (tính cả cài đặt hệ thống và .env)}
+        aiBaseUrl: {type: [string, 'null'], maxLength: 500, description: Endpoint API của cổng AI tương thích OpenAI / 9router}
+        aiApiKeyConfigured: {type: boolean, description: Đã lưu AI API Key trong cài đặt hệ thống hay chưa (không trả key thô)}
+        aiModel: {type: [string, 'null'], maxLength: 120, description: Tên mô hình AI dùng cho tóm tắt thảo luận và dịch tự động}
+        aiConfigured: {type: boolean, description: Trạng thái hiệu lực của cổng AI (tính cả cài đặt hệ thống và .env)}
+        googleClientId: {type: [string, 'null'], maxLength: 255, description: Google OAuth Client ID cho đăng nhập tài khoản trường}
+        googleAllowedDomains: {type: [string, 'null'], maxLength: 500, description: Danh sách tên miền email Google được phép (phân tách bằng dấu phẩy)}
+        googleCreateAccounts: {type: [boolean, 'null'], description: Cho phép tự tạo tài khoản sinh viên mới khi đăng ký bằng Google (null = theo .env)}
+        googleSignInConfigured: {type: boolean, description: Trạng thái hiệu lực của Google Sign-In (tính cả cài đặt hệ thống và .env)}
         updatedAt: {type: string, format: date-time}
         updatedBy: {type: [string, 'null'], format: uuid}
     UpdateSystemSettingsRequest:
@@ -5992,6 +6006,19 @@ components:
         smtpFromEmail: {type: [string, 'null'], format: email, maxLength: 320}
         smtpFromName: {type: [string, 'null'], maxLength: 120}
         smtpStartTls: {type: [boolean, 'null']}
+        facebookAppId: {type: [string, 'null'], maxLength: 64}
+        facebookAppSecret: {type: [string, 'null'], format: password, maxLength: 256}
+        clearFacebookAppSecret: {type: [boolean, 'null']}
+        facebookGraphVersion: {type: [string, 'null'], maxLength: 32}
+        facebookOauthRedirectUri: {type: [string, 'null'], maxLength: 500}
+        frontendBaseUrl: {type: [string, 'null'], maxLength: 500}
+        aiBaseUrl: {type: [string, 'null'], maxLength: 500}
+        aiApiKey: {type: [string, 'null'], format: password, maxLength: 256}
+        clearAiApiKey: {type: [boolean, 'null']}
+        aiModel: {type: [string, 'null'], maxLength: 120}
+        googleClientId: {type: [string, 'null'], maxLength: 255}
+        googleAllowedDomains: {type: [string, 'null'], maxLength: 500}
+        googleCreateAccounts: {type: [boolean, 'null']}
     TestSmtpEmailRequest:
       type: object
       required: [recipientEmail]

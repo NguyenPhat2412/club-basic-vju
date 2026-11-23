@@ -115,6 +115,10 @@ export const PHRASES_JA_PERMISSIONS: Record<string, string> = {
   'Mở lại trạng thái hoạt động cho câu lạc bộ': '停止中のクラブの活動ステータスを再開します',
   'Ngừng hoạt động câu lạc bộ': 'クラブの活動停止',
   'Tạm ngừng hoạt động câu lạc bộ': 'クラブの活動を一時停止します',
+  'Xem thống kê & bài viết Fanpage Facebook': 'Facebookファンページ統計・投稿の閲覧',
+  'Xem chỉ số tương tác, lượt theo dõi và bài viết đã đồng bộ từ Fanpage CLB': 'クラブのFacebookファンページのエンゲージメント、フォロワー数、同期済み投稿を閲覧します',
+  'Quản lý kết nối & đồng bộ Fanpage Facebook': 'Facebookファンページ連携・同期の管理',
+  'Kết nối, đăng nhập OAuth, đồng bộ bài viết và ngắt kết nối Fanpage Facebook của CLB': 'クラブのFacebookファンページの接続、OAuthログイン、投稿同期、連携解除を行います',
 
   // Department
   'Xem danh sách ban': '専門部署一覧の閲覧',
@@ -179,10 +183,15 @@ export const PHRASES_JA_PERMISSIONS: Record<string, string> = {
   // Permission
   'Xem vai trò & quyền được gán': '付与済みロール・権限の閲覧',
   'Xem danh sách vai trò và phạm vi quyền hạn của từng tài khoản': '各アカウントに付与されたロールおよび有効権限範囲を確認します',
+  'Xem danh sách vai trò và phạm vi quyền hạn của tài khoản trong hệ thống, CLB hoặc ban': 'システム・クラブ・部署内のアカウントの付与済みロールと権限範囲を確認します',
   'Gán vai trò cho tài khoản': 'アカウントへのロール付与',
+  'Gán vai trò & ủy quyền cấp dưới': 'ロール付与・下位への権限委譲',
   'Bổ nhiệm vai trò cho người dùng theo toàn hệ thống, CLB hoặc ban': 'システム全体・クラブ・部署単位でユーザーにロールを任命します',
+  'Bổ nhiệm vai trò hoặc cấp trực tiếp các quyền mà chính mình đang nắm giữ cho thành viên cấp dưới (toàn hệ thống, CLB hoặc ban)': '自身が保有する権限の範囲内で下位メンバーにロール任命または直接権限委譲を行います（全体・クラブ・部署）',
   'Thu hồi vai trò đã gán': '付与済みロールの剥奪',
+  'Thu hồi vai trò & quyền đã cấp': '付与済みロール・委譲権限の剥奪',
   'Gỡ bỏ vai trò hiện có của người dùng': 'ユーザーの既存ロール割り当てを解除します',
+  'Gỡ bỏ vai trò hoặc quyền trực tiếp trong phạm vi và giới hạn quyền hạn của bản thân': '自身の権限・適用範囲内でロールまたは直接付与権限を解除します',
 
   // Role
   'Xem bảng vai trò & phân quyền': 'ロール・権限マトリックスの閲覧',

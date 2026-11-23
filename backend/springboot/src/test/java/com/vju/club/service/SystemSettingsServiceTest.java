@@ -134,6 +134,17 @@ class SystemSettingsServiceTest {
         values.put("smtpFromEmail", null);
         values.put("smtpFromName", "VJU ClubHub");
         values.put("smtpStartTls", true);
+        values.put("facebookAppId", null);
+        values.put("facebookAppSecretConfigured", false);
+        values.put("facebookGraphVersion", null);
+        values.put("facebookOauthRedirectUri", null);
+        values.put("frontendBaseUrl", null);
+        values.put("aiBaseUrl", null);
+        values.put("aiApiKeyConfigured", false);
+        values.put("aiModel", null);
+        values.put("googleClientId", null);
+        values.put("googleAllowedDomains", null);
+        values.put("googleCreateAccounts", null);
         return values;
     }
 
@@ -145,5 +156,47 @@ class SystemSettingsServiceTest {
 
         SystemSettingsResponse updated = service.update(actor, new UpdateSystemSettingsRequest(3, 7, 2, 72));
         assertThat(updated.attendanceEditWindowHours()).isEqualTo(72);
+    }
+
+    @Test
+    void updateEncryptsIntegrationSecretsAndSupportsClearing() {
+        SystemSettingsServiceImpl impl = new SystemSettingsServiceImpl(repository, auditService, new SystemSettingsMapperImpl());
+        com.vju.club.config.FacebookProperties fbProps = new com.vju.club.config.FacebookProperties();
+        com.vju.club.security.TokenCryptoService crypto = new com.vju.club.security.TokenCryptoService(fbProps);
+        org.springframework.test.util.ReflectionTestUtils.setField(impl, "tokenCryptoService", crypto);
+        SystemSettingsService securedService = withPermissionChecks(impl, authorization);
+
+        SystemSettings row = singleton(3, 7, 2);
+        when(repository.findSingleton()).thenReturn(Optional.of(row));
+        when(repository.saveAndFlush(any(SystemSettings.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateSystemSettingsRequest setReq = new UpdateSystemSettingsRequest(
+                3, 7, 2, 48, true, 120, 7, 10, 4000, 20, 20, 10, 5, 500, 20, 30, 20, 50, 200, 5, 2,
+                5, 5, 60, 5, null, 587, null, null, false, null, "VJU ClubHub", true,
+                "1536758708287043", "super-fb-secret", false, "v22.0",
+                "http://localhost:8080/api/v1/integrations/facebook/oauth/callback", "http://localhost:3000",
+                "https://router.anhchau.all1.vn/v1", "sk-ai-secret", false, "apmarket",
+                "google-client-id", "st.vju.ac.vn", true);
+
+        SystemSettingsResponse saved = securedService.update(actor, setReq);
+        assertThat(saved.facebookAppId()).isEqualTo("1536758708287043");
+        assertThat(saved.facebookAppSecretConfigured()).isTrue();
+        assertThat(saved.aiApiKeyConfigured()).isTrue();
+        assertThat(saved.googleClientId()).isEqualTo("google-client-id");
+        assertThat(row.getFacebookAppSecret()).startsWith("enc:v1:");
+        assertThat(crypto.decrypt(row.getFacebookAppSecret())).isEqualTo("super-fb-secret");
+        assertThat(row.getAiApiKey()).startsWith("enc:v1:");
+        assertThat(crypto.decrypt(row.getAiApiKey())).isEqualTo("sk-ai-secret");
+
+        UpdateSystemSettingsRequest clearReq = new UpdateSystemSettingsRequest(
+                3, 7, 2, 48, true, 120, 7, 10, 4000, 20, 20, 10, 5, 500, 20, 30, 20, 50, 200, 5, 2,
+                5, 5, 60, 5, null, 587, null, null, false, null, "VJU ClubHub", true,
+                "", null, true, "", "", "", "", null, true, "", "", "", null);
+
+        SystemSettingsResponse cleared = securedService.update(actor, clearReq);
+        assertThat(cleared.facebookAppSecretConfigured()).isFalse();
+        assertThat(cleared.aiApiKeyConfigured()).isFalse();
+        assertThat(row.getFacebookAppSecret()).isNull();
+        assertThat(row.getAiApiKey()).isNull();
     }
 }

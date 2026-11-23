@@ -32,12 +32,23 @@ public class ChatSummaryServiceImpl {
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final AiProperties aiProperties;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.vju.club.config.RuntimeIntegrationConfig runtimeIntegrationConfig;
     private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
+    private com.vju.club.config.RuntimeIntegrationConfig.EffectiveAi effectiveAi() {
+        if (runtimeIntegrationConfig != null) {
+            return runtimeIntegrationConfig.ai();
+        }
+        return new com.vju.club.config.RuntimeIntegrationConfig.EffectiveAi(
+                aiProperties.getBaseUrl(), aiProperties.getApiKey(), aiProperties.getModel());
+    }
+
     public ExtractedDigest analyzeMessages(ChatChannel channel, List<ChatMessage> messages) {
-        if (aiProperties.getApiKey() != null && !aiProperties.getApiKey().isBlank()) {
+        var ai = effectiveAi();
+        if (ai.isConfigured()) {
             try {
-                return callRemoteLlm(channel, messages);
+                return callRemoteLlm(channel, messages, ai);
             } catch (Exception e) {
                 log.warn("Remote LLM call failed, falling back to built-in extractive summarizer: {}", e.getMessage());
             }
@@ -53,7 +64,8 @@ public class ChatSummaryServiceImpl {
         }
     }
 
-    private ExtractedDigest callRemoteLlm(ChatChannel channel, List<ChatMessage> messages) throws Exception {
+    private ExtractedDigest callRemoteLlm(ChatChannel channel, List<ChatMessage> messages,
+                                          com.vju.club.config.RuntimeIntegrationConfig.EffectiveAi ai) throws Exception {
         StringBuilder transcript = new StringBuilder();
         for (ChatMessage msg : messages) {
             String speaker = msg.getSender() != null ? msg.getSender().getFullName() : "Member";
@@ -65,19 +77,19 @@ public class ChatSummaryServiceImpl {
                 + transcript;
 
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("model", aiProperties.getModel());
+        payload.put("model", ai.model());
         payload.put("stream", false);
         payload.put("messages", List.of(
                 Map.of("role", "system", "content", "Return only valid JSON object without markdown fences."),
                 Map.of("role", "user", "content", prompt)
         ));
 
-        String endpoint = aiProperties.getBaseUrl().replaceAll("/+$", "") + "/chat/completions";
+        String endpoint = ai.baseUrl().replaceAll("/+$", "") + "/chat/completions";
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(endpoint))
                 .timeout(Duration.ofSeconds(45))
                 .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + aiProperties.getApiKey().strip())
+                .header("Authorization", "Bearer " + ai.apiKey().strip())
                 .POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(payload)))
                 .build();
 
@@ -87,7 +99,7 @@ public class ChatSummaryServiceImpl {
         }
         String rawBody = res.body().strip();
         String content;
-        String resolvedModel = aiProperties.getModel();
+        String resolvedModel = ai.model();
         if (rawBody.startsWith("data:")) {
             StringBuilder streamContent = new StringBuilder();
             for (String line : rawBody.split("\\R")) {
@@ -104,7 +116,7 @@ public class ChatSummaryServiceImpl {
             content = streamContent.toString().strip();
         } else {
             JsonNode root = JSON.readTree(rawBody);
-            resolvedModel = root.path("model").asText(aiProperties.getModel());
+            resolvedModel = root.path("model").asText(ai.model());
             content = root.at("/choices/0/message/content").asText("").strip();
         }
         if (content.startsWith("```")) {

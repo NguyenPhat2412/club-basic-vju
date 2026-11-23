@@ -19,6 +19,7 @@ import {
   toSystemSettingsPayload,
 } from "@/forms/settings/settings-form";
 import { SystemSmtpCard } from "./SystemSmtpCard";
+import { SystemIntegrationsCard } from "./SystemIntegrationsCard";
 
 export function SystemSettingsView() {
   const session = useSession();
@@ -159,6 +160,13 @@ function SettingsForm({
         canEdit={canEdit}
         hasUnsavedChanges={changed}
         defaultRecipientEmail={defaultRecipientEmail}
+        onChange={setDraft}
+      />
+
+      <SystemIntegrationsCard
+        current={current}
+        draft={draft}
+        canEdit={canEdit}
         onChange={setDraft}
       />
 

@@ -10,7 +10,6 @@ import com.vju.club.entity.Club;
 import com.vju.club.repository.ClubRepository;
 import com.vju.club.entity.Department;
 import com.vju.club.repository.DepartmentRepository;
-import com.vju.club.annotation.RequirePermission;
 import com.vju.club.common.PermissionConstants;
 import com.vju.club.dto.request.GrantPermissionRequest;
 import com.vju.club.dto.request.ReplacePermissionsRequest;
@@ -93,21 +92,21 @@ public class PermissionServiceImpl implements PermissionService {
     @Override
     @Transactional(readOnly = true)
     public List<UserPermissionResponse> listUserPermissions(Actor actor, UUID targetUserId) {
-        Set<UUID> scopedClubs = permittedClubsForTarget(actor, targetUserId);
+        ScopedTargetAccess access = permittedAccessForTarget(actor, targetUserId);
         findUser(targetUserId);
         return userPermissionRepository.findByUser_IdAndRevokedAtIsNullOrderByGrantedAtDesc(targetUserId).stream()
-                .filter(grant -> scopedClubs == null || (clubOf(grant.getClub(), grant.getDepartment()) != null
-                        && scopedClubs.contains(clubOf(grant.getClub(), grant.getDepartment()))))
+                .filter(grant -> access == null || access.allows(clubOf(grant.getClub(), grant.getDepartment()),
+                        grant.getDepartment() == null ? null : grant.getDepartment().getId()))
                 .map(permissionMapper::toUserPermissionResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<EffectivePermissionResponse> listEffective(Actor actor, UUID targetUserId) {
-        Set<UUID> scopedClubs = permittedClubsForTarget(actor, targetUserId);
+        ScopedTargetAccess access = permittedAccessForTarget(actor, targetUserId);
         findUser(targetUserId);
         return userPermissionRepository.findEffective(targetUserId).stream()
-                .filter(row -> scopedClubs == null || (row.getClubId() != null && scopedClubs.contains(row.getClubId())))
+                .filter(row -> access == null || access.allows(row.getClubId(), row.getDepartmentId()))
                 .map(permissionMapper::toEffectiveResponse).toList();
     }
 
@@ -348,22 +347,30 @@ public class PermissionServiceImpl implements PermissionService {
         return false;
     }
 
-    private Set<UUID> permittedClubsForTarget(Actor actor, UUID targetUserId) {
-        if (targetUserId.equals(actor.id()) || authorizationService.hasGlobalPermission(actor, PermissionConstants.PERMISSION_VIEW)) {
-            return null;
+    private record ScopedTargetAccess(Set<UUID> clubIds, Set<UUID> departmentIds) {
+        boolean allows(UUID clubId, UUID departmentId) {
+            return (clubId != null && clubIds.contains(clubId)) || (departmentId != null && departmentIds.contains(departmentId));
         }
-        Set<UUID> shared = new HashSet<>();
+    }
+
+    private ScopedTargetAccess permittedAccessForTarget(Actor actor, UUID targetUserId) {
+        if (targetUserId.equals(actor.id()) || authorizationService.hasGlobalPermission(actor, PermissionConstants.PERMISSION_VIEW)) return null;
+        Set<UUID> sharedClubs = new HashSet<>();
+        Set<UUID> sharedDepts = new HashSet<>();
         if (membershipRepository != null) {
-            for (UUID cid : authorizationService.getPermittedClubIds(actor, PermissionConstants.PERMISSION_VIEW)) {
-                if (membershipRepository.existsByUser_IdAndClub_IdAndStatus(targetUserId, cid, MembershipStatus.ACTIVE)
-                        || membershipRepository.existsByUser_IdAndClub_IdAndStatus(targetUserId, cid, MembershipStatus.SUSPENDED)) {
-                    shared.add(cid);
-                }
-            }
+            authorizationService.getPermittedClubIds(actor, PermissionConstants.PERMISSION_VIEW)
+                    .forEach(cid -> { if (isClubTargetMember(targetUserId, cid)) sharedClubs.add(cid); });
+            authorizationService.getPermittedDepartments(actor, PermissionConstants.PERMISSION_VIEW)
+                    .forEach((did, cid) -> { if (isClubTargetMember(targetUserId, cid)) sharedDepts.add(did); });
         }
-        if (!shared.isEmpty()) return shared;
+        if (!sharedClubs.isEmpty() || !sharedDepts.isEmpty()) return new ScopedTargetAccess(sharedClubs, sharedDepts);
         authorizationService.require(actor, PermissionConstants.PERMISSION_VIEW, null, null);
         return null;
+    }
+
+    private boolean isClubTargetMember(UUID targetUserId, UUID clubId) {
+        return membershipRepository.existsByUser_IdAndClub_IdAndStatus(targetUserId, clubId, MembershipStatus.ACTIVE)
+                || membershipRepository.existsByUser_IdAndClub_IdAndStatus(targetUserId, clubId, MembershipStatus.SUSPENDED);
     }
 
     private void requireClubMemberWhenClubOfficer(UUID userId, UUID targetClubId) {

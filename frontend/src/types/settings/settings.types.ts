@@ -32,10 +32,31 @@ export type SystemSettingsInput = {
   smtpFromEmail: string | null;
   smtpFromName: string;
   smtpStartTls: boolean;
+  facebookAppId: string | null;
+  facebookAppSecret?: string;
+  clearFacebookAppSecret?: boolean;
+  facebookGraphVersion: string | null;
+  facebookOauthRedirectUri: string | null;
+  frontendBaseUrl: string | null;
+  aiBaseUrl: string | null;
+  aiApiKey?: string;
+  clearAiApiKey?: boolean;
+  aiModel: string | null;
+  googleClientId: string | null;
+  googleAllowedDomains: string | null;
+  googleCreateAccounts: boolean | null;
 };
 
-export type SystemSettings = Omit<SystemSettingsInput, 'smtpPassword' | 'clearSmtpPassword'> & {
+export type SystemSettings = Omit<
+  SystemSettingsInput,
+  'smtpPassword' | 'clearSmtpPassword' | 'facebookAppSecret' | 'clearFacebookAppSecret' | 'aiApiKey' | 'clearAiApiKey'
+> & {
   smtpPasswordConfigured: boolean;
+  facebookAppSecretConfigured: boolean;
+  facebookOauthConfigured: boolean;
+  aiApiKeyConfigured: boolean;
+  aiConfigured: boolean;
+  googleSignInConfigured: boolean;
   updatedAt?: string;
   updatedBy?: string;
 };

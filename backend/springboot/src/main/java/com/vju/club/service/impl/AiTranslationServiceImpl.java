@@ -45,6 +45,8 @@ public class AiTranslationServiceImpl implements AiTranslationService {
 
     private final I18nTranslationRepository repository;
     private final AiProperties aiProperties;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.vju.club.config.RuntimeIntegrationConfig runtimeIntegrationConfig;
     private final HttpClient httpClient;
     private final ExecutorService backgroundExecutor;
 
@@ -134,7 +136,7 @@ public class AiTranslationServiceImpl implements AiTranslationService {
 
         String providerUsed = "9router";
         Map<String, String> newlyTranslated = new LinkedHashMap<>();
-        String modelLabel = aiProperties.getModel() != null ? aiProperties.getModel() : "9router";
+        String modelLabel = !effectiveAi().model().isBlank() ? effectiveAi().model() : "9router";
 
         if (is9RouterConfigured()) {
             try {
@@ -234,13 +236,23 @@ public class AiTranslationServiceImpl implements AiTranslationService {
         }
     }
 
+    private com.vju.club.config.RuntimeIntegrationConfig.EffectiveAi effectiveAi() {
+        if (runtimeIntegrationConfig != null) {
+            return runtimeIntegrationConfig.ai();
+        }
+        if (aiProperties == null) {
+            return new com.vju.club.config.RuntimeIntegrationConfig.EffectiveAi("", "", "9router");
+        }
+        return new com.vju.club.config.RuntimeIntegrationConfig.EffectiveAi(
+                aiProperties.getBaseUrl(), aiProperties.getApiKey(), aiProperties.getModel());
+    }
+
     private boolean is9RouterConfigured() {
-        return aiProperties != null
-                && aiProperties.getBaseUrl() != null && !aiProperties.getBaseUrl().isBlank()
-                && aiProperties.getApiKey() != null && !aiProperties.getApiKey().isBlank();
+        return effectiveAi().isConfigured();
     }
 
     private List<String> call9RouterBatch(String targetLocale, List<String> sources) throws Exception {
+        var ai = effectiveAi();
         String targetLanguageName = "ja".equals(targetLocale)
                 ? "Japanese (natural academic/university style for Vietnam Japan University - 日越大学)"
                 : "English (natural academic/university style for Vietnam Japan University - VJU)";
@@ -252,19 +264,19 @@ public class AiTranslationServiceImpl implements AiTranslationService {
                 + "2. Return ONLY a valid JSON array of translated strings with the exact same number of elements and in the exact same order as the input array. Do not include markdown fences or explanations.";
 
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("model", aiProperties.getModel());
+        payload.put("model", ai.model());
         payload.put("stream", false);
         payload.put("messages", List.of(
                 Map.of("role", "system", "content", systemPrompt),
                 Map.of("role", "user", "content", JSON.writeValueAsString(sources))
         ));
 
-        String endpoint = aiProperties.getBaseUrl().replaceAll("/+$", "") + "/chat/completions";
+        String endpoint = ai.baseUrl().replaceAll("/+$", "") + "/chat/completions";
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(endpoint))
                 .timeout(Duration.ofSeconds(30))
                 .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + aiProperties.getApiKey().strip())
+                .header("Authorization", "Bearer " + ai.apiKey().strip())
                 .POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(payload)))
                 .build();
 

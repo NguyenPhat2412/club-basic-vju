@@ -47,6 +47,22 @@ public class PermissionAuthorizationService {
                 .collect(java.util.stream.Collectors.toSet());
     }
 
+    public java.util.Map<UUID, UUID> getPermittedDepartments(Actor actor, String permissionKey) {
+        if (actor == null) {
+            return java.util.Collections.emptyMap();
+        }
+        java.util.Map<UUID, UUID> map = new java.util.LinkedHashMap<>();
+        for (UserPermissionRepository.EffectivePermissionRow row : userPermissionRepository.findEffective(actor.id())) {
+            if (permissionKey.equals(row.getPermissionKey())
+                    && "DEPARTMENT".equals(row.getScope())
+                    && row.getDepartmentId() != null
+                    && row.getClubId() != null) {
+                map.putIfAbsent(row.getDepartmentId(), row.getClubId());
+            }
+        }
+        return map;
+    }
+
     public void require(Actor actor, String permissionKey, UUID clubId, UUID departmentId) {
         if (!hasPermission(actor, permissionKey, clubId, departmentId)) {
             throw forbidden();

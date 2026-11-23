@@ -115,6 +115,10 @@ export const PHRASES_EN_PERMISSIONS: Record<string, string> = {
   'Mở lại trạng thái hoạt động cho câu lạc bộ': 'Re-enable active status for a club',
   'Ngừng hoạt động câu lạc bộ': 'Deactivate club',
   'Tạm ngừng hoạt động câu lạc bộ': 'Temporarily suspend club operations',
+  'Xem thống kê & bài viết Fanpage Facebook': 'View Facebook Fanpage insights & posts',
+  'Xem chỉ số tương tác, lượt theo dõi và bài viết đã đồng bộ từ Fanpage CLB': 'View engagement metrics, followers, and synced posts from the club Facebook Fanpage',
+  'Quản lý kết nối & đồng bộ Fanpage Facebook': 'Manage Facebook Fanpage connection & sync',
+  'Kết nối, đăng nhập OAuth, đồng bộ bài viết và ngắt kết nối Fanpage Facebook của CLB': 'Connect, sign in via OAuth, sync posts, and disconnect the club Facebook Fanpage',
 
   // Department
   'Xem danh sách ban': 'View departments list',
@@ -179,10 +183,15 @@ export const PHRASES_EN_PERMISSIONS: Record<string, string> = {
   // Permission
   'Xem vai trò & quyền được gán': 'View assigned roles & permissions',
   'Xem danh sách vai trò và phạm vi quyền hạn của từng tài khoản': 'Inspect assigned roles and effective permission scopes of each user',
+  'Xem danh sách vai trò và phạm vi quyền hạn của tài khoản trong hệ thống, CLB hoặc ban': 'Inspect assigned roles and effective permission scopes across the system, club, or department',
   'Gán vai trò cho tài khoản': 'Assign roles to accounts',
+  'Gán vai trò & ủy quyền cấp dưới': 'Assign roles & delegate to subordinates',
   'Bổ nhiệm vai trò cho người dùng theo toàn hệ thống, CLB hoặc ban': 'Assign roles to users at Global, Club, or Department scope',
+  'Bổ nhiệm vai trò hoặc cấp trực tiếp các quyền mà chính mình đang nắm giữ cho thành viên cấp dưới (toàn hệ thống, CLB hoặc ban)': 'Assign roles or directly delegate permissions you hold to subordinate members (Global, Club, or Department scope)',
   'Thu hồi vai trò đã gán': 'Revoke assigned roles',
+  'Thu hồi vai trò & quyền đã cấp': 'Revoke roles & delegated permissions',
   'Gỡ bỏ vai trò hiện có của người dùng': 'Revoke an existing role assignment from a user',
+  'Gỡ bỏ vai trò hoặc quyền trực tiếp trong phạm vi và giới hạn quyền hạn của bản thân': 'Revoke roles or direct permissions within your own scope and authority',
 
   // Role
   'Xem bảng vai trò & phân quyền': 'View roles & permission matrix',

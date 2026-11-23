@@ -60,9 +60,11 @@ public class SecurityBeansConfig {
     }
 
     @Bean
-    GoogleIdTokenVerifier googleIdTokenVerifier(GoogleSignInProperties properties) {
+    GoogleIdTokenVerifier googleIdTokenVerifier(
+            GoogleSignInProperties properties,
+            RuntimeIntegrationConfig runtimeIntegrationConfig) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(properties.getJwkSetUri()).build();
-        decoder.setJwtValidator(GoogleIdTokenVerifier.validator(properties.getClientId()));
+        decoder.setJwtValidator(GoogleIdTokenVerifier.validator(() -> runtimeIntegrationConfig.google().clientId()));
         return new GoogleIdTokenVerifier(decoder);
     }
 

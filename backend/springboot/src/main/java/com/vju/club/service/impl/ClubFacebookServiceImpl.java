@@ -57,6 +57,22 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.vju.club.service.SystemSettingsService settingsService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.vju.club.config.RuntimeIntegrationConfig runtimeIntegrationConfig;
+
+    private com.vju.club.config.RuntimeIntegrationConfig.EffectiveFacebook effectiveFacebook() {
+        if (runtimeIntegrationConfig != null) {
+            return runtimeIntegrationConfig.facebook();
+        }
+        return new com.vju.club.config.RuntimeIntegrationConfig.EffectiveFacebook(
+                properties.getAppId(),
+                properties.getAppSecret(),
+                properties.getGraphVersion(),
+                properties.getGraphBaseUrl(),
+                properties.getOauthRedirectUri(),
+                properties.getFrontendBaseUrl());
+    }
+
     private static final int DEFAULT_FACEBOOK_SYNC_COOLDOWN_MINUTES = 2;
 
     private final SecureRandom random = new SecureRandom();
@@ -193,7 +209,8 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
     public ClubFacebookOAuthStartResponse startOAuth(Actor actor, UUID clubId) {
         requireManageAccess(actor, clubId);
         requireClub(clubId);
-        if (!properties.isOauthConfigured()) {
+        var fb = effectiveFacebook();
+        if (!fb.isOauthConfigured()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "FACEBOOK_OAUTH_NOT_CONFIGURED",
                     "Tính năng Đăng nhập Facebook chưa được quản trị viên hệ thống kích hoạt. Bạn có thể kết nối nhanh bằng Page Access Token.");
         }
@@ -201,10 +218,10 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
         String state = randomToken();
         pendingStates.put(state, new PendingOAuthState(actor.id(), clubId, Instant.now().plusSeconds(OAUTH_TTL_SECONDS)));
 
-        String version = properties.getGraphVersion().replaceAll("^/+|/+$", "");
+        String version = fb.graphVersion().replaceAll("^/+|/+$", "");
         String authUrl = "https://www.facebook.com/" + version + "/dialog/oauth"
-                + "?client_id=" + encode(properties.getAppId())
-                + "&redirect_uri=" + encode(properties.getOauthRedirectUri())
+                + "?client_id=" + encode(fb.appId())
+                + "&redirect_uri=" + encode(fb.oauthRedirectUri())
                 + "&state=" + encode(state)
                 + "&scope=" + encode(OAUTH_SCOPE)
                 + "&auth_type=rerequest";
@@ -215,7 +232,8 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
     public String handleOAuthCallback(String code, String state, String error, String errorDescription) {
         purgeExpiredEntries();
         PendingOAuthState pending = state == null ? null : pendingStates.remove(state);
-        String frontendBase = properties.getFrontendBaseUrl().replaceAll("/+$", "");
+        var fb = effectiveFacebook();
+        String frontendBase = fb.frontendBaseUrl().replaceAll("/+$", "");
         if (pending == null || pending.expiresAt().isBefore(Instant.now())) {
             return frontendBase + "/management?tab=settings&fbError=" + encode("Phiên kết nối Facebook đã hết hạn. Vui lòng thử lại.");
         }
@@ -228,7 +246,7 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
             return baseReturn + "&fbError=" + encode("Facebook không trả về mã xác thực.");
         }
         try {
-            String shortUserToken = graphClient.exchangeOAuthCodeForUserToken(code, properties.getOauthRedirectUri());
+            String shortUserToken = graphClient.exchangeOAuthCodeForUserToken(code, fb.oauthRedirectUri());
             String longUserToken = graphClient.exchangeForLongLivedUserToken(shortUserToken);
             List<FacebookGraphClient.FbManagedPage> pages = graphClient.fetchManagedPages(longUserToken);
             if (pages.isEmpty()) {
@@ -386,7 +404,7 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
             return new ClubFacebookOverviewResponse(
                     clubId,
                     false,
-                    properties.isOauthConfigured(),
+                    effectiveFacebook().isOauthConfigured(),
                     null,
                     new ClubFacebookOverviewResponse.EngagementSummary(0, 0, 0, 0, 0, 0, 0.0),
                     Collections.emptyList()
@@ -409,7 +427,7 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
         return new ClubFacebookOverviewResponse(
                 clubId,
                 true,
-                properties.isOauthConfigured(),
+                effectiveFacebook().isOauthConfigured(),
                 new ClubFacebookOverviewResponse.PageInfo(
                         connection.getPageId(),
                         connection.getPageName(),

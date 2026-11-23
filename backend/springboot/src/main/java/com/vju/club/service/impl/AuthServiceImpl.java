@@ -89,12 +89,24 @@ public class AuthServiceImpl implements AuthService {
     private PasswordResetOtpAttemptService otpAttemptService;
     @Autowired(required = false)
     private OtpMailService otpMailService;
+    @Autowired(required = false)
+    private com.vju.club.config.RuntimeIntegrationConfig runtimeIntegrationConfig;
+
+    private com.vju.club.config.RuntimeIntegrationConfig.EffectiveGoogle effectiveGoogle() {
+        if (runtimeIntegrationConfig != null) {
+            return runtimeIntegrationConfig.google();
+        }
+        return new com.vju.club.config.RuntimeIntegrationConfig.EffectiveGoogle(
+                googleSignIn.getClientId(),
+                googleSignIn.getAllowedDomains(),
+                googleSignIn.isCreateAccounts());
+    }
 
     @Override
     @Transactional
     public SignedIn login(LoginRequest request) {
         String email = normalizeEmail(request.email());
-        if (googleSignIn.isGoogleEmail(email)) {
+        if (effectiveGoogle().isGoogleEmail(email)) {
             User existing = userRepository.findByEmailIgnoreCase(email).orElse(null);
             if (existing == null || !isSelfRegistered(existing.getGoogleSubject())) {
                 throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_SIGN_IN_REQUIRED",
@@ -160,13 +172,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public SignedIn loginWithGoogle(GoogleLoginRequest request) {
-        if (!googleSignIn.isEnabled()) {
+        var google = effectiveGoogle();
+        if (!google.isEnabled()) {
             throw new ApiException(HttpStatus.NOT_FOUND, "GOOGLE_SIGN_IN_DISABLED", "Google sign-in is not enabled");
         }
         GoogleIdentity identity = googleIdTokenVerifier.verify(request.credential());
         String email = identity.email() == null ? null : normalizeEmail(identity.email());
         if (!identity.emailVerified() || identity.hostedDomain() == null || identity.hostedDomain().isBlank()
-                || !googleSignIn.isGoogleEmail(email)) {
+                || !google.isGoogleEmail(email)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_DOMAIN_NOT_ALLOWED",
                     "Only school Google accounts can sign in");
         }
@@ -202,7 +215,7 @@ public class AuthServiceImpl implements AuthService {
             throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_ACCOUNT_NOT_REGISTERED",
                     "This school account has not signed up yet");
         }
-        if (!googleSignIn.isCreateAccounts() || !selfRegistrationOpen()) {
+        if (!effectiveGoogle().createAccounts() || !selfRegistrationOpen()) {
             throw new ApiException(HttpStatus.FORBIDDEN, "GOOGLE_SIGN_UP_CLOSED",
                     "Sign-up is closed; an administrator issues accounts");
         }
@@ -231,8 +244,9 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public GoogleSignInConfigResponse googleSignInConfig() {
-        return googleSignIn.isEnabled()
-                ? new GoogleSignInConfigResponse(true, googleSignIn.getClientId(), googleSignIn.getAllowedDomains())
+        var google = effectiveGoogle();
+        return google.isEnabled()
+                ? new GoogleSignInConfigResponse(true, google.clientId(), google.allowedDomains())
                 : new GoogleSignInConfigResponse(false, null, List.of());
     }
 

@@ -172,10 +172,11 @@ public class RoleServiceImpl implements RoleService {
     @Override
     @Transactional(readOnly = true)
     public List<UserRoleResponse> listAssignments(Actor actor, UUID userId) {
-        Set<UUID> scopedClubs = permittedClubsForTarget(actor, userId);
+        ScopedTargetAccess access = permittedAccessForTarget(actor, userId);
         findUser(userId);
         return userRoleRepository.findActiveByUser(userId).stream()
-                .filter(ur -> scopedClubs == null || (clubOf(ur) != null && scopedClubs.contains(clubOf(ur))))
+                .filter(ur -> access == null || access.allows(clubOf(ur),
+                        ur.getDepartment() == null ? null : ur.getDepartment().getId()))
                 .map(roleMapper::toUserRoleResponse).toList();
     }
 
@@ -312,22 +313,41 @@ public class RoleServiceImpl implements RoleService {
         return false;
     }
 
-    private Set<UUID> permittedClubsForTarget(Actor actor, UUID targetUserId) {
+    private record ScopedTargetAccess(Set<UUID> clubIds, Set<UUID> departmentIds) {
+        boolean allows(UUID clubId, UUID departmentId) {
+            if (clubId != null && clubIds.contains(clubId)) return true;
+            return departmentId != null && departmentIds.contains(departmentId);
+        }
+    }
+
+    private ScopedTargetAccess permittedAccessForTarget(Actor actor, UUID targetUserId) {
         if (targetUserId.equals(actor.id()) || authorizationService.hasGlobalPermission(actor, PermissionConstants.PERMISSION_VIEW)) {
             return null;
         }
-        Set<UUID> shared = new LinkedHashSet<>();
+        Set<UUID> sharedClubs = new LinkedHashSet<>();
+        Set<UUID> sharedDepts = new LinkedHashSet<>();
         if (membershipRepository != null) {
             for (UUID cid : authorizationService.getPermittedClubIds(actor, PermissionConstants.PERMISSION_VIEW)) {
-                if (membershipRepository.existsByUser_IdAndClub_IdAndStatus(targetUserId, cid, MembershipStatus.ACTIVE)
-                        || membershipRepository.existsByUser_IdAndClub_IdAndStatus(targetUserId, cid, MembershipStatus.SUSPENDED)) {
-                    shared.add(cid);
+                if (isClubTargetMember(targetUserId, cid)) {
+                    sharedClubs.add(cid);
+                }
+            }
+            for (Map.Entry<UUID, UUID> entry : authorizationService.getPermittedDepartments(actor, PermissionConstants.PERMISSION_VIEW).entrySet()) {
+                if (isClubTargetMember(targetUserId, entry.getValue())) {
+                    sharedDepts.add(entry.getKey());
                 }
             }
         }
-        if (!shared.isEmpty()) return shared;
+        if (!sharedClubs.isEmpty() || !sharedDepts.isEmpty()) {
+            return new ScopedTargetAccess(sharedClubs, sharedDepts);
+        }
         authorizationService.require(actor, PermissionConstants.PERMISSION_VIEW, null, null);
         return null;
+    }
+
+    private boolean isClubTargetMember(UUID targetUserId, UUID clubId) {
+        return membershipRepository.existsByUser_IdAndClub_IdAndStatus(targetUserId, clubId, MembershipStatus.ACTIVE)
+                || membershipRepository.existsByUser_IdAndClub_IdAndStatus(targetUserId, clubId, MembershipStatus.SUSPENDED);
     }
 
     @Override

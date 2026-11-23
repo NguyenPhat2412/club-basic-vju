@@ -279,4 +279,51 @@ class PermissionServiceTest {
         assertThat(existing.getRevokedAt()).isNull();
         verify(userPermissionRepository, never()).saveAndFlush(any());
     }
+
+    @Test
+    void departmentScopedViewerSeesOnlyGrantsInsideTheirOwnDepartment() {
+        var membershipRepo = org.mockito.Mockito.mock(com.vju.club.repository.MembershipRepository.class);
+        PermissionService deptService = withPermissionChecks(new PermissionServiceImpl(
+                permissionRepository, userPermissionRepository, permissionAuditLogRepository,
+                userRepository, clubRepository, departmentRepository, authorization,
+                Clock.systemUTC(), audit, new PermissionMapperImpl(), grantGuard, membershipRepo), authorization);
+
+        com.vju.club.entity.Department dept1 = new com.vju.club.entity.Department();
+        dept1.setId(UUID.randomUUID());
+        dept1.setClub(club);
+        com.vju.club.entity.Department dept2 = new com.vju.club.entity.Department();
+        dept2.setId(UUID.randomUUID());
+        dept2.setClub(club);
+
+        Permission taskCreate = permission("task.create", PermissionScope.DEPARTMENT);
+        UserPermission grantInDept1 = new UserPermission();
+        grantInDept1.setId(UUID.randomUUID());
+        grantInDept1.setUser(target);
+        grantInDept1.setPermission(taskCreate);
+        grantInDept1.setScope(PermissionScope.DEPARTMENT);
+        grantInDept1.setDepartment(dept1);
+
+        UserPermission grantInDept2 = new UserPermission();
+        grantInDept2.setId(UUID.randomUUID());
+        grantInDept2.setUser(target);
+        grantInDept2.setPermission(taskCreate);
+        grantInDept2.setScope(PermissionScope.DEPARTMENT);
+        grantInDept2.setDepartment(dept2);
+
+        UserPermission clubWideGrant = held(clubView);
+        activeGrants.add(grantInDept1);
+        activeGrants.add(grantInDept2);
+
+        when(authorization.hasGlobalPermission(actor, "permission.view")).thenReturn(false);
+        when(authorization.getPermittedClubIds(actor, "permission.view")).thenReturn(Set.of());
+        when(authorization.getPermittedDepartments(actor, "permission.view"))
+                .thenReturn(java.util.Map.of(dept1.getId(), club.getId()));
+        when(membershipRepo.existsByUser_IdAndClub_IdAndStatus(
+                target.getId(), club.getId(), com.vju.club.enums.MembershipStatus.ACTIVE)).thenReturn(true);
+
+        var visible = deptService.listUserPermissions(actor, target.getId());
+        assertThat(visible).hasSize(1);
+        assertThat(visible.get(0).departmentId()).isEqualTo(dept1.getId());
+        assertThat(clubWideGrant.getClub()).isEqualTo(club);
+    }
 }

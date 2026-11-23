@@ -107,4 +107,37 @@ public class SystemSettings extends TimestampedEntity {
 
     @Column(name = "smtp_start_tls", nullable = false)
     private boolean smtpStartTls = true;
+
+    @Column(name = "facebook_app_id", length = 64)
+    private String facebookAppId;
+
+    @Column(name = "facebook_app_secret", length = 512)
+    private String facebookAppSecret;
+
+    @Column(name = "facebook_graph_version", length = 32)
+    private String facebookGraphVersion;
+
+    @Column(name = "facebook_oauth_redirect_uri", length = 500)
+    private String facebookOauthRedirectUri;
+
+    @Column(name = "frontend_base_url", length = 500)
+    private String frontendBaseUrl;
+
+    @Column(name = "ai_base_url", length = 500)
+    private String aiBaseUrl;
+
+    @Column(name = "ai_api_key", length = 512)
+    private String aiApiKey;
+
+    @Column(name = "ai_model", length = 120)
+    private String aiModel;
+
+    @Column(name = "google_client_id", length = 255)
+    private String googleClientId;
+
+    @Column(name = "google_allowed_domains", length = 500)
+    private String googleAllowedDomains;
+
+    @Column(name = "google_create_accounts")
+    private Boolean googleCreateAccounts;
 }

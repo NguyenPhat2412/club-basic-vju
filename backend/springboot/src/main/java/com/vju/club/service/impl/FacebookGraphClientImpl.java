@@ -30,12 +30,27 @@ public class FacebookGraphClientImpl implements FacebookGraphClient {
     private static final DateTimeFormatter FB_ISO_OFFSET = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ");
 
     private final FacebookProperties properties;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.vju.club.config.RuntimeIntegrationConfig runtimeIntegrationConfig;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
 
     public FacebookGraphClientImpl(FacebookProperties properties) {
         this.properties = properties;
+    }
+
+    private com.vju.club.config.RuntimeIntegrationConfig.EffectiveFacebook effectiveFacebook() {
+        if (runtimeIntegrationConfig != null) {
+            return runtimeIntegrationConfig.facebook();
+        }
+        return new com.vju.club.config.RuntimeIntegrationConfig.EffectiveFacebook(
+                properties.getAppId(),
+                properties.getAppSecret(),
+                properties.getGraphVersion(),
+                properties.getGraphBaseUrl(),
+                properties.getOauthRedirectUri(),
+                properties.getFrontendBaseUrl());
     }
 
     @Override
@@ -87,9 +102,10 @@ public class FacebookGraphClientImpl implements FacebookGraphClient {
 
     @Override
     public String exchangeOAuthCodeForUserToken(String code, String redirectUri) {
-        JsonNode root = getJson("/oauth/access_token?client_id=" + encode(properties.getAppId())
+        var fb = effectiveFacebook();
+        JsonNode root = getJson("/oauth/access_token?client_id=" + encode(fb.appId())
                 + "&redirect_uri=" + encode(redirectUri)
-                + "&client_secret=" + encode(properties.getAppSecret())
+                + "&client_secret=" + encode(fb.appSecret())
                 + "&code=" + encode(code));
         String token = text(root, "access_token");
         if (token == null) {
@@ -101,13 +117,14 @@ public class FacebookGraphClientImpl implements FacebookGraphClient {
 
     @Override
     public String exchangeForLongLivedUserToken(String shortLivedUserToken) {
-        if (!properties.isOauthConfigured()) {
+        var fb = effectiveFacebook();
+        if (!fb.isOauthConfigured()) {
             return shortLivedUserToken;
         }
         try {
             JsonNode root = getJson("/oauth/access_token?grant_type=fb_exchange_token"
-                    + "&client_id=" + encode(properties.getAppId())
-                    + "&client_secret=" + encode(properties.getAppSecret())
+                    + "&client_id=" + encode(fb.appId())
+                    + "&client_secret=" + encode(fb.appSecret())
                     + "&fb_exchange_token=" + encode(shortLivedUserToken));
             String longToken = text(root, "access_token");
             return longToken != null ? longToken : shortLivedUserToken;
@@ -149,8 +166,9 @@ public class FacebookGraphClientImpl implements FacebookGraphClient {
     }
 
     private JsonNode getJson(String pathAndQuery) {
-        String base = properties.getGraphBaseUrl().replaceAll("/+$", "");
-        String version = properties.getGraphVersion().replaceAll("^/+|/+$", "");
+        var fb = effectiveFacebook();
+        String base = fb.graphBaseUrl().replaceAll("/+$", "");
+        String version = fb.graphVersion().replaceAll("^/+|/+$", "");
         String url = base + "/" + version + pathAndQuery;
         try {
             HttpRequest request = HttpRequest.newBuilder()

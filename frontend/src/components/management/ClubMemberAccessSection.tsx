@@ -72,16 +72,42 @@ export function ClubMemberAccessSection({
   const grantableRoles = useMemo<Role[]>(() => {
     return (rolesQuery.data ?? []).filter((r) => {
       if (!r.active || r.scope === "GLOBAL") return false;
-      if (r.scope === "CLUB") {
-        return r.permissionKeys.every((k) => session.canClubWide(k, clubId));
-      }
-      return departments.length > 0 || session.canClubWide("permission.assign", clubId);
+      const clubWideOk =
+        session.canClubWide("permission.assign", clubId) &&
+        r.permissionKeys.every((k) => session.canClubWide(k, clubId));
+      if (r.scope === "CLUB") return clubWideOk;
+      if (clubWideOk) return true;
+      return departments.some(
+        (d) =>
+          session.canInDepartment("permission.assign", clubId, d.id) &&
+          r.permissionKeys.every((k) => session.canInDepartment(k, clubId, d.id))
+      );
     });
-  }, [clubId, departments.length, rolesQuery.data, session]);
+  }, [clubId, departments, rolesQuery.data, session]);
 
   const selectedRole = grantableRoles.find((r) => r.id === roleId) ?? grantableRoles[0];
   const effectiveRoleId = selectedRole?.id ?? "";
-  const effectiveRoleDept = selectedRole?.scope === "CLUB" ? "" : roleDeptId;
+  const canGrantSelectedRoleClubWide = selectedRole
+    ? session.canClubWide("permission.assign", clubId) &&
+      selectedRole.permissionKeys.every((k) => session.canClubWide(k, clubId))
+    : false;
+  const allowedRoleDepts = useMemo(
+    () =>
+      selectedRole?.scope === "DEPARTMENT"
+        ? departments.filter(
+            (d) =>
+              session.canInDepartment("permission.assign", clubId, d.id) &&
+              selectedRole.permissionKeys.every((k) => session.canInDepartment(k, clubId, d.id))
+          )
+        : [],
+    [clubId, departments, selectedRole, session]
+  );
+  const effectiveRoleDept =
+    selectedRole?.scope === "CLUB"
+      ? ""
+      : !canGrantSelectedRoleClubWide
+      ? allowedRoleDepts.find((d) => d.id === roleDeptId)?.id ?? allowedRoleDepts[0]?.id ?? ""
+      : roleDeptId;
 
   const grantableGroups = useMemo(() => {
     return (groupsQuery.data ?? [])
@@ -89,12 +115,20 @@ export function ClubMemberAccessSection({
         module: g.module,
         permissions: g.permissions.filter((p) => {
           if (!p.active || p.scope === "GLOBAL") return false;
-          if (p.scope === "CLUB") return session.canClubWide(p.permissionKey, clubId);
-          return session.canInClub(p.permissionKey, clubId);
+          const clubWideOk =
+            session.canClubWide("permission.assign", clubId) &&
+            session.canClubWide(p.permissionKey, clubId);
+          if (p.scope === "CLUB") return clubWideOk;
+          if (clubWideOk) return true;
+          return departments.some(
+            (d) =>
+              session.canInDepartment("permission.assign", clubId, d.id) &&
+              session.canInDepartment(p.permissionKey, clubId, d.id)
+          );
         }),
       }))
       .filter((g) => g.permissions.length > 0);
-  }, [clubId, groupsQuery.data, session]);
+  }, [clubId, departments, groupsQuery.data, session]);
 
   const allGrantablePerms = useMemo<PermissionItem[]>(
     () => grantableGroups.flatMap((g) => g.permissions),
@@ -104,13 +138,23 @@ export function ClubMemberAccessSection({
     () => new Map((groupsQuery.data ?? []).flatMap((g) => g.permissions).map((p) => [p.permissionKey, p])),
     [groupsQuery.data]
   );
+  const roleById = useMemo(
+    () => new Map((rolesQuery.data ?? []).map((r) => [r.id, r])),
+    [rolesQuery.data]
+  );
   const selectedPerm = allGrantablePerms.find((p) => p.id === permId) ?? allGrantablePerms[0];
   const effectivePermId = selectedPerm?.id ?? "";
-  const canGrantSelectedClubWide = selectedPerm ? session.canClubWide(selectedPerm.permissionKey, clubId) : false;
+  const canGrantSelectedClubWide = selectedPerm
+    ? session.canClubWide("permission.assign", clubId) && session.canClubWide(selectedPerm.permissionKey, clubId)
+    : false;
   const allowedPermDepts = useMemo(
     () =>
       selectedPerm?.scope === "DEPARTMENT"
-        ? departments.filter((d) => session.canInDepartment(selectedPerm.permissionKey, clubId, d.id))
+        ? departments.filter(
+            (d) =>
+              session.canInDepartment("permission.assign", clubId, d.id) &&
+              session.canInDepartment(selectedPerm.permissionKey, clubId, d.id)
+          )
         : [],
     [clubId, departments, selectedPerm, session]
   );
@@ -120,6 +164,31 @@ export function ClubMemberAccessSection({
       : !canGrantSelectedClubWide
       ? allowedPermDepts.find((d) => d.id === permDeptId)?.id ?? allowedPermDepts[0]?.id ?? ""
       : permDeptId;
+
+  const canRevokeRoleAssignment = (r: { roleId: string; scope: string; departmentId?: string }) => {
+    if (!canRevoke) return false;
+    const roleDef = roleById.get(r.roleId);
+    if (r.scope === "DEPARTMENT" && r.departmentId) {
+      if (!session.canInDepartment("permission.revoke", clubId, r.departmentId)) return false;
+      return !roleDef || roleDef.permissionKeys.every((k) => session.canInDepartment(k, clubId, r.departmentId));
+    }
+    if (!session.canClubWide("permission.revoke", clubId)) return false;
+    return !roleDef || roleDef.permissionKeys.every((k) => session.canClubWide(k, clubId));
+  };
+
+  const canRevokePermGrant = (p: { permissionKey: string; scope: string; departmentId?: string }) => {
+    if (!canRevoke) return false;
+    if (p.scope === "DEPARTMENT" && p.departmentId) {
+      return (
+        session.canInDepartment("permission.revoke", clubId, p.departmentId) &&
+        session.canInDepartment(p.permissionKey, clubId, p.departmentId)
+      );
+    }
+    if (p.scope === "CLUB") {
+      return session.canClubWide("permission.revoke", clubId) && session.canClubWide(p.permissionKey, clubId);
+    }
+    return false;
+  };
 
   const assignRoleMut = useMutation({
     mutationFn: () =>
@@ -166,6 +235,11 @@ export function ClubMemberAccessSection({
   return (
     <Section title="Vai trò & Phân quyền tại CLB / Ban" icon={<KeyRound />}>
       <div className="space-y-3">
+        {canAssign && (
+          <p className="rounded-lg border border-border/70 bg-muted/30 px-2.5 py-1.5 text-[11px] leading-relaxed text-muted-foreground">
+            Uỷ quyền cấp dưới: bạn chỉ có thể cấp hoặc thu hồi các vai trò và quyền hạn mà chính bạn đang nắm giữ trong phạm vi CLB / Ban phụ trách.
+          </p>
+        )}
         <div className="space-y-1.5">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Vai trò đảm nhiệm</p>
           {clubRoles.length === 0 ? (
@@ -180,7 +254,7 @@ export function ClubMemberAccessSection({
                       {r.departmentId ? `Ban: ${deptMap.get(r.departmentId) ?? "Ban chuyên môn"}` : "Toàn CLB"}
                     </Badge>
                   </div>
-                  {canRevoke && (
+                  {canRevokeRoleAssignment(r) && (
                     <button
                       type="button"
                       title="Thu hồi vai trò"
@@ -202,11 +276,11 @@ export function ClubMemberAccessSection({
               </Select>
               {selectedRole?.scope === "DEPARTMENT" && (
                 <Select aria-label="Phạm vi vai trò" value={effectiveRoleDept} onChange={(e) => setRoleDeptId(e.target.value)} className="h-8 w-40 text-xs">
-                  <option value="">Toàn CLB</option>
-                  {departments.map((d) => <option key={d.id} value={d.id}>Ban: {d.name}</option>)}
+                  {canGrantSelectedRoleClubWide && <option value="">Toàn CLB</option>}
+                  {allowedRoleDepts.map((d) => <option key={d.id} value={d.id}>Ban: {d.name}</option>)}
                 </Select>
               )}
-              <Button size="sm" className="h-8" disabled={!effectiveRoleId || assignRoleMut.isPending} onClick={() => assignRoleMut.mutate()}>
+              <Button size="sm" className="h-8" disabled={!effectiveRoleId || (selectedRole?.scope === "DEPARTMENT" && !canGrantSelectedRoleClubWide && !effectiveRoleDept) || assignRoleMut.isPending} onClick={() => assignRoleMut.mutate()}>
                 <Plus size={13} /> Gán vai trò
               </Button>
             </div>
@@ -229,7 +303,7 @@ export function ClubMemberAccessSection({
                         {p.departmentId ? `Ban: ${deptMap.get(p.departmentId) ?? "Ban chuyên môn"}` : "Toàn CLB"}
                       </Badge>
                     </div>
-                    {canRevoke && (p.scope === "CLUB" || p.scope === "DEPARTMENT") && (
+                    {canRevokePermGrant(p) && (
                       <button
                         type="button"
                         title="Thu hồi quyền"
@@ -260,7 +334,7 @@ export function ClubMemberAccessSection({
                   {allowedPermDepts.map((d) => <option key={d.id} value={d.id}>Ban: {d.name}</option>)}
                 </Select>
               )}
-              <Button size="sm" variant="outline" className="h-8" disabled={!effectivePermId || grantPermMut.isPending} onClick={() => grantPermMut.mutate()}>
+              <Button size="sm" variant="outline" className="h-8" disabled={!effectivePermId || (selectedPerm?.scope === "DEPARTMENT" && !canGrantSelectedClubWide && !effectivePermDept) || grantPermMut.isPending} onClick={() => grantPermMut.mutate()}>
                 <Plus size={13} /> Cấp quyền
               </Button>
             </div>
