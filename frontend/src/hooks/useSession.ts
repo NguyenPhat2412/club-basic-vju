@@ -4,7 +4,7 @@ import { qk } from "@/lib/api/query-keys";
 import { apiModel, EffectivePermission } from "@/lib/api";
 
 export const CLUB_MANAGEMENT_KEYS = [
-  "club.create", "club.update", "club.active", "club.inactive",
+  "club.create", "club.update", "club.active", "club.inactive", "club.facebook.manage",
   "application.view", "application.view_detail", "application.review", "application.approve", "application.reject",
   "application.manage_form", "application.update", "application.delete",
   "member.view_detail", "member.add", "member.update", "member.remove",
@@ -19,7 +19,7 @@ export const CLUB_MANAGEMENT_KEYS = [
 ];
 
 export const CLUB_WORKSPACE_KEYS = [
-  "club.view", "club.update", "club.active", "club.inactive",
+  "club.view", "club.update", "club.active", "club.inactive", "club.facebook.view", "club.facebook.manage",
   "application.create", "application.view", "application.view_detail", "application.review", "application.approve", "application.reject",
   "application.manage_form", "application.update",
   "member.view", "member.view_detail", "member.add", "member.update", "member.remove",

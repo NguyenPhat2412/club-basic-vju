@@ -46,6 +46,8 @@ export function ClubFacebookSettingsCard({
   const [showToken, setShowToken] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [replacing, setReplacing] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const [brokenAvatars, setBrokenAvatars] = useState<Record<string, boolean>>({});
 
   const overview = useQuery({
     queryKey: qk.clubFacebook(club.id, 6),
@@ -98,6 +100,7 @@ export function ClubFacebookSettingsCard({
     mutationFn: () => apiModel.disconnectClubFacebook(club.id),
     onSuccess: () => {
       setReplacing(false);
+      setConfirmDisconnect(false);
       onNotice("Đã ngắt kết nối Fanpage Facebook.");
       onError("");
       invalidateFacebook();
@@ -165,9 +168,14 @@ export function ClubFacebookSettingsCard({
               {(pendingPages.data ?? []).map((opt) => (
                 <div key={opt.pageId} className="flex items-center justify-between gap-2.5 rounded-lg border border-border bg-card p-2.5">
                   <div className="flex min-w-0 items-center gap-2.5">
-                    {opt.avatarUrl ? (
+                    {opt.avatarUrl && !brokenAvatars[opt.pageId] ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={opt.avatarUrl} alt={opt.pageName} className="size-9 shrink-0 rounded-lg object-cover" />
+                      <img
+                        src={opt.avatarUrl}
+                        alt={opt.pageName}
+                        onError={() => setBrokenAvatars((prev) => ({ ...prev, [opt.pageId]: true }))}
+                        className="size-9 shrink-0 rounded-lg object-cover"
+                      />
                     ) : (
                       <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                         <Globe size={15} />
@@ -191,9 +199,14 @@ export function ClubFacebookSettingsCard({
       {data?.connected && page && (
         <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-muted/20 p-3.5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            {page.avatarUrl ? (
+            {page.avatarUrl && !brokenAvatars.connected ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={page.avatarUrl} alt={page.pageName} className="size-11 shrink-0 rounded-xl border border-border object-cover" />
+              <img
+                src={page.avatarUrl}
+                alt={page.pageName}
+                onError={() => setBrokenAvatars((prev) => ({ ...prev, connected: true }))}
+                className="size-11 shrink-0 rounded-xl border border-border object-cover"
+              />
             ) : (
               <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                 <Share2 size={18} />
@@ -231,15 +244,31 @@ export function ClubFacebookSettingsCard({
             <Button size="sm" variant="outline" onClick={() => setReplacing((v) => !v)}>
               <KeyRound size={13} /> {replacing ? "Đóng" : "Đổi token"}
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-destructive hover:border-destructive/40"
-              disabled={disconnect.isPending}
-              onClick={() => disconnect.mutate()}
-            >
-              <Unlink size={13} /> Ngắt
-            </Button>
+            {confirmDisconnect ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={disconnect.isPending}
+                  onClick={() => disconnect.mutate()}
+                >
+                  <Unlink size={13} /> {disconnect.isPending ? "Đang ngắt…" : "Xác nhận ngắt"}
+                </Button>
+                <Button size="sm" variant="outline" disabled={disconnect.isPending} onClick={() => setConfirmDisconnect(false)}>
+                  Huỷ
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-destructive hover:border-destructive/40"
+                disabled={disconnect.isPending}
+                onClick={() => setConfirmDisconnect(true)}
+              >
+                <Unlink size={13} /> Ngắt
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -287,7 +316,7 @@ export function ClubFacebookSettingsCard({
             <div className="space-y-3">
               {showGuide && (
                 <ol className="list-decimal space-y-1 rounded-lg border border-border/70 bg-muted/30 py-2.5 pl-7 pr-3 text-xs text-muted-foreground">
-                  <li>Mở <b>Graph API Explorer</b> → chọn quyền <code className="font-mono">pages_show_list</code>, <code className="font-mono">pages_read_engagement</code>, <code className="font-mono">read_insights</code>.</li>
+                  <li>Mở <b>Graph API Explorer</b> → chọn quyền <code className="font-mono">pages_show_list</code>, <code className="font-mono">pages_read_engagement</code>.</li>
                   <li>Đổi mục <b>Người dùng hoặc Trang</b> sang tên Fanpage CLB → copy ô <b>Access Token</b>.</li>
                   <li>Dán vào ô dưới và bấm <b>Kết nối Fanpage</b> (token tự mã hoá AES-256 ở máy chủ).</li>
                 </ol>
@@ -325,7 +354,7 @@ export function ClubFacebookSettingsCard({
               <p className="text-xs text-muted-foreground">
                 {data?.oauthConfigured
                   ? "Đăng nhập Facebook của người quản trị Fanpage để chọn gắn trực tiếp cho CLB."
-                  : "Cần cấu hình FACEBOOK_APP_ID và FACEBOOK_APP_SECRET trong backend/springboot/.env.local."}
+                  : "Tính năng Đăng nhập Facebook chưa được quản trị viên hệ thống kích hoạt. Bạn có thể kết nối ngay bằng Page Access Token."}
               </p>
               <Button size="sm" disabled={!data?.oauthConfigured || startOAuth.isPending} onClick={() => startOAuth.mutate()}>
                 <Share2 size={14} /> {startOAuth.isPending ? "Đang mở…" : "Đăng nhập Facebook"}

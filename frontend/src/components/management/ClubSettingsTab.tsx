@@ -51,6 +51,7 @@ export function ClubSettingsTab({
   const clubMedia = mediaCatalog.data?.clubs[clubSlugFromCode(club.code)];
 
   const canUpdateClub = session.canInClub("club.update", club.id);
+  const canManageFacebook = session.canInClub("club.facebook.manage", club.id) || canUpdateClub;
   const canActivateClub = club.status !== "ACTIVE" && session.canInClub("club.active", club.id);
   const canDeactivateClub = club.status === "ACTIVE" && session.canInClub("club.inactive", club.id);
   const canEditProfile = canUpdateClub || canActivateClub || canDeactivateClub;
@@ -60,7 +61,7 @@ export function ClubSettingsTab({
 
   const sections: { key: SettingsSectionKey; label: string; icon: React.ReactNode }[] = [
     ...(canEditProfile ? [{ key: "profile" as const, label: "Hồ sơ CLB", icon: <Building2 size={14} /> }] : []),
-    ...(canUpdateClub ? [{ key: "facebook" as const, label: "Fanpage Facebook", icon: <Share2 size={14} /> }] : []),
+    ...(canManageFacebook ? [{ key: "facebook" as const, label: "Fanpage Facebook", icon: <Share2 size={14} /> }] : []),
     ...(canUpdateClub ? [{ key: "appearance" as const, label: "Trang giới thiệu", icon: <LayoutTemplate size={14} /> }] : []),
     ...(canSendNotif ? [{ key: "broadcast" as const, label: "Phát thông báo", icon: <Bell size={14} /> }] : []),
   ];
@@ -68,7 +69,7 @@ export function ClubSettingsTab({
   const urlSection = searchParams.get("section") as SettingsSectionKey | null;
   const hasFbReturn = Boolean(searchParams.get("fbSelect") || searchParams.get("fbError"));
   const initialSection: SettingsSectionKey =
-    hasFbReturn && canUpdateClub
+    hasFbReturn && canManageFacebook
       ? "facebook"
       : urlSection && sections.some((s) => s.key === urlSection)
         ? urlSection
@@ -290,7 +291,7 @@ export function ClubSettingsTab({
           </section>
         )}
 
-        {activeSection === "facebook" && canUpdateClub && (
+        {activeSection === "facebook" && canManageFacebook && (
           <ClubFacebookSettingsCard
             key={`facebook-${club.id}`}
             club={club}

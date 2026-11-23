@@ -50,6 +50,8 @@ export const PERMISSION_META: Record<string, { label: string; description: strin
   "club.update": { label: "Cập nhật thông tin câu lạc bộ", description: "Chỉnh sửa tên, giới thiệu, lĩnh vực hoạt động và liên hệ của CLB" },
   "club.active": { label: "Kích hoạt câu lạc bộ", description: "Mở lại trạng thái hoạt động cho câu lạc bộ" },
   "club.inactive": { label: "Ngừng hoạt động câu lạc bộ", description: "Tạm ngừng hoạt động câu lạc bộ" },
+  "club.facebook.view": { label: "Xem thống kê & bài viết Fanpage Facebook", description: "Xem chỉ số tương tác, lượt theo dõi và bài viết đã đồng bộ từ Fanpage CLB" },
+  "club.facebook.manage": { label: "Quản lý kết nối & đồng bộ Fanpage Facebook", description: "Kết nối, đăng nhập OAuth, đồng bộ bài viết và ngắt kết nối Fanpage Facebook của CLB" },
 
   // Ban chuyên môn
   "department.view": { label: "Xem danh sách ban", description: "Xem cơ cấu các ban chuyên môn trong câu lạc bộ" },

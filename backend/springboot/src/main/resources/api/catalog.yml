@@ -1202,35 +1202,35 @@ entries:
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: club.view | club.update
+  permission: club.facebook.view | club.facebook.manage | club.view | club.update
 - method: POST
   path: /api/v1/clubs/{clubId}/facebook/connect-token
   module: club-management
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: club.update
+  permission: club.facebook.manage | club.update
 - method: PUT
   path: /api/v1/clubs/{clubId}/facebook/sync
   module: club-management
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: club.update
+  permission: club.facebook.manage | club.update
 - method: DELETE
   path: /api/v1/clubs/{clubId}/facebook
   module: club-management
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: club.update
+  permission: club.facebook.manage | club.update
 - method: GET
   path: /api/v1/clubs/{clubId}/facebook/oauth/start
   module: club-management
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: club.update
+  permission: club.facebook.manage | club.update
 - method: GET
   path: /api/v1/integrations/facebook/oauth/callback
   module: club-management
@@ -1244,14 +1244,14 @@ entries:
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: club.update
+  permission: club.facebook.manage | club.update
 - method: POST
   path: /api/v1/clubs/{clubId}/facebook/oauth/select
   module: club-management
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: club.update
+  permission: club.facebook.manage | club.update
 - method: GET
   path: /api/v1/public/clubs/{clubId}/facebook-posts
   module: club-management

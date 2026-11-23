@@ -5636,7 +5636,7 @@ paths:
       operationId: clubFacebook.getOverview
       summary: Get club Facebook Fanpage connection, engagement summary, and cached posts
       tags: [Club]
-      x-permission: club.view | club.update
+      x-permission: club.facebook.view | club.facebook.manage | club.view | club.update
       x-implementation-status: IMPLEMENTED
       parameters:
       - name: clubId
@@ -5659,7 +5659,7 @@ paths:
       operationId: clubFacebook.disconnect
       summary: Disconnect Facebook Fanpage from a club and remove cached posts
       tags: [Club]
-      x-permission: club.update
+      x-permission: club.facebook.manage | club.update
       x-implementation-status: IMPLEMENTED
       parameters:
       - name: clubId
@@ -5677,7 +5677,7 @@ paths:
       operationId: clubFacebook.connectToken
       summary: Connect a club Facebook Fanpage using a Page Access Token and sync posts
       tags: [Club]
-      x-permission: club.update
+      x-permission: club.facebook.manage | club.update
       x-implementation-status: IMPLEMENTED
       parameters:
       - name: clubId
@@ -5708,7 +5708,7 @@ paths:
       operationId: clubFacebook.sync
       summary: Sync latest posts, likes, comments, shares, and follower counts from Facebook Graph API
       tags: [Club]
-      x-permission: club.update
+      x-permission: club.facebook.manage | club.update
       x-implementation-status: IMPLEMENTED
       parameters:
       - name: clubId
@@ -5729,7 +5729,7 @@ paths:
       operationId: clubFacebook.startOAuth
       summary: Generate Meta OAuth 2.0 dialog URL for connecting a club Facebook Fanpage
       tags: [Club]
-      x-permission: club.update
+      x-permission: club.facebook.manage | club.update
       x-implementation-status: IMPLEMENTED
       parameters:
       - name: clubId
@@ -5782,7 +5782,7 @@ paths:
       operationId: clubFacebook.listOAuthPages
       summary: List managed Facebook Fanpages returned from a pending OAuth session
       tags: [Club]
-      x-permission: club.update
+      x-permission: club.facebook.manage | club.update
       x-implementation-status: IMPLEMENTED
       parameters:
       - name: clubId
@@ -5809,7 +5809,7 @@ paths:
       operationId: clubFacebook.selectOAuthPage
       summary: Bind a selected Facebook Fanpage from OAuth session to the club
       tags: [Club]
-      x-permission: club.update
+      x-permission: club.facebook.manage | club.update
       x-implementation-status: IMPLEMENTED
       parameters:
       - name: clubId

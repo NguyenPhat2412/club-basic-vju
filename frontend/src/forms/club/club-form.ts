@@ -152,7 +152,7 @@ export function computeVisibleClubTabs(
   if (hasAny(['chat.view', 'chat.send', 'chat.summarize'])) {
     list.push({ value: 'chat', label: 'Chat & AI' });
   }
-  if (hasAny(['club.update', 'club.active', 'club.inactive', 'notification.send'])) {
+  if (hasAny(['club.update', 'club.active', 'club.inactive', 'club.facebook.manage', 'notification.send'])) {
     list.push({ value: 'settings', label: 'Cài đặt CLB' });
   }
   const locale = getPresentationLocale();

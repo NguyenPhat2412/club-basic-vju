@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
 import { ExternalLink, Heart, MessageCircle, Repeat2, Share2 } from "lucide-react";
@@ -8,6 +9,7 @@ import { Section } from "@/components/shared/Overlays";
 import { formatDateTime, safeExternalHref } from "@/lib/utils";
 
 export function ClubPublicFacebookFeed({ clubId }: { clubId: string }) {
+  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
   const feed = useQuery({
     queryKey: qk.publicClubFacebook(clubId, 4),
     queryFn: () => apiModel.publicClubFacebookPosts(clubId, 4),
@@ -44,10 +46,16 @@ export function ClubPublicFacebookFeed({ clubId }: { clubId: string }) {
               key={post.id}
               className="flex flex-col overflow-hidden rounded-xl border border-border/70 bg-card"
             >
-              {imgSrc && (
+              {imgSrc && !brokenImages[post.id] && (
                 <div className="aspect-16/9 w-full overflow-hidden border-b border-border/50 bg-muted">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={imgSrc} alt="" loading="lazy" className="h-full w-full object-cover" />
+                  <img
+                    src={imgSrc}
+                    alt=""
+                    loading="lazy"
+                    onError={() => setBrokenImages((prev) => ({ ...prev, [post.id]: true }))}
+                    className="h-full w-full object-cover"
+                  />
                 </div>
               )}
               <div className="flex flex-1 flex-col justify-between gap-2 p-3">

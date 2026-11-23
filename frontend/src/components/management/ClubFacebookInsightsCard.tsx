@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
 import {
@@ -13,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { apiModel } from "@/lib/api";
+import { describeError } from "@/components/shared/ListPage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, safeExternalHref } from "@/lib/utils";
@@ -27,6 +29,9 @@ export function ClubFacebookInsightsCard({
   onOpenSettings?: () => void;
 }) {
   const queryClient = useQueryClient();
+  const [syncError, setSyncError] = useState("");
+  const [syncNotice, setSyncNotice] = useState("");
+  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
   const fbQuery = useQuery({
     queryKey: qk.clubFacebook(clubId, 9),
     queryFn: () => apiModel.clubFacebook(clubId, 9),
@@ -35,9 +40,16 @@ export function ClubFacebookInsightsCard({
 
   const syncMutation = useMutation({
     mutationFn: () => apiModel.syncClubFacebook(clubId),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      setSyncError("");
+      setSyncNotice(`Đã đồng bộ ${res.summary.postsCount} bài viết · ${res.summary.followersCount.toLocaleString("vi-VN")} theo dõi.`);
       queryClient.invalidateQueries({ queryKey: qk.clubFacebook(clubId) });
       queryClient.invalidateQueries({ queryKey: qk.publicClubFacebook(clubId) });
+    },
+    onError: (e) => {
+      setSyncNotice("");
+      setSyncError(describeError(e));
+      queryClient.invalidateQueries({ queryKey: qk.clubFacebook(clubId) });
     },
   });
 
@@ -75,9 +87,14 @@ export function ClubFacebookInsightsCard({
     <section className="rounded-xl border border-border bg-card p-4 shadow-2xs">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          {page.avatarUrl ? (
+          {page.avatarUrl && !brokenImages.avatar ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={page.avatarUrl} alt={page.pageName} className="size-9 shrink-0 rounded-lg border border-border object-cover" />
+            <img
+              src={page.avatarUrl}
+              alt={page.pageName}
+              onError={() => setBrokenImages((prev) => ({ ...prev, avatar: true }))}
+              className="size-9 shrink-0 rounded-lg border border-border object-cover"
+            />
           ) : (
             <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
               <Share2 size={16} />
@@ -118,6 +135,17 @@ export function ClubFacebookInsightsCard({
         </div>
       </div>
 
+      {(syncError || page.lastSyncError) && (
+        <p role="alert" className="mt-2.5 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+          {syncError || page.lastSyncError}
+        </p>
+      )}
+      {syncNotice && !syncError && (
+        <p className="mt-2.5 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-xs text-primary">
+          {syncNotice}
+        </p>
+      )}
+
       <div className="mt-3 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         <FbKpiTile label="Người theo dõi" value={summary.followersCount} icon={<Users size={14} />} />
         <FbKpiTile label="Bài viết đã đồng bộ" value={summary.postsCount} icon={<Share2 size={14} />} />
@@ -140,10 +168,16 @@ export function ClubFacebookInsightsCard({
                 key={post.id}
                 className="flex flex-col overflow-hidden rounded-xl border border-border/70 bg-background/50 transition-colors hover:border-primary/35"
               >
-                {imgSrc && (
+                {imgSrc && !brokenImages[post.id] && (
                   <div className="aspect-16/9 w-full overflow-hidden border-b border-border/60 bg-muted">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={imgSrc} alt="" loading="lazy" className="h-full w-full object-cover" />
+                    <img
+                      src={imgSrc}
+                      alt=""
+                      loading="lazy"
+                      onError={() => setBrokenImages((prev) => ({ ...prev, [post.id]: true }))}
+                      className="h-full w-full object-cover"
+                    />
                   </div>
                 )}
                 <div className="flex flex-1 flex-col justify-between gap-2.5 p-3">

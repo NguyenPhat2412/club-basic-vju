@@ -131,5 +131,5 @@ app:
     graph-version: ${FACEBOOK_GRAPH_VERSION:v22.0}
     graph-base-url: ${FACEBOOK_GRAPH_BASE_URL:https://graph.facebook.com}
     token-encryption-key: ${FACEBOOK_TOKEN_ENCRYPTION_KEY:vju-clubhub-local-fb-aes256-key-2026}
-    oauth-redirect-uri: ${FACEBOOK_OAUTH_REDIRECT_URI:http://localhost:8081/api/v1/integrations/facebook/oauth/callback}
+    oauth-redirect-uri: ${FACEBOOK_OAUTH_REDIRECT_URI:http://localhost:8080/api/v1/integrations/facebook/oauth/callback}
     frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:3000}

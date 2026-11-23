@@ -43,7 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ClubFacebookServiceImpl implements ClubFacebookService {
     private static final int DEFAULT_SYNC_POST_LIMIT = 25;
     private static final long OAUTH_TTL_SECONDS = 600L;
-    private static final String OAUTH_SCOPE = "pages_show_list,pages_read_engagement,read_insights";
+    private static final String OAUTH_SCOPE = "pages_show_list,pages_read_engagement";
 
     private final ClubRepository clubRepository;
     private final ClubFacebookPageRepository pageRepository;
@@ -85,7 +85,7 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
     @Override
     @Transactional
     public ClubFacebookOverviewResponse connectWithToken(Actor actor, UUID clubId, String accessToken) {
-        authorizationService.require(actor, "club.update", clubId, null);
+        requireManageAccess(actor, clubId);
         Club club = requireClub(clubId);
         String cleanToken = accessToken == null ? "" : accessToken.trim();
         if (cleanToken.isBlank()) {
@@ -109,9 +109,9 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     public ClubFacebookOverviewResponse syncNow(Actor actor, UUID clubId) {
-        authorizationService.require(actor, "club.update", clubId, null);
+        requireManageAccess(actor, clubId);
         Club club = requireClub(clubId);
         ClubFacebookPage connection = pageRepository.findByClub_Id(club.getId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "FACEBOOK_NOT_CONNECTED",
@@ -131,18 +131,27 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
             }
         }
 
-        String decryptedToken = tokenCryptoService.decrypt(connection.getEncryptedAccessToken());
+        String decryptedToken;
+        try {
+            decryptedToken = tokenCryptoService.decrypt(connection.getEncryptedAccessToken());
+        } catch (RuntimeException e) {
+            ApiException tokenError = new ApiException(HttpStatus.BAD_REQUEST, "FACEBOOK_TOKEN_EXPIRED",
+                    "Không thể giải mã Access Token Facebook (khoá mã hoá có thể đã thay đổi). Vui lòng kết nối lại Fanpage.");
+            connection.setLastSyncError(tokenError.getMessage());
+            pageRepository.save(connection);
+            throw tokenError;
+        }
         try {
             FacebookGraphClient.FbPageProfile freshProfile = graphClient.fetchPageProfile(decryptedToken);
+            List<FacebookGraphClient.FbPostRecord> posts = graphClient.fetchPagePosts(
+                    freshProfile.pageId(), decryptedToken, DEFAULT_SYNC_POST_LIMIT);
+
             connection.setPageId(freshProfile.pageId());
             connection.setPageName(freshProfile.pageName());
             connection.setPageLink(freshProfile.pageLink());
             connection.setAvatarUrl(freshProfile.avatarUrl());
             connection.setFollowersCount(freshProfile.followersCount());
             connection.setFanCount(freshProfile.fanCount());
-
-            List<FacebookGraphClient.FbPostRecord> posts = graphClient.fetchPagePosts(
-                    freshProfile.pageId(), decryptedToken, DEFAULT_SYNC_POST_LIMIT);
             upsertPosts(club, posts);
             connection.setLastSyncedAt(OffsetDateTime.now());
             connection.setLastSyncError(null);
@@ -159,7 +168,7 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
     @Override
     @Transactional
     public void disconnect(Actor actor, UUID clubId) {
-        authorizationService.require(actor, "club.update", clubId, null);
+        requireManageAccess(actor, clubId);
         Club club = requireClub(clubId);
         ClubFacebookPage existing = pageRepository.findByClub_Id(club.getId()).orElse(null);
         if (existing == null) {
@@ -182,11 +191,11 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
     @Override
     @Transactional(readOnly = true)
     public ClubFacebookOAuthStartResponse startOAuth(Actor actor, UUID clubId) {
-        authorizationService.require(actor, "club.update", clubId, null);
+        requireManageAccess(actor, clubId);
         requireClub(clubId);
         if (!properties.isOauthConfigured()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "FACEBOOK_OAUTH_NOT_CONFIGURED",
-                    "Chưa cấu hình FACEBOOK_APP_ID và FACEBOOK_APP_SECRET trong backend/.env.local. Bạn có thể cấu hình để dùng Đăng nhập Facebook hoặc kết nối nhanh bằng Page Access Token.");
+                    "Tính năng Đăng nhập Facebook chưa được quản trị viên hệ thống kích hoạt. Bạn có thể kết nối nhanh bằng Page Access Token.");
         }
         purgeExpiredEntries();
         String state = randomToken();
@@ -239,7 +248,7 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
     @Override
     @Transactional(readOnly = true)
     public List<ClubFacebookOAuthPageOptionResponse> listPendingOAuthPages(Actor actor, UUID clubId, String selectionToken) {
-        authorizationService.require(actor, "club.update", clubId, null);
+        requireManageAccess(actor, clubId);
         PendingPageSelection selection = requireSelection(actor, clubId, selectionToken);
         return selection.pages().stream()
                 .map(p -> new ClubFacebookOAuthPageOptionResponse(
@@ -251,7 +260,7 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
     @Override
     @Transactional
     public ClubFacebookOverviewResponse selectOAuthPage(Actor actor, UUID clubId, String selectionToken, String pageId) {
-        authorizationService.require(actor, "club.update", clubId, null);
+        requireManageAccess(actor, clubId);
         Club club = requireClub(clubId);
         PendingPageSelection selection = requireSelection(actor, clubId, selectionToken);
         FacebookGraphClient.FbManagedPage chosen = selection.pages().stream()
@@ -321,6 +330,7 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
 
         if (switchedPage) {
             postRepository.deleteByClub_Id(club.getId());
+            postRepository.flush();
         }
 
         try {
@@ -346,9 +356,13 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
 
     private void upsertPosts(Club club, List<FacebookGraphClient.FbPostRecord> incoming) {
         OffsetDateTime now = OffsetDateTime.now();
+        Map<String, ClubFacebookPost> existingByFbId = new java.util.HashMap<>();
+        for (ClubFacebookPost existing : postRepository.findByClub_IdOrderByPublishedAtDesc(club.getId())) {
+            existingByFbId.put(existing.getFbPostId(), existing);
+        }
+        List<ClubFacebookPost> toSave = new java.util.ArrayList<>(incoming.size());
         for (FacebookGraphClient.FbPostRecord record : incoming) {
-            ClubFacebookPost entity = postRepository.findByClub_IdAndFbPostId(club.getId(), record.fbPostId())
-                    .orElseGet(ClubFacebookPost::new);
+            ClubFacebookPost entity = existingByFbId.getOrDefault(record.fbPostId(), new ClubFacebookPost());
             entity.setClub(club);
             entity.setFbPostId(record.fbPostId());
             entity.setMessage(record.message());
@@ -359,7 +373,10 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
             entity.setCommentsCount(Math.max(0, record.commentsCount()));
             entity.setSharesCount(Math.max(0, record.sharesCount()));
             entity.setSyncedAt(now);
-            postRepository.save(entity);
+            toSave.add(entity);
+        }
+        if (!toSave.isEmpty()) {
+            postRepository.saveAll(toSave);
         }
     }
 
@@ -433,7 +450,17 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
     }
 
     private void requireViewAccess(Actor actor, UUID clubId) {
-        if (authorizationService.hasPermission(actor, "club.view", clubId, null)
+        if (authorizationService.hasPermission(actor, "club.facebook.view", clubId, null)
+                || authorizationService.hasPermission(actor, "club.facebook.manage", clubId, null)
+                || authorizationService.hasPermission(actor, "club.view", clubId, null)
+                || authorizationService.hasPermission(actor, "club.update", clubId, null)) {
+            return;
+        }
+        throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
+    }
+
+    private void requireManageAccess(Actor actor, UUID clubId) {
+        if (authorizationService.hasPermission(actor, "club.facebook.manage", clubId, null)
                 || authorizationService.hasPermission(actor, "club.update", clubId, null)) {
             return;
         }

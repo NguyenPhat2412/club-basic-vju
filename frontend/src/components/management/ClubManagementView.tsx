@@ -307,6 +307,7 @@ function ClubManagementViewContent() {
           clubId={activeClubId}
           club={currentClub}
           canCustomize={session.canInClub("club.update", activeClubId)}
+          canManageFacebook={session.canInClub("club.facebook.manage", activeClubId) || session.canInClub("club.update", activeClubId)}
           onOpenCustomize={() => navigateClubAndTab(activeClubId, "settings", "appearance")}
           onOpenFacebookSettings={() => navigateClubAndTab(activeClubId, "settings", "facebook")}
         />

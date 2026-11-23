@@ -49,12 +49,14 @@ export function OverviewTab({
   clubId,
   club,
   canCustomize = false,
+  canManageFacebook,
   onOpenCustomize,
   onOpenFacebookSettings,
 }: {
   clubId: string;
   club?: Club;
   canCustomize?: boolean;
+  canManageFacebook?: boolean;
   onOpenCustomize?: () => void;
   onOpenFacebookSettings?: () => void;
 }) {
@@ -317,7 +319,7 @@ export function OverviewTab({
 
       <ClubFacebookInsightsCard
         clubId={clubId}
-        canManage={canCustomize}
+        canManage={canManageFacebook ?? canCustomize}
         onOpenSettings={onOpenFacebookSettings ?? onOpenCustomize}
       />
     </div>

@@ -15,7 +15,7 @@ public class FacebookProperties {
     private String graphVersion = "v22.0";
     private String graphBaseUrl = "https://graph.facebook.com";
     private String tokenEncryptionKey = "vju-clubhub-local-fb-aes256-key-2026";
-    private String oauthRedirectUri = "http://localhost:8081/api/v1/integrations/facebook/oauth/callback";
+    private String oauthRedirectUri = "http://localhost:8080/api/v1/integrations/facebook/oauth/callback";
     private String frontendBaseUrl = "http://localhost:3000";
 
     public boolean isOauthConfigured() {
