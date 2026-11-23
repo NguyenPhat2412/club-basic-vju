@@ -120,7 +120,9 @@ class ClubFacebookServiceImplTest {
 
         assertThat(res.authorizationUrl())
                 .contains("localhost%3A8080%2Fapi%2Fv1%2Fintegrations%2Ffacebook%2Foauth%2Fcallback")
+                .contains("response_type=code")
                 .contains("pages_show_list%2Cpages_read_engagement")
+                .doesNotContain("auth_type=rerequest")
                 .doesNotContain("read_insights");
     }
 

@@ -223,8 +223,8 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
                 + "?client_id=" + encode(fb.appId())
                 + "&redirect_uri=" + encode(fb.oauthRedirectUri())
                 + "&state=" + encode(state)
-                + "&scope=" + encode(OAUTH_SCOPE)
-                + "&auth_type=rerequest";
+                + "&response_type=code"
+                + "&scope=" + encode(OAUTH_SCOPE);
         return new ClubFacebookOAuthStartResponse(authUrl);
     }
 
