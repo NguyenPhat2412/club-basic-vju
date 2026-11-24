@@ -51,6 +51,12 @@ public class ClubFacebookPage extends TimestampedEntity {
     @Column(name = "last_synced_at")
     private OffsetDateTime lastSyncedAt;
 
+    @Column(name = "last_auto_synced_at")
+    private OffsetDateTime lastAutoSyncedAt;
+
+    @Column(name = "consecutive_sync_failures", nullable = false)
+    private int consecutiveSyncFailures;
+
     @Column(name = "last_sync_error", columnDefinition = "TEXT")
     private String lastSyncError;
 }

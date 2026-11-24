@@ -25,6 +25,8 @@ public record SystemSettingsResponse(
         int maxOpenTasksPerClub,
         int broadcastCooldownMinutes,
         int facebookSyncCooldownMinutes,
+        boolean facebookAutoSyncEnabled,
+        int facebookAutoSyncIntervalMinutes,
         int otpExpiryMinutes,
         int otpMaxSendCount,
         int otpResendCooldownSeconds,

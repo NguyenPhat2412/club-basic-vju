@@ -1,19 +1,19 @@
 # Hồ sơ Nghiệm thu Bảo mật, Truy vết Toàn hệ thống & Bàn giao Cuối kỳ (`PB-49`, `PB-51`)
 
-- **Ngày chốt hồ sơ:** `2026-11-12` *(cập nhật đồng bộ mở rộng `V25..V29`: `2026-11-16`)*
-- **Phạm vi bao phủ:** Toàn bộ 4 giai đoạn phát triển & phân hệ mở rộng (`Phase 1`..`Phase 4` — `112/112 PBI` (`PB-01`..`PB-69`), `426/426 TC-PB-*`, `67/67 DoD`)
-- **Nhãn phát hành & Môi trường vận hành:** Production `v1.0.0` (`https://vju-club.all1.vn`, `https://api.vju-club.all1.vn`) và Stagging `v1.0.1-stagging.1` (`https://stagging.vju-club.all1.vn`)
+- **Ngày chốt hồ sơ:** `2026-11-12` *(cập nhật đồng bộ mở rộng `V25..V43` + Facebook Auto-Sync + Async Hardening: `2026-11-24`)*
+- **Phạm vi bao phủ:** Toàn bộ 4 giai đoạn phát triển & các phân hệ mở rộng Sprint 3–4 (`PB-01`..`PB-96` — bao gồm Facebook Fanpage OAuth & Auto-Sync, cấu hình live `.env` trên `/settings`, ủy quyền cấp dưới và kế hoạch cải tiến phản hồi BĐP/ĐTN)
+- **Nhãn phát hành & Môi trường vận hành:** Production (`https://vju-club.all1.vn`, `https://api.vju-club.all1.vn`) và Stagging (`https://stagging.vju-club.all1.vn`)
 
 ---
 
-## 1. Chỉ số xác minh kỹ thuật tại thời điểm bàn giao (`PB-47`, `PB-51` AC01)
+## 1. Chỉ số xác minh kỹ thuật tại thời điểm cập nhật (`2026-11-24`)
 
 | Tầng kiểm định | Lệnh xác minh | Kết quả thực tế |
 |---|---|---|
-| **Backend Unit, Integration, Concurrency & E2E** | `cd backend/springboot && ./mvnw test` | **590+ Pass** (`0 Failures, 0 Errors`, trên PostgreSQL 16 Testcontainers) |
-| **OpenAPI 3.1 & API Catalog Contract** | `python3 -m unittest discover -s docs/api/tests -v` | **16 / 16 Pass** (khớp tuyệt đối **156 HTTP operations** trên **21 module** giữa `openapi.yaml`, `catalog.yml` và `ApiPaths.java`) |
-| **Frontend Lint, TypeScript, Unit Tests & Production Build** | `pnpm --dir frontend run lint && pnpm --dir frontend run typecheck && pnpm --dir frontend test && pnpm --dir frontend run build` | **0 warnings/errors**, **36 / 36 unit tests Pass**, **21+ Next.js routes built** (tuân thủ ngưỡng kiến trúc `≤ 400` dòng/tệp & bảng màu 60/30/10) |
-| **Database Schema & Migrations** | Flyway `V1`..`V29` trên PostgreSQL 16 | **29 / 29 migrations applied (`success = true`)** |
+| **Backend Unit, Integration, Concurrency & E2E** | `cd backend/springboot && ./mvnw -B test` | **680+ Pass** (`266` unit/security/contract + `414` integration tests trên PostgreSQL 16/17, `0 Failures, 0 Errors`) |
+| **OpenAPI 3.1 & API Catalog Contract** | `python3 -m unittest discover -s docs/api/tests -v` | **16 / 16 Pass** (khớp tuyệt đối giữa `openapi.yaml`, `catalog.yml`, `phase1-openapi.yaml` và `ApiPaths.java`) |
+| **Frontend Lint, TypeScript, Unit Tests & Production Build** | `pnpm --dir frontend run lint && pnpm --dir frontend run typecheck && pnpm --dir frontend test && pnpm --dir frontend run build` | **0 warnings/errors**, **97 / 97 unit tests Pass** (kiểm định tự động ngưỡng `≤ 400` dòng/tệp, bảng màu 60/30/10 & i18n VI/EN/JA) |
+| **Database Schema & Migrations** | Flyway `V1`..`V43` trên PostgreSQL 16/17 | **43 / 43 migrations applied (`success = true`)**, `63` permissions chuẩn RBAC |
 | **Đo tải tham chiếu (`20` luồng đồng thời)** | `python3 docs/baseline/run_load_benchmark.py` | **600 / 600 HTTP 200 OK** (`0.0%` lỗi, `p95` `11.20 ms`..`240.93 ms`) |
 
 ---

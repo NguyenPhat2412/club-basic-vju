@@ -220,7 +220,7 @@ export function ClubFacebookSettingsCard({
               <p className="text-xs text-muted-foreground">
                 <b className="text-foreground">{data.summary.followersCount.toLocaleString("vi-VN")}</b> theo dõi ·{" "}
                 <b className="text-foreground">{data.summary.postsCount}</b> bài viết
-                {page.lastSyncedAt ? ` · Đồng bộ ${formatDateTime(page.lastSyncedAt)}` : ""}
+                {page.lastSyncedAt ? ` · Đồng bộ ${formatDateTime(page.lastSyncedAt)}` : ""} · Tự động làm mới định kỳ
               </p>
               {page.lastSyncError && <p className="text-[11px] text-destructive">{page.lastSyncError}</p>}
             </div>

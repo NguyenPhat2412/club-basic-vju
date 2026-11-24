@@ -23,14 +23,15 @@ flowchart TB
         REST["REST Controllers (156 HTTP Operations via ApiPaths)"]
         WS["STOMP WebSocket Broker (ChatWsController /ws/chat)"]
         AOP["@RequirePermission Aspect + PermissionAuthorizationService"]
-        SVC["21+ Domain Services (Event, Task, Chat, Vault, RBAC, I18n...)"]
-        SCHED["Background Jobs (TaskOverdueScheduler)"]
+        SVC["22+ Domain Services (Event, Task, Chat, Vault, RBAC, Facebook, I18n...)"]
+        SCHED["Multi-Thread Async & Scheduler Pools (vjuTaskScheduler 4T, integrationTaskExecutor, mailTaskExecutor)"]
     end
 
     subgraph Data["Tầng Lưu trữ & Dịch vụ Tích hợp"]
-        PG[("PostgreSQL 16 (Flyway V1..V29 + effective_user_permissions + spring_session)")]
+        PG[("PostgreSQL 16 (Flyway V1..V43 + effective_user_permissions + spring_session)")]
         OBJ[("Document & Media Storage (Local / Cloudflare R2 / Google Drive)")]
-        OAUTH["Google Workspace OAuth2 (@st.vju.ac.vn)"]
+        OAUTH["Google Workspace OAuth2 (@st.vju.ac.vn) & SMTP OTP"]
+        FB["Meta Graph API v22.0 (OAuth + Periodic Auto-Sync)"]
         AI["9router AI Gateway (Chat Summary & Dynamic Translation)"]
     end
 
@@ -48,6 +49,7 @@ flowchart TB
     SVC --> PG
     SVC --> OBJ
     SVC --> OAUTH
+    SVC --> FB
     SVC --> AI
 ```
 

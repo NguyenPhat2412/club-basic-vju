@@ -66,6 +66,7 @@ const MESSAGES: Record<string, string> = {
   FACEBOOK_NOT_CONNECTED: "Câu lạc bộ chưa kết nối Fanpage Facebook.",
   FACEBOOK_SELECTION_EXPIRED: "Phiên chọn Fanpage đã hết hạn. Vui lòng đăng nhập Facebook lại.",
   FACEBOOK_PAGE_NOT_IN_SELECTION: "Fanpage được chọn không còn hợp lệ trong phiên đăng nhập hiện tại.",
+  FACEBOOK_SYNC_IN_PROGRESS: "Fanpage Facebook của câu lạc bộ đang được đồng bộ. Vui lòng thử lại sau vài giây.",
   CLUB_STORAGE_QUOTA_EXCEEDED: "Câu lạc bộ đã đạt giới hạn dung lượng lưu trữ. Vui lòng xoá bớt tệp cũ hoặc liên hệ quản trị viên.",
   DOCUMENT_VERSION_LIMIT_REACHED: "Tài liệu này đã đạt số phiên bản lịch sử tối đa cho phép.",
   CHAT_CHANNEL_LIMIT_REACHED: "Câu lạc bộ đã đạt số kênh chat tối đa cho phép.",

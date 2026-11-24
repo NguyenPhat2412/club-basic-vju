@@ -5919,7 +5919,7 @@ components:
           items: {$ref: '#/components/schemas/MyClubApplicationSummary'}
     SystemSettings:
       type: object
-      required: [maxPendingApplications, reapplyCooldownDays, maxActiveClubs, attendanceEditWindowHours, allowSelfRegistration, attendanceOpensBeforeMinutes, eventTaskGraceDays, chatSummariesPerHour, chatMaxMessageLength, chatMessagesPerMinute, documentMaxFileMb, clubImageMaxMb, avatarMaxMb, clubStorageQuotaMb, documentMaxVersions, maxChannelsPerClub, maxDepartmentsPerClub, maxActiveEventsPerClub, maxOpenTasksPerClub, broadcastCooldownMinutes, facebookSyncCooldownMinutes, otpExpiryMinutes, otpMaxSendCount, otpResendCooldownSeconds, otpMaxVerifyAttempts, smtpPort, smtpPasswordConfigured, smtpFromName, smtpStartTls, facebookAppSecretConfigured, facebookOauthConfigured, aiApiKeyConfigured, aiConfigured, googleSignInConfigured]
+      required: [maxPendingApplications, reapplyCooldownDays, maxActiveClubs, attendanceEditWindowHours, allowSelfRegistration, attendanceOpensBeforeMinutes, eventTaskGraceDays, chatSummariesPerHour, chatMaxMessageLength, chatMessagesPerMinute, documentMaxFileMb, clubImageMaxMb, avatarMaxMb, clubStorageQuotaMb, documentMaxVersions, maxChannelsPerClub, maxDepartmentsPerClub, maxActiveEventsPerClub, maxOpenTasksPerClub, broadcastCooldownMinutes, facebookSyncCooldownMinutes, facebookAutoSyncEnabled, facebookAutoSyncIntervalMinutes, otpExpiryMinutes, otpMaxSendCount, otpResendCooldownSeconds, otpMaxVerifyAttempts, smtpPort, smtpPasswordConfigured, smtpFromName, smtpStartTls, facebookAppSecretConfigured, facebookOauthConfigured, aiApiKeyConfigured, aiConfigured, googleSignInConfigured]
       properties:
         maxPendingApplications: {type: integer, minimum: 0, maximum: 100, description: Số đơn PENDING tối đa của một sinh viên trên mọi CLB; 0 = không giới hạn}
         reapplyCooldownDays: {type: integer, minimum: 0, maximum: 365, description: Số ngày chờ sau khi bị từ chối mới được nộp lại cùng CLB; 0 = không chờ}
@@ -5942,6 +5942,8 @@ components:
         maxOpenTasksPerClub: {type: integer, minimum: 1, maximum: 2000, description: Số công việc chưa hoàn thành tối đa cùng lúc của mỗi CLB (409 TASK_LIMIT_REACHED)}
         broadcastCooldownMinutes: {type: integer, minimum: 0, maximum: 1440, description: Số phút phải chờ giữa 2 lần phát thông báo hàng loạt trong cùng CLB (429 BROADCAST_COOLDOWN_ACTIVE)}
         facebookSyncCooldownMinutes: {type: integer, minimum: 0, maximum: 1440, description: Số phút phải chờ giữa 2 lần đồng bộ Fanpage Facebook trong cùng CLB (429 FACEBOOK_SYNC_COOLDOWN)}
+        facebookAutoSyncEnabled: {type: boolean, description: Bật/tắt tiến trình nền tự động đồng bộ bài viết & chỉ số Fanpage Facebook định kỳ}
+        facebookAutoSyncIntervalMinutes: {type: integer, minimum: 15, maximum: 1440, description: Chu kỳ (phút) tự động đồng bộ lại Fanpage Facebook (mặc định 60 phút, 15..1440)}
         otpExpiryMinutes: {type: integer, minimum: 1, maximum: 60, description: Thời gian hiệu lực (phút) của một mã OTP khôi phục mật khẩu}
         otpMaxSendCount: {type: integer, minimum: 1, maximum: 30, description: Số lần tối đa một tài khoản được yêu cầu gửi mã OTP trong 60 phút}
         otpResendCooldownSeconds: {type: integer, minimum: 0, maximum: 600, description: Số giây phải chờ giữa hai lần gửi mã OTP liên tiếp; 0 = không chờ}
@@ -5994,6 +5996,8 @@ components:
         maxOpenTasksPerClub: {type: [integer, 'null'], minimum: 1, maximum: 2000}
         broadcastCooldownMinutes: {type: [integer, 'null'], minimum: 0, maximum: 1440}
         facebookSyncCooldownMinutes: {type: [integer, 'null'], minimum: 0, maximum: 1440}
+        facebookAutoSyncEnabled: {type: [boolean, 'null']}
+        facebookAutoSyncIntervalMinutes: {type: [integer, 'null'], minimum: 15, maximum: 1440}
         otpExpiryMinutes: {type: [integer, 'null'], minimum: 1, maximum: 60}
         otpMaxSendCount: {type: [integer, 'null'], minimum: 1, maximum: 30}
         otpResendCooldownSeconds: {type: [integer, 'null'], minimum: 0, maximum: 600}

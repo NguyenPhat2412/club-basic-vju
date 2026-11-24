@@ -60,6 +60,14 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.vju.club.config.RuntimeIntegrationConfig runtimeIntegrationConfig;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.vju.club.service.NotificationService notificationService;
+
+    private final java.util.Set<UUID> inFlightSyncClubs = ConcurrentHashMap.newKeySet();
+
     private com.vju.club.config.RuntimeIntegrationConfig.EffectiveFacebook effectiveFacebook() {
         if (runtimeIntegrationConfig != null) {
             return runtimeIntegrationConfig.facebook();
@@ -133,52 +141,152 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "FACEBOOK_NOT_CONNECTED",
                         "Câu lạc bộ chưa kết nối Fanpage Facebook."));
 
-        int cooldownMinutes = (settingsService != null && settingsService.current() != null)
-                ? settingsService.current().facebookSyncCooldownMinutes()
-                : DEFAULT_FACEBOOK_SYNC_COOLDOWN_MINUTES;
-        if (cooldownMinutes > 0 && connection.getLastSyncedAt() != null) {
-            OffsetDateTime now = OffsetDateTime.now();
-            OffsetDateTime nextAllowed = connection.getLastSyncedAt().plusMinutes(cooldownMinutes);
-            if (now.isBefore(nextAllowed)) {
-                long remainingSeconds = Math.max(1L, java.time.Duration.between(now, nextAllowed).toSeconds());
-                throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "FACEBOOK_SYNC_COOLDOWN",
-                        "Vui lòng chờ " + remainingSeconds + " giây trước khi đồng bộ Fanpage Facebook lại (tối đa 1 lần / "
-                                + cooldownMinutes + " phút).");
+        if (!inFlightSyncClubs.add(club.getId())) {
+            throw new ApiException(HttpStatus.CONFLICT, "FACEBOOK_SYNC_IN_PROGRESS",
+                    "Fanpage Facebook của câu lạc bộ đang được đồng bộ. Vui lòng thử lại sau vài giây.");
+        }
+        try {
+            int cooldownMinutes = (settingsService != null && settingsService.current() != null)
+                    ? settingsService.current().facebookSyncCooldownMinutes()
+                    : DEFAULT_FACEBOOK_SYNC_COOLDOWN_MINUTES;
+            if (cooldownMinutes > 0 && connection.getLastSyncedAt() != null) {
+                OffsetDateTime now = OffsetDateTime.now();
+                OffsetDateTime nextAllowed = connection.getLastSyncedAt().plusMinutes(cooldownMinutes);
+                if (now.isBefore(nextAllowed)) {
+                    long remainingSeconds = Math.max(1L, java.time.Duration.between(now, nextAllowed).toSeconds());
+                    throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "FACEBOOK_SYNC_COOLDOWN",
+                            "Vui lòng chờ " + remainingSeconds + " giây trước khi đồng bộ Fanpage Facebook lại (tối đa 1 lần / "
+                                    + cooldownMinutes + " phút).");
+                }
             }
-        }
 
-        String decryptedToken;
+            String decryptedToken;
+            try {
+                decryptedToken = tokenCryptoService.decrypt(connection.getEncryptedAccessToken());
+            } catch (RuntimeException e) {
+                ApiException tokenError = new ApiException(HttpStatus.BAD_REQUEST, "FACEBOOK_TOKEN_EXPIRED",
+                        "Không thể giải mã Access Token Facebook (khoá mã hoá có thể đã thay đổi). Vui lòng kết nối lại Fanpage.");
+                connection.setConsecutiveSyncFailures(connection.getConsecutiveSyncFailures() + 1);
+                connection.setLastSyncError(tokenError.getMessage());
+                pageRepository.save(connection);
+                throw tokenError;
+            }
+            try {
+                FacebookGraphClient.FbPageProfile freshProfile = graphClient.fetchPageProfile(decryptedToken);
+                List<FacebookGraphClient.FbPostRecord> posts = graphClient.fetchPagePosts(
+                        freshProfile.pageId(), decryptedToken, DEFAULT_SYNC_POST_LIMIT);
+
+                connection.setPageId(freshProfile.pageId());
+                connection.setPageName(freshProfile.pageName());
+                connection.setPageLink(freshProfile.pageLink());
+                connection.setAvatarUrl(freshProfile.avatarUrl());
+                connection.setFollowersCount(freshProfile.followersCount());
+                connection.setFanCount(freshProfile.fanCount());
+                upsertPosts(club, posts);
+                connection.setLastSyncedAt(OffsetDateTime.now());
+                connection.setConsecutiveSyncFailures(0);
+                connection.setLastSyncError(null);
+                pageRepository.save(connection);
+            } catch (ApiException e) {
+                connection.setConsecutiveSyncFailures(connection.getConsecutiveSyncFailures() + 1);
+                connection.setLastSyncError(e.getMessage());
+                pageRepository.save(connection);
+                throw e;
+            }
+
+            return buildOverviewResponse(club.getId(), DEFAULT_SYNC_POST_LIMIT);
+        } finally {
+            inFlightSyncClubs.remove(club.getId());
+        }
+    }
+
+    /**
+     * Background auto-sync called by {@link ClubFacebookSyncScheduler}.
+     * Performs outbound Meta Graph API calls strictly OUTSIDE any database transaction
+     * and opens a short write transaction only to persist refreshed data or failure counters.
+     */
+    public boolean runAutoSyncForClub(UUID clubId) {
+        if (clubId == null || !inFlightSyncClubs.add(clubId)) {
+            return false;
+        }
         try {
-            decryptedToken = tokenCryptoService.decrypt(connection.getEncryptedAccessToken());
-        } catch (RuntimeException e) {
-            ApiException tokenError = new ApiException(HttpStatus.BAD_REQUEST, "FACEBOOK_TOKEN_EXPIRED",
-                    "Không thể giải mã Access Token Facebook (khoá mã hoá có thể đã thay đổi). Vui lòng kết nối lại Fanpage.");
-            connection.setLastSyncError(tokenError.getMessage());
-            pageRepository.save(connection);
-            throw tokenError;
-        }
-        try {
-            FacebookGraphClient.FbPageProfile freshProfile = graphClient.fetchPageProfile(decryptedToken);
-            List<FacebookGraphClient.FbPostRecord> posts = graphClient.fetchPagePosts(
-                    freshProfile.pageId(), decryptedToken, DEFAULT_SYNC_POST_LIMIT);
+            record SyncTarget(UUID clubId, String clubName, String encryptedToken, UUID connectedBy, String pageName) {}
+            SyncTarget target = runInShortTx(() -> pageRepository.findByClub_Id(clubId)
+                    .map(p -> new SyncTarget(clubId, p.getClub().getName(), p.getEncryptedAccessToken(), p.getConnectedBy(), p.getPageName()))
+                    .orElse(null));
+            if (target == null) return false;
 
-            connection.setPageId(freshProfile.pageId());
-            connection.setPageName(freshProfile.pageName());
-            connection.setPageLink(freshProfile.pageLink());
-            connection.setAvatarUrl(freshProfile.avatarUrl());
-            connection.setFollowersCount(freshProfile.followersCount());
-            connection.setFanCount(freshProfile.fanCount());
-            upsertPosts(club, posts);
-            connection.setLastSyncedAt(OffsetDateTime.now());
-            connection.setLastSyncError(null);
-            pageRepository.save(connection);
-        } catch (ApiException e) {
-            connection.setLastSyncError(e.getMessage());
-            pageRepository.save(connection);
-            throw e;
-        }
+            String decryptedToken;
+            try {
+                decryptedToken = tokenCryptoService.decrypt(target.encryptedToken());
+            } catch (RuntimeException e) {
+                recordAutoSyncFailure(target.clubId(), target.clubName(), target.connectedBy(),
+                        "FACEBOOK_TOKEN_EXPIRED",
+                        "Không thể giải mã Access Token Facebook. Vui lòng kết nối lại Fanpage.");
+                return false;
+            }
 
-        return buildOverviewResponse(club.getId(), DEFAULT_SYNC_POST_LIMIT);
+            try {
+                FacebookGraphClient.FbPageProfile freshProfile = graphClient.fetchPageProfile(decryptedToken);
+                List<FacebookGraphClient.FbPostRecord> posts = graphClient.fetchPagePosts(
+                        freshProfile.pageId(), decryptedToken, DEFAULT_SYNC_POST_LIMIT);
+
+                runInShortTx(() -> {
+                    Club club = clubRepository.findById(clubId).orElse(null);
+                    ClubFacebookPage conn = pageRepository.findByClub_Id(clubId).orElse(null);
+                    if (club == null || conn == null) return null;
+                    conn.setPageId(freshProfile.pageId());
+                    conn.setPageName(freshProfile.pageName());
+                    conn.setPageLink(freshProfile.pageLink());
+                    conn.setAvatarUrl(freshProfile.avatarUrl());
+                    conn.setFollowersCount(freshProfile.followersCount());
+                    conn.setFanCount(freshProfile.fanCount());
+                    upsertPosts(club, posts);
+                    OffsetDateTime now = OffsetDateTime.now();
+                    conn.setLastSyncedAt(now);
+                    conn.setLastAutoSyncedAt(now);
+                    conn.setConsecutiveSyncFailures(0);
+                    conn.setLastSyncError(null);
+                    pageRepository.save(conn);
+                    return null;
+                });
+                return true;
+            } catch (ApiException e) {
+                recordAutoSyncFailure(target.clubId(), target.clubName(), target.connectedBy(), e.getCode(), e.getMessage());
+                return false;
+            }
+        } finally {
+            inFlightSyncClubs.remove(clubId);
+        }
+    }
+
+    private void recordAutoSyncFailure(UUID clubId, String clubName, UUID connectedBy, String errorCode, String errorMsg) {
+        runInShortTx(() -> {
+            ClubFacebookPage conn = pageRepository.findByClub_Id(clubId).orElse(null);
+            if (conn == null) return null;
+            conn.setConsecutiveSyncFailures(conn.getConsecutiveSyncFailures() + 1);
+            conn.setLastSyncError(errorMsg);
+            pageRepository.save(conn);
+            if (notificationService != null && connectedBy != null
+                    && ("FACEBOOK_TOKEN_EXPIRED".equals(errorCode) || "FACEBOOK_PERMISSION_MISSING".equals(errorCode))) {
+                String dayKey = java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString();
+                notificationService.create(
+                        connectedBy,
+                        "Cần kết nối lại Fanpage Facebook (" + clubName + ")",
+                        "Đồng bộ tự động Fanpage \"" + conn.getPageName() + "\" thất bại: " + errorMsg,
+                        "CLUB",
+                        clubId,
+                        "FB_TOKEN_ALERT:" + clubId + ":" + dayKey);
+            }
+            return null;
+        });
+    }
+
+    private <T> T runInShortTx(java.util.function.Supplier<T> action) {
+        if (transactionTemplate != null) {
+            return transactionTemplate.execute(status -> action.get());
+        }
+        return action.get();
     }
 
     @Override
@@ -343,6 +451,7 @@ public class ClubFacebookServiceImpl implements ClubFacebookService {
         entity.setEncryptedAccessToken(tokenCryptoService.encrypt(rawPageToken));
         entity.setConnectedBy(actor.id());
         entity.setConnectedAt(OffsetDateTime.now());
+        entity.setConsecutiveSyncFailures(0);
         entity.setLastSyncError(null);
         pageRepository.save(entity);
 

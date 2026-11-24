@@ -54,6 +54,20 @@ cd /srv/vju-club/releases/current/deploy && docker compose -f compose.prod.yml -
 
 Kiểm tra: `curl https://api.vju-club.all1.vn/api/v1/auth/google/config` trả `"enabled":true`. Để tắt, xoá giá trị `GOOGLE_CLIENT_ID` rồi khởi động lại backend. `GOOGLE_ALLOWED_DOMAINS` (mặc định `st.vju.ac.vn`) nhận nhiều tên miền, ngăn cách bằng dấu phẩy.
 
+> **Cập nhật (`V41` / `V43`):** Quản trị viên (`SYSTEM_ADMIN`) có thể cấu hình hoặc ghi đè trực tiếp **Facebook OAuth**, **AI Gateway**, **Google Sign-In**, **SMTP OTP** và **chu kỳ đồng bộ Facebook tự động** ngay tại màn hình **`/settings`** (khoá bí mật được mã hoá **AES-256-GCM** trong `system_settings`, có hiệu lực tức thì không cần sửa `.env` hay khởi động lại container; để trống trường nào sẽ dùng mặc định từ `.env`).
+
+## Tích hợp Fanpage Facebook (OAuth 1 chạm & Đồng bộ tự động)
+
+1. Vào **Meta for Developers** (https://developers.facebook.com) → chọn Ứng dụng của VJU ClubHub:
+   - **Cài đặt ứng dụng → Thông tin cơ bản (*App Settings → Basic*):** thêm `stagging.vju-club.all1.vn`, `vju-club.all1.vn` và `api.vju-club.all1.vn` vào **App Domains**; khai báo **Website Site URL** tương ứng.
+   - **Facebook Login for Business → Cài đặt (*Settings*):** thêm đủ các **Valid OAuth Redirect URIs**:
+     - Stagging: `https://stagging.vju-club.all1.vn/api/v1/integrations/facebook/oauth/callback`
+     - Production: `https://api.vju-club.all1.vn/api/v1/integrations/facebook/oauth/callback`
+2. Đăng nhập quyền `SYSTEM_ADMIN` vào trang **`/settings`** → mục **Tích hợp bên ngoài & Biến môi trường (.env) → Facebook OAuth & Graph API**:
+   - Nhập `Facebook App ID`, `Facebook App Secret`, `Valid OAuth Redirect URI`, `Frontend Base URL` và bật **Tự động đồng bộ Fanpage Facebook định kỳ** (mặc định `60 phút`, phạm vi `15..1440 phút`).
+   - Bấm **Lưu cài đặt** và xác nhận huy hiệu chuyển sang **`OAuth sẵn sàng`**.
+3. Backend đã bật **Graceful Shutdown** (`server.shutdown=graceful`, `timeout-per-shutdown-phase=25s`) và các thread pool riêng (`vjuTaskScheduler` 4 luồng, `integrationTaskExecutor`, `mailTaskExecutor`) để khi deploy mới không làm gián đoạn tác vụ đồng bộ Facebook hay gửi email đang chạy dở.
+
 ## Sao lưu database
 
 - Lịch: **02:30 hằng ngày** (`/etc/cron.d/vju-club-backup`), log ở `/var/log/vju-club-backup.log`.

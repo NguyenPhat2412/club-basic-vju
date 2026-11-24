@@ -190,6 +190,48 @@ export function SystemIntegrationsCard({
               />
             </FormField>
           </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50/70 px-3.5 py-2.5">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-slate-900">Tự động đồng bộ Fanpage Facebook định kỳ</p>
+              <p className="text-[11px] text-slate-500">
+                Tiến trình nền tự làm mới bài viết, chỉ số tương tác và đường dẫn ảnh theo chu kỳ (tự cảnh báo nếu Token hết hạn).
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <Input
+                  type="number"
+                  min={15}
+                  max={1440}
+                  disabled={!canEdit || !draft.facebookAutoSyncEnabled}
+                  value={draft.facebookAutoSyncIntervalMinutes}
+                  onChange={(e) =>
+                    onChange({
+                      ...draft,
+                      facebookAutoSyncIntervalMinutes: Math.max(15, Math.min(1440, Number(e.target.value) || 60)),
+                    })
+                  }
+                  className="h-8 w-20 bg-white text-right text-xs"
+                  aria-label="Chu kỳ đồng bộ tự động (phút)"
+                />
+                <span className="text-[11px] text-slate-500">phút</span>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-label="Bật tự động đồng bộ Facebook"
+                aria-checked={draft.facebookAutoSyncEnabled}
+                disabled={!canEdit}
+                onClick={() => onChange({ ...draft, facebookAutoSyncEnabled: !draft.facebookAutoSyncEnabled })}
+                className={`relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50 ${draft.facebookAutoSyncEnabled ? "bg-primary" : "bg-slate-300"}`}
+              >
+                <span
+                  className={`absolute left-0 top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform ${draft.facebookAutoSyncEnabled ? "translate-x-4" : "translate-x-0.5"}`}
+                />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* 2. AI Gateway (9router) */}

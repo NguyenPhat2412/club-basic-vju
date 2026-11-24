@@ -84,6 +84,8 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
         if (request.maxOpenTasksPerClub() != null) settings.setMaxOpenTasksPerClub(request.maxOpenTasksPerClub());
         if (request.broadcastCooldownMinutes() != null) settings.setBroadcastCooldownMinutes(request.broadcastCooldownMinutes());
         if (request.facebookSyncCooldownMinutes() != null) settings.setFacebookSyncCooldownMinutes(request.facebookSyncCooldownMinutes());
+        if (request.facebookAutoSyncEnabled() != null) settings.setFacebookAutoSyncEnabled(request.facebookAutoSyncEnabled());
+        if (request.facebookAutoSyncIntervalMinutes() != null) settings.setFacebookAutoSyncIntervalMinutes(request.facebookAutoSyncIntervalMinutes());
 
         if (request.otpExpiryMinutes() != null) settings.setOtpExpiryMinutes(request.otpExpiryMinutes());
         if (request.otpMaxSendCount() != null) settings.setOtpMaxSendCount(request.otpMaxSendCount());
@@ -170,6 +172,8 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
                 base.maxOpenTasksPerClub(),
                 base.broadcastCooldownMinutes(),
                 base.facebookSyncCooldownMinutes(),
+                base.facebookAutoSyncEnabled(),
+                base.facebookAutoSyncIntervalMinutes(),
                 base.otpExpiryMinutes(),
                 base.otpMaxSendCount(),
                 base.otpResendCooldownSeconds(),
@@ -245,6 +249,8 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
         values.put("maxOpenTasksPerClub", s.getMaxOpenTasksPerClub());
         values.put("broadcastCooldownMinutes", s.getBroadcastCooldownMinutes());
         values.put("facebookSyncCooldownMinutes", s.getFacebookSyncCooldownMinutes());
+        values.put("facebookAutoSyncEnabled", s.isFacebookAutoSyncEnabled());
+        values.put("facebookAutoSyncIntervalMinutes", s.getFacebookAutoSyncIntervalMinutes());
         values.put("otpExpiryMinutes", s.getOtpExpiryMinutes());
         values.put("otpMaxSendCount", s.getOtpMaxSendCount());
         values.put("otpResendCooldownSeconds", s.getOtpResendCooldownSeconds());

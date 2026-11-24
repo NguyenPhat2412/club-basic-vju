@@ -20,6 +20,8 @@ export type SystemSettingsInput = {
   maxOpenTasksPerClub: number;
   broadcastCooldownMinutes: number;
   facebookSyncCooldownMinutes: number;
+  facebookAutoSyncEnabled: boolean;
+  facebookAutoSyncIntervalMinutes: number;
   otpExpiryMinutes: number;
   otpMaxSendCount: number;
   otpResendCooldownSeconds: number;

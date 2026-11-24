@@ -1,6 +1,8 @@
 spring:
   application:
     name: club-backend
+  lifecycle:
+    timeout-per-shutdown-phase: 25s
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/club}
     username: ${DB_USERNAME:club}
@@ -46,6 +48,7 @@ springdoc:
 
 server:
   port: ${SERVER_PORT:8080}
+  shutdown: graceful
   max-http-request-header-size: 16KB
   # Trust X-Forwarded-For only from private/loopback proxies (Tomcat RemoteIpValve), so the
   # rate limiter sees the real client IP behind nginx without letting clients spoof it.
@@ -133,3 +136,4 @@ app:
     token-encryption-key: ${FACEBOOK_TOKEN_ENCRYPTION_KEY:vju-clubhub-local-fb-aes256-key-2026}
     oauth-redirect-uri: ${FACEBOOK_OAUTH_REDIRECT_URI:http://localhost:8080/api/v1/integrations/facebook/oauth/callback}
     frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:3000}
+    auto-sync-poll-ms: ${FACEBOOK_AUTO_SYNC_POLL_MS:300000}

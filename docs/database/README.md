@@ -41,8 +41,22 @@ The Spring Boot backend connects to `jdbc:postgresql://localhost:5432/club` by d
 | `V27__club_custom_overview_config.sql` | Custom club overview configuration column `clubs.overview_config` (`ck_clubs_overview_config_object` JSON object check) seeded with archetype configs across all 12 VJU clubs |
 | `V28__chat_media_and_quick_replies.sql` | Rich media chat attachments table `chat_message_attachments` (`IMAGE`/`VIDEO`/`FILE`, `checksum_sha256`, HTTP Range streaming support) and per-club quick replies table `chat_quick_replies` (`uq_chat_quick_replies_club_shortcut`) |
 | `V29__chat_pinned_messages.sql` | Messenger-style pinned messages per channel (`chat_messages.pinned`, `pinned_at`, `pinned_by`, partial index `idx_chat_messages_channel_pinned`) |
+| `V30__chat_message_delivery_status.sql` | Realtime chat delivery receipt tracking (`delivered_at`, `seen_at` & cursor indexes) |
+| `V31__chat_message_reactions.sql` | Emoji reactions table `chat_message_reactions` (`UNIQUE(message_id, user_id, emoji)`) |
+| `V32__index_chat_message_reactions_user_id.sql` | Indexes `chat_message_reactions.user_id` FK |
+| `V33__password_reset_otp_and_mail_settings.sql` | `password_reset_otps` table and SMTP / OTP policy columns on `system_settings` |
+| `V34__chat_message_edit.sql` | Soft edit/delete moderation metadata on `chat_messages` (`edited_at`, `deleted_at`, `deleted_by`) |
+| `V35__youth_union_club_and_officer_membership_sync.sql` | Seeds `DOANVJU` (Youth Union as unit #13) and ensures officer role assignments maintain `ACTIVE` memberships |
+| `V36__application_interview_scheduling.sql` | Interview scheduling columns on `club_applications` (`interview_at`, `interview_location`, `interview_note`, `interview_notified_at`) |
+| `V37__event_submissions_and_internal_scope.sql` | Internal club-only events (`allow_ctv = false`), `events.requires_submission`, and `event_submissions` table |
+| `V38__club_facebook_integration.sql` | `club_facebook_pages` (AES-256-GCM encrypted Page Access Token) and `club_facebook_posts` synced feed cache |
+| `V39__anti_inflation_limits_and_quotas.sql` | Anti-inflation club resource quotas & broadcast/Facebook sync cooldowns on `system_settings` |
+| `V40__club_facebook_permissions.sql` | Adds `club.facebook.view` and `club.facebook.manage` (`CLUB` scope) to RBAC catalog (total 63 permissions) |
+| `V41__system_integration_settings_and_delegation.sql` | Live encrypted runtime integration overrides (Facebook OAuth, AI Gateway, Google SSO) on `system_settings`; lowers `permission.view/assign/revoke` & `role.view` to `DEPARTMENT` scope for subordinate delegation |
+| `V42__index_club_facebook_pages_connected_by.sql` | Indexes `club_facebook_pages.connected_by` FK (`idx_club_facebook_pages_connected_by`) |
+| `V43__facebook_auto_sync_settings.sql` | Adds `facebook_auto_sync_enabled` & `facebook_auto_sync_interval_minutes` (`15..1440`, default `60`) on `system_settings` plus `consecutive_sync_failures` & `last_auto_synced_at` on `club_facebook_pages` |
 
-Tables: `users`, `clubs`, `departments`, `memberships`, `department_members`, `permissions`, `user_permissions`, `roles`, `role_permissions`, `user_roles`, `permission_audit_logs`, `audit_logs`, `spring_session`, `spring_session_attributes`, `club_applications`, `club_application_forms`, `club_application_files`, `notifications`, `documents`, `document_versions`, `events`, `event_registrations`, `event_attendances`, `tasks`, `chat_channels`, `chat_messages`, `chat_channel_reads`, `chat_message_attachments`, `chat_quick_replies`, `ai_summaries`, `system_settings`, `i18n_translations`; view `effective_user_permissions` (active direct grants plus active role assignments, used by every authorization check). Flyway records applied migrations in `flyway_schema_history`. Migrations seed the permission catalog, system roles, club overview presets, and default quick-reply templates; sample users and memberships are only created under the `local` profile.
+Tables: `users`, `clubs`, `departments`, `memberships`, `department_members`, `permissions`, `user_permissions`, `roles`, `role_permissions`, `user_roles`, `permission_audit_logs`, `audit_logs`, `spring_session`, `spring_session_attributes`, `club_applications`, `club_application_forms`, `club_application_files`, `notifications`, `documents`, `document_versions`, `events`, `event_registrations`, `event_attendances`, `event_submissions`, `tasks`, `chat_channels`, `chat_messages`, `chat_channel_reads`, `chat_message_attachments`, `chat_message_reactions`, `chat_quick_replies`, `ai_summaries`, `system_settings`, `i18n_translations`, `password_reset_otps`, `club_facebook_pages`, `club_facebook_posts`; view `effective_user_permissions` (active direct grants plus active role assignments, used by every authorization check). Flyway records applied migrations in `flyway_schema_history`. Migrations seed the 63-permission catalog, 5 system roles, club overview presets, and default quick-reply templates; sample users and memberships are only created under the `local` profile.
 
 ### Integrity rules enforced by PostgreSQL
 
@@ -82,7 +96,7 @@ V3 checks existing data first and aborts with a readable message if values colli
 
 ### Maintenance
 
-Spring Session JDBC automatically cleans up expired HTTP sessions in `spring_session`, and `TaskOverdueScheduler` runs periodically (`markOverdueTasks()`) to flag overdue tasks and send idempotent `TASK_OVERDUE` notifications (`overdue_notified_at`) without overwriting `TODO`/`IN_PROGRESS` task statuses.
+Spring Session JDBC automatically cleans up expired HTTP sessions in `spring_session`. Dedicated threads on `vjuTaskScheduler` (4-thread pool with graceful shutdown) run `TaskServiceImpl.markOverdueTasks()`, `ChatMediaService.purgeOrphanAttachments()`, and `ClubFacebookSyncScheduler.scheduledSync()` independently without starving each other.
 
 Check the local database with:
 

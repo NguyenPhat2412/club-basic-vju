@@ -1,6 +1,6 @@
-# Sơ đồ Thực thể Liên kết (ERD) — PostgreSQL 16 (`Flyway V1..V29`)
+# Sơ đồ Thực thể Liên kết (ERD) — PostgreSQL 16 (`Flyway V1..V43`)
 
-Tài liệu này mô hình hóa cấu trúc quan hệ giữa các bảng cốt lõi trong cơ sở dữ liệu PostgreSQL 16 của hệ thống `CLUB-BASIC-VJU` (quản lý qua **29 bản migration Flyway** từ `V1` đến `V29`). Danh mục chi tiết từng bản migration và các ràng buộc `CHECK` / `TRIGGER` xem tại [docs/database/README.md](../database/README.md).
+Tài liệu này mô hình hóa cấu trúc quan hệ giữa các bảng cốt lõi trong cơ sở dữ liệu PostgreSQL 16 của hệ thống `CLUB-BASIC-VJU` (quản lý qua **43 bản migration Flyway** từ `V1` đến `V43`). Danh mục chi tiết từng bản migration và các ràng buộc `CHECK` / `TRIGGER` xem tại [docs/database/README.md](../database/README.md).
 
 ---
 
@@ -26,6 +26,11 @@ erDiagram
     CLUBS ||--o{ DOCUMENTS : "kho tài liệu CLB"
     CLUBS ||--o{ CHAT_CHANNELS : "kênh giao tiếp"
     CLUBS ||--o{ CHAT_QUICK_REPLIES : "mẫu tin nhắn nhanh"
+    CLUBS ||--o| CLUB_FACEBOOK_PAGES : "kết nối Fanpage Facebook (V38)"
+    CLUBS ||--o{ CLUB_FACEBOOK_POSTS : "cache bài viết Fanpage (V38)"
+    EVENTS ||--o{ EVENT_SUBMISSIONS : "nộp hồ sơ sự kiện (V37)"
+    CHAT_MESSAGES ||--o{ CHAT_MESSAGE_REACTIONS : "cảm xúc tin nhắn (V31)"
+    USERS ||--o{ PASSWORD_RESET_OTPS : "mã OTP đặt lại mật khẩu (V33)"
 
     DEPARTMENTS ||--o{ DEPARTMENT_MEMBERS : "xếp nhân sự ban"
     MEMBERSHIPS ||--o{ DEPARTMENT_MEMBERS : "gắn với membership ACTIVE"
@@ -160,7 +165,9 @@ Ngoài các thực thể liên kết ở trên, cơ sở dữ liệu duy trì 5 
 |---|---|---|
 | **`effective_user_permissions` *(View)*** | `V5`, `V20` | Hợp nhất quyền trực tiếp (`user_permissions`) và quyền qua vai trò (`user_roles`), tự động loại bỏ quyền cấp `CLUB`/`DEPARTMENT` nếu người dùng đang bị `SUSPENDED` tại CLB đó. |
 | **`spring_session` & `spring_session_attributes`** | `V12` | Lưu phiên HTTP bền vững phía máy chủ (`CLUB_SESSION`), cho phép thu hồi phiên tức thì khi khóa/vô hiệu hóa/ẩn danh tài khoản ([ADR-001](../decisions/ADR-001-postgresql-stateful-sessions-and-csrf.md)). |
-| **`system_settings`** | `V19`, `V21`, `V24` | Bảng cấu hình đơn dòng lưu các ngưỡng điều hành động (`max_pending_applications`, `reapply_cooldown_days`, `attendance_edit_window_hours`, `allow_self_registration`, `document_max_file_mb`, `club_image_max_mb`, `avatar_max_mb`...). |
+| **`system_settings`** | `V19`, `V21`, `V24`, `V33`, `V39`, `V41`, `V43` | Bảng cấu hình đơn dòng lưu các ngưỡng vận hành, hạn mức chống lạm phát, chính sách OTP/SMTP, cấu hình tích hợp động (Facebook OAuth, AI Gateway, Google SSO mã hoá AES-256-GCM) và chu kỳ đồng bộ Facebook tự động (`facebook_auto_sync_enabled`, `facebook_auto_sync_interval_minutes`). |
+| **`club_facebook_pages` & `club_facebook_posts`** | `V38`, `V42`, `V43` | Lưu liên kết Fanpage theo từng CLB (Page Access Token mã hoá AES-256-GCM, `consecutive_sync_failures`, `last_auto_synced_at`) và bộ đệm bài viết/tương tác đồng bộ định kỳ từ Meta Graph API. |
+| **`password_reset_otps`** | `V33` | Lưu mã băm OTP 6 chữ số có thời hạn & giới hạn số lần thử cho luồng khôi phục mật khẩu qua SMTP. |
 | **`i18n_translations`** | `V23` | Bộ nhớ đệm bản dịch AI bền vững theo cặp khóa duy nhất `(source_hash, target_locale)` phục vụ đa ngôn ngữ `vi`/`en`/`ja` ([ADR-006](../decisions/ADR-006-modular-nextjs-400-loc-and-cached-ai-i18n.md)). |
 | **`audit_logs` & `permission_audit_logs`** | `V1`, `V6` | Nhật ký kiểm toán chỉ-ghi-thêm (*append-only* qua trigger PostgreSQL), lưu giá trị JSON trước/sau của mọi thao tác quản trị. |
 

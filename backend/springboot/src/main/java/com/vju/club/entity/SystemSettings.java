@@ -75,6 +75,12 @@ public class SystemSettings extends TimestampedEntity {
     @Column(name = "facebook_sync_cooldown_minutes", nullable = false)
     private int facebookSyncCooldownMinutes = 2;
 
+    @Column(name = "facebook_auto_sync_enabled", nullable = false)
+    private boolean facebookAutoSyncEnabled = true;
+
+    @Column(name = "facebook_auto_sync_interval_minutes", nullable = false)
+    private int facebookAutoSyncIntervalMinutes = 60;
+
     @Column(name = "otp_expiry_minutes", nullable = false)
     private int otpExpiryMinutes = 5;
 

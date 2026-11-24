@@ -111,6 +111,8 @@ export function defaultSystemSettingsInput(): SystemSettingsInput {
     maxOpenTasksPerClub: 200,
     broadcastCooldownMinutes: 5,
     facebookSyncCooldownMinutes: 2,
+    facebookAutoSyncEnabled: true,
+    facebookAutoSyncIntervalMinutes: 60,
     otpExpiryMinutes: 5,
     otpMaxSendCount: 5,
     otpResendCooldownSeconds: 60,
@@ -157,6 +159,8 @@ export function createSystemSettingsDraft(settings?: SystemSettings | null): Sys
   draft.smtpFromName = settings.smtpFromName || 'VJU ClubHub';
   draft.smtpStartTls = settings.smtpStartTls ?? true;
   draft.facebookAppId = settings.facebookAppId ?? null;
+  draft.facebookAutoSyncEnabled = settings.facebookAutoSyncEnabled ?? true;
+  draft.facebookAutoSyncIntervalMinutes = settings.facebookAutoSyncIntervalMinutes ?? 60;
   draft.facebookAppSecret = '';
   draft.clearFacebookAppSecret = false;
   draft.facebookGraphVersion = settings.facebookGraphVersion ?? null;
@@ -192,6 +196,8 @@ export function hasSystemSettingsChanged(draft: SystemSettingsInput, current?: S
   if (Boolean(draft.smtpPassword && draft.smtpPassword.trim())) return true;
   if (Boolean(draft.clearSmtpPassword) && current.smtpPasswordConfigured) return true;
   if (normStr(draft.facebookAppId) !== normStr(current.facebookAppId)) return true;
+  if (Boolean(draft.facebookAutoSyncEnabled) !== Boolean(current.facebookAutoSyncEnabled)) return true;
+  if ((draft.facebookAutoSyncIntervalMinutes || 60) !== (current.facebookAutoSyncIntervalMinutes || 60)) return true;
   if (Boolean(draft.facebookAppSecret && draft.facebookAppSecret.trim())) return true;
   if (Boolean(draft.clearFacebookAppSecret) && current.facebookAppSecretConfigured) return true;
   if (normStr(draft.facebookGraphVersion) !== normStr(current.facebookGraphVersion)) return true;
@@ -218,6 +224,8 @@ export function toSystemSettingsPayload(draft: SystemSettingsInput): SystemSetti
     smtpFromEmail: normStr(draft.smtpFromEmail) || null,
     smtpFromName: normStr(draft.smtpFromName) || 'VJU ClubHub',
     facebookAppId: normStr(draft.facebookAppId) || null,
+    facebookAutoSyncEnabled: Boolean(draft.facebookAutoSyncEnabled),
+    facebookAutoSyncIntervalMinutes: Math.max(15, Math.min(1440, draft.facebookAutoSyncIntervalMinutes || 60)),
     facebookAppSecret: normStr(draft.facebookAppSecret) || undefined,
     clearFacebookAppSecret: draft.clearFacebookAppSecret ? true : undefined,
     facebookGraphVersion: normStr(draft.facebookGraphVersion) || null,
