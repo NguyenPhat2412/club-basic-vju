@@ -18,6 +18,7 @@ public record EventRecord(
         OffsetDateTime endTime,
         OffsetDateTime registrationDeadline,
         boolean allowCtv,
+        boolean allowPublicAttendees,
         boolean requiresSubmission,
         Integer maxParticipants,
         EventStatus status,

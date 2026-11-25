@@ -258,4 +258,46 @@ class GoogleSignInApiTest extends ApiIntegrationTest {
         assertThat(session).isNotEqualTo(memberToken);
         assertThat(call(get("/api/v1/auth/me"), session, null, 200).path("email").asText()).isEqualTo(STUDENT);
     }
+
+    @Test
+    void tier1To3AdminWithTwoFactorEnabledRequiresOtpForGoogleSignIn() throws Exception {
+        UUID president = user(STUDENT);
+        UUID roleId = db.queryForObject("SELECT id FROM roles WHERE code = 'CLUB_PRESIDENT'", UUID.class);
+        db.update("INSERT INTO user_roles(user_id, role_id, scope, club_id, granted_by) VALUES (?, ?, 'CLUB', ?, ?)",
+                president, roleId, clubA, admin);
+        db.update("UPDATE users SET two_factor_enabled = TRUE WHERE id = ?", president);
+        google("good-2fa", "google-sub-2fa", STUDENT, true, "st.vju.ac.vn");
+
+        // Without OTP -> 403 TWO_FACTOR_REQUIRED and no session cookie
+        refused("good-2fa", 403, "TWO_FACTOR_REQUIRED");
+
+        // Can request LOGIN_2FA OTP using Google credential
+        JsonNode policy = call(post("/api/v1/auth/2fa/send"), null,
+                Map.of("purpose", "LOGIN_2FA", "credential", "good-2fa"), 200);
+        assertThat(policy.path("purpose").asText()).isEqualTo("LOGIN_2FA");
+
+        db.update("""
+                UPDATE security_otps SET otp_hash = ?
+                WHERE user_id = ? AND purpose = 'LOGIN_2FA' AND invalidated_at IS NULL AND consumed_at IS NULL
+                """, passwords.encode("778899"), president);
+
+        // Complete via POST /api/v1/auth/google with otpCode
+        MockHttpServletResponse googleRes = send(post("/api/v1/auth/google"), null,
+                Map.of("credential", "good-2fa", "otpCode", "778899"));
+        assertThat(googleRes.getStatus()).isEqualTo(200);
+        String session = TestSessions.fromResponse(googleRes);
+        assertThat(session).isNotBlank();
+        assertThat(call(get("/api/v1/auth/me"), session, null, 200).path("id").asText())
+                .isEqualTo(president.toString());
+
+        // Also supports completing via POST /api/v1/auth/2fa/verify with credential
+        db.update("""
+                INSERT INTO security_otps (id, user_id, purpose, action_context, otp_hash, expires_at, attempts, max_attempts)
+                VALUES (?, ?, 'LOGIN_2FA', NULL, ?, now() + interval '5 minutes', 0, 5)
+                """, UUID.randomUUID(), president, passwords.encode("998877"));
+        MockHttpServletResponse verifyRes = send(post("/api/v1/auth/2fa/verify"), null,
+                Map.of("purpose", "LOGIN_2FA", "credential", "good-2fa", "otp", "998877"));
+        assertThat(verifyRes.getStatus()).isEqualTo(200);
+        assertThat(TestSessions.fromResponse(verifyRes)).isNotBlank();
+    }
 }

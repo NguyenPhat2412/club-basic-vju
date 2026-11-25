@@ -25,7 +25,7 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
     @Query("SELECT e FROM Event e WHERE e.club.id = :clubId "
             + "AND (:status IS NULL OR e.status = :status) "
             + "AND (:departmentId IS NULL OR e.department.id = :departmentId) "
-            + "AND (:publicOnly = false OR e.allowCtv = true)")
+            + "AND (:publicOnly = false OR e.allowCtv = true OR e.allowPublicAttendees = true)")
     Page<Event> findByClub(@Param("clubId") UUID clubId,
                            @Param("status") EventStatus status,
                            @Param("departmentId") UUID departmentId,
@@ -38,7 +38,7 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
 
     @EntityGraph(attributePaths = {"club", "department"})
     @Query("SELECT e FROM Event e WHERE e.club.status = com.vju.club.enums.ClubStatus.ACTIVE "
-            + "AND e.allowCtv = true "
+            + "AND (e.allowCtv = true OR e.allowPublicAttendees = true) "
             + "AND e.status IN (com.vju.club.enums.EventStatus.OPEN_REGISTRATION, "
             + "com.vju.club.enums.EventStatus.CLOSED_REGISTRATION, "
             + "com.vju.club.enums.EventStatus.COMPLETED)")
@@ -53,7 +53,7 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
 
     @EntityGraph(attributePaths = {"club", "department"})
     @Query("SELECT e FROM Event e WHERE e.club.status = com.vju.club.enums.ClubStatus.ACTIVE "
-            + "AND (e.allowCtv = true OR e.club.id IN :clubIds) "
+            + "AND (e.allowCtv = true OR e.allowPublicAttendees = true OR e.club.id IN :clubIds) "
             + "AND e.status IN (com.vju.club.enums.EventStatus.OPEN_REGISTRATION, "
             + "com.vju.club.enums.EventStatus.CLOSED_REGISTRATION, "
             + "com.vju.club.enums.EventStatus.COMPLETED)")

@@ -32,12 +32,15 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
 public class AiTranslationServiceImpl implements AiTranslationService {
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final Set<String> SUPPORTED_TARGETS = Set.of("en", "ja");
+    private static final Pattern DISALLOWED_UI_LABEL_PATTERN =
+            Pattern.compile("(?:\\(|（)PB-\\d+(?:\\)|）)|\\btelegram\\b", Pattern.CASE_INSENSITIVE);
     private static final int MAX_TEXT_LENGTH = 2000;
     private static final int MAX_OUTPUT_LENGTH = 4000;
     private static final int MAX_BATCH_SIZE = 30;
@@ -96,7 +99,7 @@ public class AiTranslationServiceImpl implements AiTranslationService {
         Set<String> seen = new LinkedHashSet<>();
         for (String raw : rawTexts) {
             String norm = normalizeText(raw);
-            if (!norm.isEmpty() && norm.length() <= MAX_TEXT_LENGTH && seen.add(norm)) {
+            if (!norm.isEmpty() && norm.length() <= MAX_TEXT_LENGTH && !isDisallowedEntry(norm, null) && seen.add(norm)) {
                 normalizedUnique.add(norm);
                 if (normalizedUnique.size() >= MAX_BATCH_SIZE) break;
             }
@@ -125,8 +128,10 @@ public class AiTranslationServiceImpl implements AiTranslationService {
         }
         List<I18nTranslation> dbHits = repository.findByTargetLocaleAndSourceHashIn(locale, hashToSource.keySet());
         for (I18nTranslation hit : dbHits) {
-            localeCache.put(hit.getSourceText(), hit.getTranslatedText());
-            result.put(hit.getSourceText(), hit.getTranslatedText());
+            if (!isDisallowedEntry(hit.getSourceText(), hit.getTranslatedText())) {
+                localeCache.put(hit.getSourceText(), hit.getTranslatedText());
+                result.put(hit.getSourceText(), hit.getTranslatedText());
+            }
             missing.remove(hit.getSourceText());
         }
 
@@ -175,6 +180,9 @@ public class AiTranslationServiceImpl implements AiTranslationService {
             if (dst.length() > MAX_OUTPUT_LENGTH) {
                 dst = dst.substring(0, MAX_OUTPUT_LENGTH).strip();
             }
+            if (isDisallowedEntry(src, dst)) {
+                continue;
+            }
             persistTranslation(locale, src, dst, modelLabel);
             if (localeCache.size() < MAX_MEMORY_ENTRIES) {
                 localeCache.put(src, dst);
@@ -212,7 +220,9 @@ public class AiTranslationServiceImpl implements AiTranslationService {
         try {
             List<I18nTranslation> existing = repository.findByTargetLocale(locale);
             for (I18nTranslation row : existing) {
-                map.put(row.getSourceText(), row.getTranslatedText());
+                if (!isDisallowedEntry(row.getSourceText(), row.getTranslatedText())) {
+                    map.put(row.getSourceText(), row.getTranslatedText());
+                }
             }
             hydratedLocales.add(locale);
         } catch (Exception ex) {
@@ -354,6 +364,11 @@ public class AiTranslationServiceImpl implements AiTranslationService {
         if (lower.startsWith("en")) return "en";
         if (lower.startsWith("ja") || lower.startsWith("jp")) return "ja";
         return "vi";
+    }
+
+    private static boolean isDisallowedEntry(String sourceText, String translatedText) {
+        return (sourceText != null && DISALLOWED_UI_LABEL_PATTERN.matcher(sourceText).find())
+                || (translatedText != null && DISALLOWED_UI_LABEL_PATTERN.matcher(translatedText).find());
     }
 
     private static String normalizeText(String raw) {

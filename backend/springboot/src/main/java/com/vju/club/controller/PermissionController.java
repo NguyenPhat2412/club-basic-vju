@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,7 +48,8 @@ public class PermissionController {
 
     @PutMapping(ApiPaths.USER_PERMISSIONS)
     public List<UserPermissionResponse> replace(Actor actor, @PathVariable UUID userId,
-                                                @Valid @RequestBody ReplacePermissionsRequest request) {
+                                                @Valid @RequestBody ReplacePermissionsRequest request,
+                                                @RequestHeader(value = "X-2FA-OTP", required = false) String twoFactorOtp) {
         return permissionService.replace(actor, userId, request);
     }
 
@@ -55,7 +57,8 @@ public class PermissionController {
     public ResponseEntity<UserPermissionResponse> grant(
             Actor actor,
             @PathVariable UUID userId,
-            @Valid @RequestBody GrantPermissionRequest request) {
+            @Valid @RequestBody GrantPermissionRequest request,
+            @RequestHeader(value = "X-2FA-OTP", required = false) String twoFactorOtp) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(permissionService.grant(actor, userId, request));
     }
@@ -87,7 +90,8 @@ public class PermissionController {
             @PathVariable UUID permissionId,
             @RequestParam(required = false) PermissionScope scope,
             @RequestParam(required = false) UUID clubId,
-            @RequestParam(required = false) UUID departmentId) {
+            @RequestParam(required = false) UUID departmentId,
+            @RequestHeader(value = "X-2FA-OTP", required = false) String twoFactorOtp) {
         permissionService.revoke(actor, userId, permissionId, scope, clubId, departmentId);
         return ResponseEntity.noContent().build();
     }
@@ -99,7 +103,8 @@ public class PermissionController {
             @PathVariable @Size(max = 100) String permissionKey,
             @RequestParam(required = false) PermissionScope scope,
             @RequestParam(required = false) UUID clubId,
-            @RequestParam(required = false) UUID departmentId) {
+            @RequestParam(required = false) UUID departmentId,
+            @RequestHeader(value = "X-2FA-OTP", required = false) String twoFactorOtp) {
         permissionService.revokeByKey(actor, userId, permissionKey, scope, clubId, departmentId);
         return ResponseEntity.noContent().build();
     }

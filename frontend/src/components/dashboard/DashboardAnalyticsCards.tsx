@@ -4,6 +4,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { BarChart3, ClipboardList } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { type DonutSegment, SvgDonutChart } from "./DashboardSvgPrimitives";
+
+const CATEGORY_PALETTE = [
+  { strokeClass: "stroke-primary", dotClass: "bg-primary" },
+  { strokeClass: "stroke-slate-800", dotClass: "bg-slate-800" },
+  { strokeClass: "stroke-slate-500", dotClass: "bg-slate-500" },
+  { strokeClass: "stroke-rose-400", dotClass: "bg-rose-400" },
+  { strokeClass: "stroke-slate-300", dotClass: "bg-slate-300" },
+];
 
 export function DashboardGuestPrompt() {
   return (
@@ -68,6 +77,27 @@ export function DashboardAnalyticsCards({
       ? Math.round(((approvedAppsCount + rejectedAppsCount) / relevantAppsCount) * 100)
       : 0;
 
+  const topCategories = sortedCategories.slice(0, 4);
+  const otherCategoryCount = sortedCategories.slice(4).reduce((sum, [, n]) => sum + n, 0);
+  const categorySegments: DonutSegment[] = [
+    ...topCategories.map(([cat, count], idx) => ({
+      key: cat,
+      label: cat,
+      value: count,
+      strokeClass: CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length].strokeClass,
+      dotClass: CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length].dotClass,
+    })),
+    ...(otherCategoryCount > 0
+      ? [{ key: "__other__", label: "Lĩnh vực khác", value: otherCategoryCount, strokeClass: "stroke-slate-300", dotClass: "bg-slate-300" }]
+      : []),
+  ];
+
+  const appSegments: DonutSegment[] = [
+    { key: "approved", label: "Đã duyệt", value: approvedAppsCount, strokeClass: "stroke-primary", dotClass: "bg-primary" },
+    { key: "pending", label: "Chờ duyệt", value: pendingAppsCount, strokeClass: "stroke-slate-500", dotClass: "bg-slate-500" },
+    { key: "rejected", label: "Từ chối", value: rejectedAppsCount, strokeClass: "stroke-rose-300", dotClass: "bg-rose-300" },
+  ];
+
   return (
     <section className="grid gap-4 @3xl:grid-cols-2">
       <div className="min-w-0 rounded-xl border border-border bg-card p-4 sm:p-5">
@@ -78,10 +108,10 @@ export function DashboardAnalyticsCards({
             </span>
             <div>
               <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                Phân bổ CLB theo lĩnh vực
+                Biểu đồ Phân bổ CLB theo lĩnh vực
               </h2>
               <p className="text-[11px] text-muted-foreground">
-                Tổng số {totalClubsCount} câu lạc bộ đang hoạt động
+                Tổng số {totalClubsCount} câu lạc bộ · {sortedCategories.length} lĩnh vực
               </p>
             </div>
           </div>
@@ -91,34 +121,18 @@ export function DashboardAnalyticsCards({
         </div>
 
         {publicClubsPending ? (
-          <div className="mt-3 space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-7 animate-pulse rounded-lg bg-muted" />
-            ))}
-          </div>
+          <div className="mt-4 h-40 animate-pulse rounded-lg bg-muted" />
         ) : sortedCategories.length === 0 ? (
           <p className="py-6 text-center text-xs text-muted-foreground">Chưa có dữ liệu lĩnh vực CLB.</p>
         ) : (
-          <div className="mt-3 space-y-2.5">
-            {sortedCategories.slice(0, 5).map(([cat, count]) => {
-              const pct = totalClubsCount > 0 ? Math.round((count / totalClubsCount) * 100) : 0;
-              return (
-                <div key={cat} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="truncate font-semibold text-foreground">{cat}</span>
-                    <span className="shrink-0 font-bold text-muted-foreground tabular-nums">
-                      {count} CLB ({pct}%)
-                    </span>
-                  </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all duration-300"
-                      style={{ width: `${Math.max(pct, 6)}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+          <div className="mt-4">
+            <SvgDonutChart
+              segments={categorySegments}
+              centerValue={totalClubsCount}
+              centerLabel="Tổng CLB"
+              size={142}
+              strokeWidth={20}
+            />
           </div>
         )}
       </div>
@@ -131,7 +145,7 @@ export function DashboardAnalyticsCards({
             </span>
             <div>
               <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                {canReviewApps ? "Thống kê Duyệt đơn CLB" : "Trạng thái Đơn đăng ký"}
+                {canReviewApps ? "Biểu đồ Duyệt đơn Tuyển quân" : "Trạng thái Đơn đăng ký"}
               </h2>
               <p className="text-[11px] text-muted-foreground">
                 Tổng cộng {relevantAppsCount} hồ sơ ứng tuyển
@@ -147,34 +161,14 @@ export function DashboardAnalyticsCards({
         </div>
 
         <div className="mt-4 space-y-3">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-medium text-muted-foreground">Tỷ lệ xử lý hồ sơ</span>
-            <span className="font-bold text-foreground tabular-nums">{processedRate}%</span>
-          </div>
-
-          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-secondary">
-            {relevantAppsCount > 0 && (
-              <>
-                <div
-                  className="bg-primary transition-all"
-                  style={{ width: `${(approvedAppsCount / relevantAppsCount) * 100}%` }}
-                  title={`Đã duyệt: ${approvedAppsCount}`}
-                />
-                <div
-                  className="bg-slate-400 transition-all"
-                  style={{ width: `${(pendingAppsCount / relevantAppsCount) * 100}%` }}
-                  title={`Chờ duyệt: ${pendingAppsCount}`}
-                />
-                <div
-                  className="bg-rose-300 transition-all"
-                  style={{ width: `${(rejectedAppsCount / relevantAppsCount) * 100}%` }}
-                  title={`Từ chối: ${rejectedAppsCount}`}
-                />
-              </>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 pt-1">
+          <SvgDonutChart
+            segments={appSegments}
+            centerValue={`${processedRate}%`}
+            centerLabel="Đã xử lý"
+            size={142}
+            strokeWidth={20}
+          />
+          <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-2.5">
             <Badge tone="success">Đã duyệt: {approvedAppsCount}</Badge>
             <Badge tone="pending">Chờ duyệt: {pendingAppsCount}</Badge>
             <Badge tone="danger">Từ chối: {rejectedAppsCount}</Badge>

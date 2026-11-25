@@ -147,13 +147,13 @@ export function CreateClubModal({
       submitLoading={createClubMutation.isPending}
       submitDisabled={!clubForm.code.trim() || !clubForm.name.trim()}
     >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Mã câu lạc bộ" required hint="In hoa, chữ số hoặc dấu gạch ngang (VD: VJU-IT)">
+      <div className="grid items-start gap-3 sm:grid-cols-2">
+        <FormField label="Mã câu lạc bộ" required>
           <Input
             value={clubForm.code}
             maxLength={50}
             onChange={(e) => setClubForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
-            placeholder="VJU-IT"
+            placeholder="VD: VJU-IT (in hoa, không dấu)"
           />
         </FormField>
         <FormField label="Tên câu lạc bộ" required>

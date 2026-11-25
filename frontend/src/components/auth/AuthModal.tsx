@@ -1,26 +1,25 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
-import { ArrowRight, LockKeyhole, UserPlus, X } from "lucide-react";
-import { apiModel, type AuthUserEnvelope } from "@/lib/api";
+import { ArrowRight, LockKeyhole, X } from "lucide-react";
+import { ApiError, apiModel, type AuthUserEnvelope } from "@/lib/api";
 import { describeError } from "@/components/shared/ListPage";
 import { GoogleSignInButton, OrDivider, useGoogleSignIn } from "@/components/shared/GoogleSignInButton";
 import { FormField, Input, PasswordInput } from "@/components/ui/input";
 import {
   AuthModalMode,
   LoginFieldErrors,
-  RegisterFieldErrors,
-  toRegisterPayload,
   validateLoginFields,
-  validateRegisterFields,
 } from "@/forms/auth/auth-form";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { AuthModalBanner } from "./AuthModalBanner";
 import { AuthModalForgotForm } from "./AuthModalForgotForm";
+import { AuthModalRegisterForm } from "./AuthModalRegisterForm";
+import { Otp2FaChallengeModal } from "./Otp2FaChallengeModal";
 
 export type { AuthModalMode };
 
@@ -44,15 +43,6 @@ export function AuthModal({
 }) {
   // Warm Google GSI config + script while browsing /home so modal opens with zero delay.
   useGoogleSignIn();
-
-  useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -83,25 +73,37 @@ function AuthModalDialog({
   const [mode, setMode] = useState<AuthModalMode>(initialMode ?? "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [studentCode, setStudentCode] = useState("");
-  const [phone, setPhone] = useState("");
   const [loginErrors, setLoginErrors] = useState<LoginFieldErrors>({});
-  const [registerErrors, setRegisterErrors] = useState<RegisterFieldErrors>({});
   const [loading, setLoading] = useState(false);
+  const [twoFactorChallenge, setTwoFactorChallenge] = useState<{
+    email?: string;
+    password?: string;
+    googleCredential?: string;
+  } | null>(null);
+
+  const handleClose = useCallback(() => {
+    setTwoFactorChallenge(null);
+    onClose();
+  }, [onClose]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !twoFactorChallenge) {
+        handleClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleClose, twoFactorChallenge]);
 
   const switchMode = (nextMode: AuthModalMode) => {
+    setTwoFactorChallenge(null);
     setLoginErrors({});
-    setRegisterErrors({});
     setMode(nextMode);
   };
 
   const clearLoginError = (field: keyof LoginFieldErrors) =>
     setLoginErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
-
-  const clearRegisterError = (field: keyof RegisterFieldErrors) =>
-    setRegisterErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
 
   const handleAuthSuccess = async (envelope?: AuthUserEnvelope) => {
     await queryClient.cancelQueries();
@@ -118,7 +120,7 @@ function AuthModalDialog({
       // Ignore storage restrictions
     }
     await queryClient.invalidateQueries();
-    onClose();
+    handleClose();
     if (onSuccessRedirect) {
       router.push(onSuccessRedirect);
     } else {
@@ -138,25 +140,10 @@ function AuthModalDialog({
       const envelope = await apiModel.login(email.trim(), password);
       await handleAuthSuccess(envelope);
     } catch (err) {
-      toast.error(describeError(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const submitRegister = async (event: FormEvent) => {
-    event.preventDefault();
-    const draft = { fullName, studentCode, email, phone, password, confirmPassword };
-    const fieldErrors = validateRegisterFields(draft);
-    if (Object.keys(fieldErrors).length > 0) {
-      setRegisterErrors(fieldErrors);
-      return;
-    }
-    setLoading(true);
-    try {
-      const envelope = await apiModel.register(toRegisterPayload(draft));
-      await handleAuthSuccess(envelope);
-    } catch (err) {
+      if (err instanceof ApiError && err.code === "TWO_FACTOR_REQUIRED") {
+        setTwoFactorChallenge({ email: email.trim(), password });
+        return;
+      }
       toast.error(describeError(err));
     } finally {
       setLoading(false);
@@ -178,12 +165,13 @@ function AuthModalDialog({
         : "Hãy gia nhập cộng đồng CLB";
 
   return (
+    <>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/65 p-2.5 sm:p-4 lg:p-6 backdrop-blur-xs"
       role="dialog"
       aria-modal="true"
       aria-labelledby="auth-modal-title"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div
         className={cn(
@@ -194,7 +182,7 @@ function AuthModalDialog({
         )}
         onClick={(event) => event.stopPropagation()}
       >
-        {mode !== "forgot" && <AuthModalBanner mode={mode} onClose={onClose} />}
+        {mode !== "forgot" && <AuthModalBanner mode={mode} onClose={handleClose} />}
 
         <div
           className={cn(
@@ -220,7 +208,7 @@ function AuthModalDialog({
               </div>
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleClose}
                 aria-label="Đóng cửa sổ"
                 className="grid size-8 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
               >
@@ -259,7 +247,11 @@ function AuthModalDialog({
                   Sinh viên VJU: Đăng nhập nhanh bằng email{" "}
                   <span className="font-semibold text-slate-800">@{allowedDomain}</span>
                 </p>
-                <GoogleSignInButton onSignedIn={handleAuthSuccess} width={400} />
+                <GoogleSignInButton
+                  onSignedIn={handleAuthSuccess}
+                  onTwoFactorRequired={(credential) => setTwoFactorChallenge({ googleCredential: credential })}
+                  width={400}
+                />
                 <OrDivider />
               </div>
             )}
@@ -314,75 +306,43 @@ function AuthModalDialog({
               </div>
             </form>
           ) : (
-            <form noValidate onSubmit={submitRegister} className="mt-4 flex flex-1 flex-col justify-between gap-3">
-              <div className="grid gap-2.5 sm:gap-3">
-                <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
-                  <FormField label="Họ và tên" required error={registerErrors.fullName}>
-                    <Input
-                      type="text" maxLength={200} autoComplete="name" aria-invalid={Boolean(registerErrors.fullName)}
-                      value={fullName} onChange={(e) => { setFullName(e.target.value); clearRegisterError("fullName"); }}
-                      placeholder="Nguyễn Văn A" className={authInputCls(Boolean(registerErrors.fullName))}
-                    />
-                  </FormField>
-                  <FormField label="Mã sinh viên" error={registerErrors.studentCode}>
-                    <Input
-                      type="text" maxLength={50} aria-invalid={Boolean(registerErrors.studentCode)}
-                      value={studentCode} onChange={(e) => { setStudentCode(e.target.value); clearRegisterError("studentCode"); }}
-                      placeholder="VD: 23110209" className={authInputCls(Boolean(registerErrors.studentCode))}
-                    />
-                  </FormField>
-                </div>
-                <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
-                  <FormField label="Địa chỉ email" required error={registerErrors.email}>
-                    <Input
-                      type="email" maxLength={320} autoComplete="email" aria-invalid={Boolean(registerErrors.email)}
-                      value={email} onChange={(e) => { setEmail(e.target.value); clearRegisterError("email"); }}
-                      placeholder="sinhvien@st.vju.ac.vn" className={authInputCls(Boolean(registerErrors.email))}
-                    />
-                  </FormField>
-                  <FormField label="Số điện thoại" error={registerErrors.phone}>
-                    <Input
-                      type="tel" maxLength={32} autoComplete="tel" aria-invalid={Boolean(registerErrors.phone)}
-                      value={phone} onChange={(e) => { setPhone(e.target.value); clearRegisterError("phone"); }}
-                      placeholder="0901234567" className={authInputCls(Boolean(registerErrors.phone))}
-                    />
-                  </FormField>
-                </div>
-                <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
-                  <FormField label="Mật khẩu (8+ ký tự)" required error={registerErrors.password}>
-                    <PasswordInput
-                      autoComplete="new-password" maxLength={72} aria-invalid={Boolean(registerErrors.password)}
-                      value={password} onChange={(e) => { setPassword(e.target.value); clearRegisterError("password"); }}
-                      placeholder="••••••••" className={authInputCls(Boolean(registerErrors.password))}
-                    />
-                  </FormField>
-                  <FormField label="Xác nhận mật khẩu" required error={registerErrors.confirmPassword}>
-                    <PasswordInput
-                      autoComplete="new-password" maxLength={72} aria-invalid={Boolean(registerErrors.confirmPassword)}
-                      value={confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); clearRegisterError("confirmPassword"); }}
-                      placeholder="••••••••" className={authInputCls(Boolean(registerErrors.confirmPassword))}
-                    />
-                  </FormField>
-                </div>
-              </div>
-
-              <div className="grid gap-2.5">
-                <button type="submit" disabled={loading} className="flex h-10 sm:h-11 items-center justify-center gap-2 rounded-lg bg-primary text-sm font-bold text-white shadow-xs transition-opacity hover:opacity-90 disabled:opacity-60">
-                  <UserPlus size={15} />
-                  {loading ? "ĐANG KHỞI TẠO TÀI KHOẢN…" : "HÃY GIA NHẬP NGAY"}
-                  <ArrowRight size={15} />
-                </button>
-                <p className="border-t border-slate-100 pt-2.5 text-center text-xs text-slate-600">
-                  Đã là thành viên trên hệ thống?{" "}
-                  <button type="button" onClick={() => switchMode("login")} className="font-bold text-primary hover:underline">
-                    Đăng nhập tại đây →
-                  </button>
-                </p>
-              </div>
-            </form>
+            <AuthModalRegisterForm
+              email={email}
+              password={password}
+              loading={loading}
+              inputCls={authInputCls}
+              onEmailChange={setEmail}
+              onPasswordChange={setPassword}
+              onLoadingChange={setLoading}
+              onSwitchToLogin={() => switchMode("login")}
+              onSuccess={handleAuthSuccess}
+            />
           )}
         </div>
       </div>
     </div>
+    <Otp2FaChallengeModal
+      open={Boolean(twoFactorChallenge)}
+      onClose={() => setTwoFactorChallenge(null)}
+      purpose="LOGIN_2FA"
+      email={twoFactorChallenge?.email}
+      password={twoFactorChallenge?.password}
+      credential={twoFactorChallenge?.googleCredential}
+      autoSendOnOpen
+      onSubmitOtp={
+        twoFactorChallenge?.googleCredential
+          ? async (otpCode) => {
+              const envelope = await apiModel.googleLogin(twoFactorChallenge.googleCredential!, true, otpCode);
+              setTwoFactorChallenge(null);
+              await handleAuthSuccess(envelope);
+            }
+          : undefined
+      }
+      onVerified={(result) => {
+        setTwoFactorChallenge(null);
+        void handleAuthSuccess(result && "user" in result ? result : undefined);
+      }}
+    />
+    </>
   );
 }

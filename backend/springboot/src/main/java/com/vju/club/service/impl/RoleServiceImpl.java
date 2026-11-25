@@ -47,6 +47,7 @@ import com.vju.club.security.GrantGuard;
 import com.vju.club.security.PermissionAuthorizationService;
 import com.vju.club.security.ScopeRules;
 import com.vju.club.service.NotificationService;
+import com.vju.club.service.TwoFactorOtpService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -84,6 +85,8 @@ public class RoleServiceImpl implements RoleService {
 
     @Autowired(required = false)
     private NotificationService notificationService;
+    @Autowired(required = false)
+    private TwoFactorOtpService twoFactorOtpService;
 
     @Override
     @Transactional(readOnly = true)
@@ -114,6 +117,7 @@ public class RoleServiceImpl implements RoleService {
         role.setScope(request.scope());
         role.setPermissions(resolvePermissions(request.permissionIds(), role));
         grantGuard.requireCanGrant(actor, role.getPermissions(), PermissionScope.GLOBAL, null, null);
+        CriticalActionOtpSupport.requireIfEnabled(twoFactorOtpService, actor.id(), "ROLE_CHANGE", null);
         Role saved = roleRepository.saveAndFlush(role);
         auditService.record(actor.id(), AuditAction.ROLE_CREATED, saved.getId(), null, null, snapshot(saved));
         return roleMapper.toResponse(saved);
@@ -145,6 +149,7 @@ public class RoleServiceImpl implements RoleService {
             grantGuard.requireCanGrant(actor, added, PermissionScope.GLOBAL, null, null);
             role.setPermissions(permissions);
         }
+        CriticalActionOtpSupport.requireIfEnabled(twoFactorOtpService, actor.id(), "ROLE_CHANGE", null);
         Role saved = roleRepository.saveAndFlush(role);
         auditService.recordChange(actor.id(), AuditAction.ROLE_UPDATED, roleId, null, before, snapshot(saved));
         return roleMapper.toResponse(saved);
@@ -180,16 +185,73 @@ public class RoleServiceImpl implements RoleService {
                 .map(roleMapper::toUserRoleResponse).toList();
     }
 
+    private record ValidatedRoleAssignment(
+            Role role,
+            PermissionScope scope,
+            Club club,
+            Department department,
+            Club targetClub,
+            String reason) {
+    }
+
+    private record RoleAssignmentKey(UUID roleId, PermissionScope scope, UUID clubId, UUID departmentId) {
+    }
+
     @Override
     @Transactional
     public UserRoleResponse assign(Actor actor, UUID userId, AssignRoleRequest request) {
-        if (request.clubId() == null && request.departmentId() == null) {
-            requireScopedOrGlobal(actor, PermissionConstants.PERMISSION_ASSIGN, null, null);
-        } else if (!authorizationService.hasAnyPermission(actor, PermissionConstants.PERMISSION_ASSIGN)) {
-            authorizationService.require(actor, PermissionConstants.PERMISSION_ASSIGN, null, null);
+        return assignBatch(actor, userId, List.of(request), null).get(0);
+    }
+
+    @Override
+    @Transactional
+    public List<UserRoleResponse> assignBatch(
+            Actor actor, UUID userId, List<AssignRoleRequest> requests, String twoFactorOtp) {
+        if (requests == null || requests.isEmpty()) {
+            return List.of();
+        }
+        for (AssignRoleRequest request : requests) {
+            if (request.clubId() == null && request.departmentId() == null) {
+                requireScopedOrGlobal(actor, PermissionConstants.PERMISSION_ASSIGN, null, null);
+            } else if (!authorizationService.hasAnyPermission(actor, PermissionConstants.PERMISSION_ASSIGN)) {
+                authorizationService.require(actor, PermissionConstants.PERMISSION_ASSIGN, null, null);
+            }
         }
         User actorUser = findUser(actor.id());
         User target = findUser(userId);
+        List<ValidatedRoleAssignment> validated = new ArrayList<>(requests.size());
+        Set<RoleAssignmentKey> seen = new LinkedHashSet<>();
+        for (AssignRoleRequest request : requests) {
+            RoleAssignmentKey key = new RoleAssignmentKey(
+                    request.roleId(), request.scope(), request.clubId(), request.departmentId());
+            if (!seen.add(key)) {
+                throw new ApiException(HttpStatus.CONFLICT, "ROLE_ALREADY_ASSIGNED", "Role is already assigned");
+            }
+            validated.add(validateAssignment(actor, userId, request));
+        }
+        CriticalActionOtpSupport.requireIfEnabled(twoFactorOtpService, actor.id(), "ROLE_CHANGE", twoFactorOtp);
+
+        List<UserRoleResponse> responses = new ArrayList<>(validated.size());
+        for (ValidatedRoleAssignment item : validated) {
+            UserRole assignment = new UserRole();
+            assignment.setUser(target);
+            assignment.setRole(item.role());
+            assignment.setScope(item.scope());
+            assignment.setClub(item.club());
+            assignment.setDepartment(item.department());
+            assignment.setGrantedBy(actorUser);
+            assignment.setGrantedAt(OffsetDateTime.now(clock));
+            UserRole saved = userRoleRepository.saveAndFlush(assignment);
+            ensureActiveClubMembership(target, item.targetClub(), item.department());
+            audit(actorUser, saved, PermissionAuditAction.GRANT, item.reason());
+            auditService.record(actorUser.getId(), AuditAction.ROLE_ASSIGNED, saved.getId(), clubOf(saved), null,
+                    assignmentValues(saved, item.reason()));
+            responses.add(roleMapper.toUserRoleResponse(saved));
+        }
+        return responses;
+    }
+
+    private ValidatedRoleAssignment validateAssignment(Actor actor, UUID userId, AssignRoleRequest request) {
         Role role = findRole(request.roleId());
         if (!role.isActive()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "ROLE_INACTIVE", "Role is inactive");
@@ -223,21 +285,7 @@ public class RoleServiceImpl implements RoleService {
         if (userRoleRepository.existsActive(userId, role.getId(), request.scope(), request.clubId(), request.departmentId())) {
             throw new ApiException(HttpStatus.CONFLICT, "ROLE_ALREADY_ASSIGNED", "Role is already assigned");
         }
-
-        UserRole assignment = new UserRole();
-        assignment.setUser(target);
-        assignment.setRole(role);
-        assignment.setScope(request.scope());
-        assignment.setClub(club);
-        assignment.setDepartment(department);
-        assignment.setGrantedBy(actorUser);
-        assignment.setGrantedAt(OffsetDateTime.now(clock));
-        UserRole saved = userRoleRepository.saveAndFlush(assignment);
-        ensureActiveClubMembership(target, targetClub, department);
-        audit(actorUser, saved, PermissionAuditAction.GRANT, request.reason());
-        auditService.record(actorUser.getId(), AuditAction.ROLE_ASSIGNED, saved.getId(), clubOf(saved), null,
-                assignmentValues(saved, request.reason()));
-        return roleMapper.toUserRoleResponse(saved);
+        return new ValidatedRoleAssignment(role, request.scope(), club, department, targetClub, request.reason());
     }
 
     private void ensureActiveClubMembership(User target, Club targetClub, Department department) {
@@ -292,6 +340,7 @@ public class RoleServiceImpl implements RoleService {
         }
         grantGuard.requireCanGrantRole(actor, assignment.getRole(), assignment.getScope(),
                 assignment.getClub() == null ? null : assignment.getClub().getId(), assignment.getDepartment());
+        CriticalActionOtpSupport.requireIfEnabled(twoFactorOtpService, actor.id(), "ROLE_CHANGE", null);
         assignment.revoke(OffsetDateTime.now(clock), actorUser);
         userRoleRepository.saveAndFlush(assignment);
         audit(actorUser, assignment, PermissionAuditAction.REVOKE, null);
@@ -483,6 +532,7 @@ public class RoleServiceImpl implements RoleService {
                 throw new ApiException(HttpStatus.CONFLICT, "POSITION_LIMIT_REACHED",
                         "Position holder limit (" + role.getMaxHolders() + ") reached");
             }
+            CriticalActionOtpSupport.requireIfEnabled(twoFactorOtpService, actor.id(), "ROLE_CHANGE", null);
             int toRevoke = activeHolders.size() - role.getMaxHolders() + 1;
             OffsetDateTime now = OffsetDateTime.now(clock);
             for (int i = 0; i < toRevoke; i++) {
@@ -495,6 +545,8 @@ public class RoleServiceImpl implements RoleService {
                 auditService.record(actorUser.getId(), AuditAction.ROLE_REVOKED, incumbent.getId(), clubId,
                         assignmentValues(incumbent, revokeReason), null);
             }
+        } else {
+            CriticalActionOtpSupport.requireIfEnabled(twoFactorOtpService, actor.id(), "ROLE_CHANGE", null);
         }
 
         UserRole assignment = new UserRole();
@@ -535,6 +587,7 @@ public class RoleServiceImpl implements RoleService {
                 .orElseThrow(() -> notFound("ROLE_ASSIGNMENT_NOT_FOUND", "Position assignment not found in this club"));
         grantGuard.requireCanGrantRole(actor, assignment.getRole(), assignment.getScope(),
                 assignment.getClub() == null ? null : assignment.getClub().getId(), assignment.getDepartment());
+        CriticalActionOtpSupport.requireIfEnabled(twoFactorOtpService, actor.id(), "ROLE_CHANGE", null);
         assignment.revoke(OffsetDateTime.now(clock), actorUser);
         userRoleRepository.saveAndFlush(assignment);
         audit(actorUser, assignment, PermissionAuditAction.REVOKE, null);

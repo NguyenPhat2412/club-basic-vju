@@ -30,7 +30,8 @@ public class NotificationEmailListener {
             "CLUB_APPLICATION",
             "DEPARTMENT",
             "TASK",
-            "EVENT"
+            "EVENT",
+            "CLUB"
     );
 
     private final OtpMailService otpMailService;
@@ -76,6 +77,9 @@ public class NotificationEmailListener {
             return;
         }
         User recipient = userOpt.get();
+        if (!recipient.isEmailNotificationsEnabled()) {
+            return;
+        }
         String email = recipient.getEmail();
         String fullName = recipient.getFullName();
         if (email == null || email.isBlank() || email.endsWith(".local") || email.endsWith(".test")) {
@@ -83,7 +87,7 @@ public class NotificationEmailListener {
         }
 
         resolveExecutor().execute(() -> otpMailService.sendNotificationAlertEmail(
-                email, fullName, notif.title(), notif.message()));
+                email, fullName, notif.title(), notif.message(), notif.referenceType()));
     }
 
     @PreDestroy

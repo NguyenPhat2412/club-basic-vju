@@ -231,7 +231,24 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
             seedMembershipsAndOperations(clubsByCode, now);
         }
 
+        backfillEventCoverImages();
+
         log.info("Synchronized {} real VJU clubs (images, departments, open forms, memberships, and events) for local showcase", seededCount);
+    }
+
+    private void backfillEventCoverImages() {
+        for (Club club : clubRepository.findAll()) {
+            String clubCover = club.getCoverUrl();
+            if (clubCover == null || clubCover.isBlank()) {
+                continue;
+            }
+            for (Event ev : eventRepository.findByClub(club.getId(), null, null, PageRequest.of(0, 50)).getContent()) {
+                if (ev.getCoverImageUrl() == null || ev.getCoverImageUrl().isBlank()) {
+                    ev.setCoverImageUrl(clubCover);
+                    eventRepository.save(ev);
+                }
+            }
+        }
     }
 
     private void ensureEnrichedRolePermissions() {
@@ -1655,6 +1672,9 @@ public class LocalVjuClubCatalogSeeder implements CommandLineRunner {
         upcoming.setAllowCtv(spec.allowCtv());
         upcoming.setMaxParticipants(spec.maxParticipants());
         upcoming.setStatus(EventStatus.OPEN_REGISTRATION);
+        if (club.getCoverUrl() != null && !club.getCoverUrl().isBlank()) {
+            upcoming.setCoverImageUrl(club.getCoverUrl());
+        }
         eventRepository.save(upcoming);
     }
 

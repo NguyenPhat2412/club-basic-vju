@@ -25,6 +25,8 @@ import {
   DashboardLatestNotifications,
 } from "@/components/dashboard/StudentDashboardSidebar";
 import { DashboardAnalyticsCards, DashboardGuestPrompt } from "@/components/dashboard/DashboardAnalyticsCards";
+import { DashboardChartsSection } from "@/components/dashboard/DashboardChartsSection";
+import { ClubCertificatesOverviewSection } from "@/components/management/ClubCertificatesOverviewSection";
 import { DashboardActivitySection } from "@/components/dashboard/DashboardActivitySection";
 import { DashboardSystemAuditSection } from "@/components/dashboard/DashboardSystemAuditSection";
 import { UpcomingInterviewsBanner } from "@/components/application/UpcomingInterviewsBanner";
@@ -276,6 +278,15 @@ export function DashboardView() {
     },
   ];
 
+  const dtnClubId = allClubs.find((c) => c.code?.toUpperCase() === "DOANVJU")?.id;
+  const canViewTimeline =
+    canAdminUsers ||
+    ["event.create", "event.update", "event.attendance", "event.attendance_edit"].some((k) => session.hasGlobal(k)) ||
+    (Boolean(dtnClubId) &&
+      ["event.create", "event.update", "event.attendance", "event.attendance_edit", "club.update"].some((k) =>
+        session.canInClub(k, dtnClubId!),
+      ));
+
   return (
     <div className="flex min-h-full w-full min-w-0 max-w-full flex-1 flex-col">
       <BreadcrumbToolbar
@@ -320,6 +331,13 @@ export function DashboardView() {
         </section>
 
         <StatKpiGrid items={kpiCards} />
+
+        <DashboardChartsSection
+          canViewTimeline={canViewTimeline}
+          primaryClub={visibleManagedClubs[0]}
+        />
+
+        {canViewTimeline && <ClubCertificatesOverviewSection mode="summary" />}
 
         <DashboardLatestNotifications
           notifications={notifList}

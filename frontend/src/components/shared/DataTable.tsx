@@ -71,7 +71,7 @@ export function DataTable<T>({
   const restCols = dataCols.slice(1);
 
   return (
-    <div className="min-h-0 w-full min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-4 py-3 sm:px-6 sm:py-3.5 [scrollbar-gutter:stable]">
+    <div className="min-h-0 w-full min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto px-3 py-2.5 sm:px-5 sm:py-3 [scrollbar-gutter:stable]">
       {!alwaysTable && (
         <div role="list" aria-label={ariaLabel} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:hidden">
           {sortedRows.map((row) => {
@@ -162,7 +162,7 @@ export function DataTable<T>({
                     }
                     className={cn(
                       "h-10 whitespace-nowrap px-2.5 py-2.5 first:pl-3.5 last:pr-3.5",
-                      c.key === "actions" && "sticky right-0 z-20 bg-slate-50/95",
+                      c.key === "actions" && "lg:sticky lg:right-0 lg:z-20 lg:bg-slate-50/95",
                       c.className
                     )}
                   >
@@ -212,7 +212,7 @@ export function DataTable<T>({
                     className={cn(
                       "px-2.5 py-2 first:pl-3.5 last:pr-3.5",
                       c.key === "actions" &&
-                        "sticky right-0 bg-white/95 backdrop-blur-xs group-even:bg-slate-50/95 group-hover:bg-slate-100/95",
+                        "lg:sticky lg:right-0 lg:bg-white/95 lg:backdrop-blur-xs lg:group-even:bg-slate-50/95 lg:group-hover:bg-slate-100/95",
                       c.className
                     )}
                   >

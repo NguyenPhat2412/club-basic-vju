@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CheckCheck, Copy, Pencil, Pin, PinOff, Reply, Trash2 } from "lucide-react";
 import type { ChatMessage } from "@/lib/api";
-import { TELEGRAM_QUICK_REACTIONS } from "@/forms/chat/chat-emojis";
+import { CHAT_QUICK_REACTIONS } from "@/forms/chat/chat-emojis";
 import { resolveChatMessageStatusMeta } from "@/forms/chat/chat-status-meta";
 import { cn, formatDateTime } from "@/lib/utils";
 
@@ -129,7 +129,7 @@ export function ChatMessageContextMenu({
     >
       {canSend && (
         <div className="mb-1 flex items-center justify-between gap-0.5 rounded-lg bg-muted/60 px-1.5 py-1">
-          {TELEGRAM_QUICK_REACTIONS.map((emoji) => {
+          {CHAT_QUICK_REACTIONS.map((emoji) => {
             const active = myEmojis.has(emoji);
             return (
               <button

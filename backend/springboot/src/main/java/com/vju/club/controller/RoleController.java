@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -45,13 +46,15 @@ public class RoleController {
     }
 
     @PostMapping(ApiPaths.ROLES)
-    public ResponseEntity<RoleResponse> create(Actor actor, @Valid @RequestBody CreateRoleRequest request) {
+    public ResponseEntity<RoleResponse> create(Actor actor, @Valid @RequestBody CreateRoleRequest request,
+                                               @RequestHeader(value = "X-2FA-OTP", required = false) String twoFactorOtp) {
         return ResponseEntity.status(HttpStatus.CREATED).body(roleService.create(actor, request));
     }
 
     @PatchMapping(ApiPaths.ROLE_BY_ID)
     public RoleResponse update(Actor actor, @PathVariable UUID roleId,
-                               @Valid @RequestBody UpdateRoleRequest request) {
+                               @Valid @RequestBody UpdateRoleRequest request,
+                               @RequestHeader(value = "X-2FA-OTP", required = false) String twoFactorOtp) {
         return roleService.update(actor, roleId, request);
     }
 
@@ -67,13 +70,15 @@ public class RoleController {
 
     @PostMapping(ApiPaths.USER_ROLES)
     public ResponseEntity<UserRoleResponse> assign(Actor actor, @PathVariable UUID userId,
-                                                   @Valid @RequestBody AssignRoleRequest request) {
+                                                   @Valid @RequestBody AssignRoleRequest request,
+                                                   @RequestHeader(value = "X-2FA-OTP", required = false) String twoFactorOtp) {
         return ResponseEntity.status(HttpStatus.CREATED).body(roleService.assign(actor, userId, request));
     }
 
     @DeleteMapping(ApiPaths.USER_ROLE_BY_ID)
     public ResponseEntity<Void> revoke(Actor actor, @PathVariable UUID userId,
-                                       @PathVariable UUID assignmentId) {
+                                       @PathVariable UUID assignmentId,
+                                       @RequestHeader(value = "X-2FA-OTP", required = false) String twoFactorOtp) {
         roleService.revoke(actor, userId, assignmentId);
         return ResponseEntity.noContent().build();
     }
@@ -85,13 +90,15 @@ public class RoleController {
 
     @PutMapping(ApiPaths.CLUB_POSITIONS)
     public UserRoleResponse assignClubPosition(Actor actor, @PathVariable UUID clubId,
-                                               @Valid @RequestBody AssignClubPositionRequest request) {
+                                               @Valid @RequestBody AssignClubPositionRequest request,
+                                               @RequestHeader(value = "X-2FA-OTP", required = false) String twoFactorOtp) {
         return roleService.assignClubPosition(actor, clubId, request);
     }
 
     @DeleteMapping(ApiPaths.CLUB_POSITION_BY_ID)
     public ResponseEntity<Void> revokeClubPosition(Actor actor, @PathVariable UUID clubId,
-                                                   @PathVariable UUID assignmentId) {
+                                                   @PathVariable UUID assignmentId,
+                                                   @RequestHeader(value = "X-2FA-OTP", required = false) String twoFactorOtp) {
         roleService.revokeClubPosition(actor, clubId, assignmentId);
         return ResponseEntity.noContent().build();
     }

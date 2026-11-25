@@ -14,7 +14,7 @@ const cspDirectives = [
   "font-src 'self' https://fonts.gstatic.com data:",
   isProd ? `img-src 'self' data: blob: https: ${apiOrigin}` : "img-src 'self' data: blob: https: http:",
   isProd ? `media-src 'self' blob: https: ${apiOrigin}` : "media-src 'self' blob: https: http:",
-  "frame-src 'self' blob: https://accounts.google.com",
+  "frame-src 'self' blob: https://accounts.google.com https://www.facebook.com",
   isProd
     ? `connect-src 'self' https: wss: ${apiOrigin} ${wsOrigin}`
     : "connect-src 'self' https: http: ws: wss:",

@@ -20,13 +20,14 @@ import {
 } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
 import { DataTable } from "@/components/shared/DataTable";
+import { FilterPopover } from "@/components/shared/FilterPopover";
 import { Pagination } from "@/components/shared/Pagination";
 import { EmptyState, ErrorState, LoadingRows } from "@/components/shared/States";
 import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError } from "@/components/shared/ListPage";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui/input";
+import { FormField, Input, Select } from "@/components/ui/input";
 import { EMPTY_FORM_DRAFT } from "@/forms/application/application-form";
 import { FormBuilderModal } from "@/components/application/FormBuilderModal";
 import { FormInspectDrawer } from "@/components/application/FormInspectDrawer";
@@ -180,23 +181,27 @@ export function FormsTab({
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-card px-4 py-2.5 sm:px-6">
-        <div className="flex flex-1 flex-wrap items-center gap-2">
-          <div className="relative min-w-[210px] flex-1 sm:max-w-xs">
-            <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(e) => { setSearch(e.target.value); setOffset(0); }} placeholder="Tìm theo tên hoặc mô tả biểu mẫu…" className="h-8 pl-8 pr-7 text-xs" />
+      <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-border bg-white px-3 py-1.5 sm:px-4">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto sm:flex-1">
+          <div className="relative w-full min-w-0 sm:min-w-[180px] sm:max-w-[240px] sm:flex-1">
+            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(e) => { setSearch(e.target.value); setOffset(0); }} placeholder="Tìm tên hoặc mô tả biểu mẫu…" className="h-8 pl-8 pr-7 text-xs" />
             {search && (
               <button type="button" aria-label="Xoá tìm kiếm" onClick={() => { setSearch(""); setOffset(0); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                 <X size={13} />
               </button>
             )}
           </div>
-          <Select aria-label="Lọc trạng thái biểu mẫu" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setOffset(0); }} className="h-8 w-full text-xs sm:w-44">
-            <option value="">Mọi trạng thái</option>
-            <option value="OPEN">OPEN — Đang mở đơn</option>
-            <option value="DRAFT">DRAFT — Bản nháp</option>
-            <option value="CLOSED">CLOSED — Đã đóng đơn</option>
-          </Select>
+          <FilterPopover activeCount={statusFilter ? 1 : 0} onClear={resetFilters} title="Lọc biểu mẫu">
+            <FormField label="Trạng thái biểu mẫu" hideIndicator>
+              <Select aria-label="Lọc trạng thái biểu mẫu" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setOffset(0); }} className="h-8 text-xs">
+                <option value="">Mọi trạng thái</option>
+                <option value="OPEN">OPEN — Đang mở đơn</option>
+                <option value="DRAFT">DRAFT — Bản nháp</option>
+                <option value="CLOSED">CLOSED — Đã đóng đơn</option>
+              </Select>
+            </FormField>
+          </FilterPopover>
           {hasFilters && <Button variant="outline" size="sm" onClick={resetFilters} className="h-8"><FilterX size={13} /> Xoá lọc</Button>}
         </div>
         {canManageForm && <Button size="sm" onClick={openCreateForm} className="h-8"><Plus size={14} /> Tạo biểu mẫu đơn</Button>}

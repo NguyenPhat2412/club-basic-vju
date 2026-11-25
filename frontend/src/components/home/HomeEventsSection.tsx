@@ -2,13 +2,17 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowRight, Calendar, MapPin, Users } from "lucide-react";
+import { ArrowRight, Calendar, MapPin, ShieldCheck, Users } from "lucide-react";
 import { EVENT_TYPE_LABELS } from "@/forms/event/event-form";
 import { HOME_MESSAGES } from "@/i18n/home-messages";
+import { isYouthUnionCode } from "@/lib/club/youth-union";
+import { resolveMediaUrl } from "@/lib/media";
 import { useI18n } from "@/providers/I18nContext";
 import { EventItem } from "@/types";
 import { DbText, formatLocalizedCopy } from "./DbText";
 import { useHomeEventDateFormat } from "./useHomeEventDateFormat";
+
+type HomeEventFilter = "all" | "dtn" | "ctv";
 
 export function HomeEventsSection({
   featuredEvents,
@@ -19,18 +23,27 @@ export function HomeEventsSection({
 }) {
   const { locale } = useI18n();
   const m = HOME_MESSAGES[locale];
-  const [onlyCtvEvents, setOnlyCtvEvents] = useState(false);
+  const [filter, setFilter] = useState<HomeEventFilter>("all");
   const { formatDate, formatDayMonth, formatTimeRange } = useHomeEventDateFormat();
 
+  const dtnEventsCount = useMemo(
+    () => featuredEvents.filter((ev) => isYouthUnionCode(ev.clubCode)).length,
+    [featuredEvents],
+  );
   const ctvEventsCount = useMemo(
     () => featuredEvents.filter((ev) => ev.allowCtv).length,
-    [featuredEvents]
+    [featuredEvents],
   );
 
-  const visibleEvents = useMemo(
-    () => (onlyCtvEvents ? featuredEvents.filter((ev) => ev.allowCtv) : featuredEvents).slice(0, 6),
-    [featuredEvents, onlyCtvEvents]
-  );
+  const visibleEvents = useMemo(() => {
+    const filtered =
+      filter === "dtn"
+        ? featuredEvents.filter((ev) => isYouthUnionCode(ev.clubCode))
+        : filter === "ctv"
+          ? featuredEvents.filter((ev) => ev.allowCtv)
+          : featuredEvents;
+    return filtered.slice(0, 6);
+  }, [featuredEvents, filter]);
 
   return (
     <section
@@ -46,30 +59,39 @@ export function HomeEventsSection({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          {ctvEventsCount > 0 && (
+          {(ctvEventsCount > 0 || dtnEventsCount > 0) && (
             <div className="inline-flex rounded-xl bg-white p-1" data-ui="event-filter">
               <button
                 type="button"
-                onClick={() => setOnlyCtvEvents(false)}
+                onClick={() => setFilter("all")}
                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors sm:text-[13px] ${
-                  !onlyCtvEvents
-                    ? "bg-primary text-white"
-                    : "text-slate-700 hover:text-slate-900"
+                  filter === "all" ? "bg-primary text-white" : "text-slate-700 hover:text-slate-900"
                 }`}
               >
                 {m.eventsSection.filterAll(featuredEvents.length)}
               </button>
-              <button
-                type="button"
-                onClick={() => setOnlyCtvEvents(true)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors sm:text-[13px] ${
-                  onlyCtvEvents
-                    ? "bg-primary text-white"
-                    : "text-slate-700 hover:text-slate-900"
-                }`}
-              >
-                {m.eventsSection.filterCtv(ctvEventsCount)}
-              </button>
+              {dtnEventsCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setFilter("dtn")}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors sm:text-[13px] ${
+                    filter === "dtn" ? "bg-primary text-white" : "text-slate-700 hover:text-slate-900"
+                  }`}
+                >
+                  Đoàn TN ({dtnEventsCount})
+                </button>
+              )}
+              {ctvEventsCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setFilter("ctv")}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors sm:text-[13px] ${
+                    filter === "ctv" ? "bg-primary text-white" : "text-slate-700 hover:text-slate-900"
+                  }`}
+                >
+                  {m.eventsSection.filterCtv(ctvEventsCount)}
+                </button>
+              )}
             </div>
           )}
           <Link
@@ -83,9 +105,9 @@ export function HomeEventsSection({
       </div>
 
       {eventsPending ? (
-        <div className="mt-7 grid gap-3">
-          {Array.from({ length: 4 }).map((_, idx) => (
-            <div key={idx} className="h-20 rounded-2xl bg-white" />
+        <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, idx) => (
+            <div key={idx} className="h-64 rounded-2xl bg-white" />
           ))}
         </div>
       ) : visibleEvents.length === 0 ? (
@@ -93,75 +115,99 @@ export function HomeEventsSection({
           {m.eventsSection.empty}
         </div>
       ) : (
-        <div className="mt-7 grid gap-3">
+        <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {visibleEvents.map((ev) => {
             const typeLabel = EVENT_TYPE_LABELS[ev.eventType];
+            const isDtn = isYouthUnionCode(ev.clubCode);
+            const coverSrc = resolveMediaUrl(ev.coverImageUrl);
+            const allowPublic = ev.allowPublicAttendees ?? ev.allowCtv;
+
             return (
               <Link
                 href={`/events?eventId=${ev.id}`}
                 key={ev.id}
-                className="group grid gap-3 rounded-2xl bg-white p-4 transition-colors hover:bg-accent/65 sm:p-5 lg:grid-cols-[160px_220px_1fr_auto] lg:items-center lg:gap-6"
+                className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-white transition-all hover:border-primary/35 hover:shadow-sm"
               >
-                <div className="tabular-nums">
-                  <p className="text-sm font-bold text-slate-900">{formatDate(ev.startTime)}</p>
-                  <p className="mt-0.5 text-xs font-medium text-slate-600">
-                    {formatTimeRange(ev.startTime, ev.endTime)}
-                  </p>
-                </div>
-
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-primary">
-                    <DbText value={ev.clubName} />
-                  </p>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    {typeLabel ? <DbText value={typeLabel} /> : m.eventsSection.defaultType}
-                  </p>
-                </div>
-
-                <div className="min-w-0">
-                  <p className="line-clamp-2 text-base font-bold text-slate-900 transition-colors group-hover:text-primary lg:truncate">
-                    <DbText value={ev.title} />
-                  </p>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 sm:text-[13px]">
-                    {ev.location && (
-                      <span className="inline-flex items-center gap-1">
-                        <MapPin size={13} className="shrink-0 text-primary" />
-                        <span>
-                          <DbText value={ev.location} />
-                        </span>
+                <div className="relative h-40 w-full overflow-hidden bg-slate-100">
+                  {coverSrc ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={coverSrc}
+                      alt={ev.title}
+                      className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                    />
+                  ) : (
+                    <div className="flex size-full flex-col items-center justify-center gap-1.5 bg-gradient-to-br from-primary/10 via-accent to-slate-100 text-primary">
+                      <Calendar size={26} />
+                      <span className="font-mono text-[11px] font-bold uppercase tracking-wider">
+                        {ev.clubCode || "VJU EVENT"}
+                      </span>
+                    </div>
+                  )}
+                  <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1.5">
+                    {isDtn && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-white shadow-xs">
+                        <ShieldCheck size={11} /> Đoàn TN Trường
                       </span>
                     )}
-                    {ev.maxParticipants ? (
-                      <span className="inline-flex items-center gap-1 tabular-nums">
-                        <Users size={13} className="shrink-0 text-slate-400" />
-                        <span>{m.eventsSection.quota(ev.maxParticipants)}</span>
+                    {ev.allowCtv ? (
+                      <span className="rounded-full border border-primary/20 bg-white/95 px-2.5 py-0.5 text-[11px] font-bold text-primary shadow-xs">
+                        {m.eventsSection.ctvOpenBadge}
                       </span>
-                    ) : null}
-                    {ev.registrationDeadline ? (
-                      <span className="inline-flex items-center gap-1 tabular-nums">
-                        <Calendar size={13} className="shrink-0 text-slate-400" />
-                        <span>
-                          {m.eventsSection.deadline(formatDayMonth(ev.registrationDeadline))}
-                        </span>
+                    ) : allowPublic ? (
+                      <span className="rounded-full border border-slate-200 bg-white/95 px-2.5 py-0.5 text-[11px] font-semibold text-slate-800 shadow-xs">
+                        Mở tham dự toàn trường
                       </span>
-                    ) : null}
+                    ) : (
+                      <span className="rounded-full bg-white/90 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700">
+                        {m.eventsSection.clubEventBadge}
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-3 lg:justify-end">
-                  {ev.allowCtv ? (
-                    <span className="rounded-full border border-primary/20 bg-accent px-3 py-1 text-xs font-bold text-primary">
-                      {m.eventsSection.ctvOpenBadge}
+                <div className="flex flex-1 flex-col justify-between gap-3 p-4">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2 text-[11px]">
+                      <span className="truncate font-bold text-primary"><DbText value={ev.clubName} /></span>
+                      <span className="shrink-0 text-slate-500">
+                        {typeLabel ? <DbText value={typeLabel} /> : m.eventsSection.defaultType}
+                      </span>
+                    </div>
+                    <h3 className="line-clamp-2 text-[15px] font-bold leading-snug text-slate-900 transition-colors group-hover:text-primary">
+                      <DbText value={ev.title} />
+                    </h3>
+                    <div className="space-y-1 pt-1 text-xs text-slate-600">
+                      <p className="flex items-center gap-1.5 font-mono text-[11.5px] font-semibold text-slate-800">
+                        <Calendar size={12} className="shrink-0 text-primary" />
+                        <span>{formatDate(ev.startTime)} · {formatTimeRange(ev.startTime, ev.endTime)}</span>
+                      </p>
+                      {ev.location && (
+                        <p className="flex items-center gap-1.5 truncate">
+                          <MapPin size={12} className="shrink-0 text-primary" />
+                          <span className="truncate"><DbText value={ev.location} /></span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2.5 text-[11.5px] text-slate-500">
+                    <div className="flex items-center gap-3 tabular-nums">
+                      {ev.maxParticipants ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Users size={12} className="text-slate-400" />
+                          {m.eventsSection.quota(ev.maxParticipants)}
+                        </span>
+                      ) : null}
+                      {ev.registrationDeadline ? (
+                        <span>{m.eventsSection.deadline(formatDayMonth(ev.registrationDeadline))}</span>
+                      ) : null}
+                    </div>
+                    <span className="inline-flex shrink-0 items-center gap-1 font-semibold text-primary">
+                      <span>{m.eventsSection.detailsLink}</span>
+                      <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
                     </span>
-                  ) : (
-                    <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-slate-700">
-                      {m.eventsSection.clubEventBadge}
-                    </span>
-                  )}
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary sm:text-sm">
-                    <span>{m.eventsSection.detailsLink}</span>
-                    <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />
-                  </span>
+                  </div>
                 </div>
               </Link>
             );

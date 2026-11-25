@@ -5,6 +5,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
 import { ArrowRightLeft, Building2, Pencil, ShieldCheck, UserMinus } from "lucide-react";
 import { apiModel, ClubPositionSlot, Department, DepartmentMember, Membership } from "@/lib/api";
+import { useCriticalActionOtp } from "@/hooks/useCriticalActionOtp";
+import { Otp2FaChallengeModal } from "@/components/auth/Otp2FaChallengeModal";
 import { ModalShell } from "@/components/shared/Overlays";
 import { describeError } from "@/components/shared/ListPage";
 import { FormField, Input, Select, Textarea } from "@/components/ui/input";
@@ -109,6 +111,7 @@ export function AssignPositionModal({
   const [candidateUserId, setCandidateUserId] = useState("");
   const [replaceHolder, setReplaceHolder] = useState(true);
   const [assignReason, setAssignReason] = useState("");
+  const roleOtp = useCriticalActionOtp("ROLE_CHANGE");
 
   const deptMembersForSlot = useQuery({
     queryKey: qk.departmentMembers(assigningSlot?.departmentId),
@@ -124,13 +127,19 @@ export function AssignPositionModal({
 
   const assignPosition = useMutation({
     mutationFn: () =>
-      apiModel.assignClubPosition(clubId, {
-        userId: candidateUserId,
-        roleId: assigningSlot!.roleId,
-        departmentId: assigningSlot!.departmentId || undefined,
-        replaceHolder,
-        reason: assignReason.trim() || undefined,
-      }),
+      roleOtp.runWithOtp((otp) =>
+        apiModel.assignClubPosition(
+          clubId,
+          {
+            userId: candidateUserId,
+            roleId: assigningSlot!.roleId,
+            departmentId: assigningSlot!.departmentId || undefined,
+            replaceHolder,
+            reason: assignReason.trim() || undefined,
+          },
+          otp
+        )
+      ),
     onSuccess: () => {
       setCandidateUserId("");
       setAssignReason("");
@@ -141,6 +150,7 @@ export function AssignPositionModal({
   });
 
   return (
+    <>
     <ModalShell
       open={!!assigningSlot}
       onClose={onClose}
@@ -167,20 +177,11 @@ export function AssignPositionModal({
               {assigningSlot.maxHolders} hiện tại)
             </p>
             <p className="mt-0.5 text-muted-foreground">
-              {assigningSlot.departmentId
-                ? `Chỉ các thành viên đang hoạt động trong "${assigningSlot.departmentName}" mới đủ điều kiện làm Trưởng ban.`
-                : "Chỉ thành viên đang hoạt động của CLB mới đủ điều kiện giữ chức danh Ban Chủ nhiệm."}
+              Chỉ thành viên đang hoạt động của CLB mới đủ điều kiện giữ chức danh Ban Chủ nhiệm.
             </p>
           </div>
 
-          <FormField
-            label={
-              assigningSlot.departmentId
-                ? `Thành viên thuộc ${assigningSlot.departmentName}`
-                : "Thành viên đang hoạt động trong CLB"
-            }
-            required
-          >
+          <FormField label="Thành viên đang hoạt động trong CLB" required>
             <Select value={candidateUserId} onChange={(e) => setCandidateUserId(e.target.value)}>
               <option value="">-- Chọn thành viên để bổ nhiệm --</option>
               {eligibleCandidates.map((m) => (
@@ -191,9 +192,9 @@ export function AssignPositionModal({
             </Select>
           </FormField>
 
-          {assigningSlot.departmentId && eligibleCandidates.length === 0 && (
-            <p className="text-xs text-amber-600 dark:text-amber-400">
-              Ban này hiện chưa có thành viên nào. Hãy mở mục &quot;Thành viên ban&quot; để thêm thành viên trước khi bổ nhiệm Trưởng ban.
+          {eligibleCandidates.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              CLB hiện chưa có thành viên đang hoạt động nào đủ điều kiện để bổ nhiệm.
             </p>
           )}
 
@@ -226,6 +227,8 @@ export function AssignPositionModal({
         </div>
       )}
     </ModalShell>
+    <Otp2FaChallengeModal {...roleOtp.otpModalProps} />
+    </>
   );
 }
 

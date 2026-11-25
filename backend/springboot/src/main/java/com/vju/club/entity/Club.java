@@ -53,6 +53,9 @@ public class Club extends TimestampedEntity {
     @Column(name = "contact_email", length = 320)
     private String contactEmail;
 
+    @Column(name = "facebook_url", length = 500)
+    private String facebookUrl;
+
     @Column(name = "overview_config", nullable = false, columnDefinition = "TEXT")
     private String overviewConfig = "{}";
 

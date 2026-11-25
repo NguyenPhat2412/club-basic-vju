@@ -8,11 +8,11 @@ import {
 import type { ChatMessage } from "@/lib/api";
 import type { PreviewTarget } from "@/components/document/DocumentPreviewModal";
 import { resolveChatMessageStatusMeta } from "@/forms/chat/chat-status-meta";
-import { getTelegramJumbomojiCount } from "@/forms/chat/chat-emojis";
+import { getChatJumbomojiCount } from "@/forms/chat/chat-emojis";
 import {
   CHAT_FONT_SIZE_CLASS,
   DEFAULT_CHAT_APPEARANCE,
-  telegramBubbleRadiusClass,
+  chatBubbleRadiusClass,
   type ChatAppearanceConfig,
 } from "@/forms/chat/chat-appearance";
 import { formatChatTimeCompact } from "@/lib/chat-message-cache";
@@ -82,7 +82,7 @@ export function ChatMessageBubble({
   const mediaCount = attachments.filter((a) => a.mediaKind === "IMAGE" || a.mediaKind === "VIDEO").length;
   const hasText = Boolean(m.content?.trim());
   const isBareMedia = mediaCount > 0 && mediaCount === attachments.length && !hasText && !m.replyToId && !m.documentId;
-  const jumbomojiCount = getTelegramJumbomojiCount(
+  const jumbomojiCount = getChatJumbomojiCount(
     m.content ?? "",
     attachments.length > 0 || Boolean(m.documentId) || Boolean(m.replyToId)
   );
@@ -201,7 +201,7 @@ export function ChatMessageBubble({
                 : cn(
                     "w-fit border",
                     appearance.density === "compact" ? "px-3 py-1.5" : "px-3.5 py-2",
-                    telegramBubbleRadiusClass(isMine, groupedPrev, groupedNext),
+                    chatBubbleRadiusClass(isMine, groupedPrev, groupedNext),
                     bubbleToneClass
                   )
             )}

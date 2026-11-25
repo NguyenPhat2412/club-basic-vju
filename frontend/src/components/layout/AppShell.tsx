@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ReactNode, Suspense, useEffect, useState } from "react";
+import { ReactNode, Suspense, useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
 import { authApi } from "@/api/auth/auth.api";
@@ -18,7 +18,16 @@ import { ChangePasswordModal } from "./ChangePasswordModal";
 import { FirstLoginPassword } from "./FirstLoginPassword";
 import { SidebarNav } from "./SidebarNav";
 import { Topbar } from "./Topbar";
+import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
 import { WorkspaceTabBar } from "./WorkspaceTabBar";
+import {
+  ensureWorkspaceTabOpen,
+  parseStoredTabIds,
+  resolveTabId,
+  resolveTabIdFromHref,
+  subscribeWorkspaceTabs,
+  workspaceTabsStorageKey,
+} from "./WorkspaceTabSpecs";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -37,9 +46,37 @@ function AppShellInner({ children }: { children: ReactNode }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const session = useOptionalSession();
-  const { locale } = useI18n();
+  const { locale, tr } = useI18n();
+  const tabsStorageKey = workspaceTabsStorageKey(session.user?.id);
+  const rawStoredTabs = useSyncExternalStore(
+    subscribeWorkspaceTabs,
+    () => {
+      try {
+        return window.localStorage.getItem(tabsStorageKey);
+      } catch {
+        return null;
+      }
+    },
+    () => null
+  );
+  const parsedStoredTabs = parseStoredTabIds(rawStoredTabs);
+  const isWorkspaceEmpty = Boolean(
+    session.user && !session.mustChangePassword && parsedStoredTabs !== null && parsedStoredTabs.length === 0
+  );
 
-  const publicClubRoute = pathname === "/clubs" || pathname === "/events";
+  const handleOpenHref = useCallback(
+    (href: string) => {
+      const tabId = resolveTabIdFromHref(href);
+      if (tabId) {
+        const currentRouteTabId = resolveTabId(pathname, currentTab, currentTier);
+        ensureWorkspaceTabOpen(tabsStorageKey, tabId, currentRouteTabId);
+      }
+    },
+    [currentTab, currentTier, pathname, tabsStorageKey]
+  );
+
+  const publicClubRoute =
+    pathname === "/clubs" || pathname.startsWith("/clubs/") || pathname === "/events";
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [closedSections, setClosedSections] = useState<Set<string>>(new Set());
@@ -155,13 +192,14 @@ function AppShellInner({ children }: { children: ReactNode }) {
           closedGroups={closedGroups}
           onToggleSection={toggleSection}
           onToggleGroup={toggleGroup}
-          pathname={pathname}
-          currentTab={currentTab}
-          currentTier={currentTier}
+          pathname={isWorkspaceEmpty ? "" : pathname}
+          currentTab={isWorkspaceEmpty ? null : currentTab}
+          currentTier={isWorkspaceEmpty ? null : currentTier}
           user={session.user}
           mustChangePassword={session.mustChangePassword}
           unreadSummary={unreadSummary.data}
           onSignOut={signOut}
+          onOpenHref={handleOpenHref}
         />
       </div>
 
@@ -181,13 +219,14 @@ function AppShellInner({ children }: { children: ReactNode }) {
               closedGroups={closedGroups}
               onToggleSection={toggleSection}
               onToggleGroup={toggleGroup}
-              pathname={pathname}
-              currentTab={currentTab}
-              currentTier={currentTier}
+              pathname={isWorkspaceEmpty ? "" : pathname}
+              currentTab={isWorkspaceEmpty ? null : currentTab}
+              currentTier={isWorkspaceEmpty ? null : currentTier}
               user={session.user}
               mustChangePassword={session.mustChangePassword}
               unreadSummary={unreadSummary.data}
               onSignOut={signOut}
+              onOpenHref={handleOpenHref}
             />
           </div>
         </div>
@@ -195,9 +234,9 @@ function AppShellInner({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Topbar
-          groupLabel={activeNavMeta.groupLabel}
-          pageTitle={activeNavMeta.pageTitle}
-          pathname={pathname}
+          groupLabel={isWorkspaceEmpty ? tr("Không gian làm việc") : activeNavMeta.groupLabel}
+          pageTitle={isWorkspaceEmpty ? tr("Bắt đầu nhanh") : activeNavMeta.pageTitle}
+          pathname={isWorkspaceEmpty ? "" : pathname}
           sections={sections}
           canManageWorkspace={canManageWorkspace}
           onMenu={() => setMobileOpen(true)}
@@ -205,11 +244,15 @@ function AppShellInner({ children }: { children: ReactNode }) {
           name={session.user?.fullName || session.user?.email}
           subtitle={session.user?.studentCode || session.user?.email}
           onPassword={() => setPasswordOpen(true)}
-          onProfile={() => router.push("/profile")}
+          onProfile={() => {
+            handleOpenHref("/profile");
+            router.push("/profile");
+          }}
           onSignOut={signOut}
           onLogin={() => openAuthModal("login")}
           onRegister={() => openAuthModal("register")}
-          notificationsActive={pathname === "/notifications"}
+          notificationsActive={!isWorkspaceEmpty && pathname === "/notifications"}
+          onOpenHref={handleOpenHref}
         />
 
         {!session.mustChangePassword && (session.user || publicClubRoute) && (
@@ -230,6 +273,15 @@ function AppShellInner({ children }: { children: ReactNode }) {
         >
           {session.user && session.mustChangePassword ? (
             <FirstLoginPassword email={session.user.email} />
+          ) : isWorkspaceEmpty ? (
+            <WorkspaceEmptyState
+              sections={sections}
+              userName={session.user?.fullName || session.user?.email}
+              onOpenShortcut={(href) => {
+                handleOpenHref(href);
+                router.push(href);
+              }}
+            />
           ) : session.user || publicClubRoute ? (
             children
           ) : null}

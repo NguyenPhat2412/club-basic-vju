@@ -10,11 +10,13 @@ export interface EventFormValues {
   endTime: string;
   registrationDeadline: string;
   allowCtv: boolean;
+  allowPublicAttendees: boolean;
   requiresSubmission: boolean;
   maxParticipants: string;
   status: string;
 }
 
+export type EventFormState = EventFormValues;
 export type EventFormDraft = EventFormValues;
 
 export const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -34,10 +36,24 @@ export const EMPTY_EVENT_FORM: EventFormValues = {
   endTime: '',
   registrationDeadline: '',
   allowCtv: true,
+  allowPublicAttendees: true,
   requiresSubmission: false,
   maxParticipants: '',
   status: 'OPEN_REGISTRATION',
 };
+
+export function isEventPublic(ev: { allowPublicAttendees?: boolean; allowCtv: boolean }): boolean {
+  const allowPublic = ev.allowPublicAttendees ?? ev.allowCtv;
+  return allowPublic || ev.allowCtv;
+}
+
+export function getEventScopeLabel(ev: { allowPublicAttendees?: boolean; allowCtv: boolean }): string {
+  const allowPublic = ev.allowPublicAttendees ?? ev.allowCtv;
+  if (allowPublic && ev.allowCtv) return 'Mở tham dự & tuyển CTV';
+  if (allowPublic) return 'Mở tham dự toàn trường';
+  if (ev.allowCtv) return 'Mở tuyển CTV toàn trường';
+  return 'Sự kiện nội bộ CLB';
+}
 
 export function emptyEventFormDraft(): EventFormValues {
   return { ...EMPTY_EVENT_FORM };
@@ -79,6 +95,7 @@ export function toCreateEventPayload(draft: EventFormValues): CreateEventInput {
     endTime: toIso(draft.endTime),
     registrationDeadline: toIso(draft.registrationDeadline),
     allowCtv: draft.allowCtv,
+    allowPublicAttendees: draft.allowPublicAttendees,
     requiresSubmission: draft.requiresSubmission,
     maxParticipants: draft.maxParticipants ? Number(draft.maxParticipants) : undefined,
     status: draft.status || undefined,

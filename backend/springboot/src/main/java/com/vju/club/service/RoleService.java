@@ -25,6 +25,8 @@ public interface RoleService {
 
     UserRoleResponse assign(Actor actor, UUID userId, AssignRoleRequest request);
 
+    List<UserRoleResponse> assignBatch(Actor actor, UUID userId, List<AssignRoleRequest> requests, String twoFactorOtp);
+
     void revoke(Actor actor, UUID userId, UUID assignmentId);
 
     ClubStructureResponse getClubStructure(Actor actor, UUID clubId);

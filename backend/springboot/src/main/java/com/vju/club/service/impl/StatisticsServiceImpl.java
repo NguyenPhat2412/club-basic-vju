@@ -149,8 +149,8 @@ public class StatisticsServiceImpl implements StatisticsService {
         Map<String, Object> registrationCounts = jdbc.queryForMap("""
                 SELECT COUNT(DISTINCT r.user_id) FILTER (WHERE r.status = 'REGISTERED' AND e.status NOT IN ('DRAFT', 'CANCELLED')) AS unique_participants,
                        COUNT(r.id) FILTER (WHERE r.status = 'REGISTERED' AND e.status NOT IN ('DRAFT', 'CANCELLED')) AS active_registrations,
-                       COUNT(r.id) FILTER (WHERE r.status = 'REGISTERED' AND r.participant_type = 'MEMBER' AND e.status NOT IN ('DRAFT', 'CANCELLED')) AS member_registrations,
-                       COUNT(r.id) FILTER (WHERE r.status = 'REGISTERED' AND r.participant_type = 'CTV' AND e.status NOT IN ('DRAFT', 'CANCELLED')) AS ctv_registrations,
+                       COUNT(r.id) FILTER (WHERE r.status = 'REGISTERED' AND r.participant_type IN ('MEMBER', 'ORGANIZER') AND e.status NOT IN ('DRAFT', 'CANCELLED')) AS member_registrations,
+                       COUNT(r.id) FILTER (WHERE r.status = 'REGISTERED' AND r.participant_type IN ('CTV', 'ATTENDEE') AND e.status NOT IN ('DRAFT', 'CANCELLED')) AS ctv_registrations,
                        COUNT(r.id) FILTER (WHERE r.status = 'CANCELLED' AND e.status <> 'DRAFT') AS cancelled_registrations
                 FROM events e
                 LEFT JOIN event_registrations r ON r.event_id = e.id
@@ -168,13 +168,24 @@ public class StatisticsServiceImpl implements StatisticsService {
                        COUNT(a.id) FILTER (
                            WHERE e.status NOT IN ('DRAFT', 'CANCELLED')
                              AND a.status IN ('PRESENT', 'LATE')
-                             AND (r.id IS NULL OR (r.status = 'REGISTERED' AND r.participant_type = 'MEMBER'))
+                             AND (
+                                 (r.id IS NULL AND EXISTS (
+                                     SELECT 1 FROM memberships m
+                                     WHERE m.user_id = a.user_id AND m.club_id = e.club_id AND m.status = 'ACTIVE'
+                                 ))
+                                 OR (r.status = 'REGISTERED' AND r.participant_type IN ('MEMBER', 'ORGANIZER'))
+                             )
                        ) AS member_attended,
                        COUNT(a.id) FILTER (
                            WHERE e.status NOT IN ('DRAFT', 'CANCELLED')
                              AND a.status IN ('PRESENT', 'LATE')
-                             AND r.status = 'REGISTERED'
-                             AND r.participant_type = 'CTV'
+                             AND (
+                                 (r.id IS NULL AND NOT EXISTS (
+                                     SELECT 1 FROM memberships m
+                                     WHERE m.user_id = a.user_id AND m.club_id = e.club_id AND m.status = 'ACTIVE'
+                                 ))
+                                 OR (r.status = 'REGISTERED' AND r.participant_type IN ('CTV', 'ATTENDEE'))
+                             )
                        ) AS ctv_attended,
                        COUNT(a.id) FILTER (
                            WHERE e.status NOT IN ('DRAFT', 'CANCELLED')
@@ -204,6 +215,17 @@ public class StatisticsServiceImpl implements StatisticsService {
                 WHERE t.club_id = :clubId
                   AND (:hasFrom = FALSE OR t.created_at >= :fromTime)
                   AND (:hasTo = FALSE OR t.created_at <= :toTime)
+                """, params);
+
+        Map<String, Object> certificateCounts = jdbc.queryForMap("""
+                SELECT COUNT(*) FILTER (WHERE ec.status = 'ISSUED') AS issued_certificates,
+                       COUNT(*) FILTER (WHERE ec.status = 'ISSUED' AND ec.acknowledged_at IS NOT NULL) AS acknowledged_certificates,
+                       COUNT(*) FILTER (WHERE ec.status = 'ISSUED' AND ec.acknowledged_at IS NULL) AS pending_acknowledge_certificates,
+                       COUNT(*) FILTER (WHERE ec.status = 'REVOKED') AS revoked_certificates
+                FROM event_certificates ec
+                WHERE ec.club_id = :clubId
+                  AND (:hasFrom = FALSE OR ec.issued_at >= :fromTime)
+                  AND (:hasTo = FALSE OR ec.issued_at <= :toTime)
                 """, params);
 
         List<ClubStatisticsResponse.DepartmentStatsItem> departmentBreakdown = jdbc.query("""
@@ -266,6 +288,12 @@ public class StatisticsServiceImpl implements StatisticsService {
         long completedTasks = asLong(taskCounts.get("completed_tasks"));
         int taskCompletionRate = percent(completedTasks, openTasks + completedTasks);
 
+        long issuedCertificates = asLong(certificateCounts.get("issued_certificates"));
+        long acknowledgedCertificates = asLong(certificateCounts.get("acknowledged_certificates"));
+        long pendingAcknowledgeCertificates = asLong(certificateCounts.get("pending_acknowledge_certificates"));
+        long revokedCertificates = asLong(certificateCounts.get("revoked_certificates"));
+        int certificateAcknowledgementRate = percent(acknowledgedCertificates, issuedCertificates);
+
         return new ClubStatisticsResponse(
                 club.getId(),
                 club.getCode(),
@@ -310,6 +338,11 @@ public class StatisticsServiceImpl implements StatisticsService {
                 asLong(clubBase.get("live_documents")),
                 asLong(clubBase.get("total_document_bytes")),
                 asLong(clubBase.get("chat_channels")),
+                issuedCertificates,
+                acknowledgedCertificates,
+                pendingAcknowledgeCertificates,
+                revokedCertificates,
+                certificateAcknowledgementRate,
                 departmentBreakdown,
                 now
         );

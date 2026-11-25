@@ -31,7 +31,7 @@ export function useRoleOptions(
   const roles = useQuery({ queryKey: qk.roles(), queryFn: apiModel.roles, enabled: loadRoles, staleTime: 60_000 });
   const clubs = useQuery({ queryKey: qk.clubs("all"), queryFn: () => apiModel.clubs("", "", 0, 100), enabled: loadClubs, staleTime: 60_000 });
   return {
-    roles: (roles.data ?? []).filter((r) => r.active),
+    roles: (roles.data ?? []).filter((r) => r.active && r.code !== "DEPARTMENT_HEAD"),
     clubs: clubs.data?.items ?? [],
     error: roles.error ?? clubs.error,
   };

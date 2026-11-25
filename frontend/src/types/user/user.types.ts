@@ -11,6 +11,8 @@ export type User = {
   avatarUrl?: string;
   status: string;
   requiresPasswordChange?: boolean;
+  emailNotificationsEnabled?: boolean;
+  twoFactorEnabled?: boolean;
   anonymizedAt?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -31,4 +33,11 @@ export type UpdateUserInput = {
   studentCode?: string;
   phone?: string;
   avatarUrl?: string;
+};
+
+export type UpdateProfileInput = {
+  fullName?: string;
+  phone?: string;
+  avatarUrl?: string;
+  emailNotificationsEnabled?: boolean;
 };

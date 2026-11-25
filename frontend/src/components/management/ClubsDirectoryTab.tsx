@@ -21,17 +21,19 @@ import {
   X,
 } from "lucide-react";
 import { apiModel, Club } from "@/lib/api";
+import { isYouthUnion } from "@/lib/club/youth-union";
 import { clubSlugFromCode } from "@/lib/media";
 import { ClubAvatar, useClubMediaCatalog } from "@/components/shared/ClubMedia";
 import { ClubsDirectoryCards } from "@/components/management/ClubsDirectoryCards";
 import { DataTable } from "@/components/shared/DataTable";
+import { FilterPopover } from "@/components/shared/FilterPopover";
 import { describeError } from "@/components/shared/ListPage";
 import { Pagination } from "@/components/shared/Pagination";
 import { EmptyState } from "@/components/shared/States";
 import { TableRowActions } from "@/components/shared/TableRowActions";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui/input";
+import { FormField, Input, Select } from "@/components/ui/input";
 import { ClubManagementTabKey } from "@/forms/club/club-form";
 import { cn } from "@/lib/utils";
 
@@ -76,18 +78,20 @@ export function ClubsDirectoryTab({
 
   const filteredClubs = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return clubs.filter((club) => {
-      if (statusFilter && club.status !== statusFilter) return false;
-      if (fieldFilter && (club.activityField ?? "").trim() !== fieldFilter) return false;
-      if (!q) return true;
-      return (
-        club.name.toLowerCase().includes(q) ||
-        club.code.toLowerCase().includes(q) ||
-        (club.activityField ?? "").toLowerCase().includes(q) ||
-        (club.contactEmail ?? "").toLowerCase().includes(q) ||
-        (club.description ?? "").toLowerCase().includes(q)
-      );
-    });
+    return clubs
+      .filter((club) => {
+        if (statusFilter && club.status !== statusFilter) return false;
+        if (fieldFilter && (club.activityField ?? "").trim() !== fieldFilter) return false;
+        if (!q) return true;
+        return (
+          club.name.toLowerCase().includes(q) ||
+          club.code.toLowerCase().includes(q) ||
+          (club.activityField ?? "").toLowerCase().includes(q) ||
+          (club.contactEmail ?? "").toLowerCase().includes(q) ||
+          (club.description ?? "").toLowerCase().includes(q)
+        );
+      })
+      .sort((a, b) => Number(isYouthUnion(b)) - Number(isYouthUnion(a)));
   }, [clubs, search, fieldFilter, statusFilter]);
 
   const pagedClubs = useMemo(
@@ -125,58 +129,48 @@ export function ClubsDirectoryTab({
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="grid gap-2.5 border-b border-border/60 bg-muted/20 px-4 py-3 sm:grid-cols-3 sm:px-6">
-        <div className="rounded-xl border border-border/70 bg-card px-3.5 py-2.5">
-          <p className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Tổng số CLB quản lý
-          </p>
-          <p className="mt-0.5 text-xl font-extrabold text-foreground tabular-nums">{clubs.length}</p>
-        </div>
-        <div className="rounded-xl border border-border/70 bg-card px-3.5 py-2.5">
-          <p className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Đang hoạt động
-          </p>
-          <p className="mt-0.5 text-xl font-extrabold text-primary tabular-nums">{activeCount}</p>
-        </div>
-        <div className="rounded-xl border border-border/70 bg-card px-3.5 py-2.5">
-          <p className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Lĩnh vực & Tạm ngừng
-          </p>
-          <p className="mt-0.5 text-xl font-extrabold text-foreground tabular-nums">
-            {activityFields.length} lĩnh vực · {inactiveCount} tạm ngừng
-          </p>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-card px-4 py-2.5 sm:px-6">
-        <div className="flex flex-1 flex-wrap items-center gap-2">
-          <div className="relative min-w-[210px] flex-1 sm:max-w-xs">
-            <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(e) => { setSearch(e.target.value); setOffset(0); }} placeholder="Tìm theo mã, tên CLB, lĩnh vực, email…" className="h-8 pl-8 pr-7 text-xs" />
+      <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-border bg-white px-3 py-1.5 sm:px-4">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto sm:flex-1">
+          <div className="relative w-full min-w-0 sm:min-w-[160px] sm:max-w-[220px] sm:flex-1">
+            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(e) => { setSearch(e.target.value); setOffset(0); }} placeholder="Tìm mã, tên CLB, lĩnh vực…" className="h-8 pl-8 pr-7 text-xs" />
             {search && (
               <button type="button" aria-label="Xoá tìm kiếm" onClick={() => { setSearch(""); setOffset(0); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                 <X size={13} />
               </button>
             )}
           </div>
-          <Select aria-label="Lọc lĩnh vực" value={fieldFilter} onChange={(e) => { setFieldFilter(e.target.value); setOffset(0); }} className="h-8 w-full text-xs sm:w-48">
-            <option value="">Tất cả lĩnh vực ({activityFields.length})</option>
-            {activityFields.map((field) => <option key={field} value={field}>{field}</option>)}
-          </Select>
-          <Select aria-label="Lọc trạng thái CLB" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as "" | "ACTIVE" | "INACTIVE"); setOffset(0); }} className="h-8 w-full text-xs sm:w-44">
-            <option value="">Mọi trạng thái ({clubs.length})</option>
-            <option value="ACTIVE">Đang hoạt động ({activeCount})</option>
-            <option value="INACTIVE">Ngừng hoạt động ({inactiveCount})</option>
-          </Select>
+          <FilterPopover activeCount={[fieldFilter, statusFilter].filter(Boolean).length} onClear={resetFilters} title="Lọc danh sách CLB">
+            <FormField label="Lĩnh vực hoạt động" hideIndicator>
+              <Select aria-label="Lọc lĩnh vực" value={fieldFilter} onChange={(e) => { setFieldFilter(e.target.value); setOffset(0); }} className="h-8 text-xs">
+                <option value="">Tất cả lĩnh vực ({activityFields.length})</option>
+                {activityFields.map((field) => <option key={field} value={field}>{field}</option>)}
+              </Select>
+            </FormField>
+            <FormField label="Trạng thái" hideIndicator>
+              <Select aria-label="Lọc trạng thái CLB" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as "" | "ACTIVE" | "INACTIVE"); setOffset(0); }} className="h-8 text-xs">
+                <option value="">Mọi trạng thái ({clubs.length})</option>
+                <option value="ACTIVE">Đang hoạt động ({activeCount})</option>
+                <option value="INACTIVE">Ngừng hoạt động ({inactiveCount})</option>
+              </Select>
+            </FormField>
+          </FilterPopover>
           {hasFilters && <Button variant="outline" size="sm" onClick={resetFilters} className="h-8"><FilterX size={13} /> Xoá lọc</Button>}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex w-full max-w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:shrink-0">
+          <span className="hidden items-center gap-1 rounded-md border border-primary/20 bg-primary/8 px-2 py-1 text-[11px] font-semibold text-primary xl:inline-flex">
+            <strong className="tabular-nums">{activeCount}/{clubs.length}</strong> hoạt động
+          </span>
           <div className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5" role="group" aria-label="Chế độ hiển thị">
-            <button type="button" onClick={() => setViewMode("table")} className={cn("inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors", viewMode === "table" ? "bg-card text-primary shadow-2xs" : "text-muted-foreground hover:text-foreground")}><Table2 size={13} /> Bảng</button>
-            <button type="button" onClick={() => setViewMode("cards")} className={cn("inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors", viewMode === "cards" ? "bg-card text-primary shadow-2xs" : "text-muted-foreground hover:text-foreground")}><LayoutGrid size={13} /> Thẻ</button>
+            <button type="button" onClick={() => setViewMode("table")} className={cn("inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-colors", viewMode === "table" ? "bg-card text-primary shadow-2xs" : "text-muted-foreground hover:text-foreground")}><Table2 size={13} /> Bảng</button>
+            <button type="button" onClick={() => setViewMode("cards")} className={cn("inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-colors", viewMode === "cards" ? "bg-card text-primary shadow-2xs" : "text-muted-foreground hover:text-foreground")}><LayoutGrid size={13} /> Thẻ</button>
           </div>
-          {canCreateClub && <Button size="sm" onClick={onOpenCreateClub} className="h-8"><Plus size={14} /> Thành lập CLB mới</Button>}
+          {canCreateClub && (
+            <Button size="sm" onClick={onOpenCreateClub} className="h-8 px-2.5 text-xs font-bold">
+              <Plus size={14} /> Thành lập CLB mới
+            </Button>
+          )}
         </div>
       </div>
 
@@ -205,7 +199,7 @@ export function ClubsDirectoryTab({
             {
               key: "club",
               header: "Câu lạc bộ",
-              className: "min-w-[190px] max-w-[240px]",
+              className: "min-w-[165px] max-w-[205px]",
               sortValue: (c) => c.name,
               render: (c) => {
                 const media = mediaCatalog.data?.clubs[clubSlugFromCode(c.code)];
@@ -234,24 +228,31 @@ export function ClubsDirectoryTab({
             },
             {
               key: "code",
-              header: "Mã CLB",
+              header: "Mã ĐV",
               className: "whitespace-nowrap",
               sortValue: (c) => c.code,
               render: (c) => (
-                <code className="rounded-md bg-primary/8 px-2 py-0.5 font-mono text-[11px] font-bold text-primary">
-                  {c.code}
-                </code>
+                <div className="flex flex-wrap items-center gap-1">
+                  <code className="rounded-md bg-primary/8 px-2 py-0.5 font-mono text-[11px] font-bold text-primary">
+                    {c.code}
+                  </code>
+                  {isYouthUnion(c) && (
+                    <Badge tone="primary" dot={false}>
+                      ĐTN cấp Trường
+                    </Badge>
+                  )}
+                </div>
               ),
             },
             {
               key: "field",
               header: "Lĩnh vực",
-              className: "whitespace-nowrap",
+              className: "max-w-[120px] whitespace-nowrap",
               sortValue: (c) => c.activityField ?? "",
               render: (c) =>
                 c.activityField ? (
                   <Badge tone="neutral" dot={false}>
-                    {c.activityField}
+                    <span className="max-w-[100px] truncate">{c.activityField}</span>
                   </Badge>
                 ) : (
                   <span className="text-muted-foreground">—</span>

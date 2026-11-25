@@ -17,7 +17,8 @@ public record ClubRequest(
         @Size(max = 2000) String description,
         @Size(max = 200) String activityField,
         @Email @Size(max = 320) String contactEmail,
-        @Valid ClubOverviewConfig overviewConfig
+        @Valid ClubOverviewConfig overviewConfig,
+        @Size(max = 500) String facebookUrl
 ) {
     public ClubRequest(
             String code,
@@ -28,6 +29,19 @@ public record ClubRequest(
             String activityField,
             String contactEmail
     ) {
-        this(code, name, logoUrl, coverUrl, description, activityField, contactEmail, null);
+        this(code, name, logoUrl, coverUrl, description, activityField, contactEmail, null, null);
+    }
+
+    public ClubRequest(
+            String code,
+            String name,
+            String logoUrl,
+            String coverUrl,
+            String description,
+            String activityField,
+            String contactEmail,
+            ClubOverviewConfig overviewConfig
+    ) {
+        this(code, name, logoUrl, coverUrl, description, activityField, contactEmail, overviewConfig, null);
     }
 }

@@ -1,6 +1,6 @@
-# Sơ đồ Thực thể Liên kết (ERD) — PostgreSQL 16 (`Flyway V1..V43`)
+# Sơ đồ Thực thể Liên kết (ERD) — PostgreSQL 16 (`Flyway V1..V45`)
 
-Tài liệu này mô hình hóa cấu trúc quan hệ giữa các bảng cốt lõi trong cơ sở dữ liệu PostgreSQL 16 của hệ thống `CLUB-BASIC-VJU` (quản lý qua **43 bản migration Flyway** từ `V1` đến `V43`). Danh mục chi tiết từng bản migration và các ràng buộc `CHECK` / `TRIGGER` xem tại [docs/database/README.md](../database/README.md).
+Tài liệu này mô hình hóa cấu trúc quan hệ giữa các bảng cốt lõi trong cơ sở dữ liệu PostgreSQL 16 của hệ thống `CLUB-BASIC-VJU` (quản lý qua **45 bản migration Flyway** từ `V1` đến `V45`). Danh mục chi tiết từng bản migration và các ràng buộc `CHECK` / `TRIGGER` xem tại [docs/database/README.md](../database/README.md).
 
 ---
 
@@ -16,6 +16,9 @@ erDiagram
     USERS ||--o{ TASKS : "nhận việc (assignee)"
     USERS ||--o{ NOTIFICATIONS : "nhận thông báo"
     USERS ||--o{ AUDIT_LOGS : "thực hiện hành động"
+    USERS ||--o{ EVENTS : "chốt điểm danh (attendance_locked_by, V44)"
+    USERS ||--o{ EVENT_FEEDBACKS : "đánh giá sự kiện (V44)"
+    USERS ||--o{ SECURITY_OTPS : "mã OTP 2FA (V44)"
 
     CLUBS ||--o{ DEPARTMENTS : "chia thành các ban"
     CLUBS ||--o{ MEMBERSHIPS : "quản lý thành viên"
@@ -29,6 +32,7 @@ erDiagram
     CLUBS ||--o| CLUB_FACEBOOK_PAGES : "kết nối Fanpage Facebook (V38)"
     CLUBS ||--o{ CLUB_FACEBOOK_POSTS : "cache bài viết Fanpage (V38)"
     EVENTS ||--o{ EVENT_SUBMISSIONS : "nộp hồ sơ sự kiện (V37)"
+    EVENTS ||--o{ EVENT_FEEDBACKS : "khảo sát sau sự kiện (V44)"
     CHAT_MESSAGES ||--o{ CHAT_MESSAGE_REACTIONS : "cảm xúc tin nhắn (V31)"
     USERS ||--o{ PASSWORD_RESET_OTPS : "mã OTP đặt lại mật khẩu (V33)"
 
@@ -67,6 +71,8 @@ erDiagram
         varchar status "ACTIVE | LOCKED | INACTIVE"
         varchar google_subject UK "OAuth @st.vju.ac.vn"
         timestamptz anonymized_at "Ẩn danh PII (V21)"
+        boolean email_notifications_enabled "Nhận email cảnh báo (V44)"
+        boolean two_factor_enabled "OTP 2FA tùy chọn Tầng 1-3 (V44)"
     }
 
     CLUBS {
@@ -77,6 +83,7 @@ erDiagram
         varchar logo_storage_key "V22"
         varchar cover_storage_key "V22"
         text overview_config "JSONB object (V27)"
+        varchar facebook_url "Fanpage fallback Page Plugin (V44)"
     }
 
     DEPARTMENTS {
@@ -102,6 +109,44 @@ erDiagram
         int capacity "Khóa bi quan khi đăng ký"
         timestamptz registration_deadline
         timestamptz completed_at "Mốc tính cửa sổ hậu kiểm (V21)"
+        varchar academic_term "Học kỳ ĐRL YYYY-1|2|3 (V44)"
+        timestamptz attendance_locked_at "Chốt sổ điểm danh (V44)"
+        uuid attendance_locked_by FK "ON DELETE RESTRICT (V44)"
+        varchar attendance_signature_sha256 "Chữ ký SHA-256 (V44)"
+    }
+
+    EVENT_FEEDBACKS {
+        uuid id PK
+        uuid event_id FK "ON DELETE CASCADE (V44)"
+        uuid user_id FK "ON DELETE RESTRICT; UK(event_id, user_id) (V44)"
+        int rating "1..5 sao"
+        varchar comment "Tối đa 1000 ký tự"
+        timestamptz created_at
+    }
+
+    SECURITY_OTPS {
+        uuid id PK
+        uuid user_id FK "ON DELETE CASCADE (V44)"
+        varchar purpose "LOGIN_2FA | CRITICAL_ACTION"
+        varchar action_context
+        varchar otp_hash
+        timestamptz expires_at
+        int attempts
+        int max_attempts "1..15"
+        timestamptz consumed_at
+        timestamptz invalidated_at
+    }
+
+    AUDIT_LOGS {
+        uuid id PK
+        uuid actor_user_id FK "ON DELETE RESTRICT"
+        varchar action
+        varchar resource_type
+        uuid resource_id
+        uuid club_id FK
+        varchar ip_address "X-Forwarded-For (V44)"
+        varchar user_agent "V44"
+        timestamptz created_at
     }
 
     EVENT_REGISTRATIONS {
@@ -159,7 +204,7 @@ erDiagram
 
 ## 2. Các Bảng Hạ tầng & Cấu hình Độc lập
 
-Ngoài các thực thể liên kết ở trên, cơ sở dữ liệu duy trì 5 bảng chuyên trách phục vụ phiên đăng nhập, cấu hình vận hành, đa ngôn ngữ và kiểm toán:
+Ngoài các thực thể liên kết ở trên, cơ sở dữ liệu duy trì các bảng/view chuyên trách phục vụ phiên đăng nhập, cấu hình vận hành, bảo mật OTP, đa ngôn ngữ và kiểm toán:
 
 | Bảng / View | Bản Migration | Vai trò trong kiến trúc |
 |---|---|---|
@@ -168,13 +213,14 @@ Ngoài các thực thể liên kết ở trên, cơ sở dữ liệu duy trì 5 
 | **`system_settings`** | `V19`, `V21`, `V24`, `V33`, `V39`, `V41`, `V43` | Bảng cấu hình đơn dòng lưu các ngưỡng vận hành, hạn mức chống lạm phát, chính sách OTP/SMTP, cấu hình tích hợp động (Facebook OAuth, AI Gateway, Google SSO mã hoá AES-256-GCM) và chu kỳ đồng bộ Facebook tự động (`facebook_auto_sync_enabled`, `facebook_auto_sync_interval_minutes`). |
 | **`club_facebook_pages` & `club_facebook_posts`** | `V38`, `V42`, `V43` | Lưu liên kết Fanpage theo từng CLB (Page Access Token mã hoá AES-256-GCM, `consecutive_sync_failures`, `last_auto_synced_at`) và bộ đệm bài viết/tương tác đồng bộ định kỳ từ Meta Graph API. |
 | **`password_reset_otps`** | `V33` | Lưu mã băm OTP 6 chữ số có thời hạn & giới hạn số lần thử cho luồng khôi phục mật khẩu qua SMTP. |
+| **`security_otps`** | `V44` | Lưu mã băm OTP 6 chữ số theo `purpose` (`LOGIN_2FA` / `CRITICAL_ACTION`) và `action_context` cho luồng xác thực 2 bước tùy chọn / thao tác trọng yếu của tài khoản quản trị Tầng 1–3. |
 | **`i18n_translations`** | `V23` | Bộ nhớ đệm bản dịch AI bền vững theo cặp khóa duy nhất `(source_hash, target_locale)` phục vụ đa ngôn ngữ `vi`/`en`/`ja` ([ADR-006](../decisions/ADR-006-modular-nextjs-400-loc-and-cached-ai-i18n.md)). |
-| **`audit_logs` & `permission_audit_logs`** | `V1`, `V6` | Nhật ký kiểm toán chỉ-ghi-thêm (*append-only* qua trigger PostgreSQL), lưu giá trị JSON trước/sau của mọi thao tác quản trị. |
+| **`audit_logs` & `permission_audit_logs`** | `V1`, `V6`, `V44` | Nhật ký kiểm toán chỉ-ghi-thêm (*append-only* qua trigger PostgreSQL), lưu giá trị JSON trước/sau cùng `ip_address` (tôn trọng `X-Forwarded-For`) và `user_agent` của mọi thao tác quản trị. |
 
 ---
 
 ## 3. Ràng buộc Khóa ngoại Chống Mất Lịch sử (`ON DELETE RESTRICT`)
 
-Theo [ADR-004](../decisions/ADR-004-pessimistic-event-capacity-and-pii-anonymization.md), các bảng nghiệp vụ lịch sử (`club_applications`, `event_registrations`, `event_attendances`, `tasks`, `documents`, `chat_messages`, `ai_summaries`, `audit_logs`, `permission_audit_logs`) đều sử dụng `ON DELETE RESTRICT` khi tham chiếu tới `users`, `clubs` và `departments`:
+Theo [ADR-004](../decisions/ADR-004-pessimistic-event-capacity-and-pii-anonymization.md), các bảng nghiệp vụ lịch sử (`club_applications`, `event_registrations`, `event_attendances`, `event_feedbacks`, `events.attendance_locked_by`, `tasks`, `documents`, `chat_messages`, `ai_summaries`, `audit_logs`, `permission_audit_logs`) đều sử dụng `ON DELETE RESTRICT` khi tham chiếu tới `users`, `clubs` và `departments`:
 - **CLB và Ban** không bao giờ xóa vật lý mà chuyển trạng thái `INACTIVE`.
 - **Tài khoản người dùng** đã có dữ liệu lịch sử được ẩn danh PII tại chỗ (`users.anonymized_at IS NOT NULL`) thay vì xóa dòng vật lý, giữ toàn vẹn tuyệt đối mọi số liệu thống kê qua các nhiệm kỳ CLB.

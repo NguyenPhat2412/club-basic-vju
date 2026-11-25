@@ -27,6 +27,7 @@ import com.vju.club.security.Actor;
 import com.vju.club.security.GrantGuard;
 import com.vju.club.security.PermissionAuthorizationService;
 import com.vju.club.service.AuditService;
+import com.vju.club.service.TwoFactorOtpService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -36,6 +37,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -43,6 +45,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -293,5 +296,34 @@ class RoleServiceImplTest {
         verify(membershipRepository, never()).findFirstByUser_IdAndClub_IdAndStatusNot(any(), any(), any());
         verify(membershipRepository, never()).saveAndFlush(any(Membership.class));
         verify(departmentMemberRepository, never()).saveAndFlush(any(DepartmentMember.class));
+    }
+
+    @Test
+    void assignBatchVerifiesRoleChangeOtpOnceAcrossMultipleRoles() {
+        TwoFactorOtpService otpService = mock(TwoFactorOtpService.class);
+        ReflectionTestUtils.setField(service, "twoFactorOtpService", otpService);
+
+        Role president = stubRole("CLUB_PRESIDENT", "Chủ nhiệm CLB", PermissionScope.CLUB);
+        Role sysAdmin = stubRole("SYSTEM_ADMIN", "Quản trị hệ thống", PermissionScope.GLOBAL);
+        when(membershipRepository.findFirstByUser_IdAndClub_IdAndStatusNot(targetId, clubId, MembershipStatus.LEFT))
+                .thenReturn(Optional.empty());
+        when(membershipRepository.saveAndFlush(any(Membership.class))).thenAnswer(inv -> {
+            Membership m = inv.getArgument(0);
+            ReflectionTestUtils.setField(m, "id", UUID.randomUUID());
+            return m;
+        });
+
+        List<UserRoleResponse> responses = service.assignBatch(
+                adminActor,
+                targetId,
+                List.of(
+                        new AssignRoleRequest(president.getId(), PermissionScope.CLUB, clubId, null, null),
+                        new AssignRoleRequest(sysAdmin.getId(), PermissionScope.GLOBAL, null, null, null)
+                ),
+                "654321"
+        );
+
+        assertThat(responses).hasSize(2);
+        verify(otpService, times(1)).requireCriticalActionOtpIfEnabled(adminId, "ROLE_CHANGE", "654321");
     }
 }

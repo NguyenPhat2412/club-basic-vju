@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
@@ -161,5 +163,103 @@ class AntiInflationLimitsApiTest extends ApiIntegrationTest {
                 .file(new MockMultipartFile("file", "second.pdf", "application/pdf", pdf3))
                 .param("visibility", "MEMBERS");
         call(afterCleanupUpload, adminToken, null, 201);
+    }
+
+    @Test
+    void returnsClubUsageWithAccurateStorageAndResourceCounts() throws Exception {
+        UUID usageClub = club("USAGE");
+
+        call(get("/api/v1/clubs/" + usageClub + "/usage"), null, null, 401);
+        problem(get("/api/v1/clubs/" + usageClub + "/usage"), memberToken, null, 403, "PERMISSION_DENIED");
+        problem(get("/api/v1/clubs/" + UUID.randomUUID() + "/usage"), adminToken, null, 404, "CLUB_NOT_FOUND");
+
+        grant(member, "club.view", "CLUB", usageClub, null);
+        UUID docViewer = user("docviewer@test.local");
+        grant(docViewer, "document.view", "CLUB", usageClub, null);
+        call(get("/api/v1/clubs/" + usageClub + "/usage"), token(docViewer), null, 200);
+
+        updateSettings(Map.of(
+                "clubStorageQuotaMb", 60,
+                "maxChannelsPerClub", 12,
+                "maxDepartmentsPerClub", 8,
+                "maxActiveEventsPerClub", 15,
+                "maxOpenTasksPerClub", 40
+        ));
+
+        // 1 department
+        call(post("/api/v1/clubs/" + usageClub + "/departments"), adminToken,
+                Map.of("name", "Ban Nội dung", "description", "Content"), 201);
+
+        // 2 channels
+        JsonNode ch1 = call(post("/api/v1/clubs/" + usageClub + "/channels"), adminToken,
+                Map.of("name", "Kênh chung 1", "channelType", "CLUB_GENERAL"), 201);
+        call(post("/api/v1/clubs/" + usageClub + "/channels"), adminToken,
+                Map.of("name", "Kênh chung 2", "channelType", "CLUB_GENERAL"), 201);
+
+        // 1 active event + 1 completed event (excluded from activeEventCount)
+        OffsetDateTime start = OffsetDateTime.now().plusDays(2);
+        call(post("/api/v1/clubs/" + usageClub + "/events"), adminToken, Map.of(
+                "title", "Sự kiện hoạt động",
+                "startTime", start.toString(),
+                "endTime", start.plusHours(2).toString(),
+                "registrationDeadline", start.minusHours(2).toString(),
+                "allowCtv", false
+        ), 201);
+        JsonNode completedEvent = call(post("/api/v1/clubs/" + usageClub + "/events"), adminToken, Map.of(
+                "title", "Sự kiện đã xong",
+                "startTime", start.plusDays(1).toString(),
+                "endTime", start.plusDays(1).plusHours(2).toString(),
+                "registrationDeadline", start.plusDays(1).minusHours(2).toString(),
+                "allowCtv", false
+        ), 201);
+        db.update("UPDATE events SET status = 'COMPLETED' WHERE id = ?", id(completedEvent));
+
+        // 1 open task + 1 completed task (excluded from openTaskCount)
+        membership(member, usageClub);
+        call(post("/api/v1/clubs/" + usageClub + "/tasks"), adminToken, Map.of(
+                "title", "Task đang mở",
+                "assigneeId", member.toString(),
+                "deadline", OffsetDateTime.now().plusDays(3).toString(),
+                "priority", "MEDIUM"
+        ), 201);
+        JsonNode completedTask = call(post("/api/v1/clubs/" + usageClub + "/tasks"), adminToken, Map.of(
+                "title", "Task hoàn thành",
+                "assigneeId", member.toString(),
+                "deadline", OffsetDateTime.now().plusDays(4).toString(),
+                "priority", "LOW"
+        ), 201);
+        db.update("UPDATE tasks SET status = 'COMPLETED' WHERE id = ?", id(completedTask));
+
+        // 1 live document + 1 soft-deleted document (excluded from documentBytes)
+        byte[] livePdf = "%PDF-1.4\nlive-document-bytes".getBytes(StandardCharsets.UTF_8);
+        byte[] deletedPdf = "%PDF-1.4\ndeleted-document-bytes-excluded".getBytes(StandardCharsets.UTF_8);
+        call(MockMvcRequestBuilders.multipart("/api/v1/clubs/" + usageClub + "/documents")
+                .file(new MockMultipartFile("file", "live.pdf", "application/pdf", livePdf))
+                .param("visibility", "MEMBERS"), adminToken, null, 201);
+        JsonNode deletedDoc = call(MockMvcRequestBuilders.multipart("/api/v1/clubs/" + usageClub + "/documents")
+                .file(new MockMultipartFile("file", "deleted.pdf", "application/pdf", deletedPdf))
+                .param("visibility", "MEMBERS"), adminToken, null, 201);
+        call(delete("/api/v1/documents/" + id(deletedDoc)), adminToken, null, 204);
+
+        // 1 chat attachment
+        byte[] png = new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D};
+        call(MockMvcRequestBuilders.multipart("/api/v1/channels/" + id(ch1) + "/attachments")
+                .file(new MockMultipartFile("file", "media.png", "image/png", png)), adminToken, null, 201);
+
+        JsonNode usage = call(get("/api/v1/clubs/" + usageClub + "/usage"), memberToken, null, 200);
+        assertThat(usage.path("clubId").asText()).isEqualTo(usageClub.toString());
+        assertThat(usage.path("documentBytes").asLong()).isEqualTo(livePdf.length);
+        assertThat(usage.path("chatMediaBytes").asLong()).isEqualTo(png.length);
+        assertThat(usage.path("storageUsedBytes").asLong()).isEqualTo(livePdf.length + png.length);
+        assertThat(usage.path("storageQuotaMb").asInt()).isEqualTo(60);
+        assertThat(usage.path("storageQuotaBytes").asLong()).isEqualTo(60L * 1024L * 1024L);
+        assertThat(usage.path("channelCount").asLong()).isEqualTo(2L);
+        assertThat(usage.path("maxChannelsPerClub").asInt()).isEqualTo(12);
+        assertThat(usage.path("departmentCount").asLong()).isEqualTo(1L);
+        assertThat(usage.path("maxDepartmentsPerClub").asInt()).isEqualTo(8);
+        assertThat(usage.path("activeEventCount").asLong()).isEqualTo(1L);
+        assertThat(usage.path("maxActiveEventsPerClub").asInt()).isEqualTo(15);
+        assertThat(usage.path("openTaskCount").asLong()).isEqualTo(1L);
+        assertThat(usage.path("maxOpenTasksPerClub").asInt()).isEqualTo(40);
     }
 }

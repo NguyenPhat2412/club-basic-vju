@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { KeyRound, Plus, Trash2, UserPlus } from "lucide-react";
 import { apiModel, Club, Role, User } from "@/lib/api";
+import { useCriticalActionOtp } from "@/hooks/useCriticalActionOtp";
+import { Otp2FaChallengeModal } from "@/components/auth/Otp2FaChallengeModal";
 import { ModalShell } from "@/components/shared/Overlays";
 import { EMPTY_ROLE_DRAFT, RoleDraft, RolePicker, toAssignment } from "@/components/shared/RolePicker";
 import { describeError } from "@/components/shared/ListPage";
@@ -53,6 +55,7 @@ export function CreateUserModal({
   const [form, setForm] = useState<CreateUserFormValues>(EMPTY_CREATE_USER_FORM);
   const [forceChange, setForceChange] = useState(true);
   const [roleDrafts, setRoleDrafts] = useState<RoleDraft[]>(canAssign ? [EMPTY_ROLE_DRAFT] : []);
+  const roleOtp = useCriticalActionOtp("ROLE_CHANGE");
 
   const isGoogleEmail = (email: string) =>
     googleDomains.some((d) => email.trim().toLowerCase().endsWith(`@${d.toLowerCase()}`));
@@ -64,16 +67,21 @@ export function CreateUserModal({
   const rolesIncomplete = pendingRoles.some((r) => r === null);
 
   const create = useMutation({
-    mutationFn: () =>
-      apiModel.createUser({
+    mutationFn: () => {
+      const rolesPayload = pendingRoles.filter((r) => r !== null);
+      const body = {
         email: form.email,
         fullName: form.fullName,
         password: googleAccount ? undefined : form.password,
         studentCode: form.studentCode || undefined,
         phone: form.phone || undefined,
         requiresPasswordChange: googleAccount ? false : forceChange,
-        roles: pendingRoles.filter((r) => r !== null),
-      }),
+        roles: rolesPayload,
+      };
+      return rolesPayload.length > 0
+        ? roleOtp.runWithOtp((otp) => apiModel.createUser(body, otp))
+        : apiModel.createUser(body);
+    },
     onSuccess: (user) => {
       onSuccess(user, forceChange);
       setForm(EMPTY_CREATE_USER_FORM);
@@ -87,6 +95,7 @@ export function CreateUserModal({
     setForm((f) => ({ ...f, [key]: e.target.value }));
 
   return (
+    <>
     <ModalShell
       open={open}
       onClose={onClose}
@@ -189,6 +198,8 @@ export function CreateUserModal({
       )}
       {create.error && <p className="text-xs text-destructive">{describeError(create.error)}</p>}
     </ModalShell>
+    <Otp2FaChallengeModal {...roleOtp.otpModalProps} />
+    </>
   );
 }
 

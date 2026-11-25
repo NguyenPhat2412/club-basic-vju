@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vju.club.entity.AuditLog;
 import com.vju.club.enums.AuditAction;
 import com.vju.club.repository.AuditLogRepository;
+import com.vju.club.security.RequestMetadataExtractor;
 import com.vju.club.service.AuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,8 +25,9 @@ public class AuditServiceImpl implements AuditService {
     @Override
     public void record(UUID actorUserId, AuditAction action, UUID resourceId, UUID clubId,
                        Map<String, ?> before, Map<String, ?> after) {
+        RequestMetadataExtractor.Metadata metadata = RequestMetadataExtractor.extractCurrent();
         auditLogRepository.save(new AuditLog(actorUserId, action.name(), action.resourceType().name(), resourceId,
-                clubId, toJson(before), toJson(after)));
+                clubId, toJson(before), toJson(after), metadata.ipAddress(), metadata.userAgent()));
     }
 
     @Override

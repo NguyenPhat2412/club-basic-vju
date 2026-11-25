@@ -35,10 +35,21 @@ public class AuditLog extends CreatedEntity {
     @Column(name = "new_value")
     private String newValue;
 
+    @Column(name = "ip_address", length = 64)
+    private String ipAddress;
+
+    @Column(name = "user_agent", length = 512)
+    private String userAgent;
+
     protected AuditLog() { }
 
     public AuditLog(UUID actorUserId, String action, String resourceType, UUID resourceId, UUID clubId,
                     String oldValue, String newValue) {
+        this(actorUserId, action, resourceType, resourceId, clubId, oldValue, newValue, null, null);
+    }
+
+    public AuditLog(UUID actorUserId, String action, String resourceType, UUID resourceId, UUID clubId,
+                    String oldValue, String newValue, String ipAddress, String userAgent) {
         this.actorUserId = actorUserId;
         this.action = action;
         this.resourceType = resourceType;
@@ -46,5 +57,7 @@ public class AuditLog extends CreatedEntity {
         this.clubId = clubId;
         this.oldValue = oldValue;
         this.newValue = newValue;
+        this.ipAddress = ipAddress;
+        this.userAgent = userAgent;
     }
 }

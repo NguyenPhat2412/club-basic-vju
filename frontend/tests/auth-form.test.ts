@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { ApiError } from "@/lib/api/client";
+import { errorMessage } from "@/lib/errors";
 import {
   emptyForgotPasswordDraft,
   toForgotPasswordPayload,
@@ -119,7 +121,7 @@ test("validateLoginFields, validateRegisterFields, and validateForgotPasswordFie
 
 test("AuthModal forms use noValidate inline validation and stay within the 400-line limit", () => {
   const authDir = path.join(process.cwd(), "src/components/auth");
-  for (const name of ["AuthModal.tsx", "AuthModalForgotForm.tsx", "AuthModalBanner.tsx"]) {
+  for (const name of ["AuthModal.tsx", "AuthModalForgotForm.tsx", "AuthModalRegisterForm.tsx", "AuthModalBanner.tsx"]) {
     const src = fs.readFileSync(path.join(authDir, name), "utf8");
     const lineCount = src.split("\n").length;
     assert.ok(lineCount <= 400, `${name} exceeds 400 lines (${lineCount})`);
@@ -127,7 +129,8 @@ test("AuthModal forms use noValidate inline validation and stay within the 400-l
 
   const modalSrc = fs.readFileSync(path.join(authDir, "AuthModal.tsx"), "utf8");
   const forgotSrc = fs.readFileSync(path.join(authDir, "AuthModalForgotForm.tsx"), "utf8");
-  for (const src of [modalSrc, forgotSrc]) {
+  const regSrc = fs.readFileSync(path.join(authDir, "AuthModalRegisterForm.tsx"), "utf8");
+  for (const src of [modalSrc, forgotSrc, regSrc]) {
     const formTags = src.match(/<form\b[^>]*>/g) ?? [];
     assert.ok(formTags.length > 0);
     for (const tag of formTags) {
@@ -137,6 +140,12 @@ test("AuthModal forms use noValidate inline validation and stay within the 400-l
     assert.equal(/<(?:Input|PasswordInput)\b[^>]*\brequired\b/.test(src), false, "Must not use native required on Input/PasswordInput");
   }
 
+  assert.match(modalSrc, /TWO_FACTOR_REQUIRED/, "AuthModal must handle TWO_FACTOR_REQUIRED");
+  assert.match(modalSrc, /Otp2FaChallengeModal/, "AuthModal must render Otp2FaChallengeModal");
+  const clientSrc = fs.readFileSync(path.join(process.cwd(), "src/lib/api/client.ts"), "utf8");
+  assert.match(clientSrc, /'\/auth\/2fa\/send'/);
+  assert.match(clientSrc, /'\/auth\/2fa\/verify'/);
+
   const gsiSrc = fs.readFileSync(path.join(process.cwd(), "src/components/shared/GoogleSignInButton.tsx"), "utf8");
   assert.ok(gsiSrc.split("\n").length <= 400, "GoogleSignInButton.tsx must stay <= 400 lines");
   assert.equal(
@@ -145,4 +154,21 @@ test("AuthModal forms use noValidate inline validation and stay within the 400-l
     "GoogleSignInButton must not toggle signin_with/signup_with across tabs (prevents iframe re-render flicker)",
   );
   assert.match(modalSrc, /width=\{400\}/, "AuthModal must render GoogleSignInButton at full 400px column width");
+});
+
+test("errorMessage maps all Sprint 4 and 2FA error codes to Vietnamese descriptions", () => {
+  const expectedCodes = [
+    "TWO_FACTOR_REQUIRED",
+    "TWO_FACTOR_ADMIN_ROLE_REQUIRED",
+    "ATTENDANCE_LOCKED",
+    "FEEDBACK_ATTENDANCE_REQUIRED",
+    "EVENT_FEEDBACK_ALREADY_SUBMITTED",
+    "INVALID_ACADEMIC_TERM",
+    "INVALID_FACEBOOK_URL",
+  ];
+  for (const code of expectedCodes) {
+    const msg = errorMessage(new ApiError("raw", 400, code));
+    assert.notEqual(msg, "Yêu cầu không hợp lệ. Vui lòng kiểm tra lại thông tin.", `Expected explicit message for ${code}`);
+    assert.ok(msg.length > 10, `Expected descriptive message for ${code}`);
+  }
 });

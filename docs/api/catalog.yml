@@ -1259,3 +1259,164 @@ entries:
   status: IMPLEMENTED
   authRequired: false
   permission: null
+- method: POST
+  path: /api/v1/auth/2fa/send
+  module: authentication
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: POST
+  path: /api/v1/auth/2fa/verify
+  module: authentication
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: PATCH
+  path: /api/v1/users/me/2fa
+  module: user-profile
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/clubs/{clubId}/usage
+  module: club
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: club.view | document.view
+- method: GET
+  path: /api/v1/events/timeline
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.attendance | event.attendance_edit | event.update | event.create | club.update | user.view
+- method: POST
+  path: /api/v1/events/{eventId}/attendances/lock
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.attendance_edit | event.update
+- method: POST
+  path: /api/v1/events/{eventId}/feedbacks
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/events/{eventId}/feedbacks
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.view | event.update | event.attendance | club.view
+- method: GET
+  path: /api/v1/reports/training-points
+  module: statistics
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.attendance | event.attendance_edit | event.update | user.view
+- method: POST
+  path: /api/v1/events/{eventId}/cover
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.update | event.create
+- method: DELETE
+  path: /api/v1/events/{eventId}/cover
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.update
+- method: GET
+  path: /api/v1/public/events/covers/{fileName}
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: POST
+  path: /api/v1/events/{eventId}/certificates/issue
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.attendance | event.attendance_edit | event.update
+- method: GET
+  path: /api/v1/events/{eventId}/certificates
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.view | event.attendance | event.attendance_edit | event.update
+- method: POST
+  path: /api/v1/events/{eventId}/certificates/remind
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.attendance | event.attendance_edit | event.update
+- method: POST
+  path: /api/v1/events/{eventId}/certificate-template
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.attendance | event.attendance_edit | event.update
+- method: DELETE
+  path: /api/v1/events/{eventId}/certificate-template
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.attendance | event.attendance_edit | event.update
+- method: POST
+  path: /api/v1/certificates/{certificateId}/revoke
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.update | event.attendance_edit
+- method: GET
+  path: /api/v1/me/certificates
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: POST
+  path: /api/v1/me/certificates/{certificateId}/acknowledge
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/certificates/management
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: event.view | event.attendance | event.attendance_edit | event.update | club.view | system.view
+- method: GET
+  path: /api/v1/public/certificates/verify/{certificateCode}
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
+- method: GET
+  path: /api/v1/public/certificates/templates/{fileName}
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null

@@ -16,6 +16,7 @@ export interface ClubDiscoveryCardProps {
   isAuthenticated: boolean;
   canManage?: boolean;
   onOpenDetail: (club: ClubItem) => void;
+  onApply: (club: ClubItem) => void;
   onNavigateLogin: () => void;
   onNavigateManage?: () => void;
   onNavigateMemberships: () => void;
@@ -31,6 +32,7 @@ export function ClubDiscoveryCard({
   isAuthenticated,
   canManage = false,
   onOpenDetail,
+  onApply,
   onNavigateLogin,
   onNavigateManage,
   onNavigateMemberships,
@@ -148,7 +150,7 @@ export function ClubDiscoveryCard({
             <Button
               size="sm"
               className="flex-1"
-              onClick={() => onOpenDetail(club)}
+              onClick={() => onApply(club)}
               disabled={club.status !== "ACTIVE"}
             >
               {canReapply ? "Nộp lại đơn" : "Đăng ký gia nhập"}

@@ -1,7 +1,11 @@
 package com.vju.club.security;
 
-import lombok.RequiredArgsConstructor;
 import com.vju.club.config.RateLimitProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -11,14 +15,34 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
-@RequiredArgsConstructor
 public class RateLimitService {
+    private static final Logger log = LoggerFactory.getLogger(RateLimitService.class);
     private static final int MAX_TRACKED_KEYS = 10_000;
+    private static final String REDIS_KEY_PREFIX = "vju:rl:";
 
     private final RateLimitProperties properties;
     private final Clock clock;
     private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
     private final AtomicLong lastSweepAt = new AtomicLong();
+
+    @Autowired(required = false)
+    private StringRedisTemplate redisTemplate;
+
+    @Value("${app.cache.type:simple}")
+    private String cacheType = "simple";
+
+    @Autowired
+    public RateLimitService(RateLimitProperties properties, Clock clock) {
+        this.properties = properties;
+        this.clock = clock;
+    }
+
+    RateLimitService(RateLimitProperties properties, Clock clock, StringRedisTemplate redisTemplate, String cacheType) {
+        this.properties = properties;
+        this.clock = clock;
+        this.redisTemplate = redisTemplate;
+        this.cacheType = cacheType == null ? "simple" : cacheType;
+    }
 
     public RateLimitDecision check(String key) {
         return check(key, limit(), properties.getWindow());
@@ -40,6 +64,40 @@ public class RateLimitService {
 
         long nowMillis = clock.millis();
         long windowMillis = Math.max(1, windowDuration.toMillis());
+        if (isRedisEnabled()) {
+            try {
+                return checkWithRedis(key, effectiveLimit, nowMillis, windowMillis);
+            } catch (RuntimeException ex) {
+                log.warn("Redis rate limit failed for key {}, falling back to local memory: {}", key, ex.getMessage());
+            }
+        }
+        return checkLocal(key, effectiveLimit, nowMillis, windowMillis);
+    }
+
+    private boolean isRedisEnabled() {
+        return redisTemplate != null && cacheType != null && "redis".equalsIgnoreCase(cacheType.strip());
+    }
+
+    private RateLimitDecision checkWithRedis(String key, int effectiveLimit, long nowMillis, long windowMillis) {
+        long bucket = nowMillis / windowMillis;
+        String redisKey = REDIS_KEY_PREFIX + key + ":" + bucket;
+        Long count = redisTemplate.opsForValue().increment(redisKey);
+        if (count == null) {
+            throw new IllegalStateException("Redis INCR returned null for key " + redisKey);
+        }
+        if (count == 1L) {
+            redisTemplate.expire(redisKey, Duration.ofMillis(windowMillis));
+        }
+        if (count > effectiveLimit) {
+            long windowEndMillis = (bucket + 1L) * windowMillis;
+            long remainingMillis = Math.max(1L, windowEndMillis - nowMillis);
+            long retryAfterSeconds = Math.max(1L, (remainingMillis + 999L) / 1000L);
+            return new RateLimitDecision(false, 0, retryAfterSeconds);
+        }
+        return new RateLimitDecision(true, effectiveLimit - count, 0);
+    }
+
+    private RateLimitDecision checkLocal(String key, int effectiveLimit, long nowMillis, long windowMillis) {
         sweepExpired(nowMillis, windowMillis);
         if (windows.size() >= MAX_TRACKED_KEYS && !windows.containsKey(key)) {
             windows.entrySet().removeIf(entry -> nowMillis - entry.getValue().startedAt >= entry.getValue().windowMillis);

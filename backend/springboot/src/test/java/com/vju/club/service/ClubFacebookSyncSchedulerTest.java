@@ -134,6 +134,134 @@ class ClubFacebookSyncSchedulerTest {
                 contains("FB_TOKEN_ALERT:" + club.getId()));
     }
 
+    @Test
+    void syncDuePagesEnforcesMinimum15MinuteIntervalAndSyncsNullLastSyncedAt() {
+        when(settingsService.current()).thenReturn(settings(true, 5));
+
+        Club nullSyncedClub = club("VMC", "VJU Music Club");
+        Club recentClub = club("VCC", "VJU Chess Club");
+        ClubFacebookPage nullSyncedPage = page(nullSyncedClub, null);
+        ClubFacebookPage recentPage = page(recentClub, OffsetDateTime.now().minusMinutes(10));
+
+        when(pageRepository.findEligibleForAutoSync(ClubFacebookSyncScheduler.MAX_CONSECUTIVE_FAILURES))
+                .thenReturn(List.of(nullSyncedPage, recentPage));
+        when(clubRepository.findById(nullSyncedClub.getId())).thenReturn(Optional.of(nullSyncedClub));
+        when(pageRepository.findByClub_Id(nullSyncedClub.getId())).thenReturn(Optional.of(nullSyncedPage));
+        when(tokenCryptoService.decrypt("enc:v1:tok")).thenReturn("raw-tok");
+        when(graphClient.fetchPageProfile("raw-tok")).thenReturn(
+                new FacebookGraphClient.FbPageProfile("pg-2", "VMC Page", "https://fb.com/pg-2", null, 150, 145));
+        when(graphClient.fetchPagePosts("pg-2", "raw-tok", 25)).thenReturn(Collections.emptyList());
+
+        int count = scheduler.syncDuePages(false);
+
+        assertThat(count).isEqualTo(1);
+        assertThat(nullSyncedPage.getLastAutoSyncedAt()).isNotNull();
+        verify(pageRepository, never()).findByClub_Id(recentClub.getId());
+    }
+
+    @Test
+    void syncDuePagesIsolatesFailuresAcrossClubsAndAlertsOnPermissionMissing() {
+        when(settingsService.current()).thenReturn(settings(true, 60));
+
+        Club failingClub = club("FAIL", "Failing Club");
+        Club healthyClub = club("OK", "Healthy Club");
+        ClubFacebookPage failingPage = page(failingClub, OffsetDateTime.now().minusHours(2));
+        UUID connectorId = UUID.randomUUID();
+        failingPage.setConnectedBy(connectorId);
+        failingPage.setEncryptedAccessToken("enc:v1:bad");
+        ClubFacebookPage healthyPage = page(healthyClub, OffsetDateTime.now().minusHours(2));
+        healthyPage.setEncryptedAccessToken("enc:v1:good");
+
+        when(pageRepository.findEligibleForAutoSync(ClubFacebookSyncScheduler.MAX_CONSECUTIVE_FAILURES))
+                .thenReturn(List.of(failingPage, healthyPage));
+        when(pageRepository.findByClub_Id(failingClub.getId())).thenReturn(Optional.of(failingPage));
+        when(clubRepository.findById(healthyClub.getId())).thenReturn(Optional.of(healthyClub));
+        when(pageRepository.findByClub_Id(healthyClub.getId())).thenReturn(Optional.of(healthyPage));
+        when(tokenCryptoService.decrypt("enc:v1:bad")).thenReturn("bad-tok");
+        when(tokenCryptoService.decrypt("enc:v1:good")).thenReturn("good-tok");
+        when(graphClient.fetchPageProfile("bad-tok"))
+                .thenThrow(new ApiException(HttpStatus.FORBIDDEN, "FACEBOOK_PERMISSION_MISSING", "Thiếu quyền Fanpage"));
+        when(graphClient.fetchPageProfile("good-tok")).thenReturn(
+                new FacebookGraphClient.FbPageProfile("pg-ok", "OK Page", "https://fb.com/ok", null, 500, 490));
+        when(graphClient.fetchPagePosts("pg-ok", "good-tok", 25)).thenReturn(Collections.emptyList());
+
+        int count = scheduler.syncDuePages(false);
+
+        assertThat(count).isEqualTo(1);
+        assertThat(failingPage.getConsecutiveSyncFailures()).isEqualTo(1);
+        assertThat(healthyPage.getFollowersCount()).isEqualTo(500);
+        verify(notificationService).create(
+                eq(connectorId),
+                contains("Failing Club"),
+                contains("Thiếu quyền Fanpage"),
+                eq("CLUB"),
+                eq(failingClub.getId()),
+                contains("FB_TOKEN_ALERT:" + failingClub.getId()));
+    }
+
+    @Test
+    void autoSyncResetsFailureCounterAndLastSyncErrorOnRecovery() {
+        when(settingsService.current()).thenReturn(settings(true, 60));
+
+        Club club = club("REC", "Recovery Club");
+        ClubFacebookPage page = page(club, OffsetDateTime.now().minusHours(3));
+        page.setConsecutiveSyncFailures(2);
+        page.setLastSyncError("Temporary timeout");
+
+        when(pageRepository.findEligibleForAutoSync(ClubFacebookSyncScheduler.MAX_CONSECUTIVE_FAILURES))
+                .thenReturn(List.of(page));
+        when(clubRepository.findById(club.getId())).thenReturn(Optional.of(club));
+        when(pageRepository.findByClub_Id(club.getId())).thenReturn(Optional.of(page));
+        when(tokenCryptoService.decrypt("enc:v1:tok")).thenReturn("raw-tok");
+        when(graphClient.fetchPageProfile("raw-tok")).thenReturn(
+                new FacebookGraphClient.FbPageProfile("pg-rec", "Recovery Page", "https://fb.com/rec", null, 420, 400));
+        when(graphClient.fetchPagePosts("pg-rec", "raw-tok", 25)).thenReturn(Collections.emptyList());
+
+        int count = scheduler.syncDuePages(false);
+
+        assertThat(count).isEqualTo(1);
+        assertThat(page.getConsecutiveSyncFailures()).isZero();
+        assertThat(page.getLastSyncError()).isNull();
+        assertThat(page.getLastAutoSyncedAt()).isNotNull();
+    }
+
+    @Test
+    void autoSyncHandlesTokenDecryptionFailureGracefully() {
+        when(settingsService.current()).thenReturn(settings(true, 60));
+
+        Club club = club("DEC", "Decrypt Fail Club");
+        ClubFacebookPage page = page(club, OffsetDateTime.now().minusHours(2));
+        UUID connectorId = UUID.randomUUID();
+        page.setConnectedBy(connectorId);
+
+        when(pageRepository.findEligibleForAutoSync(ClubFacebookSyncScheduler.MAX_CONSECUTIVE_FAILURES))
+                .thenReturn(List.of(page));
+        when(pageRepository.findByClub_Id(club.getId())).thenReturn(Optional.of(page));
+        when(tokenCryptoService.decrypt("enc:v1:tok")).thenThrow(new IllegalStateException("Bad cipher"));
+
+        int count = scheduler.syncDuePages(false);
+
+        assertThat(count).isZero();
+        assertThat(page.getConsecutiveSyncFailures()).isEqualTo(1);
+        assertThat(page.getLastSyncError()).contains("giải mã");
+        verify(graphClient, never()).fetchPageProfile(anyString());
+        verify(notificationService).create(
+                eq(connectorId),
+                contains("Decrypt Fail Club"),
+                anyString(),
+                eq("CLUB"),
+                eq(club.getId()),
+                contains("FB_TOKEN_ALERT:" + club.getId()));
+    }
+
+    @Test
+    void syncDuePagesReturnsZeroWhenSettingsReadThrows() {
+        when(settingsService.current()).thenThrow(new RuntimeException("DB unavailable"));
+
+        assertThat(scheduler.syncDuePages(false)).isZero();
+        verify(pageRepository, never()).findEligibleForAutoSync(any(Integer.class));
+    }
+
     private Club club(String code, String name) {
         Club c = new Club();
         c.setId(UUID.randomUUID());

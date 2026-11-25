@@ -5,7 +5,12 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+  session:
+    jdbc:
+      cleanup-cron: "-"
 app:
+  scheduling:
+    enabled: false
   # Integration tests log in far more often than a real client; a dedicated test covers the limiter.
   rate-limit:
     max-requests: 100000

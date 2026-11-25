@@ -6,12 +6,12 @@ import { qk } from "@/lib/api/query-keys";
 import { KeyRound, Plus, Save, Undo2 } from "lucide-react";
 import { apiModel, PermissionGroup, Role, Scope } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
+import { useCriticalActionOtp } from "@/hooks/useCriticalActionOtp";
+import { Otp2FaChallengeModal } from "@/components/auth/Otp2FaChallengeModal";
 import { useI18n } from "@/providers/I18nContext";
-import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
 import { describeError, ListPage } from "@/components/shared/ListPage";
 import { roleLabel } from "@/components/shared/RolePicker";
 import { EmptyState, ErrorState, LoadingRows, Notice } from "@/components/shared/States";
-import { CountBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BREADTH, fitsRole, permissionDesc, permissionTitle } from "@/utils/access/permission-meta";
 import { CreateRoleModal } from "@/components/access/CreateRoleModal";
@@ -23,6 +23,7 @@ export function RolesManagementView() {
   useI18n();
   const session = useSession();
   const queryClient = useQueryClient();
+  const roleOtp = useCriticalActionOtp("ROLE_CHANGE");
   const canView = session.can("role.view");
   const canManage = session.can("role.manage");
   const roles = useQuery({ queryKey: qk.roles(), queryFn: apiModel.roles, enabled: canView });
@@ -47,7 +48,7 @@ export function RolesManagementView() {
   const columns = useMemo(
     () =>
       [...(roles.data ?? [])]
-        .filter((r) => r.active)
+        .filter((r) => r.active && r.code !== "DEPARTMENT_HEAD")
         .sort(
           (a, b) =>
             Number(b.locked) - Number(a.locked) ||
@@ -134,14 +135,22 @@ export function RolesManagementView() {
 
   const save = useMutation({
     mutationFn: async () => {
+      const savedNames: string[] = [];
       for (const role of dirtyRoles) {
         const ids = [...keysOf(role)].map((k) => idByKey.get(k)).filter((id): id is string => !!id);
-        await apiModel.updateRolePermissions(role.id, ids);
+        await roleOtp.runWithOtp((otp) => apiModel.updateRolePermissions(role.id, ids, otp));
+        savedNames.push(roleLabel(role));
+        setDraft((prev) => {
+          const next = { ...prev };
+          delete next[role.id];
+          return next;
+        });
       }
+      return savedNames;
     },
-    onSuccess: async () => {
+    onSuccess: async (savedNames) => {
       setNotice(
-        `Đã lưu phân quyền cho ${dirtyRoles.map(roleLabel).join(", ")}. Giao diện của các tài khoản mang vai trò này đã được cập nhật ngay.`
+        `Đã lưu phân quyền cho ${savedNames.join(", ")}. Giao diện của các tài khoản mang vai trò này đã được cập nhật ngay.`
       );
       setDraft({});
       await queryClient.invalidateQueries({ queryKey: qk.roles() });
@@ -164,36 +173,6 @@ export function RolesManagementView() {
 
   return (
     <ListPage title="Chức vụ & Phân quyền" fillViewport>
-      <BreadcrumbToolbar
-        crumbs={[
-          { label: "Tổng quan", href: "/dashboard" },
-          { label: "Quản trị hệ thống" },
-          { label: "Chức vụ & Phân quyền" },
-        ]}
-        titleBadge={<CountBadge>{columns.length} vai trò · {allPermissions.length} quyền</CountBadge>}
-        onRefresh={() => {
-          roles.refetch();
-          groups.refetch();
-        }}
-        extraActions={
-          canManage ? (
-            <>
-              <Button variant="outline" size="sm" onClick={() => setCreating(true)}>
-                <Plus size={14} /> Tạo vai trò mới
-              </Button>
-              {dirtyRoles.length > 0 && (
-                <Button variant="outline" size="sm" disabled={save.isPending} onClick={() => { setDraft({}); save.reset(); }}>
-                  <Undo2 size={14} /> Hoàn tác
-                </Button>
-              )}
-              <Button size="sm" disabled={!dirtyRoles.length || !!emptyRole || save.isPending} onClick={() => save.mutate()}>
-                <Save size={14} /> {save.isPending ? "Đang lưu…" : `Lưu thay đổi${dirtyRoles.length ? ` (${dirtyRoles.length})` : ""}`}
-              </Button>
-            </>
-          ) : undefined
-        }
-      />
-
       <RolesFilterBar
         search={search}
         onSearchChange={setSearch}
@@ -202,6 +181,7 @@ export function RolesManagementView() {
         scopeFilter={scopeFilter}
         onScopeFilterChange={setScopeFilter}
         groups={groups.data ?? []}
+        roleCount={columns.length}
         visiblePermCount={visiblePermCount}
         totalPermCount={allPermissions.length}
         filteredGroupCount={filteredGroups.length}
@@ -211,6 +191,23 @@ export function RolesManagementView() {
         onViewModeChange={setViewMode}
         allCollapsed={allCollapsed}
         onToggleAllModules={toggleAllModules}
+        rightActions={
+          canManage ? (
+            <>
+              <Button variant="outline" size="sm" className="h-8" onClick={() => setCreating(true)}>
+                <Plus size={14} /> Tạo vai trò
+              </Button>
+              {dirtyRoles.length > 0 && (
+                <Button variant="outline" size="sm" className="h-8" disabled={save.isPending} onClick={() => { setDraft({}); save.reset(); }}>
+                  <Undo2 size={14} /> Hoàn tác
+                </Button>
+              )}
+              <Button size="sm" className="h-8" disabled={!dirtyRoles.length || !!emptyRole || save.isPending} onClick={() => save.mutate()}>
+                <Save size={14} /> {save.isPending ? "Đang lưu…" : `Lưu${dirtyRoles.length ? ` (${dirtyRoles.length})` : ""}`}
+              </Button>
+            </>
+          ) : undefined
+        }
       />
 
       <div className="flex min-h-0 flex-1 flex-col gap-2.5 px-3 py-3 sm:px-5 sm:py-3">
@@ -284,6 +281,7 @@ export function RolesManagementView() {
           setNotice(`Đã tạo chức vụ / vai trò "${role.name}". Bạn có thể bổ nhiệm ngay ở trang Hồ sơ tài khoản.`)
         }
       />
+      <Otp2FaChallengeModal {...roleOtp.otpModalProps} />
     </ListPage>
   );
 }

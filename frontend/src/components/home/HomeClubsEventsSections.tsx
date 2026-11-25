@@ -6,11 +6,13 @@ import { ArrowRight, Search, X } from "lucide-react";
 import { describeError } from "@/components/shared/ListPage";
 import { HOME_MESSAGES } from "@/i18n/home-messages";
 import { useI18n } from "@/providers/I18nContext";
+import { isYouthUnion } from "@/lib/club/youth-union";
 import { ClubItem, EventItem } from "@/types";
 import { DbText, formatLocalizedCopy } from "./DbText";
 import { HomeClubCard } from "./HomeClubCard";
 import { HomeClubPreviewDialog } from "./HomeClubPreviewDialog";
 import { HomeEventsSection } from "./HomeEventsSection";
+import { HomeYouthUnionSpotlight } from "./HomeYouthUnionSpotlight";
 
 interface HomeClubsEventsSectionsProps {
   allClubs: ClubItem[];
@@ -65,14 +67,19 @@ export function HomeClubsEventsSections({
   }, [featuredEvents]);
 
   const hasClubFilter = selectedCategory !== "" || searchQuery.trim() !== "";
+  const youthUnionClub = useMemo(() => allClubs.find((c) => isYouthUnion(c)) ?? null, [allClubs]);
+  const regularFeaturedClubs = useMemo(
+    () => (hasClubFilter ? featuredClubs : featuredClubs.filter((c) => !isYouthUnion(c))),
+    [featuredClubs, hasClubFilter],
+  );
 
   return (
     <>
-      <section className="mx-auto max-w-[1380px] scroll-mt-20 px-5 py-14 sm:px-8 sm:py-20 lg:px-12" id="cau-lac-bo">
+      <section className="mx-auto max-w-[1380px] scroll-mt-20 px-5 py-10 sm:px-8 sm:py-14 lg:px-12" id="cau-lac-bo">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <p className="text-sm font-semibold text-primary">{m.clubsSection.kicker}</p>
-            <h2 className="mt-2 font-serif text-3xl font-semibold leading-[1.15] text-slate-900 sm:text-[40px]">
+            <h2 className="mt-1.5 font-serif text-3xl font-semibold leading-[1.15] text-slate-900 sm:text-[38px]">
               {m.clubsSection.titlePrefix}
               <mark className="rounded-lg bg-accent px-2 py-0.5 text-primary">
                 {m.clubsSection.titleHighlight}
@@ -88,9 +95,16 @@ export function HomeClubsEventsSections({
           </Link>
         </div>
 
-        <p className="mt-3 max-w-[65ch] text-base leading-7 text-slate-700">
+        <p className="mt-2.5 max-w-[60ch] text-sm leading-6 text-slate-700 sm:text-[15px]">
           {formatLocalizedCopy(m.clubsSection.lead, locale)}
         </p>
+
+        {!clubsPending && !hasClubFilter && youthUnionClub && (
+          <HomeYouthUnionSpotlight
+            youthUnion={youthUnionClub}
+            events={eventsByClubId.get(youthUnionClub.id) ?? []}
+          />
+        )}
 
         <div data-ui="club-finder" className="mt-6 rounded-2xl bg-white p-4 sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -127,7 +141,7 @@ export function HomeClubsEventsSections({
                   setSelectedCategory("");
                   setSearchQuery("");
                 }}
-                className="h-11 shrink-0 rounded-xl bg-accent px-4 text-xs font-semibold text-primary transition-colors hover:bg-rose-100 sm:text-sm"
+                className="h-11 shrink-0 rounded-xl bg-accent px-4 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 sm:text-sm"
               >
                 {m.clubsSection.resetFilter}
               </button>
@@ -178,10 +192,10 @@ export function HomeClubsEventsSections({
             ))}
           </div>
         ) : clubsError ? (
-          <div className="mt-8 rounded-2xl bg-rose-50 p-6 text-sm text-rose-700">
+          <div className="mt-8 rounded-2xl bg-destructive/10 p-6 text-sm text-destructive">
             {m.clubsSection.loadErrorPrefix} <DbText value={describeError(clubsError)} />
           </div>
-        ) : featuredClubs.length === 0 ? (
+        ) : regularFeaturedClubs.length === 0 ? (
           <div className="mt-8 rounded-2xl bg-white p-10 text-center">
             <p className="text-base font-semibold text-slate-900">{m.clubsSection.emptyTitle}</p>
             <p className="mt-1 text-sm text-slate-600">{m.clubsSection.emptyDesc}</p>
@@ -200,7 +214,7 @@ export function HomeClubsEventsSections({
           </div>
         ) : (
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {featuredClubs.map((club) => (
+            {regularFeaturedClubs.map((club) => (
               <HomeClubCard
                 key={club.id}
                 club={club}

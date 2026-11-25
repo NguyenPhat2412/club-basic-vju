@@ -1,6 +1,7 @@
 package com.vju.club.config;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
@@ -18,26 +19,31 @@ import java.util.concurrent.Executor;
  * mail/integration I/O never starve each other or get abruptly killed on deploy.
  */
 @Configuration
-@EnableScheduling
 @EnableAsync
 @Slf4j
-public class SchedulingConfig implements SchedulingConfigurer {
+public class SchedulingConfig {
 
-    @Bean(name = "vjuTaskScheduler")
-    public ThreadPoolTaskScheduler vjuTaskScheduler() {
-        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
-        scheduler.setPoolSize(4);
-        scheduler.setThreadNamePrefix("vju-sched-");
-        scheduler.setWaitForTasksToCompleteOnShutdown(true);
-        scheduler.setAwaitTerminationSeconds(30);
-        scheduler.setErrorHandler(err -> log.error("Uncaught error in scheduled task: {}", err.getMessage(), err));
-        scheduler.initialize();
-        return scheduler;
-    }
+    @Configuration
+    @EnableScheduling
+    @ConditionalOnProperty(value = "app.scheduling.enabled", havingValue = "true", matchIfMissing = true)
+    static class SchedulerConfiguration implements SchedulingConfigurer {
 
-    @Override
-    public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
-        taskRegistrar.setTaskScheduler(vjuTaskScheduler());
+        @Bean(name = "vjuTaskScheduler")
+        public ThreadPoolTaskScheduler vjuTaskScheduler() {
+            ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+            scheduler.setPoolSize(4);
+            scheduler.setThreadNamePrefix("vju-sched-");
+            scheduler.setWaitForTasksToCompleteOnShutdown(true);
+            scheduler.setAwaitTerminationSeconds(30);
+            scheduler.setErrorHandler(err -> log.error("Uncaught error in scheduled task: {}", err.getMessage(), err));
+            scheduler.initialize();
+            return scheduler;
+        }
+
+        @Override
+        public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
+            taskRegistrar.setTaskScheduler(vjuTaskScheduler());
+        }
     }
 
     @Bean(name = "integrationTaskExecutor")

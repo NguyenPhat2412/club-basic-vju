@@ -105,15 +105,15 @@ export function FormBuilderModal({
           </FormField>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <FormField label="Mở nhận đơn từ" hint="Để trống: nhận ngay khi trạng thái là OPEN">
+        <div className="grid items-start gap-3 sm:grid-cols-2">
+          <FormField label="Mở nhận đơn từ">
             <Input
               type="datetime-local"
               value={toLocalInput(formDraft.openAt)}
               onChange={(e) => setFormDraft({ ...formDraft, openAt: fromLocalInput(e.target.value) })}
             />
           </FormField>
-          <FormField label="Đóng nhận đơn lúc" hint="Để trống: nhận đến khi chuyển sang CLOSED">
+          <FormField label="Đóng nhận đơn lúc">
             <Input
               type="datetime-local"
               value={toLocalInput(formDraft.closeAt)}

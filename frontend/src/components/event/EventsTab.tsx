@@ -7,19 +7,22 @@ import { Calendar, Eye, FilterX, Pencil, Plus, Search, X } from "lucide-react";
 import { apiModel, ClubEvent, Department, EventRegistration } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
 import { DataTable } from "@/components/shared/DataTable";
+import { FilterPopover } from "@/components/shared/FilterPopover";
 import { Pagination } from "@/components/shared/Pagination";
+import { SegmentedTabs } from "@/components/shared/BreadcrumbToolbar";
 import { StatSummaryStrip } from "@/components/shared/StatCards";
 import { EmptyState, ErrorState, LoadingRows } from "@/components/shared/States";
 import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError } from "@/components/shared/ListPage";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui/input";
+import { FormField, Input, Select } from "@/components/ui/input";
 import { formatDay } from "@/lib/utils";
 import {
   EMPTY_EVENT_FORM,
   EVENT_TYPE_LABELS,
   EventFormValues,
+  getEventScopeLabel,
   toLocalInput,
 } from "@/forms/event/event-form";
 import {
@@ -28,6 +31,7 @@ import {
   UpsertEventModal,
 } from "@/components/event/EventManagementModals";
 import { EventAttendanceDrawer } from "@/components/event/EventAttendanceDrawer";
+import { EventsGanttView } from "@/components/event/EventsGanttView";
 
 export function EventsTab({
   clubId,
@@ -54,6 +58,24 @@ export function EventsTab({
   const [selected, setSelected] = useState<ClubEvent | null>(null);
   const [editingParticipant, setEditingParticipant] = useState<EventRegistration | null>(null);
   const [notifyingEvent, setNotifyingEvent] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "gantt">("list");
+
+  const publicClubs = useQuery({
+    queryKey: qk.publicClubs("events-tab-dtn"),
+    queryFn: () => apiModel.publicClubs("", "", 0, 100),
+    staleTime: 60_000,
+  });
+  const dtnClubId = useMemo(
+    () => publicClubs.data?.items.find((c) => c.code?.toUpperCase() === "DOANVJU")?.id,
+    [publicClubs.data?.items]
+  );
+  const canViewGantt =
+    session.hasGlobal("user.view") ||
+    ["event.create", "event.update", "event.attendance", "event.attendance_edit"].some((k) => session.hasGlobal(k)) ||
+    (Boolean(dtnClubId) &&
+      ["event.create", "event.update", "event.attendance", "event.attendance_edit", "club.update"].some((k) =>
+        session.canInClub(k, dtnClubId!)
+      ));
 
   const canCreate = session.canInClub("event.create", clubId);
   const canUpdateEvent = (ev: ClubEvent) => session.canInDepartment("event.update", clubId, ev.departmentId);
@@ -139,6 +161,7 @@ export function EventsTab({
       registrationDeadline: toLocalInput(ev.registrationDeadline),
       maxParticipants: ev.maxParticipants ? String(ev.maxParticipants) : "",
       allowCtv: ev.allowCtv,
+      allowPublicAttendees: ev.allowPublicAttendees ?? ev.allowCtv,
       requiresSubmission: Boolean(ev.requiresSubmission),
       status: ev.status,
       description: ev.description ?? "",
@@ -147,10 +170,62 @@ export function EventsTab({
 
   return (
     <div className="flex flex-1 flex-col">
+      <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-border bg-white px-3 py-1.5 sm:px-4">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto sm:flex-1">
+          <div className="relative w-full min-w-0 sm:min-w-[140px] sm:max-w-[185px] sm:flex-1">
+            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(e) => { setSearch(e.target.value); setOffset(0); }} placeholder="Tìm tên sự kiện, địa điểm…" className="h-8 pl-8 pr-7 text-xs" />
+            {search && (
+              <button type="button" aria-label="Xoá tìm kiếm" onClick={() => { setSearch(""); setOffset(0); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X size={13} />
+              </button>
+            )}
+          </div>
+          <FilterPopover activeCount={[deptFilter, typeFilter, statusFilter].filter(Boolean).length} onClear={resetFilters} title="Lọc sự kiện">
+            <FormField label="Ban chuyên môn" hideIndicator>
+              <Select aria-label="Lọc theo ban chuyên môn" value={deptFilter} onChange={(e) => { setDeptFilter(e.target.value); setOffset(0); }} className="h-8 text-xs">
+                <option value="">Tất cả ban</option>
+                {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </Select>
+            </FormField>
+            <FormField label="Loại sự kiện" hideIndicator>
+              <Select aria-label="Lọc loại sự kiện" value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setOffset(0); }} className="h-8 text-xs">
+                <option value="">Mọi loại</option>
+                {Object.entries(EVENT_TYPE_LABELS).map(([k, lbl]) => <option key={k} value={k}>{lbl}</option>)}
+              </Select>
+            </FormField>
+            <FormField label="Trạng thái" hideIndicator>
+              <Select aria-label="Lọc theo trạng thái sự kiện" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setOffset(0); }} className="h-8 text-xs">
+                <option value="">Mọi trạng thái</option>
+                <option value="DRAFT">Bản nháp (DRAFT)</option>
+                <option value="OPEN_REGISTRATION">Đang mở đăng ký</option>
+                <option value="CLOSED_REGISTRATION">Đã đóng đăng ký</option>
+                <option value="COMPLETED">Đã hoàn thành</option>
+                <option value="CANCELLED">Đã huỷ</option>
+              </Select>
+            </FormField>
+          </FilterPopover>
+          {hasFilters && <Button size="sm" variant="outline" onClick={resetFilters} className="h-8"><FilterX size={13} /> Xoá lọc</Button>}
+        </div>
+        <div className="flex w-full max-w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:shrink-0">
+          {canViewGantt && (
+            <SegmentedTabs
+              value={viewMode}
+              onChange={setViewMode}
+              options={[
+                { value: "list", label: "Danh sách" },
+                { value: "gantt", label: "GANTT 13 ĐV" },
+              ]}
+            />
+          )}
+          {canCreate && <Button size="sm" onClick={() => { setCreating(true); setForm(EMPTY_EVENT_FORM); }} className="h-8"><Plus size={14} /> Tạo sự kiện</Button>}
+        </div>
+      </div>
+
       {allClubEvents.data && (
         <StatSummaryStrip
           columnsClassName="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
-          className="px-4 pt-3 sm:px-6"
+          className="px-3 pt-2.5 sm:px-5"
           items={[
             { label: "Tổng sự kiện", value: summaryCounts.total },
             { label: "Bản nháp", value: summaryCounts.draft },
@@ -162,39 +237,9 @@ export function EventsTab({
         />
       )}
 
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-y border-border/60 bg-card px-4 py-2.5 sm:px-6">
-        <div className="flex flex-1 flex-wrap items-center gap-2">
-          <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-            <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(e) => { setSearch(e.target.value); setOffset(0); }} placeholder="Tìm tên sự kiện, địa điểm…" className="h-8 pl-8 pr-7 text-xs" />
-            {search && (
-              <button type="button" aria-label="Xoá tìm kiếm" onClick={() => { setSearch(""); setOffset(0); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                <X size={13} />
-              </button>
-            )}
-          </div>
-          <Select aria-label="Lọc theo ban chuyên môn" value={deptFilter} onChange={(e) => { setDeptFilter(e.target.value); setOffset(0); }} className="h-8 w-full text-xs sm:w-40">
-            <option value="">Tất cả ban / Toàn CLB</option>
-            {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </Select>
-          <Select aria-label="Lọc loại sự kiện" value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setOffset(0); }} className="h-8 w-full text-xs sm:w-44">
-            <option value="">Mọi loại sự kiện</option>
-            {Object.entries(EVENT_TYPE_LABELS).map(([k, lbl]) => <option key={k} value={k}>{lbl}</option>)}
-          </Select>
-          <Select aria-label="Lọc theo trạng thái sự kiện" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setOffset(0); }} className="h-8 w-full text-xs sm:w-44">
-            <option value="">Tất cả trạng thái</option>
-            <option value="DRAFT">Bản nháp (DRAFT)</option>
-            <option value="OPEN_REGISTRATION">Đang mở đăng ký</option>
-            <option value="CLOSED_REGISTRATION">Đã đóng đăng ký</option>
-            <option value="COMPLETED">Đã hoàn thành</option>
-            <option value="CANCELLED">Đã huỷ</option>
-          </Select>
-          {hasFilters && <Button size="sm" variant="outline" onClick={resetFilters} className="h-8"><FilterX size={13} /> Xoá lọc</Button>}
-        </div>
-        {canCreate && <Button size="sm" onClick={() => { setCreating(true); setForm(EMPTY_EVENT_FORM); }} className="h-8"><Plus size={14} /> Tạo sự kiện</Button>}
-      </div>
-
-      {events.isPending ? (
+      {viewMode === "gantt" && canViewGantt ? (
+        <EventsGanttView activeClubId={clubId} />
+      ) : events.isPending ? (
         <LoadingRows />
       ) : events.isError ? (
         <ErrorState message={describeError(events.error)} onRetry={() => events.refetch()} />
@@ -249,7 +294,7 @@ export function EventsTab({
                     <p className="truncate text-[11px] text-muted-foreground">
                       {EVENT_TYPE_LABELS[ev.eventType] ?? ev.eventType}
                       {ev.departmentName ? ` · ${ev.departmentName}` : ""}
-                      {ev.allowCtv ? " · Công khai (CTV)" : " · Nội bộ CLB"}
+                      {` · ${getEventScopeLabel(ev)}`}
                       {ev.requiresSubmission ? " · Nộp hồ sơ" : ""}
                     </p>
                   </div>

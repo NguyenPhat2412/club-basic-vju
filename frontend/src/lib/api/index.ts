@@ -5,6 +5,7 @@ import { clubsApi } from '@/api/club/clubs.api';
 import { departmentsApi } from '@/api/department/departments.api';
 import { applicationsApi } from '@/api/application/applications.api';
 import { eventsApi } from '@/api/event/events.api';
+import { certificateApi } from '@/api/certificate/certificate.api';
 import { tasksApi } from '@/api/task/tasks.api';
 import { documentsApi } from '@/api/document/documents.api';
 import { chatApi } from '@/api/chat/chat.api';
@@ -26,6 +27,7 @@ export const apiModel = {
   ...departmentsApi,
   ...applicationsApi,
   ...eventsApi,
+  ...certificateApi,
   ...tasksApi,
   ...documentsApi,
   ...chatApi,

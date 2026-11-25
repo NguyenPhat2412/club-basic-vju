@@ -29,7 +29,7 @@ public class EventRegistration extends TimestampedEntity {
     private User user;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "participant_type", nullable = false, length = 16)
+    @Column(name = "participant_type", nullable = false, length = 24)
     private EventParticipantType participantType;
 
     @Enumerated(EnumType.STRING)

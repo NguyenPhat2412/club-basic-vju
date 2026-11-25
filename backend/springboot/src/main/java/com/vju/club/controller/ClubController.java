@@ -12,8 +12,10 @@ import com.vju.club.dto.request.ClubRequest;
 import com.vju.club.dto.request.ClubPatchRequest;
 import com.vju.club.dto.response.ClubResponse;
 import com.vju.club.dto.request.ClubStatusRequest;
+import com.vju.club.dto.response.ClubUsageResponse;
 import com.vju.club.dto.response.PageResponse;
 import com.vju.club.enums.ClubStatus;
+import com.vju.club.service.impl.ClubStorageQuotaService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -44,6 +46,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ClubController {
     private final ClubService clubService;
+    private final ClubStorageQuotaService storageQuotaService;
 
     @PublicEndpoint(reason = "Public club discovery on landing page")
     @GetMapping(ApiPaths.PUBLIC_CLUBS)
@@ -92,6 +95,11 @@ public class ClubController {
     @GetMapping(ApiPaths.CLUB_BY_ID)
     public ClubResponse get(Actor actor, @PathVariable UUID clubId) {
         return clubService.get(actor, clubId);
+    }
+
+    @GetMapping(ApiPaths.CLUB_USAGE)
+    public ClubUsageResponse getUsage(Actor actor, @PathVariable UUID clubId) {
+        return storageQuotaService.getClubUsage(actor, clubId);
     }
 
     @PostMapping(ApiPaths.CLUBS)

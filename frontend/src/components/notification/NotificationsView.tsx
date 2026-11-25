@@ -6,7 +6,6 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { qk } from "@/lib/api/query-keys";
 import { Bell, CheckCheck, ExternalLink, Eye, FilterX, Search, X } from "lucide-react";
 import { apiModel, Notification } from "@/lib/api";
-import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
 import { DataTable } from "@/components/shared/DataTable";
 import { DetailList, EntityDrawer } from "@/components/shared/Overlays";
 import { Pagination } from "@/components/shared/Pagination";
@@ -91,89 +90,82 @@ export function NotificationsView() {
 
   return (
     <ListPage title="Thông báo">
-      <BreadcrumbToolbar
-        crumbs={[{ label: "Trang chủ", href: "/clubs" }, { label: "Cá nhân" }, { label: "Thông báo" }]}
-        titleBadge={<CountBadge>{unread} chưa đọc</CountBadge>}
-        extraActions={
-          <div className="flex flex-wrap items-center gap-2">
-            <BrowserNotificationToggle />
-            {unread > 0 && (
-              <Button size="sm" variant="outline" disabled={markAllRead.isPending} onClick={() => markAllRead.mutate()}>
-                <CheckCheck size={14} /> Đánh dấu đã đọc tất cả
-              </Button>
-            )}
-          </div>
-        }
-        onRefresh={() => {
-          list.refetch();
-          if (selectedId) detail.refetch();
-        }}
-      />
-
-      <div className="flex flex-wrap items-center gap-2 border-b border-border/60 bg-card px-4 py-2.5 sm:px-6">
-        <div className="relative min-w-[210px] flex-1 sm:max-w-xs">
-          <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setOffset(0);
-            }}
-            placeholder="Tìm tiêu đề hoặc nội dung thông báo…"
-            className="h-8 pl-8 pr-7 text-xs"
-          />
-          {search && (
-            <button
-              type="button"
-              aria-label="Xoá tìm kiếm"
-              onClick={() => {
-                setSearch("");
+      <div className="relative z-30 flex flex-wrap items-center justify-between gap-1.5 border-b border-border bg-white px-3 py-1.5 sm:px-4">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+          <CountBadge>{unread} chưa đọc</CountBadge>
+          <div className="relative min-w-[160px] flex-1 sm:max-w-[220px]">
+            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
                 setOffset(0);
               }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X size={13} />
-            </button>
+              placeholder="Tìm tiêu đề hoặc nội dung…"
+              className="h-8 pl-8 pr-7 text-xs"
+            />
+            {search && (
+              <button
+                type="button"
+                aria-label="Xoá tìm kiếm"
+                onClick={() => {
+                  setSearch("");
+                  setOffset(0);
+                }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          <Select
+            aria-label="Lọc trạng thái đọc"
+            value={readFilter}
+            onChange={(e) => {
+              setReadFilter(e.target.value as "" | "unread" | "read");
+              setOffset(0);
+            }}
+            className="h-8 w-full text-xs sm:w-34"
+          >
+            <option value="">Mọi trạng thái</option>
+            <option value="unread">Chưa đọc</option>
+            <option value="read">Đã đọc</option>
+          </Select>
+
+          <Select
+            aria-label="Lọc phân hệ thông báo"
+            value={typeFilter}
+            onChange={(e) => {
+              setTypeFilter(e.target.value);
+              setOffset(0);
+            }}
+            className="h-8 w-full text-xs sm:w-40"
+          >
+            <option value="">Mọi phân hệ</option>
+            <option value="CHAT">Tin nhắn & Kênh Chat</option>
+            <option value="CLUB_APPLICATION_REVIEW">Đơn ứng tuyển (BCN)</option>
+            <option value="CLUB_APPLICATION">Đơn đăng ký cá nhân</option>
+            <option value="EVENT">Sự kiện CLB</option>
+            <option value="TASK">Công việc</option>
+            <option value="DOCUMENT">Kho tài liệu</option>
+          </Select>
+
+          {hasClientFilter && (
+            <Button variant="outline" size="sm" onClick={resetFilters} className="h-8">
+              <FilterX size={13} /> Xoá lọc
+            </Button>
           )}
         </div>
 
-        <Select
-          aria-label="Lọc trạng thái đọc"
-          value={readFilter}
-          onChange={(e) => {
-            setReadFilter(e.target.value as "" | "unread" | "read");
-            setOffset(0);
-          }}
-          className="h-8 w-full text-xs sm:w-40"
-        >
-          <option value="">Mọi trạng thái</option>
-          <option value="unread">Chưa đọc</option>
-          <option value="read">Đã đọc</option>
-        </Select>
-
-        <Select
-          aria-label="Lọc phân hệ thông báo"
-          value={typeFilter}
-          onChange={(e) => {
-            setTypeFilter(e.target.value);
-            setOffset(0);
-          }}
-          className="h-8 w-full text-xs sm:w-44"
-        >
-          <option value="">Mọi phân hệ</option>
-          <option value="CHAT">Tin nhắn & Kênh Chat</option>
-          <option value="CLUB_APPLICATION_REVIEW">Đơn ứng tuyển (BCN)</option>
-          <option value="CLUB_APPLICATION">Đơn đăng ký cá nhân</option>
-          <option value="EVENT">Sự kiện CLB</option>
-          <option value="TASK">Công việc</option>
-          <option value="DOCUMENT">Kho tài liệu</option>
-        </Select>
-
-        {hasClientFilter && (
-          <Button variant="outline" size="sm" onClick={resetFilters} className="h-8">
-            <FilterX size={13} /> Xoá lọc
-          </Button>
-        )}
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+          <BrowserNotificationToggle />
+          {unread > 0 && (
+            <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs" disabled={markAllRead.isPending} onClick={() => markAllRead.mutate()}>
+              <CheckCheck size={13} /> Đọc tất cả
+            </Button>
+          )}
+        </div>
       </div>
 
       {list.isPending ? (

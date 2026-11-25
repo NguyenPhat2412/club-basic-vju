@@ -12,7 +12,7 @@ export function WorkspaceTabMenu({
   closeTab,
   resetStarterTabs,
   closeOtherTabs,
-  closeAllToOverview,
+  closeAllTabs,
 }: {
   openSpecs: WorkspaceTabSpec[];
   activeId: string;
@@ -20,7 +20,7 @@ export function WorkspaceTabMenu({
   closeTab: (id: string) => void;
   resetStarterTabs: () => void;
   closeOtherTabs: () => void;
-  closeAllToOverview: () => void;
+  closeAllTabs: () => void;
 }) {
   const { tr } = useI18n();
   return (
@@ -32,30 +32,32 @@ export function WorkspaceTabMenu({
         {tr("Trang đang mở")} ({openSpecs.length})
       </div>
       <div className="max-h-64 space-y-0.5 overflow-y-auto">
-        {openSpecs.map((spec) => {
-          const isActive = spec.id === activeId;
-          return (
-            <div
-              key={spec.id}
-              className={cn(
-                "flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors",
-                isActive ? "bg-primary/8 font-bold text-primary" : "text-slate-700 hover:bg-slate-50"
-              )}
-            >
-              <button
-                type="button"
-                onClick={() => activateTab(spec)}
-                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+        {openSpecs.length === 0 ? (
+          <p className="px-2.5 py-2 text-xs text-slate-400">{tr("Chưa có trang nào đang mở")}</p>
+        ) : (
+          openSpecs.map((spec) => {
+            const isActive = spec.id === activeId;
+            return (
+              <div
+                key={spec.id}
+                className={cn(
+                  "flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors",
+                  isActive ? "bg-primary/8 font-bold text-primary" : "text-slate-700 hover:bg-slate-50"
+                )}
               >
-                <span className={cn("shrink-0", isActive ? "text-primary" : "text-slate-400")}>
-                  {spec.icon}
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate">{spec.label}</p>
-                  <p className="truncate text-[10px] font-normal text-slate-400">{spec.groupLabel}</p>
-                </div>
-              </button>
-              {openSpecs.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => activateTab(spec)}
+                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                >
+                  <span className={cn("shrink-0", isActive ? "text-primary" : "text-slate-400")}>
+                    {spec.icon}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate">{spec.label}</p>
+                    <p className="truncate text-[10px] font-normal text-slate-400">{spec.groupLabel}</p>
+                  </div>
+                </button>
                 <button
                   type="button"
                   aria-label={`${tr("Đóng tab")} ${spec.label}`}
@@ -64,10 +66,10 @@ export function WorkspaceTabMenu({
                 >
                   <X size={12} />
                 </button>
-              )}
-            </div>
-          );
-        })}
+              </div>
+            );
+          })
+        )}
       </div>
 
       <div className="mt-1.5 space-y-0.5 border-t border-slate-100 pt-1.5">
@@ -78,20 +80,24 @@ export function WorkspaceTabMenu({
         >
           <RotateCcw size={13} className="text-primary" /> {tr("Khôi phục bộ tab quản lý chuẩn")}
         </button>
-        <button
-          type="button"
-          onClick={closeOtherTabs}
-          className="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-100"
-        >
-          {tr("Đóng các tab khác")}
-        </button>
-        <button
-          type="button"
-          onClick={closeAllToOverview}
-          className="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-xs font-medium text-destructive hover:bg-destructive/10"
-        >
-          {tr("Thu gọn về Tổng quan")}
-        </button>
+        {openSpecs.length > 1 && (
+          <button
+            type="button"
+            onClick={closeOtherTabs}
+            className="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-100"
+          >
+            {tr("Đóng các tab khác")}
+          </button>
+        )}
+        {openSpecs.length > 0 && (
+          <button
+            type="button"
+            onClick={closeAllTabs}
+            className="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-xs font-medium text-destructive hover:bg-destructive/10"
+          >
+            {tr("Đóng tất cả tab")}
+          </button>
+        )}
       </div>
     </div>
   );

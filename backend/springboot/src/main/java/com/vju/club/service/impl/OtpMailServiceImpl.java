@@ -117,7 +117,8 @@ public class OtpMailServiceImpl implements OtpMailService {
             String recipientEmail,
             String recipientName,
             String title,
-            String message) {
+            String message,
+            String referenceType) {
         if (recipientEmail == null || recipientEmail.isBlank()) {
             return false;
         }
@@ -127,7 +128,7 @@ public class OtpMailServiceImpl implements OtpMailService {
         }
         try {
             OtpMailTemplateBuilder.RenderedEmail rendered = OtpMailTemplateBuilder.buildNotificationAlert(
-                    recipientName, recipientEmail.strip(), title, message);
+                    recipientName, recipientEmail.strip(), title, message, referenceType);
             deliver(smtp, recipientEmail.strip(), rendered);
             return true;
         } catch (Exception ex) {

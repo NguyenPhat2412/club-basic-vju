@@ -159,4 +159,72 @@ class AuditLogApiTest extends ApiIntegrationTest {
                 + "VALUES ('X', 'CLUB', ?, 'not json')", clubA))
                 .isInstanceOf(org.springframework.dao.DataAccessException.class);
     }
+
+    @Test
+    void auditLogsCaptureFirstHopIpAndSanitizedUserAgentWithTruncation() throws Exception {
+        String longAgent = "  VJU-Client/2.0 " + "A".repeat(600) + "  ";
+        UUID firstClub = id(call(
+                post("/api/v1/clubs")
+                        .header("X-Forwarded-For", "203.0.113.9, 10.0.0.1")
+                        .header("User-Agent", longAgent),
+                adminToken,
+                Map.of("code", "IP1", "name", "IP Club 1"),
+                201));
+
+        var mockReq = new org.springframework.mock.web.MockHttpServletRequest();
+        mockReq.addHeader("X-Forwarded-For", "203.0.113.9, 10.0.0.1");
+        mockReq.addHeader("User-Agent", "VJU-Client/2.0\r\n " + "A".repeat(600));
+        var extracted = com.vju.club.security.RequestMetadataExtractor.extract(mockReq);
+        assertThat(extracted.ipAddress()).isEqualTo("203.0.113.9");
+        assertThat(extracted.userAgent()).hasSize(512).doesNotContain("\r").doesNotContain("\n").startsWith("VJU-Client/2.0 ");
+
+        String longIp = "198.51.100." + "1".repeat(80);
+        UUID secondClub = id(call(
+                post("/api/v1/clubs")
+                        .header("X-Forwarded-For", longIp)
+                        .header("User-Agent", "TestAgent/1.0"),
+                adminToken,
+                Map.of("code", "IP2", "name", "IP Club 2"),
+                201));
+
+        UUID thirdClub = id(call(
+                post("/api/v1/clubs")
+                        .header("X-Forwarded-For", "unknown, 198.51.100.2")
+                        .with(req -> {
+                            req.setRemoteAddr("192.0.2.44");
+                            return req;
+                        }),
+                adminToken,
+                Map.of("code", "IP3", "name", "IP Club 3"),
+                201));
+
+        UUID fourthClub = id(call(
+                post("/api/v1/clubs")
+                        .header("X-Forwarded-For", "unknown, UNKNOWN")
+                        .with(req -> {
+                            req.setRemoteAddr("192.0.2.44");
+                            return req;
+                        }),
+                adminToken,
+                Map.of("code", "IP4", "name", "IP Club 4"),
+                201));
+
+        JsonNode firstLog = logs("resourceId", firstClub.toString()).path("items").get(0);
+        assertThat(firstLog.path("ipAddress").asText()).isEqualTo("203.0.113.9");
+        assertThat(firstLog.path("userAgent").asText()).hasSize(512);
+        assertThat(firstLog.path("userAgent").asText()).doesNotContain("\r").doesNotContain("\n");
+        assertThat(firstLog.path("userAgent").asText()).startsWith("VJU-Client/2.0 ");
+
+        JsonNode secondLog = logs("resourceId", secondClub.toString()).path("items").get(0);
+        assertThat(secondLog.path("ipAddress").asText()).hasSize(64);
+        assertThat(secondLog.path("userAgent").asText()).isEqualTo("TestAgent/1.0");
+
+        JsonNode thirdLog = logs("resourceId", thirdClub.toString()).path("items").get(0);
+        assertThat(thirdLog.path("ipAddress").asText()).isEqualTo("198.51.100.2");
+        assertThat(thirdLog.path("userAgent").isNull()).isTrue();
+
+        JsonNode fourthLog = logs("resourceId", fourthClub.toString()).path("items").get(0);
+        assertThat(fourthLog.path("ipAddress").asText()).isEqualTo("192.0.2.44");
+        assertThat(fourthLog.path("userAgent").isNull()).isTrue();
+    }
 }

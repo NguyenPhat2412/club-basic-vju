@@ -49,6 +49,11 @@ public record ClubStatisticsResponse(
         long liveDocuments,
         long totalDocumentBytes,
         long chatChannels,
+        long issuedCertificates,
+        long acknowledgedCertificates,
+        long pendingAcknowledgeCertificates,
+        long revokedCertificates,
+        int certificateAcknowledgementRate,
         List<DepartmentStatsItem> departmentBreakdown,
         OffsetDateTime generatedAt
 ) implements Serializable {

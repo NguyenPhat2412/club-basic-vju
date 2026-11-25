@@ -2,28 +2,27 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
-import { ClipboardList, Compass, Eye, FilterX, UsersRound } from "lucide-react";
+import { ClipboardList, Compass, Eye, FilterX, Search, UsersRound, X } from "lucide-react";
 import { apiModel } from "@/lib/api";
 import { clubSlugFromCode } from "@/lib/media";
-import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
 import { ClubAvatar, useClubMediaCatalog } from "@/components/shared/ClubMedia";
 import { DataTable } from "@/components/shared/DataTable";
+import { FilterPopover } from "@/components/shared/FilterPopover";
 import { Pagination } from "@/components/shared/Pagination";
 import { EmptyState, ErrorState, LoadingRows } from "@/components/shared/States";
 import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError, ListPage } from "@/components/shared/ListPage";
 import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/input";
+import { FormField, Input, Select } from "@/components/ui/input";
 import { formatDay } from "@/lib/utils";
 
 const LIMIT = 20;
 
 export function MyMembershipsView() {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [offset, setOffset] = useState(0);
@@ -62,38 +61,40 @@ export function MyMembershipsView() {
 
   return (
     <ListPage title="CLB đã tham gia">
-      <BreadcrumbToolbar
-        crumbs={[{ label: "Trang chủ", href: "/clubs" }, { label: "Câu lạc bộ" }, { label: "CLB đã tham gia" }]}
-        titleBadge={<CountBadge>{list.data?.total ?? 0}</CountBadge>}
-        search={{ value: search, onChange: setSearch, placeholder: "Tìm tên CLB, mã CLB, ban chuyên môn…" }}
-        extraActions={
-          <>
-            <Select
-              aria-label="Lọc theo trạng thái thành viên"
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setOffset(0);
-              }}
-              className="h-9 w-full text-xs sm:w-52"
-            >
-              <option value="">Tất cả trạng thái</option>
-              <option value="ACTIVE">ACTIVE — Đang tham gia</option>
-              <option value="SUSPENDED">SUSPENDED — Tạm đình chỉ</option>
-              <option value="LEFT">LEFT — Đã rời CLB</option>
-            </Select>
-            {hasFilter && (
-              <Button variant="outline" size="sm" onClick={clearFilter}>
-                <FilterX size={14} /> Xoá bộ lọc
-              </Button>
+      <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-border bg-white px-3 py-1.5 sm:px-4">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto sm:flex-1">
+          <div className="relative w-full min-w-0 sm:min-w-[170px] sm:max-w-[240px] sm:flex-1">
+            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm tên CLB, mã CLB, ban…" className="h-8 pl-8 pr-7 text-xs" />
+            {search && (
+              <button type="button" aria-label="Xoá tìm kiếm" onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X size={13} />
+              </button>
             )}
-            <Button variant="outline" size="sm" onClick={() => router.push("/applications")}>
-              <ClipboardList size={14} /> Đơn đăng ký của tôi
+          </div>
+          <FilterPopover activeCount={statusFilter ? 1 : 0} onClear={clearFilter} title="Lọc CLB đã tham gia">
+            <FormField label="Trạng thái thành viên" hideIndicator>
+              <Select aria-label="Lọc theo trạng thái thành viên" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setOffset(0); }} className="h-8 text-xs">
+                <option value="">Tất cả trạng thái</option>
+                <option value="ACTIVE">ACTIVE — Đang tham gia</option>
+                <option value="SUSPENDED">SUSPENDED — Tạm đình chỉ</option>
+                <option value="LEFT">LEFT — Đã rời CLB</option>
+              </Select>
+            </FormField>
+          </FilterPopover>
+          {hasFilter && (
+            <Button variant="outline" size="sm" className="h-8" onClick={clearFilter}>
+              <FilterX size={13} /> Xoá lọc
             </Button>
-          </>
-        }
-        onRefresh={() => queryClient.invalidateQueries({ queryKey: qk.myMemberships() })}
-      />
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <CountBadge>{list.data?.total ?? 0} CLB</CountBadge>
+          <Button variant="outline" size="sm" className="h-8" onClick={() => router.push("/applications")}>
+            <ClipboardList size={13} /> Đơn đăng ký của tôi
+          </Button>
+        </div>
+      </div>
       {list.isPending ? (
         <LoadingRows />
       ) : list.isError ? (

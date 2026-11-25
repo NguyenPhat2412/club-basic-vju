@@ -26,7 +26,7 @@ async function parseApiError(response: Response) {
 }
 
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-const SIGN_IN_PATHS = ['/auth/login', '/auth/register', '/auth/google'];
+const SIGN_IN_PATHS = ['/auth/login', '/auth/register', '/auth/google', '/auth/2fa/send', '/auth/2fa/verify'];
 
 function readCsrfCookie() {
   if (typeof document === 'undefined') return null;

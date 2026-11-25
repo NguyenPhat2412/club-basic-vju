@@ -8,6 +8,7 @@ export * from './club/facebook.types';
 export * from './department/department.types';
 export * from './application/application.types';
 export * from './event/event.types';
+export * from './certificate/certificate.types';
 export * from './task/task.types';
 export * from './document/document.types';
 export * from './chat/chat.types';

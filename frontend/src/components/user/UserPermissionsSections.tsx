@@ -5,6 +5,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
 import { KeyRound, Plus, Sparkles, Trash2 } from "lucide-react";
 import { apiModel, Club, PermissionItem, Scope, User, UserPermission } from "@/lib/api";
+import { useCriticalActionOtp } from "@/hooks/useCriticalActionOtp";
+import { Otp2FaChallengeModal } from "@/components/auth/Otp2FaChallengeModal";
 import { Section } from "@/components/shared/Overlays";
 import { scopeLabel } from "@/components/shared/RolePicker";
 import { ErrorState, LoadingRows, Notice } from "@/components/shared/States";
@@ -46,6 +48,7 @@ export function UserPermissionsSections({
   onRefreshEffective?: () => void;
 }) {
   const queryClient = useQueryClient();
+  const roleOtp = useCriticalActionOtp("ROLE_CHANGE");
   const [internalDraft, setInternalDraft] = useState<DirectPermissionDraft>(EMPTY_DIRECT_PERM_DRAFT);
   const [sectionNotice, setSectionNotice] = useState("");
 
@@ -102,7 +105,7 @@ export function UserPermissionsSections({
   };
 
   const grantDirectPerm = useMutation({
-    mutationFn: () => apiModel.grantPermission(user.id, permPayload!),
+    mutationFn: () => roleOtp.runWithOtp((otp) => apiModel.grantPermission(user.id, permPayload!, otp)),
     onSuccess: (granted) => {
       updateDraft(EMPTY_DIRECT_PERM_DRAFT);
       const meta = permByKey.get(granted.permissionKey);
@@ -114,11 +117,18 @@ export function UserPermissionsSections({
 
   const revokeDirectPerm = useMutation({
     mutationFn: (perm: UserPermission) =>
-      apiModel.revokePermission(user.id, perm.permissionId, {
-        scope: perm.scope,
-        clubId: perm.clubId,
-        departmentId: perm.departmentId,
-      }),
+      roleOtp.runWithOtp((otp) =>
+        apiModel.revokePermission(
+          user.id,
+          perm.permissionId,
+          {
+            scope: perm.scope,
+            clubId: perm.clubId,
+            departmentId: perm.departmentId,
+          },
+          otp
+        )
+      ),
     onSuccess: (_, perm) => {
       const meta = permByKey.get(perm.permissionKey);
       const label = meta ? permissionTitle(meta) : perm.permissionKey;
@@ -370,6 +380,7 @@ export function UserPermissionsSections({
           </div>
         )}
       </Section>
+      <Otp2FaChallengeModal {...roleOtp.otpModalProps} />
     </>
   );
 }

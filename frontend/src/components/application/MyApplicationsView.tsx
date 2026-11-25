@@ -4,17 +4,17 @@ import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
-import { ClipboardList, Eye, FilterX, Paperclip, XCircle } from "lucide-react";
+import { ClipboardList, Eye, FilterX, Paperclip, Search, X, XCircle } from "lucide-react";
 import { apiModel, Application, ApplicationSummary } from "@/lib/api";
-import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
 import { DataTable } from "@/components/shared/DataTable";
+import { FilterPopover } from "@/components/shared/FilterPopover";
 import { Pagination } from "@/components/shared/Pagination";
 import { EmptyState, ErrorState, LoadingRows, Notice } from "@/components/shared/States";
 import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError, ListPage } from "@/components/shared/ListPage";
 import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/input";
+import { FormField, Input, Select } from "@/components/ui/input";
 import { formatDay, validateApplicationFile } from "@/lib/utils";
 import { inferApplicantCategory } from "@/forms/application/application-form";
 import { MyApplicationOverlays } from "./MyApplicationOverlays";
@@ -190,55 +190,44 @@ function MyApplicationsContent() {
 
   return (
     <ListPage title="Đơn đăng ký của tôi">
-      <BreadcrumbToolbar
-        crumbs={[{ label: "Trang chủ", href: "/clubs" }, { label: "Câu lạc bộ" }, { label: "Đơn đăng ký của tôi" }]}
-        titleBadge={<CountBadge>{list.data?.total ?? 0}</CountBadge>}
-        search={{ value: search, onChange: setSearch, placeholder: "Tìm tên CLB, mã CLB, ban nguyện vọng…" }}
-        extraActions={
-          <>
-            <Select
-              aria-label="Lọc theo câu lạc bộ"
-              value={clubFilter}
-              onChange={(e) => {
-                setClubFilter(e.target.value);
-                setOffset(0);
-              }}
-              className="h-9 w-full text-xs sm:w-52"
-            >
-              <option value="">Tất cả câu lạc bộ</option>
-              {clubOptions.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code} · {c.name}
-                </option>
-              ))}
-            </Select>
-            <Select
-              aria-label="Lọc theo trạng thái đơn"
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setOffset(0);
-              }}
-              className="h-9 w-full text-xs sm:w-44"
-            >
-              <option value="">Tất cả trạng thái</option>
-              <option value="PENDING">PENDING — Chờ duyệt</option>
-              <option value="APPROVED">APPROVED — Đã duyệt</option>
-              <option value="REJECTED">REJECTED — Đã từ chối</option>
-              <option value="CANCELLED">CANCELLED — Đã rút</option>
-            </Select>
-            {hasFilter && (
-              <Button variant="outline" size="sm" onClick={clearFilters}>
-                <FilterX size={14} /> Xoá bộ lọc
-              </Button>
+      <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-border bg-white px-3 py-1.5 sm:px-4">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto sm:flex-1">
+          <div className="relative w-full min-w-0 sm:min-w-[170px] sm:max-w-[240px] sm:flex-1">
+            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm tên CLB, mã CLB, ban…" className="h-8 pl-8 pr-7 text-xs" />
+            {search && (
+              <button type="button" aria-label="Xoá tìm kiếm" onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X size={13} />
+              </button>
             )}
-          </>
-        }
-        onRefresh={() => {
-          list.refetch();
-          if (selectedId) detail.refetch();
-        }}
-      />
+          </div>
+          <FilterPopover activeCount={[clubFilter, statusFilter].filter(Boolean).length} onClear={clearFilters} title="Lọc đơn đăng ký">
+            <FormField label="Câu lạc bộ" hideIndicator>
+              <Select aria-label="Lọc theo câu lạc bộ" value={clubFilter} onChange={(e) => { setClubFilter(e.target.value); setOffset(0); }} className="h-8 text-xs">
+                <option value="">Tất cả câu lạc bộ</option>
+                {clubOptions.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}
+              </Select>
+            </FormField>
+            <FormField label="Trạng thái đơn" hideIndicator>
+              <Select aria-label="Lọc theo trạng thái đơn" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setOffset(0); }} className="h-8 text-xs">
+                <option value="">Tất cả trạng thái</option>
+                <option value="PENDING">PENDING — Chờ duyệt</option>
+                <option value="APPROVED">APPROVED — Đã duyệt</option>
+                <option value="REJECTED">REJECTED — Đã từ chối</option>
+                <option value="CANCELLED">CANCELLED — Đã rút</option>
+              </Select>
+            </FormField>
+          </FilterPopover>
+          {hasFilter && (
+            <Button variant="outline" size="sm" className="h-8" onClick={clearFilters}>
+              <FilterX size={13} /> Xoá lọc
+            </Button>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <CountBadge>{list.data?.total ?? 0} đơn</CountBadge>
+        </div>
+      </div>
       {notice && <Notice tone="success">{notice}</Notice>}
       {err && <Notice tone="error">{describeError(err)}</Notice>}
       <UpcomingInterviewsBanner

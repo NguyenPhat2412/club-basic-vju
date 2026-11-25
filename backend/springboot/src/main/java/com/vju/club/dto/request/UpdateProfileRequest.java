@@ -11,5 +11,15 @@ import jakarta.validation.constraints.Size;
 public record UpdateProfileRequest(
         @Size(max = 200) String fullName,
         @Size(max = 32) @Pattern(regexp = PHONE_PATTERN, message = "may only contain digits, spaces and + ( ) - .") String phone,
-        @Size(max = 500) @URL(regexp = WEB_URL_PATTERN) String avatarUrl
-) { }
+        @Size(max = 500) @URL(regexp = WEB_URL_PATTERN) String avatarUrl,
+        Boolean emailNotificationsEnabled,
+        Boolean twoFactorEnabled
+) {
+    public UpdateProfileRequest(String fullName, String phone, String avatarUrl) {
+        this(fullName, phone, avatarUrl, null, null);
+    }
+
+    public UpdateProfileRequest(String fullName, String phone, String avatarUrl, Boolean emailNotificationsEnabled) {
+        this(fullName, phone, avatarUrl, emailNotificationsEnabled, null);
+    }
+}

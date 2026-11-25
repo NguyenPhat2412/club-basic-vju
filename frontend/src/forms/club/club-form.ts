@@ -68,6 +68,7 @@ export type ClubManagementTabKey =
   | 'members'
   | 'departments'
   | 'events'
+  | 'certificates'
   | 'tasks'
   | 'documents'
   | 'chat'
@@ -81,6 +82,7 @@ export const CLUB_MANAGEMENT_TAB_KEYS: ClubManagementTabKey[] = [
   'members',
   'departments',
   'events',
+  'certificates',
   'tasks',
   'documents',
   'chat',
@@ -142,6 +144,7 @@ export function computeVisibleClubTabs(
   }
   if (hasAny(['event.view', 'event.create', 'event.update', 'event.attendance', 'event.attendance_edit'])) {
     list.push({ value: 'events', label: 'Sự kiện' });
+    list.push({ value: 'certificates', label: 'Chứng nhận' });
   }
   if (hasAny(['task.view', 'task.create', 'task.update', 'task.verify'])) {
     list.push({ value: 'tasks', label: 'Công việc' });

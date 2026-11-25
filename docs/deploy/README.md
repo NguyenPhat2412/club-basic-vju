@@ -1,9 +1,9 @@
 # Triển khai và sao lưu
 
-| Thành phần | Production | Stagging (tách DB riêng) |
+| Thành phần | Production | Staging (tách DB riêng) |
 |---|---|---|
-| Frontend | https://vju-club.all1.vn → `127.0.0.1:3110` | https://stagging.vju-club.all1.vn → `127.0.0.1:3111` |
-| Backend | https://api.vju-club.all1.vn → `127.0.0.1:8110` | https://stagging.vju-club.all1.vn/api/v1 → `127.0.0.1:8111` |
+| Frontend | https://vju-club.all1.vn → `127.0.0.1:3110` | https://staging.vju-club.all1.vn → `127.0.0.1:3111` |
+| Backend | https://api.vju-club.all1.vn → `127.0.0.1:8110` | https://staging.vju-club.all1.vn/api/v1 → `127.0.0.1:8111` |
 | VPS | `root@160.22.123.184`, Ubuntu 24.04 (`Asia/Ho_Chi_Minh`) | `/srv/vju-club-stagging` (cùng VPS, project Docker độc lập) |
 
 nginx trên máy chủ (`deploy/nginx/vju-club.conf` và `deploy/nginx/vju-club-stagging.conf`) nhận HTTPS (Let's Encrypt, certbot tự gia hạn) rồi chuyển vào từng cụm Docker Compose độc lập (`deploy/compose.prod.yml`: postgres, redis, backend, frontend).
@@ -11,7 +11,7 @@ nginx trên máy chủ (`deploy/nginx/vju-club.conf` và `deploy/nginx/vju-club-
 ## Deploy
 
 ```bash
-deploy/deploy-stagging.sh             # đẩy HEAD hiện tại lên https://stagging.vju-club.all1.vn
+deploy/deploy-stagging.sh             # đẩy HEAD hiện tại lên https://staging.vju-club.all1.vn
 deploy/deploy-stagging.sh root@160.22.123.184 <git-ref>
 
 deploy/deploy.sh                      # đẩy main lên Production (https://vju-club.all1.vn)
@@ -59,9 +59,9 @@ Kiểm tra: `curl https://api.vju-club.all1.vn/api/v1/auth/google/config` trả 
 ## Tích hợp Fanpage Facebook (OAuth 1 chạm & Đồng bộ tự động)
 
 1. Vào **Meta for Developers** (https://developers.facebook.com) → chọn Ứng dụng của VJU ClubHub:
-   - **Cài đặt ứng dụng → Thông tin cơ bản (*App Settings → Basic*):** thêm `stagging.vju-club.all1.vn`, `vju-club.all1.vn` và `api.vju-club.all1.vn` vào **App Domains**; khai báo **Website Site URL** tương ứng.
+   - **Cài đặt ứng dụng → Thông tin cơ bản (*App Settings → Basic*):** thêm `staging.vju-club.all1.vn`, `vju-club.all1.vn` và `api.vju-club.all1.vn` vào **App Domains**; khai báo **Website Site URL** tương ứng.
    - **Facebook Login for Business → Cài đặt (*Settings*):** thêm đủ các **Valid OAuth Redirect URIs**:
-     - Stagging: `https://stagging.vju-club.all1.vn/api/v1/integrations/facebook/oauth/callback`
+     - Staging: `https://staging.vju-club.all1.vn/api/v1/integrations/facebook/oauth/callback`
      - Production: `https://api.vju-club.all1.vn/api/v1/integrations/facebook/oauth/callback`
 2. Đăng nhập quyền `SYSTEM_ADMIN` vào trang **`/settings`** → mục **Tích hợp bên ngoài & Biến môi trường (.env) → Facebook OAuth & Graph API**:
    - Nhập `Facebook App ID`, `Facebook App Secret`, `Valid OAuth Redirect URI`, `Frontend Base URL` và bật **Tự động đồng bộ Fanpage Facebook định kỳ** (mặc định `60 phút`, phạm vi `15..1440 phút`).

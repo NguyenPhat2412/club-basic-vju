@@ -2,7 +2,7 @@
 
 - **Ngày chốt hồ sơ:** `2026-11-12` *(cập nhật đồng bộ mở rộng `V25..V43` + Facebook Auto-Sync + Async Hardening: `2026-11-24`)*
 - **Phạm vi bao phủ:** Toàn bộ 4 giai đoạn phát triển & các phân hệ mở rộng Sprint 3–4 (`PB-01`..`PB-96` — bao gồm Facebook Fanpage OAuth & Auto-Sync, cấu hình live `.env` trên `/settings`, ủy quyền cấp dưới và kế hoạch cải tiến phản hồi BĐP/ĐTN)
-- **Nhãn phát hành & Môi trường vận hành:** Production (`https://vju-club.all1.vn`, `https://api.vju-club.all1.vn`) và Stagging (`https://stagging.vju-club.all1.vn`)
+- **Nhãn phát hành & Môi trường vận hành:** Production (`https://vju-club.all1.vn`, `https://api.vju-club.all1.vn`) và Staging (`https://staging.vju-club.all1.vn`)
 
 ---
 
@@ -68,7 +68,7 @@
 
 ### 4.1 Địa chỉ truy cập trực tiếp
 - **Production (HTTPS):** https://vju-club.all1.vn | REST API & Swagger: https://api.vju-club.all1.vn/swagger-ui.html
-- **Stagging (HTTPS):** https://stagging.vju-club.all1.vn | Swagger: https://stagging.vju-club.all1.vn/swagger-ui.html
+- **Staging (HTTPS):** https://staging.vju-club.all1.vn | Swagger: https://staging.vju-club.all1.vn/swagger-ui.html
 - **Local Development:** Giao diện Next.js 16 http://localhost:3000 | REST API Spring Boot 4 http://localhost:8080 | Danh mục API http://localhost:8080/api/v1/api-catalog
 
 ### 4.2 Kịch bản trình diễn 5 vai trò (5–7 phút)

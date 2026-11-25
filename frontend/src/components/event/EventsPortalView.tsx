@@ -4,24 +4,24 @@ import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
-import { Compass, Eye, FilterX, MapPin, QrCode, Search, UserCheck, X, XCircle } from "lucide-react";
-import { apiModel, MyEventParticipation, PublicEvent } from "@/lib/api";
+import { Compass, Eye, MapPin, UserCheck, XCircle } from "lucide-react";
+import { apiModel, Club, EventParticipantRole, MyEventParticipation, PublicEvent } from "@/lib/api";
+import { participantRoleLabel } from "@/lib/club/youth-union";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
-import { BreadcrumbToolbar, SegmentedTabs } from "@/components/shared/BreadcrumbToolbar";
 import { DataTable } from "@/components/shared/DataTable";
 import { Pagination } from "@/components/shared/Pagination";
 import { EmptyState, ErrorState, LoadingRows, Notice } from "@/components/shared/States";
 import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError, ListPage } from "@/components/shared/ListPage";
-import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui/input";
+import { Badge, StatusBadge } from "@/components/ui/badge";
 import { formatDateTime, formatDay } from "@/lib/utils";
-import { EVENT_TYPE_LABELS } from "@/forms/event/event-form";
+import { EVENT_TYPE_LABELS, getEventScopeLabel, isEventPublic } from "@/forms/event/event-form";
 import { EventParticipationDrawers } from "./EventParticipationDrawers";
+import { EventsPortalToolbar } from "./EventsPortalToolbar";
 import { EventQrSelfCheckInModal } from "./EventQrModals";
 import { RequiresSubmissionBadge } from "./EventSubmissionBlock";
 import { MyEventsHistorySection } from "./MyEventsHistorySection";
+import { TrainingPointsReportDialog } from "./TrainingPointsReportDialog";
 
 export function EventsPortalView() {
   return (
@@ -43,6 +43,7 @@ function EventsPortalContent() {
 
   const [tab, setTab] = useState<"discover" | "mine">("discover");
   const [search, setSearch] = useState("");
+  const [clubFilter, setClubFilter] = useState("");
   const [ctvFilter, setCtvFilter] = useState<"ALL" | "CTV_ONLY">("ALL");
   const [typeFilter, setTypeFilter] = useState("");
   const [discoverOffset, setDiscoverOffset] = useState(0);
@@ -57,6 +58,7 @@ function EventsPortalContent() {
   const [selectedParticipation, setSelectedParticipation] = useState<MyEventParticipation | null>(null);
   const [registeringEvent, setRegisteringEvent] = useState<PublicEvent | null>(null);
   const [manualQrOpen, setManualQrOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [dismissedQrKey, setDismissedQrKey] = useState<string | null>(null);
   const [regNote, setRegNote] = useState("");
   const [notice, setNotice] = useState("");
@@ -69,6 +71,29 @@ function EventsPortalContent() {
     queryKey: qk.eventsPortal(isLoggedIn ? "discover" : "public", session.user?.id ?? "anon"),
     queryFn: () => (isLoggedIn ? apiModel.discoverEvents(0, 100) : apiModel.publicEvents(0, 100)),
   });
+
+  const publicClubs = useQuery({
+    queryKey: qk.publicClubs("events-portal-units"),
+    queryFn: () => apiModel.publicClubs("", "", 0, 100),
+    staleTime: 60_000,
+  });
+
+  const unitOptions = useMemo(() => {
+    const map = new Map<string, Club>((publicClubs.data?.items ?? []).map((c) => [c.id, c]));
+    for (const ev of discoverEvents.data?.items ?? []) {
+      if (ev.clubId && !map.has(ev.clubId)) map.set(ev.clubId, { id: ev.clubId, code: "", name: ev.clubName, status: "ACTIVE" });
+    }
+    return Array.from(map.values()).sort((a, b) => {
+      const aDtn = a.code?.toUpperCase() === "DOANVJU" ? 0 : 1;
+      const bDtn = b.code?.toUpperCase() === "DOANVJU" ? 0 : 1;
+      return aDtn !== bDtn ? aDtn - bDtn : a.name.localeCompare(b.name, "vi");
+    });
+  }, [publicClubs.data?.items, discoverEvents.data?.items]);
+
+  const canViewTrainingPointsReport =
+    isLoggedIn &&
+    (["event.attendance", "event.attendance_edit", "event.update"].some((k) => session.can(k)) ||
+      session.hasGlobal("user.view"));
 
   const memberships = useQuery({
     queryKey: qk.eventsPortal("memberships"),
@@ -102,9 +127,7 @@ function EventsPortalContent() {
   const activeRegByEvent = useMemo(() => {
     const map = new Map<string, MyEventParticipation>();
     for (const item of myAllActiveRegs.data?.items ?? []) {
-      if (item.registrationStatus === "REGISTERED") {
-        map.set(item.eventId, item);
-      }
+      if (item.registrationStatus === "REGISTERED") map.set(item.eventId, item);
     }
     return map;
   }, [myAllActiveRegs.data?.items]);
@@ -113,17 +136,18 @@ function EventsPortalContent() {
     const qLower = search.trim().toLowerCase();
     return [...(discoverEvents.data?.items ?? [])]
       .filter((ev) => {
+        if (clubFilter && ev.clubId !== clubFilter) return false;
         if (ctvFilter === "CTV_ONLY" && !ev.allowCtv) return false;
         if (typeFilter && ev.eventType !== typeFilter) return false;
         if (!qLower) return true;
         return ev.title.toLowerCase().includes(qLower) || ev.clubName.toLowerCase().includes(qLower) || (ev.location ?? "").toLowerCase().includes(qLower);
       })
       .sort((a, b) => b.startTime.localeCompare(a.startTime));
-  }, [discoverEvents.data?.items, search, ctvFilter, typeFilter]);
+  }, [discoverEvents.data?.items, search, clubFilter, ctvFilter, typeFilter]);
 
   const pagedDiscover = useMemo(() => discoverList.slice(discoverOffset, discoverOffset + discoverLimit), [discoverList, discoverOffset, discoverLimit]);
-  const hasDiscoverFilters = Boolean(search.trim() || ctvFilter !== "ALL" || typeFilter);
-  const clearDiscoverFilters = () => { setSearch(""); setCtvFilter("ALL"); setTypeFilter(""); setDiscoverOffset(0); };
+  const hasDiscoverFilters = Boolean(search.trim() || clubFilter || ctvFilter !== "ALL" || typeFilter);
+  const clearDiscoverFilters = () => { setSearch(""); setClubFilter(""); setCtvFilter("ALL"); setTypeFilter(""); setDiscoverOffset(0); };
 
   const activeSelectedDiscover: PublicEvent | null =
     selectedDiscover ??
@@ -146,10 +170,10 @@ function EventsPortalContent() {
   };
 
   const registerMutation = useMutation({
-    mutationFn: (ev: PublicEvent) => apiModel.registerEvent(ev.id, regNote.trim() || undefined),
-    onSuccess: (reg, ev) => {
-      const roleLabel = reg.participantType === "CTV" ? "Cộng tác viên (CTV)" : "Thành viên CLB";
-      setNotice(`Đã đăng ký tham gia "${ev.title}" với tư cách ${roleLabel}.`);
+    mutationFn: ({ ev, participantType }: { ev: PublicEvent; participantType: EventParticipantRole }) =>
+      apiModel.registerEvent(ev.id, regNote.trim() || undefined, participantType),
+    onSuccess: (reg, { ev }) => {
+      setNotice(`Đã đăng ký tham gia "${ev.title}" với tư cách ${participantRoleLabel(reg.participantType)}.`);
       setErrorMsg("");
       setRegisteringEvent(null);
       setRegNote("");
@@ -172,8 +196,7 @@ function EventsPortalContent() {
   const canRegisterNow = (ev: PublicEvent) => {
     if (ev.status !== "OPEN_REGISTRATION") return false;
     if (ev.registrationDeadline && new Date(ev.registrationDeadline).getTime() < now) return false;
-    const isMember = activeClubIds.has(ev.clubId);
-    return isMember || ev.allowCtv;
+    return activeClubIds.has(ev.clubId) || isEventPublic(ev);
   };
 
   const canCancelNow = (eventStatus: string, registrationStatus: string, deadline?: string) => {
@@ -185,59 +208,28 @@ function EventsPortalContent() {
 
   return (
     <ListPage title="Sự kiện & Cộng tác viên">
-      <BreadcrumbToolbar
-        crumbs={[{ label: "Trang chủ", href: "/clubs" }, { label: "Cổng cá nhân" }, { label: "Sự kiện & CTV" }]}
-        titleBadge={
-          <CountBadge>
-            {tab === "discover" ? `${discoverList.length} sự kiện` : `${myHistory.data?.total ?? 0} lượt tham gia`}
-          </CountBadge>
-        }
-        extraActions={
-          isLoggedIn ? (
-            <>
-              <Button size="sm" variant="outline" onClick={() => setManualQrOpen(true)}>
-                <QrCode size={14} /> Điểm danh QR
-              </Button>
-              <SegmentedTabs
-                value={tab}
-                onChange={(v) => { setTab(v); setNotice(""); setErrorMsg(""); }}
-                options={[{ value: "discover", label: "Khám phá sự kiện" }, { value: "mine", label: "Sự kiện & Điểm danh của tôi" }]}
-              />
-            </>
-          ) : undefined
-        }
+      <EventsPortalToolbar
+        tab={tab}
+        onTabChange={(v) => { setTab(v); setNotice(""); setErrorMsg(""); }}
+        isLoggedIn={isLoggedIn}
+        canViewTrainingPointsReport={canViewTrainingPointsReport}
+        discoverCount={discoverList.length}
+        myHistoryTotal={myHistory.data?.total ?? 0}
+        search={search}
+        onSearchChange={(v) => { setSearch(v); setDiscoverOffset(0); }}
+        clubFilter={clubFilter}
+        onClubFilterChange={(v) => { setClubFilter(v); setDiscoverOffset(0); }}
+        unitOptions={unitOptions}
+        typeFilter={typeFilter}
+        onTypeFilterChange={(v) => { setTypeFilter(v); setDiscoverOffset(0); }}
+        ctvFilter={ctvFilter}
+        onCtvFilterChange={(v) => { setCtvFilter(v); setDiscoverOffset(0); }}
+        hasDiscoverFilters={hasDiscoverFilters}
+        onClearFilters={clearDiscoverFilters}
+        onOpenQr={() => setManualQrOpen(true)}
+        onOpenReport={() => setReportOpen(true)}
         onRefresh={refreshAll}
       />
-      {tab === "discover" && (
-        <div className="flex flex-wrap items-center gap-2 border-b border-border/60 bg-card px-4 py-2.5 sm:px-6">
-          <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-            <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setDiscoverOffset(0); }}
-              placeholder="Tìm tên sự kiện, CLB, địa điểm…"
-              aria-label="Tìm tên sự kiện, CLB, địa điểm"
-              className="h-8 pl-8 pr-7 text-xs"
-            />
-            {search && (
-              <button type="button" aria-label="Xoá tìm kiếm" onClick={() => { setSearch(""); setDiscoverOffset(0); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                <X size={13} />
-              </button>
-            )}
-          </div>
-          <Select aria-label="Lọc loại sự kiện" value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setDiscoverOffset(0); }} className="h-8 w-full text-xs sm:w-44">
-            <option value="">Mọi loại hình</option>
-            {Object.entries(EVENT_TYPE_LABELS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
-          </Select>
-          <Select aria-label="Lọc đối tượng sự kiện" value={ctvFilter} onChange={(e) => { setCtvFilter(e.target.value as "ALL" | "CTV_ONLY"); setDiscoverOffset(0); }} className="h-8 w-full text-xs sm:w-48">
-            <option value="ALL">Tất cả sự kiện mở</option>
-            <option value="CTV_ONLY">Mở tuyển Cộng tác viên (CTV)</option>
-          </Select>
-          {hasDiscoverFilters && (
-            <Button size="sm" variant="outline" className="h-8" onClick={clearDiscoverFilters}><FilterX size={14} /> Xoá lọc</Button>
-          )}
-        </div>
-      )}
 
       {notice && <Notice tone="success">{notice}</Notice>}
       {errorMsg && <Notice tone="error">{errorMsg}</Notice>}
@@ -291,10 +283,12 @@ function EventsPortalContent() {
                 {
                   key: "audience",
                   header: "Đối tượng",
-                  sortValue: (ev) => Number(ev.allowCtv),
+                  sortValue: (ev) => Number(isEventPublic(ev)) * 2 + Number(ev.allowCtv),
                   render: (ev) => (
                     <div className="flex flex-wrap items-center gap-1">
-                      {ev.allowCtv ? <Badge tone="pending">Công khai (SV & CTV)</Badge> : <Badge tone="neutral">Nội bộ thành viên CLB</Badge>}
+                      <Badge tone={isEventPublic(ev) ? "pending" : "neutral"}>
+                        {isEventPublic(ev) ? getEventScopeLabel(ev) : "Nội bộ thành viên CLB"}
+                      </Badge>
                       {ev.requiresSubmission && <RequiresSubmissionBadge />}
                     </div>
                   ),
@@ -320,7 +314,7 @@ function EventsPortalContent() {
                     return (
                       <div className="flex flex-wrap items-center gap-1.5">
                         <StatusBadge status={ev.status} />
-                        {myReg && <Badge tone="primary">Đã ĐK ({myReg.participantType === "CTV" ? "CTV" : "TV"})</Badge>}
+                        {myReg && <Badge tone="primary">Đã ĐK ({participantRoleLabel(myReg.participantType)})</Badge>}
                       </div>
                     );
                   },
@@ -331,12 +325,17 @@ function EventsPortalContent() {
                   className: "text-right",
                   render: (ev) => {
                     const myReg = activeRegByEvent.get(ev.id);
+                    const registerLabel = activeClubIds.has(ev.clubId)
+                      ? "Đăng ký tham gia"
+                      : ev.allowCtv && !(ev.allowPublicAttendees ?? ev.allowCtv)
+                        ? "Đăng ký CTV"
+                        : "Đăng ký tham dự";
                     const actions = [
                       { icon: <Eye />, label: "Xem chi tiết", onClick: () => setSelectedDiscover(ev) },
                       ...(isLoggedIn && myReg && canCancelNow(ev.status, myReg.registrationStatus, ev.registrationDeadline)
                         ? [{ icon: <XCircle />, label: "Huỷ đăng ký", danger: true, disabled: cancelMutation.isPending, onClick: () => cancelMutation.mutate(ev.id) }]
                         : isLoggedIn && !myReg && canRegisterNow(ev)
-                          ? [{ icon: <UserCheck />, label: activeClubIds.has(ev.clubId) ? "Đăng ký tham gia" : "Đăng ký CTV", onClick: () => { setRegisteringEvent(ev); setRegNote(""); registerMutation.reset(); } }]
+                          ? [{ icon: <UserCheck />, label: registerLabel, onClick: () => { setRegisteringEvent(ev); setRegNote(""); registerMutation.reset(); } }]
                           : []),
                     ];
                     return <TableRowActions actions={actions} />;
@@ -364,7 +363,8 @@ function EventsPortalContent() {
         selectedDiscover={activeSelectedDiscover} setSelectedDiscover={handleSetSelectedDiscover}
         selectedParticipation={selectedParticipation} setSelectedParticipation={setSelectedParticipation}
         canRegisterNow={canRegisterNow} canCancelNow={canCancelNow}
-        registerPending={registerMutation.isPending} onRegister={(ev) => registerMutation.mutate(ev)}
+        registerPending={registerMutation.isPending}
+        onRegister={(ev, participantType) => registerMutation.mutate({ ev, participantType })}
         cancelPending={cancelMutation.isPending} onCancel={(eventId) => cancelMutation.mutate(eventId)}
         onRefresh={refreshAll} onNotice={setNotice} onError={setErrorMsg}
       />
@@ -380,6 +380,13 @@ function EventsPortalContent() {
           params.set("auth", "login");
           router.push(`/events?${params.toString()}`);
         }}
+      />
+      <TrainingPointsReportDialog
+        key={reportOpen ? `open-${clubFilter || "all"}` : "closed"}
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        clubs={unitOptions}
+        initialClubId={clubFilter || undefined}
       />
     </ListPage>
   );

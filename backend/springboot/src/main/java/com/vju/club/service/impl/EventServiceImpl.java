@@ -1,9 +1,12 @@
 package com.vju.club.service.impl;
 
 import com.vju.club.annotation.RequirePermission;
+import com.vju.club.common.AcademicTermUtil;
+import com.vju.club.common.ApiPaths;
 import com.vju.club.common.EventConstants;
 import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.config.CacheConfig;
+import com.vju.club.dto.record.ClubMediaContent;
 import com.vju.club.dto.record.UploadedFile;
 import com.vju.club.dto.request.AttendanceItemRequest;
 import com.vju.club.dto.request.CreateEventRequest;
@@ -52,8 +55,10 @@ import com.vju.club.service.EventService;
 import com.vju.club.service.NotificationService;
 import com.vju.club.service.SystemSettingsService;
 import com.vju.club.storage.DocumentStorage;
+import com.vju.club.storage.ImageUploads;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Sort;
@@ -75,10 +80,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -99,6 +106,10 @@ public class EventServiceImpl implements EventService {
             EventStatus.CLOSED_REGISTRATION, Set.of(EventStatus.OPEN_REGISTRATION, EventStatus.COMPLETED, EventStatus.CANCELLED));
     private static final Set<TaskStatus> OPEN_TASK_STATUSES = Set.of(TaskStatus.TODO, TaskStatus.IN_PROGRESS);
     private static final Duration MAX_CALENDAR_RANGE = Duration.ofDays(366);
+    private static final String COVER_KEY_PREFIX = "event-covers/";
+    private static final long COVER_MAX_BYTES = 8L * 1024L * 1024L;
+    private static final Pattern COVER_FILE_NAME = Pattern.compile(
+            "^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}-[0-9a-f]{32}\\.(png|jpg|gif|webp)$");
     private static final long MAX_SUBMISSION_BYTES = 10L * 1024L * 1024L;
     private static final Map<String, String> ALLOWED_SUBMISSION_TYPES = Map.of(
             "pdf", "application/pdf",
@@ -129,6 +140,9 @@ public class EventServiceImpl implements EventService {
 
     @Autowired(required = false)
     private AiTranslationService aiTranslationService;
+
+    @Value("${app.public-api-base-url:http://localhost:${server.port:8080}}")
+    private String publicApiBaseUrl = "http://localhost:8080";
 
     @Override
     @Transactional(readOnly = true)
@@ -209,9 +223,14 @@ public class EventServiceImpl implements EventService {
         event.setStartTime(request.startTime());
         event.setEndTime(request.endTime());
         event.setRegistrationDeadline(request.registrationDeadline());
+        event.setAcademicTerm(AcademicTermUtil.resolveOrDerive(request.academicTerm(), request.startTime()));
         event.setAllowCtv(Boolean.TRUE.equals(request.allowCtv()));
+        event.setAllowPublicAttendees(Boolean.TRUE.equals(request.allowPublicAttendees()));
         event.setRequiresSubmission(Boolean.TRUE.equals(request.requiresSubmission()));
         event.setMaxParticipants(request.maxParticipants());
+        if (request.coverImageUrl() != null) {
+            event.setCoverImageUrl(normalizeCoverImageUrl(request.coverImageUrl()));
+        }
         EventStatus initialStatus = request.status() == null ? EventStatus.OPEN_REGISTRATION : request.status();
         if (initialStatus != EventStatus.DRAFT && initialStatus != EventStatus.OPEN_REGISTRATION) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_EVENT_STATUS",
@@ -273,15 +292,40 @@ public class EventServiceImpl implements EventService {
         OffsetDateTime endTime = request.endTime() != null ? request.endTime() : event.getEndTime();
         OffsetDateTime deadline = request.registrationDeadline() != null ? request.registrationDeadline() : event.getRegistrationDeadline();
         validateTimes(startTime, endTime, deadline);
+        String nextAcademicTerm = request.academicTerm() != null
+                ? AcademicTermUtil.resolveOrDerive(request.academicTerm(), startTime)
+                : (event.getAcademicTerm() == null || event.getAcademicTerm().isBlank()
+                        ? AcademicTermUtil.deriveFromStartTime(startTime)
+                        : event.getAcademicTerm());
+        if (event.getAttendanceLockedAt() != null) {
+            boolean cancelling = request.status() == EventStatus.CANCELLED && previousStatus != EventStatus.CANCELLED;
+            boolean changingStartTime = request.startTime() != null
+                    && !request.startTime().toInstant().equals(event.getStartTime().toInstant());
+            boolean changingEndTime = request.endTime() != null
+                    && !request.endTime().toInstant().equals(event.getEndTime().toInstant());
+            boolean changingTerm = request.academicTerm() != null
+                    && !Objects.equals(nextAcademicTerm, event.getAcademicTerm());
+            if (cancelling || changingStartTime || changingEndTime || changingTerm) {
+                throw new ApiException(HttpStatus.CONFLICT, "ATTENDANCE_LOCKED",
+                        "Bảng điểm danh sự kiện đã được chốt và ký xác nhận, không thể huỷ sự kiện hoặc thay đổi học kỳ / thời gian diễn ra");
+            }
+        }
         event.setStartTime(startTime);
         event.setEndTime(endTime);
         event.setRegistrationDeadline(deadline);
+        event.setAcademicTerm(nextAcademicTerm);
 
         if (request.allowCtv() != null) {
             event.setAllowCtv(request.allowCtv());
         }
+        if (request.allowPublicAttendees() != null) {
+            event.setAllowPublicAttendees(request.allowPublicAttendees());
+        }
         if (request.requiresSubmission() != null) {
             event.setRequiresSubmission(request.requiresSubmission());
+        }
+        if (request.coverImageUrl() != null) {
+            event.setCoverImageUrl(normalizeCoverImageUrl(request.coverImageUrl()));
         }
         if (request.maxParticipants() != null) {
             long registered = registrationRepository.countByEvent_IdAndStatus(eventId, EventRegistrationStatus.REGISTERED);
@@ -322,6 +366,77 @@ public class EventServiceImpl implements EventService {
         return eventMapper.toResponse(saved);
     }
 
+    @Override
+    @Transactional
+    @CacheEvict(cacheNames = CacheConfig.CACHE_PUBLIC_EVENTS, allEntries = true)
+    public EventResponse uploadCover(Actor actor, UUID eventId, UploadedFile file) {
+        Event event = eventRepository.findWithRelationsById(eventId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
+        UUID clubId = event.getClub().getId();
+        UUID deptId = event.getDepartment() == null ? null : event.getDepartment().getId();
+        boolean allowed = authorizationService.hasPermission(actor, EventConstants.PERMISSION_UPDATE, clubId, deptId)
+                || authorizationService.hasPermission(actor, EventConstants.PERMISSION_CREATE, clubId, deptId);
+        if (!allowed) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
+        }
+
+        ImageUploads.ValidatedImage image = ImageUploads.read(file, COVER_MAX_BYTES);
+        String fileName = eventId + "-" + UUID.randomUUID().toString().replace("-", "") + image.extension();
+        String key = COVER_KEY_PREFIX + fileName;
+        String previousUrl = event.getCoverImageUrl();
+        Map<String, Object> before = snapshot(event);
+        String url = normalizedPublicApiBaseUrl() + ApiPaths.publicEventCoverPath(fileName);
+
+        documentStorage.put(key, new ByteArrayInputStream(image.bytes()), image.bytes().length, image.contentType());
+        Event saved;
+        try {
+            event.setCoverImageUrl(url);
+            saved = eventRepository.saveAndFlush(event);
+        } catch (RuntimeException failed) {
+            deleteCoverQuietly(key);
+            throw failed;
+        }
+
+        deletePreviousCoverQuietly(eventId, previousUrl);
+        auditService.recordChange(actor.id(), AuditAction.EVENT_UPDATED, eventId, clubId, before, snapshot(saved));
+        return eventMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(cacheNames = CacheConfig.CACHE_PUBLIC_EVENTS, allEntries = true)
+    public EventResponse deleteCover(Actor actor, UUID eventId) {
+        Event event = eventRepository.findWithRelationsById(eventId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
+        UUID clubId = event.getClub().getId();
+        UUID deptId = event.getDepartment() == null ? null : event.getDepartment().getId();
+        authorizationService.require(actor, EventConstants.PERMISSION_UPDATE, clubId, deptId);
+
+        String previousUrl = event.getCoverImageUrl();
+        Map<String, Object> before = snapshot(event);
+        event.setCoverImageUrl(null);
+        Event saved = eventRepository.saveAndFlush(event);
+        deletePreviousCoverQuietly(eventId, previousUrl);
+        auditService.recordChange(actor.id(), AuditAction.EVENT_UPDATED, eventId, clubId, before, snapshot(saved));
+        return eventMapper.toResponse(saved);
+    }
+
+    @Override
+    public ClubMediaContent openCover(String fileName) {
+        if (fileName == null || !COVER_FILE_NAME.matcher(fileName).matches()) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "EVENT_COVER_NOT_FOUND", "Event cover image not found");
+        }
+        DocumentStorage.StoredObject stored;
+        try {
+            stored = documentStorage.open(COVER_KEY_PREFIX + fileName);
+        } catch (RuntimeException missing) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "EVENT_COVER_NOT_FOUND", "Event cover image not found");
+        }
+        String ext = fileName.substring(fileName.lastIndexOf('.') + 1);
+        String contentType = "jpg".equals(ext) ? "image/jpeg" : "image/" + ext;
+        return new ClubMediaContent(fileName, contentType, stored.size(), stored.content());
+    }
+
     private void warmTranslateEvent(Event event) {
         if (aiTranslationService == null || event == null) return;
         List<String> texts = new ArrayList<>();
@@ -354,7 +469,7 @@ public class EventServiceImpl implements EventService {
         Event event = eventRepository.findWithRelationsById(eventId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
         UUID clubId = event.getClub().getId();
-        boolean publiclyVisible = event.isAllowCtv()
+        boolean publiclyVisible = (event.isAllowCtv() || event.isAllowPublicAttendees())
                 && event.getClub().getStatus() == ClubStatus.ACTIVE
                 && DETAIL_VISIBLE_STATUSES.contains(event.getStatus());
         UUID deptId = event.getDepartment() != null ? event.getDepartment().getId() : null;
@@ -380,6 +495,10 @@ public class EventServiceImpl implements EventService {
         if (event.getClub().getStatus() != ClubStatus.ACTIVE) {
             throw new ApiException(HttpStatus.CONFLICT, "CLUB_INACTIVE", "Club is inactive");
         }
+        if (event.getAttendanceLockedAt() != null) {
+            throw new ApiException(HttpStatus.CONFLICT, "ATTENDANCE_LOCKED",
+                    "Bảng điểm danh sự kiện đã được chốt và ký xác nhận, không thể thay đổi đăng ký tham gia");
+        }
         OffsetDateTime now = OffsetDateTime.now(clock);
         if (event.getStatus() != EventStatus.OPEN_REGISTRATION || now.isAfter(event.getRegistrationDeadline())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "REGISTRATION_CLOSED",
@@ -393,10 +512,8 @@ public class EventServiceImpl implements EventService {
 
         boolean isClubMember = membershipRepository.existsByUser_IdAndClub_IdAndStatus(
                 actor.id(), event.getClub().getId(), MembershipStatus.ACTIVE);
-        if (!isClubMember && !event.isAllowCtv()) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED",
-                    "Only club members can register for this event");
-        }
+        EventParticipantType requestedType = request == null ? null : request.participantType();
+        EventParticipantType resolvedType = resolveParticipantType(event, isClubMember, requestedType);
         if (event.getMaxParticipants() != null) {
             long currentCount = registrationRepository.countByEvent_IdAndStatus(eventId, EventRegistrationStatus.REGISTERED);
             if (currentCount >= event.getMaxParticipants()) {
@@ -409,7 +526,7 @@ public class EventServiceImpl implements EventService {
         EventRegistration registration = new EventRegistration();
         registration.setEvent(event);
         registration.setUser(user);
-        registration.setParticipantType(isClubMember ? EventParticipantType.MEMBER : EventParticipantType.CTV);
+        registration.setParticipantType(resolvedType);
         registration.setStatus(EventRegistrationStatus.REGISTERED);
         registration.setNote(request == null || request.note() == null ? null : request.note().strip());
         registration.setRegisteredAt(now);
@@ -436,6 +553,10 @@ public class EventServiceImpl implements EventService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "REGISTRATION_NOT_FOUND",
                         "Active registration not found"));
         OffsetDateTime now = OffsetDateTime.now(clock);
+        if (event.getAttendanceLockedAt() != null) {
+            throw new ApiException(HttpStatus.CONFLICT, "ATTENDANCE_LOCKED",
+                    "Bảng điểm danh sự kiện đã được chốt và ký xác nhận, không thể huỷ đăng ký tham gia");
+        }
         if (event.getStatus() != EventStatus.OPEN_REGISTRATION || now.isAfter(event.getRegistrationDeadline())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "REGISTRATION_CLOSED",
                     "Cannot cancel registration after deadline or when registration is closed");
@@ -464,6 +585,10 @@ public class EventServiceImpl implements EventService {
         if (event.getStatus() == EventStatus.CANCELLED) {
             throw new ApiException(HttpStatus.CONFLICT, "EVENT_CANCELLED", "Cannot modify participant registrations of a cancelled event");
         }
+        if (event.getAttendanceLockedAt() != null) {
+            throw new ApiException(HttpStatus.CONFLICT, "ATTENDANCE_LOCKED",
+                    "Bảng điểm danh sự kiện đã được chốt và ký xác nhận, không thể thay đổi đăng ký tham gia");
+        }
 
         EventRegistration registration = registrationRepository.findWithRelationsByIdAndEvent_Id(registrationId, eventId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "REGISTRATION_NOT_FOUND", "Registration not found for this event"));
@@ -471,6 +596,9 @@ public class EventServiceImpl implements EventService {
         Map<String, Object> before = registrationSnapshot(registration);
         OffsetDateTime now = OffsetDateTime.now(clock);
 
+        if (request.participantType() != null) {
+            registration.setParticipantType(request.participantType());
+        }
         if (request.eventRole() != null) {
             String strippedRole = request.eventRole().strip();
             registration.setEventRole(strippedRole.isEmpty() ? null : strippedRole);
@@ -492,6 +620,10 @@ public class EventServiceImpl implements EventService {
                 }
                 if (event.getStatus() == EventStatus.COMPLETED) {
                     throw new ApiException(HttpStatus.CONFLICT, "EVENT_ALREADY_COMPLETED", "Cannot reinstate registration on a completed event");
+                }
+                if (event.getAttendanceLockedAt() != null) {
+                    throw new ApiException(HttpStatus.CONFLICT, "ATTENDANCE_LOCKED",
+                            "Bảng điểm danh sự kiện đã được chốt và ký xác nhận, không thể thay đổi đăng ký tham gia");
                 }
                 if (registrationRepository.findByEvent_IdAndUser_IdAndStatus(
                         eventId, registration.getUser().getId(), EventRegistrationStatus.REGISTERED).isPresent()) {
@@ -525,6 +657,10 @@ public class EventServiceImpl implements EventService {
                         "Bạn chưa đăng ký tham gia sự kiện này"));
 
         OffsetDateTime now = OffsetDateTime.now(clock);
+        if (event.getAttendanceLockedAt() != null) {
+            throw new ApiException(HttpStatus.CONFLICT, "ATTENDANCE_LOCKED",
+                    "Bảng điểm danh sự kiện đã được chốt và ký xác nhận, không thể cập nhật hồ sơ tham gia");
+        }
         if (event.getStatus() != EventStatus.OPEN_REGISTRATION || now.isAfter(event.getRegistrationDeadline())) {
             throw new ApiException(HttpStatus.CONFLICT, "REGISTRATION_CLOSED", "Đã quá hạn nộp hồ sơ sự kiện");
         }
@@ -690,6 +826,10 @@ public class EventServiceImpl implements EventService {
         if (event.getStatus() == EventStatus.DRAFT || event.getStatus() == EventStatus.CANCELLED) {
             throw new ApiException(HttpStatus.CONFLICT, "EVENT_NOT_HELD", "Attendance cannot be recorded for a draft or cancelled event");
         }
+        if (event.getAttendanceLockedAt() != null) {
+            throw new ApiException(HttpStatus.CONFLICT, "ATTENDANCE_LOCKED",
+                    "Bảng điểm danh sự kiện đã được chốt và ký xác nhận, không thể chỉnh sửa");
+        }
         int opensBeforeMinutes = systemSettingsService != null ? systemSettingsService.current().attendanceOpensBeforeMinutes() : 120;
         if (now.isBefore(event.getStartTime().minusMinutes(opensBeforeMinutes))) {
             throw new ApiException(HttpStatus.CONFLICT, "EVENT_NOT_STARTED",
@@ -815,31 +955,25 @@ public class EventServiceImpl implements EventService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_TIME_RANGE", "The calendar range cannot exceed 366 days");
         }
 
-        Set<UUID> clubIds = new LinkedHashSet<>(membershipRepository.findActiveClubIdsByUserId(actor.id()));
-        clubIds.addAll(authorizationService.getPermittedClubIds(actor, EventConstants.PERMISSION_VIEW));
-        clubIds.addAll(authorizationService.getPermittedClubIds(actor, "club.view"));
-        if (clubIds.isEmpty()) {
-            clubIds.add(new UUID(0L, 0L));
-        }
         Set<UUID> registeredIds = new LinkedHashSet<>(registrationRepository.findRegisteredEventIdsByUserId(actor.id()));
-        if (registeredIds.isEmpty()) {
-            registeredIds.add(new UUID(0L, 0L));
-        }
 
         List<CalendarItemResponse> items = new ArrayList<>();
-        for (Event event : eventRepository.findCalendarEvents(clubIds, registeredIds, start, end)) {
-            items.add(new CalendarItemResponse(
-                    event.getId(),
-                    "EVENT",
-                    event.getClub().getId(),
-                    event.getClub().getName(),
-                    event.getDepartment() == null ? null : event.getDepartment().getId(),
-                    event.getTitle(),
-                    event.getStatus().name(),
-                    event.getLocation(),
-                    event.getStartTime(),
-                    event.getEndTime()
-            ));
+        if (!registeredIds.isEmpty()) {
+            List<UUID> noClubScopeFilter = List.of(new UUID(0L, 0L));
+            for (Event event : eventRepository.findCalendarEvents(noClubScopeFilter, registeredIds, start, end)) {
+                items.add(new CalendarItemResponse(
+                        event.getId(),
+                        "EVENT",
+                        event.getClub().getId(),
+                        event.getClub().getName(),
+                        event.getDepartment() == null ? null : event.getDepartment().getId(),
+                        event.getTitle(),
+                        event.getStatus().name(),
+                        event.getLocation(),
+                        event.getStartTime(),
+                        event.getEndTime()
+                ));
+            }
         }
         for (Task task : taskRepository.findCalendarTasks(actor.id(), start, end)) {
             if (task.getStatus() == TaskStatus.CANCELLED) {
@@ -961,6 +1095,85 @@ public class EventServiceImpl implements EventService {
         }
     }
 
+    private static EventParticipantType resolveParticipantType(Event event, boolean isClubMember,
+                                                               EventParticipantType requestedType) {
+        if (isClubMember) {
+            if (requestedType == null) {
+                return EventParticipantType.MEMBER;
+            }
+            if (requestedType == EventParticipantType.MEMBER || requestedType == EventParticipantType.ORGANIZER) {
+                return requestedType;
+            }
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PARTICIPANT_TYPE",
+                    "Active club members can only register as MEMBER or ORGANIZER");
+        }
+        if (!event.isAllowCtv() && !event.isAllowPublicAttendees()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED",
+                    "Only club members can register for this event");
+        }
+        if (requestedType == EventParticipantType.MEMBER || requestedType == EventParticipantType.ORGANIZER) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED",
+                    "Only club members can register as " + requestedType);
+        }
+        if (requestedType == EventParticipantType.CTV) {
+            if (!event.isAllowCtv()) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED",
+                        "This event does not allow CTV registrations");
+            }
+            return EventParticipantType.CTV;
+        }
+        if (requestedType == EventParticipantType.ATTENDEE) {
+            return EventParticipantType.ATTENDEE;
+        }
+        return (event.isAllowCtv() && !event.isAllowPublicAttendees())
+                ? EventParticipantType.CTV
+                : EventParticipantType.ATTENDEE;
+    }
+
+    private static String normalizeCoverImageUrl(String raw) {
+        String stripped = raw.strip();
+        if (stripped.isEmpty()) {
+            return null;
+        }
+        boolean valid = stripped.startsWith("https://")
+                || stripped.startsWith("http://")
+                || (stripped.startsWith("/") && !stripped.startsWith("//"));
+        if (!valid) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_COVER_IMAGE_URL",
+                    "Cover image URL must start with https://, http://, or /");
+        }
+        return stripped;
+    }
+
+    private String normalizedPublicApiBaseUrl() {
+        String base = (publicApiBaseUrl == null || publicApiBaseUrl.isBlank()) ? "http://localhost:8080" : publicApiBaseUrl;
+        return base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
+    }
+
+    private void deletePreviousCoverQuietly(UUID eventId, String previousUrl) {
+        String previousFile = ownCoverFileName(previousUrl);
+        if (previousFile != null && previousFile.startsWith(eventId.toString())) {
+            deleteCoverQuietly(COVER_KEY_PREFIX + previousFile);
+        }
+    }
+
+    private String ownCoverFileName(String url) {
+        String prefix = normalizedPublicApiBaseUrl() + ApiPaths.publicEventCoverPath("");
+        if (url == null || !url.startsWith(prefix)) {
+            return null;
+        }
+        String name = url.substring(prefix.length());
+        return COVER_FILE_NAME.matcher(name).matches() ? name : null;
+    }
+
+    private void deleteCoverQuietly(String key) {
+        try {
+            documentStorage.delete(key);
+        } catch (RuntimeException ignored) {
+            // orphaned cover object only costs storage; never fail the request for it
+        }
+    }
+
     private static Map<String, Object> snapshot(Event event) {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("title", event.getTitle());
@@ -969,8 +1182,11 @@ public class EventServiceImpl implements EventService {
         values.put("startTime", event.getStartTime());
         values.put("endTime", event.getEndTime());
         values.put("registrationDeadline", event.getRegistrationDeadline());
+        values.put("academicTerm", event.getAcademicTerm());
         values.put("allowCtv", event.isAllowCtv());
+        values.put("allowPublicAttendees", event.isAllowPublicAttendees());
         values.put("requiresSubmission", event.isRequiresSubmission());
+        values.put("coverImageUrl", event.getCoverImageUrl());
         values.put("completedAt", event.getCompletedAt());
         return values;
     }

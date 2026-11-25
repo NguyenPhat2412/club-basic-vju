@@ -16,6 +16,15 @@ public record AuditLogResponse(
         UUID clubId,
         Map<String, Object> oldValue,
         Map<String, Object> newValue,
-        OffsetDateTime createdAt
-) { }
+        OffsetDateTime createdAt,
+        String ipAddress,
+        String userAgent
+) {
+    public AuditLogResponse(UUID id, UUID actorUserId, String action, String resourceType,
+                            UUID resourceId, UUID clubId, Map<String, Object> oldValue,
+                            Map<String, Object> newValue, OffsetDateTime createdAt) {
+        this(id, actorUserId, action, resourceType, resourceId, clubId, oldValue, newValue,
+                createdAt, null, null);
+    }
+}
 

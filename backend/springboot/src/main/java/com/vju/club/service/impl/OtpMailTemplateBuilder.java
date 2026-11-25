@@ -121,23 +121,53 @@ public final class OtpMailTemplateBuilder {
             String recipientEmail,
             String title,
             String message) {
-        String displayName = (recipientName == null || recipientName.isBlank()) ? recipientEmail : recipientName.trim();
-        String safeTitle = (title == null || title.isBlank()) ? "Thông báo mới từ CLB" : title.trim();
-        String safeMessage = (message == null || message.isBlank()) ? "" : message.trim();
+        return buildNotificationAlert(recipientName, recipientEmail, title, message, null);
+    }
+
+    public static RenderedEmail buildNotificationAlert(
+            String recipientName,
+            String recipientEmail,
+            String title,
+            String message,
+            String referenceType) {
+        String displayName = resolveDisplayName(recipientName, recipientEmail);
+        String safeTitle = resolveSafeTitle(title);
+        String safeMessage = resolveSafeMessage(message);
+        String badgeLabel = resolveNotificationBadge(referenceType);
         String subject = "[VJU ClubHub] " + safeTitle;
 
         String plainText = """
-                VJU CLUBHUB
+                VJU CLUBHUB · %s
                 Xin chào %s,
 
                 %s
                 %s
 
-                Truy cập hệ thống VJU ClubHub để xem chi tiết.
+                Mở hệ thống VJU ClubHub để xem chi tiết và phản hồi kịp thời.
+                Bạn có thể tắt email thông báo tại mục Hồ sơ cá nhân (/profile).
                 -- Trường Đại học Việt Nhật · ĐHQGHN
-                """.formatted(displayName, safeTitle, safeMessage);
+                """.formatted(badgeLabel, displayName, safeTitle, safeMessage);
 
-        String html = """
+        String html = buildNotificationAlertHtml(displayName, recipientEmail, safeTitle, safeMessage, referenceType);
+        return new RenderedEmail(subject, plainText, html);
+    }
+
+    public static String buildNotificationAlertHtml(
+            String recipientName,
+            String recipientEmail,
+            String title,
+            String message,
+            String referenceType) {
+        String displayName = resolveDisplayName(recipientName, recipientEmail);
+        String safeTitle = resolveSafeTitle(title);
+        String safeMessage = resolveSafeMessage(message);
+        String badgeLabel = resolveNotificationBadge(referenceType);
+        String subject = "[VJU ClubHub] " + safeTitle;
+        String escapedMessageHtml = escapeHtml(safeMessage)
+                .replace("\r\n", "\n")
+                .replace("\n", "<br />");
+
+        return """
                 <!DOCTYPE html>
                 <html lang="vi">
                 <head>
@@ -149,32 +179,43 @@ public final class OtpMailTemplateBuilder {
                   <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F8FAFC;padding:20px 12px;">
                     <tr>
                       <td align="center">
-                        <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" border="0" style="max-width:460px;background-color:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">
+                        <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;background-color:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">
                           <tr>
                             <td style="height:4px;background-color:#8E1F32;font-size:0;line-height:0;">&nbsp;</td>
                           </tr>
                           <tr>
                             <td style="padding:20px 24px;">
-                              <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8E1F32;">
-                                VJU CLUBHUB &middot; THÔNG BÁO
-                              </p>
-                              <h1 style="margin:6px 0 12px 0;font-size:17px;line-height:1.35;font-weight:800;color:#0F172A;">
+                              <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px 0;">
+                                <tr>
+                                  <td style="vertical-align:middle;">
+                                    <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8E1F32;">
+                                      VJU CLUBHUB &middot; THÔNG BÁO
+                                    </p>
+                                  </td>
+                                  <td align="right" style="vertical-align:middle;">
+                                    <span style="display:inline-block;background-color:#FFF1F2;border:1px solid #FECDD3;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;color:#8E1F32;">
+                                      %s
+                                    </span>
+                                  </td>
+                                </tr>
+                              </table>
+                              <h1 style="margin:4px 0 12px 0;font-size:17px;line-height:1.35;font-weight:800;color:#0F172A;">
                                 %s
                               </h1>
                               <p style="margin:0 0 12px 0;font-size:13px;line-height:1.55;color:#334155;">
                                 Xin chào <strong>%s</strong>,
                               </p>
-                              <div style="background-color:#FFF1F2;border:1px solid #FECDD3;border-radius:10px;padding:12px 14px;margin:0 0 14px 0;font-size:13px;line-height:1.55;color:#0F172A;">
+                              <div style="background-color:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:12px 14px;margin:0 0 14px 0;font-size:13px;line-height:1.6;color:#0F172A;">
                                 %s
                               </div>
-                              <p style="margin:0;font-size:12px;line-height:1.5;color:#64748B;">
+                              <p style="margin:0;font-size:12px;line-height:1.55;color:#475569;">
                                 Mở hệ thống VJU ClubHub để xem chi tiết và phản hồi kịp thời.
                               </p>
                             </td>
                           </tr>
                           <tr>
-                            <td style="padding:10px 24px;background-color:#F8FAFC;border-top:1px solid #F1F5F9;font-size:11px;color:#64748B;">
-                              Trường Đại học Việt Nhật &middot; ĐHQGHN
+                            <td style="padding:12px 24px;background-color:#F8FAFC;border-top:1px solid #F1F5F9;font-size:11px;line-height:1.5;color:#64748B;">
+                              Trường Đại học Việt Nhật &middot; ĐHQGHN &middot; Có thể tắt email thông báo tại Hồ sơ cá nhân.
                             </td>
                           </tr>
                         </table>
@@ -185,11 +226,42 @@ public final class OtpMailTemplateBuilder {
                 </html>
                 """.formatted(
                 escapeHtml(subject),
+                escapeHtml(badgeLabel),
                 escapeHtml(safeTitle),
                 escapeHtml(displayName),
-                escapeHtml(safeMessage));
+                escapedMessageHtml);
+    }
 
-        return new RenderedEmail(subject, plainText, html);
+    static String resolveNotificationBadge(String referenceType) {
+        if (referenceType == null || referenceType.isBlank()) {
+            return "Thông báo";
+        }
+        return switch (referenceType.trim()) {
+            case "CLUB_APPLICATION" -> "Tuyển thành viên & Phỏng vấn";
+            case "DEPARTMENT" -> "Phân ban CLB";
+            case "TASK" -> "Công việc";
+            case "EVENT" -> "Sự kiện";
+            case "CLUB" -> "Thông báo CLB";
+            default -> "Thông báo";
+        };
+    }
+
+    private static String resolveDisplayName(String recipientName, String recipientEmail) {
+        if (recipientName != null && !recipientName.isBlank()) {
+            return recipientName.trim();
+        }
+        if (recipientEmail != null && !recipientEmail.isBlank()) {
+            return recipientEmail.trim();
+        }
+        return "Thành viên VJU";
+    }
+
+    private static String resolveSafeTitle(String title) {
+        return (title == null || title.isBlank()) ? "Thông báo mới từ CLB" : title.trim();
+    }
+
+    private static String resolveSafeMessage(String message) {
+        return (message == null || message.isBlank()) ? "" : message.trim();
     }
 
     static String escapeHtml(String value) {

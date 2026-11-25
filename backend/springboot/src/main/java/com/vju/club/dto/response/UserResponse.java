@@ -16,5 +16,14 @@ public record UserResponse(
         String status,
         boolean requiresPasswordChange,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
-) { }
+        OffsetDateTime updatedAt,
+        boolean emailNotificationsEnabled,
+        boolean twoFactorEnabled
+) {
+    public UserResponse(UUID id, String email, String fullName, String studentCode, String phone,
+                        String avatarUrl, String status, boolean requiresPasswordChange,
+                        OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+        this(id, email, fullName, studentCode, phone, avatarUrl, status, requiresPasswordChange,
+                createdAt, updatedAt, true, false);
+    }
+}

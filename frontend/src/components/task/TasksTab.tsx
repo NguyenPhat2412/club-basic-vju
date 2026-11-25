@@ -7,6 +7,7 @@ import { AlertTriangle, CheckCircle2, ClipboardCheck, Eye, FilterX, Pencil, Plus
 import { apiModel, Department, Membership, TaskItem } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
 import { DataTable } from "@/components/shared/DataTable";
+import { FilterPopover } from "@/components/shared/FilterPopover";
 import { Pagination } from "@/components/shared/Pagination";
 import { StatSummaryStrip } from "@/components/shared/StatCards";
 import { EmptyState, ErrorState, LoadingRows } from "@/components/shared/States";
@@ -14,19 +15,10 @@ import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError } from "@/components/shared/ListPage";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui/input";
+import { FormField, Input, Select } from "@/components/ui/input";
 import { formatDay } from "@/lib/utils";
-import {
-  buildTaskAssigneeCandidates,
-  EMPTY_TASK_FORM,
-  TaskFormValues,
-  toLocalInput,
-} from "@/forms/task/task-form";
-import {
-  CreateTaskModal,
-  EditTaskModal,
-  NotifyTaskModal,
-} from "@/components/task/TaskFormModals";
+import { buildTaskAssigneeCandidates, EMPTY_TASK_FORM, TaskFormValues, toLocalInput } from "@/forms/task/task-form";
+import { CreateTaskModal, EditTaskModal, NotifyTaskModal } from "@/components/task/TaskFormModals";
 import { TaskDetailDrawer } from "@/components/task/TaskDetailDrawer";
 import { TaskScopeFilter, TaskScopeFilterValue } from "@/components/task/TaskScopeFilter";
 
@@ -204,27 +196,14 @@ export function TasksTab({
 
   const s = summary.data;
 
+  const popoverCount = [scopeFilter !== "ALL" ? scopeFilter : "", deptFilter, assigneeFilter, priorityFilter, statusFilter, overdueOnly ? "1" : ""].filter(Boolean).length;
+
   return (
     <div className="flex flex-1 flex-col">
-      {s && (
-        <StatSummaryStrip
-          columnsClassName="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
-          className="px-4 pt-3 sm:px-6"
-          items={[
-            { label: "Tổng khớp lọc", value: s.total },
-            { label: "Chưa bắt đầu", value: s.todoCount },
-            { label: "Đang thực hiện", value: s.inProgressCount },
-            { label: "Chờ nghiệm thu", value: s.doneCount, valueClassName: "text-primary" },
-            { label: "Đã nghiệm thu", value: s.completedCount, valueClassName: "text-primary" },
-            { label: "Đang quá hạn", value: s.overdueCount, valueClassName: "text-destructive" },
-          ]}
-        />
-      )}
-
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-y border-border/60 bg-card px-4 py-2.5 sm:px-6">
-        <div className="flex flex-1 flex-wrap items-center gap-2">
-          <div className="relative min-w-[190px] flex-1 sm:max-w-[240px]">
-            <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+      <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-border bg-white px-3 py-1.5 sm:px-4">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto sm:flex-1">
+          <div className="relative min-w-0 flex-1 sm:max-w-[260px]">
+            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => { setSearch(e.target.value); setOffset(0); }}
@@ -238,44 +217,39 @@ export function TasksTab({
             )}
           </div>
 
-          <TaskScopeFilter
-            scope={scopeFilter} departmentId={deptFilter} departments={departments}
-            onChangeScope={(next) => { setScopeFilter(next); if (next !== "DEPARTMENT") setDeptFilter(""); setOffset(0); }}
-            onChangeDepartment={(id) => { setDeptFilter(id); setOffset(0); }}
-          />
-
-          {members.length > 0 && (
-            <Select aria-label="Lọc người thực hiện" value={assigneeFilter} onChange={(e) => { setAssigneeFilter(e.target.value); setOffset(0); }} className="h-8 w-full text-xs sm:w-44">
-              <option value="">Mọi người nhận</option>
-              {members.map((m) => <option key={m.userId} value={m.userId}>{m.userFullName || m.userId.slice(0, 8)}</option>)}
-            </Select>
-          )}
-
-          <Select aria-label="Lọc mức ưu tiên" value={priorityFilter} onChange={(e) => { setPriorityFilter(e.target.value); setOffset(0); }} className="h-8 w-full text-xs sm:w-36">
-            <option value="">Mọi ưu tiên</option>
-            <option value="HIGH">Cao (HIGH)</option>
-            <option value="MEDIUM">Trung bình</option>
-            <option value="LOW">Thấp (LOW)</option>
-          </Select>
-
-          <Select aria-label="Lọc trạng thái công việc" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setOffset(0); }} className="h-8 w-full text-xs sm:w-44">
-            <option value="">Tất cả trạng thái</option>
-            <option value="TODO">Chưa bắt đầu</option>
-            <option value="IN_PROGRESS">Đang thực hiện</option>
-            <option value="DONE">Chờ nghiệm thu</option>
-            <option value="COMPLETED">Đã nghiệm thu</option>
-            <option value="CANCELLED">Đã huỷ</option>
-          </Select>
-
-          <Button size="sm" variant={overdueOnly ? "destructive" : "outline"} onClick={() => { setOverdueOnly((v) => !v); setOffset(0); }} className="h-8">
-            <AlertTriangle size={13} /> {overdueOnly ? "Đang lọc: Quá hạn" : "Quá hạn"}
-          </Button>
-
-          {hasActiveFilter && (
-            <Button size="sm" variant="outline" onClick={resetFilters} className="h-8">
-              <FilterX size={13} /> Xoá lọc
+          <FilterPopover activeCount={popoverCount} onClear={resetFilters} title="Lọc công việc">
+            <FormField label="Phạm vi / Ban" hideIndicator>
+              <TaskScopeFilter
+                scope={scopeFilter} departmentId={deptFilter} departments={departments}
+                onChangeScope={(next) => { setScopeFilter(next); if (next !== "DEPARTMENT") setDeptFilter(""); setOffset(0); }}
+                onChangeDepartment={(id) => { setDeptFilter(id); setOffset(0); }}
+              />
+            </FormField>
+            {members.length > 0 && (
+              <FormField label="Người nhận việc" hideIndicator>
+                <Select aria-label="Lọc người thực hiện" value={assigneeFilter} onChange={(e) => { setAssigneeFilter(e.target.value); setOffset(0); }} className="h-8 text-xs">
+                  <option value="">Mọi người nhận</option>
+                  {members.map((m) => <option key={m.userId} value={m.userId}>{m.userFullName || m.userId.slice(0, 8)}</option>)}
+                </Select>
+              </FormField>
+            )}
+            <div className="grid grid-cols-2 gap-2">
+              <FormField label="Ưu tiên" hideIndicator>
+                <Select aria-label="Lọc mức ưu tiên" value={priorityFilter} onChange={(e) => { setPriorityFilter(e.target.value); setOffset(0); }} className="h-8 text-xs">
+                  <option value="">Mọi ưu tiên</option><option value="HIGH">Cao (HIGH)</option><option value="MEDIUM">Trung bình</option><option value="LOW">Thấp (LOW)</option>
+                </Select>
+              </FormField>
+              <FormField label="Trạng thái" hideIndicator>
+                <Select aria-label="Lọc trạng thái công việc" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setOffset(0); }} className="h-8 text-xs">
+                  <option value="">Tất cả trạng thái</option><option value="TODO">Chưa bắt đầu</option><option value="IN_PROGRESS">Đang thực hiện</option><option value="DONE">Chờ nghiệm thu</option><option value="COMPLETED">Đã nghiệm thu</option><option value="CANCELLED">Đã huỷ</option>
+                </Select>
+              </FormField>
+            </div>
+            <Button size="sm" variant={overdueOnly ? "destructive" : "outline"} onClick={() => { setOverdueOnly((v) => !v); setOffset(0); }} className="h-8 w-full">
+              <AlertTriangle size={13} /> {overdueOnly ? "Đang lọc: Chỉ việc quá hạn" : "Chỉ hiện công việc quá hạn"}
             </Button>
-          )}
+          </FilterPopover>
+          {hasActiveFilter && <Button size="sm" variant="outline" onClick={resetFilters} className="h-8"><FilterX size={13} /> Xoá lọc</Button>}
         </div>
 
         {canCreate && (
@@ -288,12 +262,27 @@ export function TasksTab({
                 departmentId: !createDeptScope.all && allowedCreateDepts[0] ? allowedCreateDepts[0].id : "",
               });
             }}
-            className="h-8"
+            className="h-8 shrink-0"
           >
             <Plus size={14} /> Giao công việc
           </Button>
         )}
       </div>
+
+      {s && (
+        <StatSummaryStrip
+          columnsClassName="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
+          className="px-3 pt-2.5 sm:px-5"
+          items={[
+            { label: "Tổng khớp lọc", value: s.total },
+            { label: "Chưa bắt đầu", value: s.todoCount },
+            { label: "Đang thực hiện", value: s.inProgressCount },
+            { label: "Chờ nghiệm thu", value: s.doneCount, valueClassName: "text-primary" },
+            { label: "Đã nghiệm thu", value: s.completedCount, valueClassName: "text-primary" },
+            { label: "Đang quá hạn", value: s.overdueCount, valueClassName: "text-destructive" },
+          ]}
+        />
+      )}
 
       {tasks.isPending ? (
         <LoadingRows />

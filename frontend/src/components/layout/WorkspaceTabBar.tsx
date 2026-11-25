@@ -12,16 +12,19 @@ import { WorkspaceTabMenu } from "./WorkspaceTabMenu";
 import {
   clearPendingTabClose,
   computeCloseTabTransition,
+  computeNextPersistedTabIds,
   computeOpenTabIds,
   emptySubscribe,
   getActivePendingTabClose,
   iconForTab,
+  parseStoredTabIds,
   recordPendingTabClose,
   resolveEffectiveActiveTabId,
   resolveTabId,
   STARTER_PRIORITY,
   subscribeWorkspaceTabs,
-  TABS_SYNC_EVENT,
+  workspaceTabsStorageKey,
+  writeWorkspaceTabIds,
   type WorkspaceTabSpec,
 } from "./WorkspaceTabSpecs";
 
@@ -49,7 +52,7 @@ export function WorkspaceTabBar({
   const { tr } = useI18n();
   const isClient = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
-  const storageKey = `vju.workspace.tabs.v2:${userId || "guest"}`;
+  const storageKey = workspaceTabsStorageKey(userId);
   const stripRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const tabRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -66,18 +69,7 @@ export function WorkspaceTabBar({
     () => null
   );
 
-  const storedIds = useMemo<string[] | null>(() => {
-    if (!rawStoredJson) return null;
-    try {
-      const parsed = JSON.parse(rawStoredJson);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.filter((x): x is string => typeof x === "string");
-      }
-    } catch {
-      // ignore invalid JSON
-    }
-    return null;
-  }, [rawStoredJson]);
+  const storedIds = useMemo<string[] | null>(() => parseStoredTabIds(rawStoredJson), [rawStoredJson]);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -131,14 +123,7 @@ export function WorkspaceTabBar({
   );
 
   const persistIds = useCallback(
-    (next: string[]) => {
-      try {
-        window.localStorage.setItem(storageKey, JSON.stringify(next));
-        window.dispatchEvent(new Event(TABS_SYNC_EVENT));
-      } catch {
-        // ignore storage errors
-      }
-    },
+    (next: string[]) => writeWorkspaceTabIds(storageKey, next),
     [storageKey]
   );
 
@@ -152,13 +137,17 @@ export function WorkspaceTabBar({
         return;
       }
     }
-    if (!isClient || !catalog.has(rawActiveId)) return;
-    if (storedIds && !storedIds.includes(rawActiveId)) {
-      persistIds([...storedIds, rawActiveId]);
-    } else if (!storedIds && !defaultStarterIds.includes(rawActiveId)) {
-      persistIds([...defaultStarterIds, rawActiveId]);
+    if (!isClient) return;
+    const nextToPersist = computeNextPersistedTabIds({
+      storedIds,
+      defaultStarterIds,
+      catalogIds,
+      rawActiveId,
+    });
+    if (nextToPersist) {
+      persistIds(nextToPersist);
     }
-  }, [catalog, defaultStarterIds, isClient, persistIds, rawActiveId, storedIds]);
+  }, [catalogIds, defaultStarterIds, isClient, persistIds, rawActiveId, storedIds]);
 
   const updateScrollState = useCallback(() => {
     const el = stripRef.current;
@@ -222,6 +211,8 @@ export function WorkspaceTabBar({
     setHoveredTip(null);
     if (transition.nextActiveId) {
       recordPendingTabClose(id, transition.nextActiveId);
+    } else {
+      clearPendingTabClose();
     }
     persistIds(transition.nextIds);
     if (transition.nextActiveId) {
@@ -234,39 +225,39 @@ export function WorkspaceTabBar({
 
   const closeOtherTabs = () => {
     clearPendingTabClose();
+    if (openSpecs.length === 0) {
+      setMenuOpen(false);
+      return;
+    }
     const keep = catalog.has(activeId) ? [activeId] : openIds.slice(0, 1);
     persistIds(keep);
     setMenuOpen(false);
   };
 
-  const closeAllToOverview = () => {
-    const fallback = catalog.has("route:/dashboard")
-      ? "route:/dashboard"
-      : (Array.from(catalog.keys())[0] ?? activeId);
-    if (fallback !== rawActiveId) {
-      recordPendingTabClose(rawActiveId, fallback);
-    } else {
-      clearPendingTabClose();
-    }
-    persistIds([fallback]);
+  const closeAllTabs = () => {
+    clearPendingTabClose();
+    setHoveredTip(null);
+    persistIds([]);
     setMenuOpen(false);
-    const spec = catalog.get(fallback);
-    if (spec && fallback !== rawActiveId) {
-      router.push(buildHref(spec));
-    }
   };
 
   const resetStarterTabs = () => {
     clearPendingTabClose();
-    persistIds(defaultStarterIds);
+    const starter = STARTER_PRIORITY.filter((id) => catalog.has(id));
+    const next = starter.length > 0 ? starter : Array.from(catalog.keys()).slice(0, 1);
+    persistIds(next);
     setMenuOpen(false);
+    const firstSpec = next[0] ? catalog.get(next[0]) : undefined;
+    if (firstSpec && firstSpec.id !== rawActiveId) {
+      router.push(buildHref(firstSpec));
+    }
   };
 
   const openSpecs = openIds.map((id) => catalog.get(id)).filter((s): s is WorkspaceTabSpec => Boolean(s));
-  if (openSpecs.length === 0) return null;
+  if (openSpecs.length === 0 && !authenticated) return null;
 
   return (
-    <div className="relative z-35 flex h-10 w-full min-w-0 max-w-full shrink-0 select-none items-center gap-1 border-b border-slate-200 bg-white px-2 sm:px-3">
+    <div className="relative z-35 flex h-8.5 w-full min-w-0 max-w-full shrink-0 select-none items-center gap-1 border-b border-slate-200 bg-white px-2 sm:px-3">
       {/* Left scroll arrow */}
       <button
         type="button"
@@ -294,24 +285,29 @@ export function WorkspaceTabBar({
         }}
         className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {openSpecs.map((spec) => {
-          const isActive = spec.id === activeId;
-          const canClose = openSpecs.length > 1;
-          return (
-            <WorkspaceTabItem
-              key={spec.id}
-              spec={spec}
-              isActive={isActive}
-              canClose={canClose}
-              tabRef={(el) => {
-                tabRefs.current[spec.id] = el;
-              }}
-              activateTab={activateTab}
-              closeTab={closeTab}
-              setHoveredTip={setHoveredTip}
-            />
-          );
-        })}
+        {openSpecs.length === 0 ? (
+          <span className="px-2 text-xs text-slate-400">
+            {tr("Chưa có trang nào đang mở — chọn chức năng từ thanh bên")}
+          </span>
+        ) : (
+          openSpecs.map((spec) => {
+            const isActive = spec.id === activeId;
+            return (
+              <WorkspaceTabItem
+                key={spec.id}
+                spec={spec}
+                isActive={isActive}
+                canClose={authenticated || openSpecs.length > 1}
+                tabRef={(el) => {
+                  tabRefs.current[spec.id] = el;
+                }}
+                activateTab={activateTab}
+                closeTab={closeTab}
+                setHoveredTip={setHoveredTip}
+              />
+            );
+          })
+        )}
       </div>
 
       {/* Right scroll arrow (visible when overflowing right) */}
@@ -352,7 +348,7 @@ export function WorkspaceTabBar({
             closeTab={closeTab}
             resetStarterTabs={resetStarterTabs}
             closeOtherTabs={closeOtherTabs}
-            closeAllToOverview={closeAllToOverview}
+            closeAllTabs={closeAllTabs}
           />
         )}
       </div>

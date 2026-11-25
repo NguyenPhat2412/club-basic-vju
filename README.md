@@ -2,7 +2,7 @@
 
 Hệ thống quản lý câu lạc bộ (CLB) cho Trường Đại học Việt Nhật (VJU): quản lý tài khoản, 12 CLB sinh viên, ban chuyên môn, tuyển thành viên, sự kiện & Cộng tác viên (CTV), nhiệm vụ/subtask, kho tài liệu tập trung 3 tầng, chat thời gian thực và phân quyền 3 phạm vi.
 
-> **Trạng thái:** Hoàn thiện toàn bộ 4 giai đoạn cốt lõi cùng các phân hệ mở rộng (`112` PBI, `426` ca kiểm thử, `Flyway V1..V29`, `156` HTTP endpoints + STOMP WebSocket), đang vận hành thực tế trên Production (`https://vju-club.all1.vn`) và Stagging (`https://stagging.vju-club.all1.vn`).
+> **Trạng thái:** Hoàn thiện toàn bộ 4 giai đoạn cốt lõi cùng các phân hệ mở rộng (`112` PBI, `426` ca kiểm thử, `Flyway V1..V29`, `156` HTTP endpoints + STOMP WebSocket), đang vận hành thực tế trên Production (`https://vju-club.all1.vn`) và Staging (`https://staging.vju-club.all1.vn`).
 
 ## Mục lục
 

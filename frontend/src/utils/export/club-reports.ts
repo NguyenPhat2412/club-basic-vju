@@ -220,15 +220,24 @@ export function exportEventAttendanceReport({
 
   const presentCount = attendances.filter((a) => a.status === "PRESENT" || a.status === "LATE").length;
   const activeRegCount = registrations.filter((r) => r.status === "REGISTERED").length;
+  const sha256 = event.attendanceSignatureSha256?.trim();
+  const lockStamp = event.attendanceLockedAt ? formatDateTime(event.attendanceLockedAt) : "Đã chốt";
+  const verificationFooter = sha256
+    ? `Chữ ký xác thực điện tử SHA-256 (${lockStamp}): ${sha256}`
+    : undefined;
 
   if (mode === "csv") {
-    downloadExcelCsvFile(`diem-danh-${event.title}`, headers, rows);
+    const csvRows = sha256
+      ? [...rows, [], ["Chữ ký xác thực SHA-256", sha256, "Thời điểm chốt sổ", lockStamp]]
+      : rows;
+    downloadExcelCsvFile(`diem-danh-${event.title}`, headers, csvRows);
   } else {
     openPrintableVjuReport({
       title: `BẢNG ĐIỂM DANH SỰ KIỆN: ${event.title}`,
       clubLabel: event.clubName,
       subtitle: `Thời gian: ${formatDateTime(event.startTime)} – ${formatDateTime(event.endTime)}${event.location ? ` · Địa điểm: ${event.location}` : ""}`,
       summaryLine: `Có mặt / Đi muộn: ${presentCount} / ${activeRegCount} nhân sự đăng ký hiệu lực`,
+      verificationFooter,
       headers,
       rows,
     });

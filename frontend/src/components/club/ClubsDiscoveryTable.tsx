@@ -74,6 +74,7 @@ export function ClubsDiscoveryTable({
   mediaForClub,
   canManageClub,
   onOpenDetail,
+  onApply,
   onNavigateManage,
   onNavigateMemberships,
   onNavigatePendingApp,
@@ -85,6 +86,7 @@ export function ClubsDiscoveryTable({
   mediaForClub: (club?: Club | null) => ClubMediaItem | undefined;
   canManageClub: (club: Club) => boolean;
   onOpenDetail: (club: Club) => void;
+  onApply: (club: Club) => void;
   onNavigateManage: (club: Club) => void;
   onNavigateMemberships: () => void;
   onNavigatePendingApp: (appId: string) => void;
@@ -98,7 +100,7 @@ export function ClubsDiscoveryTable({
   return (
     <DataTable
       ariaLabel="Bảng khám phá câu lạc bộ"
-      minWidth="min-w-[840px]"
+      minWidth="min-w-[720px]"
       rows={items}
       rowKey={(c) => c.id}
       onRowClick={onOpenDetail}
@@ -106,13 +108,13 @@ export function ClubsDiscoveryTable({
         {
           key: "index",
           header: "STT",
-          className: "w-11 text-center font-mono text-muted-foreground",
+          className: "w-10 text-center font-mono text-muted-foreground",
           render: (c) => <span>{offset + items.indexOf(c) + 1}</span>,
         },
         {
           key: "club",
           header: "Câu lạc bộ",
-          className: "min-w-[210px] max-w-[270px]",
+          className: "min-w-[165px] max-w-[205px]",
           sortValue: (c) => c.name,
           render: (c) => {
             const media = mediaForClub(c);
@@ -159,7 +161,7 @@ export function ClubsDiscoveryTable({
         {
           key: "desc",
           header: "Giới thiệu ngắn",
-          className: "min-w-[220px] max-w-[320px]",
+          className: "min-w-[140px] max-w-[185px]",
           render: (c) => (
             <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
               {c.description || "Chưa có mô tả chi tiết."}
@@ -168,7 +170,7 @@ export function ClubsDiscoveryTable({
         },
         {
           key: "relation",
-          header: "Trạng thái của bạn",
+          header: "Trạng thái",
           className: "whitespace-nowrap",
           sortValue: relationRank,
           render: (c) => {
@@ -204,10 +206,13 @@ export function ClubsDiscoveryTable({
             const pending = pendingAppByClub.get(c.id);
             const actions: RowAction[] = [
               {
-                icon: member || pending ? <Eye /> : <UserPlus />,
-                label: member || pending ? "Xem chi tiết CLB" : "Xem & Ứng tuyển",
+                icon: <Eye />,
+                label: "Xem chi tiết CLB",
                 onClick: () => onOpenDetail(c),
               },
+              ...(!member && !pending && c.status === "ACTIVE"
+                ? [{ icon: <UserPlus />, label: "Ứng tuyển CLB", onClick: () => onApply(c) }]
+                : []),
               ...(pending
                 ? [{ icon: <Clock3 />, label: "Xem đơn đang chờ duyệt", onClick: () => onNavigatePendingApp(pending.id) }]
                 : []),

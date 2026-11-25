@@ -1,11 +1,11 @@
 package com.vju.club.service.impl;
 
 import com.vju.club.error.ApiException;
-import com.vju.club.entity.PermissionAuditLog;
 import com.vju.club.enums.AuditAction;
 import com.vju.club.enums.PermissionAuditAction;
 import com.vju.club.repository.PermissionAuditLogRepository;
 import com.vju.club.service.AuditService;
+import com.vju.club.service.TwoFactorOtpService;
 import com.vju.club.entity.Club;
 import com.vju.club.repository.ClubRepository;
 import com.vju.club.entity.Department;
@@ -31,6 +31,7 @@ import com.vju.club.security.GrantGuard;
 import com.vju.club.security.PermissionAuthorizationService;
 import com.vju.club.security.ScopeRules;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,17 +41,22 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import com.vju.club.enums.MembershipStatus;
 import com.vju.club.repository.MembershipRepository;
 
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
+
+import static com.vju.club.service.impl.PermissionServiceSupport.clubOf;
+import static com.vju.club.service.impl.PermissionServiceSupport.grantValues;
+import static com.vju.club.service.impl.PermissionServiceSupport.recordPermissionAudit;
+import static com.vju.club.service.impl.PermissionServiceSupport.sameScope;
+import static com.vju.club.service.impl.PermissionServiceSupport.sameTarget;
+import static com.vju.club.service.impl.PermissionServiceSupport.validateScope;
 
 @Service
 @RequiredArgsConstructor
@@ -67,6 +73,9 @@ public class PermissionServiceImpl implements PermissionService {
     private final PermissionMapper permissionMapper;
     private final GrantGuard grantGuard;
     private final MembershipRepository membershipRepository;
+
+    @Autowired(required = false)
+    private TwoFactorOtpService twoFactorOtpService;
 
     @Override
     @Transactional(readOnly = true)
@@ -134,6 +143,7 @@ public class PermissionServiceImpl implements PermissionService {
         if (scopedOnly) requireClubMemberWhenClubOfficer(targetUserId, targetClubId);
         requireNotSuspendedInClub(targetUserId, club, department);
         grantGuard.requireCanGrant(actor, List.of(permission), request.scope(), request.clubId(), department);
+        CriticalActionOtpSupport.requireIfEnabled(twoFactorOtpService, actor.id(), "ROLE_CHANGE", null);
         return permissionMapper.toUserPermissionResponse(
                 createGrant(actorUser, target, permission, request.scope(), club, department, request.reason()));
     }
@@ -193,6 +203,7 @@ public class PermissionServiceImpl implements PermissionService {
         toRevoke.forEach(grant -> changed.add(grant.getPermission()));
         wanted.stream().filter(permission -> !held.contains(permission.getId())).forEach(changed::add);
         grantGuard.requireCanGrant(actor, changed, request.scope(), request.clubId(), department);
+        CriticalActionOtpSupport.requireIfEnabled(twoFactorOtpService, actor.id(), "ROLE_CHANGE", null);
 
         toRevoke.forEach(grant -> revokeGrant(actorUser, target, grant));
         List<UserPermission> result = new ArrayList<>(current);
@@ -233,6 +244,7 @@ public class PermissionServiceImpl implements PermissionService {
         }
         grantGuard.requireCanGrant(actor, List.of(permission), grant.getScope(),
                 grant.getClub() == null ? null : grant.getClub().getId(), grant.getDepartment());
+        CriticalActionOtpSupport.requireIfEnabled(twoFactorOtpService, actor.id(), "ROLE_CHANGE", null);
         revokeGrant(actorUser, target, grant);
     }
 
@@ -257,7 +269,7 @@ public class PermissionServiceImpl implements PermissionService {
         grant.setGrantedBy(actorUser);
         grant.setGrantedAt(OffsetDateTime.now(clock));
         UserPermission saved = userPermissionRepository.saveAndFlush(grant);
-        audit(actorUser, target, permission, PermissionAuditAction.GRANT, scope, club, department, reason);
+        recordPermissionAudit(auditLogRepository, actorUser, target, permission, PermissionAuditAction.GRANT, scope, club, department, reason);
         auditService.record(actorUser.getId(), AuditAction.PERMISSION_GRANTED, saved.getId(), clubOf(club, department),
                 null, grantValues(saved, reason));
         return saved;
@@ -266,63 +278,10 @@ public class PermissionServiceImpl implements PermissionService {
     private void revokeGrant(User actorUser, User target, UserPermission grant) {
         grant.revoke(OffsetDateTime.now(clock), actorUser);
         userPermissionRepository.saveAndFlush(grant);
-        audit(actorUser, target, grant.getPermission(), PermissionAuditAction.REVOKE, grant.getScope(),
+        recordPermissionAudit(auditLogRepository, actorUser, target, grant.getPermission(), PermissionAuditAction.REVOKE, grant.getScope(),
                 grant.getClub(), grant.getDepartment(), null);
         auditService.record(actorUser.getId(), AuditAction.PERMISSION_REVOKED, grant.getId(),
                 clubOf(grant.getClub(), grant.getDepartment()), grantValues(grant, null), null);
-    }
-
-    private static Map<String, Object> grantValues(UserPermission grant, String reason) {
-        Map<String, Object> values = new LinkedHashMap<>();
-        values.put("userId", grant.getUser().getId());
-        values.put("permissionKey", grant.getPermission().getPermissionKey());
-        values.put("scope", grant.getScope());
-        values.put("clubId", grant.getClub() == null ? null : grant.getClub().getId());
-        values.put("departmentId", grant.getDepartment() == null ? null : grant.getDepartment().getId());
-        if (reason != null) values.put("reason", reason);
-        return values;
-    }
-
-    private static UUID clubOf(Club club, Department department) {
-        if (club != null) return club.getId();
-        return department == null ? null : department.getClub().getId();
-    }
-
-    private static boolean sameTarget(UserPermission grant, PermissionScope scope, UUID clubId, UUID departmentId) {
-        return grant.getScope() == scope
-                && Objects.equals(grant.getClub() == null ? null : grant.getClub().getId(), clubId)
-                && Objects.equals(grant.getDepartment() == null ? null : grant.getDepartment().getId(), departmentId);
-    }
-
-    private void validateScope(Permission permission, GrantPermissionRequest request) {
-        if (!ScopeRules.canGrantAt(permission.getScope(), request.scope())) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "PERMISSION_SCOPE_MISMATCH", "Grant scope does not match permission scope");
-        }
-        if (!ScopeRules.targetMatches(request.scope(), request.clubId(), request.departmentId())) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PERMISSION_SCOPE", "Scope target is invalid");
-        }
-    }
-
-    private boolean sameScope(UserPermission grant, GrantPermissionRequest request) {
-        UUID clubId = grant.getClub() == null ? null : grant.getClub().getId();
-        UUID departmentId = grant.getDepartment() == null ? null : grant.getDepartment().getId();
-        return grant.getScope() == request.scope()
-                && Objects.equals(clubId, request.clubId())
-                && Objects.equals(departmentId, request.departmentId());
-    }
-
-    private void audit(User actor, User target, Permission permission, PermissionAuditAction action,
-                       PermissionScope scope, Club club, Department department, String reason) {
-        PermissionAuditLog log = new PermissionAuditLog();
-        log.setActorUser(actor);
-        log.setTargetUser(target);
-        log.setPermission(permission);
-        log.setAction(action);
-        log.setScope(scope);
-        log.setClub(club);
-        log.setDepartment(department);
-        log.setReason(reason);
-        auditLogRepository.saveAndFlush(log);
     }
 
     private boolean preCheckGlobalWhenUnscopedOrNone(Actor actor, String permissionKey, boolean unscoped) {

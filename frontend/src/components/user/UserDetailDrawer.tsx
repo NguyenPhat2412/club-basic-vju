@@ -7,6 +7,8 @@ import { qk } from "@/lib/api/query-keys";
 import { Pencil, Plus, Save, ShieldCheck, Trash2, Users } from "lucide-react";
 import { apiModel, Club, PermissionItem, Role, User, UserRole } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
+import { useCriticalActionOtp } from "@/hooks/useCriticalActionOtp";
+import { Otp2FaChallengeModal } from "@/components/auth/Otp2FaChallengeModal";
 import { DetailList, EntityDrawer, Section } from "@/components/shared/Overlays";
 import { EMPTY_ROLE_DRAFT, RoleDraft, RolePicker, roleLabel, scopeLabel, toAssignment } from "@/components/shared/RolePicker";
 import { ErrorState, LoadingRows, Notice } from "@/components/shared/States";
@@ -35,6 +37,7 @@ export function UserDetailDrawer({
 }) {
   const session = useSession();
   const queryClient = useQueryClient();
+  const roleOtp = useCriticalActionOtp("ROLE_CHANGE");
   const canAssign = session.can("permission.assign");
   const canRevoke = session.can("permission.revoke");
   const canUpdateUser = session.can("user.update");
@@ -100,7 +103,7 @@ export function UserDetailDrawer({
   };
 
   const assign = useMutation({
-    mutationFn: () => apiModel.assignRole(detail!.id, toAssignment(assignDraft, roles)!),
+    mutationFn: () => roleOtp.runWithOtp((otp) => apiModel.assignRole(detail!.id, toAssignment(assignDraft, roles)!, otp)),
     onSuccess: () => {
       setAssignDraft(EMPTY_ROLE_DRAFT);
       setDrawerError("");
@@ -114,7 +117,7 @@ export function UserDetailDrawer({
   });
 
   const revoke = useMutation({
-    mutationFn: (assignment: UserRole) => apiModel.revokeRole(assignment.userId, assignment.id),
+    mutationFn: (assignment: UserRole) => roleOtp.runWithOtp((otp) => apiModel.revokeRole(assignment.userId, assignment.id, otp)),
     onSuccess: (_, assignment) => {
       setDrawerError("");
       const msg = `Đã thu hồi vai trò ${roleLabel(assignment)} của ${detail!.email}.`;
@@ -166,12 +169,12 @@ export function UserDetailDrawer({
         savedParts.push("hồ sơ");
       }
       if (analysis.rolePayload) {
-        await apiModel.assignRole(detail.id, analysis.rolePayload);
+        await roleOtp.runWithOtp((otp) => apiModel.assignRole(detail.id, analysis.rolePayload!, otp));
         setAssignDraft(EMPTY_ROLE_DRAFT);
         savedParts.push("vai trò");
       }
       if (analysis.permPayload) {
-        await apiModel.grantPermission(detail.id, analysis.permPayload);
+        await roleOtp.runWithOtp((otp) => apiModel.grantPermission(detail.id, analysis.permPayload!, otp));
         setPermDraft(EMPTY_DIRECT_PERM_DRAFT);
         savedParts.push("quyền trực tiếp");
       }
@@ -220,6 +223,7 @@ export function UserDetailDrawer({
     isSavingAll;
 
   return (
+    <>
     <EntityDrawer
       open={!!detail}
       onClose={handleRequestClose}
@@ -364,5 +368,7 @@ export function UserDetailDrawer({
         </>
       )}
     </EntityDrawer>
+    <Otp2FaChallengeModal {...roleOtp.otpModalProps} />
+    </>
   );
 }

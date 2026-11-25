@@ -1,4 +1,4 @@
-# VJU Club Management System — Swagger / OpenAPI Inventory (166 Endpoints)
+# VJU Club Management System — Swagger / OpenAPI Inventory (189 Endpoints)
 
 The backend assigned to this system is `backend/springboot` (Spring Boot 4.1.1 / Java 21 / PostgreSQL 16).
 
@@ -7,12 +7,12 @@ The backend assigned to this system is `backend/springboot` (Spring Boot 4.1.1 /
 | Environment | Swagger UI | OpenAPI 3.1 JSON | Static OpenAPI YAML | Runtime API Catalog |
 |---|---|---|---|---|
 | **Production (HTTPS)** | `https://api.vju-club.all1.vn/swagger-ui.html` | `https://api.vju-club.all1.vn/v3/api-docs` | `https://api.vju-club.all1.vn/api-docs/phase1.yaml` | `https://api.vju-club.all1.vn/api/v1/api-catalog` |
-| **Stagging (HTTPS)** | `https://stagging.vju-club.all1.vn/swagger-ui.html` | `https://stagging.vju-club.all1.vn/v3/api-docs` | `https://stagging.vju-club.all1.vn/api-docs/phase1.yaml` | `https://stagging.vju-club.all1.vn/api/v1/api-catalog` |
+| **Staging (HTTPS)** | `https://staging.vju-club.all1.vn/swagger-ui.html` | `https://staging.vju-club.all1.vn/v3/api-docs` | `https://staging.vju-club.all1.vn/api-docs/phase1.yaml` | `https://staging.vju-club.all1.vn/api/v1/api-catalog` |
 | **Local Development** | `http://localhost:8080/swagger-ui.html` | `http://localhost:8080/v3/api-docs` | `http://localhost:8080/api-docs/phase1.yaml` | `http://localhost:8080/api/v1/api-catalog` |
 
 - **Source catalog:** [`docs/api/catalog.yml`](catalog.yml) (synced with `backend/springboot/src/main/resources/api/catalog.yml`)
 - **Source OpenAPI contract:** [`docs/api/openapi.yaml`](openapi.yaml) (synced with `backend/springboot/src/main/resources/api/phase1-openapi.yaml`)
-- **All 166 endpoints** across **21 modules** are marked `IMPLEMENTED` and verified by automated PostgreSQL integration tests and static OpenAPI 3.1 contract checks (`16/16 Pass`).
+- **All 189 endpoints** across **22 modules** are marked `IMPLEMENTED` and verified by automated PostgreSQL integration tests and static OpenAPI 3.1 contract checks (`16/16 Pass`).
 
 ## Authentication, Realtime WebSocket & Conventions
 
@@ -27,7 +27,7 @@ The backend assigned to this system is `backend/springboot` (Spring Boot 4.1.1 /
 
 ---
 
-## Complete Swagger API Endpoint List (166 Endpoints)
+## Complete Swagger API Endpoint List (189 Endpoints)
 
 | # | Module | Operation ID | Method | Path | Permission / Auth | Summary | Status |
 |---:|---|---|---|---|---|---|---|
@@ -197,6 +197,29 @@ The backend assigned to this system is `backend/springboot` (Spring Boot 4.1.1 /
 | 164 | `chat` | `chat.deleteMessage` | **DELETE** | `/api/v1/channels/{channelId}/messages/{messageId}` | `chat.send` | Delete own message or moderate message in a chat channel and broadcast `MESSAGE_DELETED` | `IMPLEMENTED` |
 | 165 | `event` | `event.issueAttendanceQrToken` | **POST** | `/api/v1/events/{eventId}/attendances/qr-token` | `event.attendance \| event.attendance_edit` | Issue a signed short-lived QR check-in token for an event | `IMPLEMENTED` |
 | 166 | `event` | `event.checkInWithQr` | **POST** | `/api/v1/events/{eventId}/attendances/qr-check-in` | `AUTHENTICATED` | Self check-in to an event using a valid QR attendance token | `IMPLEMENTED` |
+| 167 | `club-application` | `clubApplication.scheduleInterview` | **PATCH** | `/api/v1/clubs/{clubId}/applications/{applicationId}/interview` | `application.review` | Schedule or update an interview / First Meeting for an application | `IMPLEMENTED` |
+| 168 | `club-application` | `clubApplication.remindInterview` | **POST** | `/api/v1/clubs/{clubId}/applications/{applicationId}/interview/remind` | `application.review` | Send an idempotent interview reminder to the applicant | `IMPLEMENTED` |
+| 169 | `event` | `event.discover` | **GET** | `/api/v1/events/discover` | `AUTHENTICATED` | Discover public events plus internal events of clubs the actor belongs to | `IMPLEMENTED` |
+| 170 | `event` | `event.uploadMySubmission` | **POST** | `/api/v1/events/{eventId}/registrations/me/submission` | `AUTHENTICATED` | Upload a submission file for my event registration before registrationDeadline | `IMPLEMENTED` |
+| 171 | `event` | `event.downloadSubmission` | **GET** | `/api/v1/events/{eventId}/registrations/{registrationId}/submission` | `AUTHENTICATED` | Download an event registration submission file | `IMPLEMENTED` |
+| 172 | `club-management` | `clubFacebook.getOverview` | **GET** | `/api/v1/clubs/{clubId}/facebook` | `club.facebook.view \| club.facebook.manage \| club.view \| club.update` | Get club Facebook Fanpage connection, engagement summary, and cached posts | `IMPLEMENTED` |
+| 173 | `club-management` | `clubFacebook.connectToken` | **POST** | `/api/v1/clubs/{clubId}/facebook/connect-token` | `club.facebook.manage \| club.update` | Connect a club Facebook Fanpage using a Page Access Token and sync posts | `IMPLEMENTED` |
+| 174 | `club-management` | `clubFacebook.sync` | **PUT** | `/api/v1/clubs/{clubId}/facebook/sync` | `club.facebook.manage \| club.update` | Sync latest posts, likes, comments, shares, and follower counts from Facebook Graph API | `IMPLEMENTED` |
+| 175 | `club-management` | `clubFacebook.disconnect` | **DELETE** | `/api/v1/clubs/{clubId}/facebook` | `club.facebook.manage \| club.update` | Disconnect Facebook Fanpage from a club and remove cached posts | `IMPLEMENTED` |
+| 176 | `club-management` | `clubFacebook.startOAuth` | **GET** | `/api/v1/clubs/{clubId}/facebook/oauth/start` | `club.facebook.manage \| club.update` | Generate Meta OAuth 2.0 dialog URL for connecting a club Facebook Fanpage | `IMPLEMENTED` |
+| 177 | `club-management` | `clubFacebook.oauthCallback` | **GET** | `/api/v1/integrations/facebook/oauth/callback` | `PUBLIC` | Handle Meta OAuth 2.0 callback and redirect back to club settings | `IMPLEMENTED` |
+| 178 | `club-management` | `clubFacebook.listOAuthPages` | **GET** | `/api/v1/clubs/{clubId}/facebook/oauth/pages` | `club.facebook.manage \| club.update` | List managed Facebook Fanpages returned from a pending OAuth session | `IMPLEMENTED` |
+| 179 | `club-management` | `clubFacebook.selectOAuthPage` | **POST** | `/api/v1/clubs/{clubId}/facebook/oauth/select` | `club.facebook.manage \| club.update` | Bind a selected Facebook Fanpage from OAuth session to the club | `IMPLEMENTED` |
+| 180 | `club-management` | `clubFacebook.publicFeed` | **GET** | `/api/v1/public/clubs/{clubId}/facebook-posts` | `PUBLIC` | Get cached public Facebook Fanpage posts for a club | `IMPLEMENTED` |
+| 181 | `authentication` | `auth.twoFactorSend` | **POST** | `/api/v1/auth/2fa/send` | `PUBLIC` | Send 6-digit 2FA OTP code | `IMPLEMENTED` |
+| 182 | `authentication` | `auth.twoFactorVerify` | **POST** | `/api/v1/auth/2fa/verify` | `PUBLIC` | Verify 6-digit 2FA OTP code | `IMPLEMENTED` |
+| 183 | `user-profile` | `user.setTwoFactor` | **PATCH** | `/api/v1/users/me/2fa` | `AUTHENTICATED` | Enable or disable optional 2FA OTP for current Tier 1-3 admin account | `IMPLEMENTED` |
+| 184 | `club` | `club.usage` | **GET** | `/api/v1/clubs/{clubId}/usage` | `club.view \| document.view` | Get club storage and anti-inflation resource usage quotas | `IMPLEMENTED` |
+| 185 | `event` | `event.timeline` | **GET** | `/api/v1/events/timeline` | `event.attendance \| event.attendance_edit \| event.update \| event.create \| club.update \| user.view` | Get multi-unit events GANTT timeline | `IMPLEMENTED` |
+| 186 | `event` | `event.lockAttendance` | **POST** | `/api/v1/events/{eventId}/attendances/lock` | `event.attendance_edit \| event.update` | Lock and SHA-256 sign event attendance ledger | `IMPLEMENTED` |
+| 187 | `event` | `event.submitFeedback` | **POST** | `/api/v1/events/{eventId}/feedbacks` | `AUTHENTICATED` | Submit post-event survey feedback | `IMPLEMENTED` |
+| 188 | `event` | `event.listFeedbacks` | **GET** | `/api/v1/events/{eventId}/feedbacks` | `event.view \| event.update \| event.attendance \| club.view` | List and summarize post-event feedbacks | `IMPLEMENTED` |
+| 189 | `statistics` | `report.trainingPoints` | **GET** | `/api/v1/reports/training-points` | `event.attendance \| event.attendance_edit \| event.update \| user.view` | Generate training points report by student, club, and academic term | `IMPLEMENTED` |
 
 ---
 

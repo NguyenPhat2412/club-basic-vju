@@ -150,7 +150,7 @@ export function ApplicationsTab({
   };
 
   return (
-    <div className="flex flex-1 flex-col space-y-3">
+    <div className="flex flex-1 flex-col">
       <ClubApplicationsFilterBar
         search={search}
         onSearchChange={(v) => { setSearch(v); setOffset(0); }}
@@ -212,18 +212,20 @@ export function ApplicationsTab({
               {
                 key: "date",
                 header: "Ngày gửi",
+                className: "whitespace-nowrap",
                 sortValue: (a) => a.createdAt,
                 render: (a) => <span className="font-mono font-bold text-primary">{formatDay(a.createdAt)}</span>,
               },
-              { key: "applicant", header: "Người nộp", sortValue: (a) => a.applicantId, render: (a) => applicant(a) },
+              { key: "applicant", header: "Người nộp", className: "max-w-[180px]", sortValue: (a) => a.applicantId, render: (a) => applicant(a) },
               {
                 key: "dept",
                 header: "Ban nguyện vọng",
+                className: "max-w-[130px]",
                 sortValue: (a) => a.preferredDepartmentName ?? "",
                 render: (a) =>
                   a.preferredDepartmentName ? (
                     <Badge tone="primary" dot={false}>
-                      {a.preferredDepartmentName}
+                      <span className="max-w-[110px] truncate">{a.preferredDepartmentName}</span>
                     </Badge>
                   ) : (
                     <span className="text-muted-foreground">—</span>
@@ -232,26 +234,28 @@ export function ApplicationsTab({
               {
                 key: "major",
                 header: "Ngành / Khóa / SĐT",
+                className: "max-w-[140px]",
                 sortValue: (a) => a.facultyMajor ?? "",
                 render: (a) => (
-                  <div className="text-xs">
-                    <p className="font-semibold">
+                  <div className="min-w-0 text-xs">
+                    <p className="truncate font-semibold" title={[a.facultyMajor, a.academicYear].filter(Boolean).join(" · ")}>
                       {[a.facultyMajor, a.academicYear].filter(Boolean).join(" · ") || "—"}
                     </p>
                     {a.applicantPhone && (
-                      <p className="font-mono text-[11px] text-muted-foreground">{a.applicantPhone}</p>
+                      <p className="truncate font-mono text-[11px] text-muted-foreground">{a.applicantPhone}</p>
                     )}
                   </div>
                 ),
               },
               {
                 key: "files",
-                header: "Tệp đính kèm",
+                header: "Tệp",
+                className: "whitespace-nowrap",
                 sortValue: (a) => a.attachments?.length ?? 0,
                 render: (a) =>
                   a.attachments && a.attachments.length > 0 ? (
                     <Badge tone="neutral" dot={false}>
-                      <Paperclip size={11} /> {a.attachments.length} tệp
+                      <Paperclip size={11} /> {a.attachments.length}
                     </Badge>
                   ) : (
                     <span className="text-muted-foreground">—</span>
@@ -260,10 +264,10 @@ export function ApplicationsTab({
               {
                 key: "message",
                 header: "Lý do ứng tuyển",
-                className: "max-w-[260px]",
-                render: (a) => <p className="truncate text-muted-foreground">{a.message}</p>,
+                className: "max-w-[120px]",
+                render: (a) => <p className="truncate text-muted-foreground" title={a.message}>{a.message}</p>,
               },
-              { key: "status", header: "Trạng thái", sortValue: (a) => a.status, render: (a) => <StatusBadge status={a.status} /> },
+              { key: "status", header: "Trạng thái", className: "whitespace-nowrap", sortValue: (a) => a.status, render: (a) => <StatusBadge status={a.status} /> },
               {
                 key: "actions",
                 header: "Thao tác",

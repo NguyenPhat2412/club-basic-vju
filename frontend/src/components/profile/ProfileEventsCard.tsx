@@ -1,26 +1,57 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowUpRight, CalendarDays, Clock, Compass } from "lucide-react";
-import { apiModel, describeError } from "@/lib/api";
+import { ArrowUpRight, Award, CalendarDays, Clock, Compass, ShieldCheck } from "lucide-react";
+import { apiModel, describeError, EventCertificate } from "@/lib/api";
 import { qk } from "@/lib/api/query-keys";
 import { cn, formatDateTime } from "@/lib/utils";
 import { ErrorState, LoadingRows } from "@/components/shared/States";
 import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
+import { openPrintableEventCertificate } from "@/utils/export/certificate-print";
 
 export function ProfileEventsCard() {
   const router = useRouter();
+  const [printingCertId, setPrintingCertId] = useState<string | null>(null);
 
   const eventsQuery = useQuery({
     queryKey: qk.myEventRegistrations("profile"),
     queryFn: () => apiModel.myEventRegistrations({ limit: 20 }),
   });
 
+  const certificatesQuery = useQuery({
+    queryKey: qk.myCertificates(),
+    queryFn: () => apiModel.myCertificates(),
+  });
+
+  const certByEventId = useMemo(() => {
+    const map = new Map<string, EventCertificate>();
+    for (const cert of certificatesQuery.data?.items ?? []) {
+      const existing = map.get(cert.eventId);
+      if (!existing || (existing.status !== "ISSUED" && cert.status === "ISSUED")) {
+        map.set(cert.eventId, cert);
+      }
+    }
+    return map;
+  }, [certificatesQuery.data?.items]);
+
   const items = eventsQuery.data?.items ?? [];
   const totalCount = eventsQuery.data?.total ?? items.length;
+
+  const handleDownloadCertificate = async (cert: EventCertificate) => {
+    setPrintingCertId(cert.id);
+    try {
+      await openPrintableEventCertificate(cert);
+    } catch (err) {
+      toast.error(describeError(err));
+    } finally {
+      setPrintingCertId(null);
+    }
+  };
 
   return (
     <section className="@container min-w-0 overflow-hidden rounded-xl border border-border bg-card p-4 sm:p-5 @4xl:p-6">
@@ -76,36 +107,66 @@ export function ProfileEventsCard() {
               items.length > 5 && "max-h-[430px] overflow-y-auto pr-1",
             )}
           >
-            {items.map((item) => (
-              <li key={item.registrationId} className="min-w-0">
-                <Link
-                  href={`/events?eventId=${item.eventId}`}
-                  className="group flex min-w-0 flex-col gap-2 overflow-hidden rounded-xl border border-border/70 bg-muted/15 p-3 transition-colors hover:border-primary/35 hover:bg-muted/35"
-                >
-                  <div className="min-w-0 space-y-1">
-                    <div className="flex min-w-0 items-center justify-between gap-2">
-                      <span className="min-w-0 truncate text-sm font-bold text-foreground group-hover:text-primary">
-                        {item.eventTitle}
-                      </span>
-                      <Badge tone="primary" dot={false} className="shrink-0">
-                        {item.clubCode}
-                      </Badge>
-                    </div>
-                    <p className="truncate text-xs text-muted-foreground">{item.clubName}</p>
-                    <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                      <Clock size={12} className="shrink-0" />
-                      <span className="font-mono font-semibold text-foreground">{formatDateTime(item.startTime)}</span>
-                    </p>
+            {items.map((item) => {
+              const cert = certByEventId.get(item.eventId);
+              return (
+                <li key={item.registrationId} className="min-w-0">
+                  <div className="group flex min-w-0 flex-col gap-2 overflow-hidden rounded-xl border border-border/70 bg-muted/15 p-3 transition-colors hover:border-primary/35 hover:bg-muted/35">
+                    <Link href={`/events?eventId=${item.eventId}`} className="flex min-w-0 flex-col gap-2">
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex min-w-0 items-center justify-between gap-2">
+                          <span className="min-w-0 truncate text-sm font-bold text-foreground group-hover:text-primary">
+                            {item.eventTitle}
+                          </span>
+                          <Badge tone="primary" dot={false} className="shrink-0">
+                            {item.clubCode}
+                          </Badge>
+                        </div>
+                        <p className="truncate text-xs text-muted-foreground">{item.clubName}</p>
+                        <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                          <Clock size={12} className="shrink-0" />
+                          <span className="font-mono font-semibold text-foreground">{formatDateTime(item.startTime)}</span>
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <StatusBadge status={item.participantType} />
+                        <StatusBadge status={item.registrationStatus} />
+                        {item.attendanceStatus && <StatusBadge status={item.attendanceStatus} />}
+                        {item.eventRole && <Badge tone="neutral">{item.eventRole}</Badge>}
+                        {cert && <StatusBadge status={cert.status} />}
+                      </div>
+                    </Link>
+
+                    {cert && cert.status === "ISSUED" && (
+                      <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2.5 text-[11px]"
+                          disabled={printingCertId === cert.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleDownloadCertificate(cert);
+                          }}
+                        >
+                          <Award size={12} />
+                          {printingCertId === cert.id ? "Đang mở…" : "Tải Chứng nhận"}
+                        </Button>
+                        <Link
+                          href={`/verify/${encodeURIComponent(cert.certificateCode)}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-card px-2.5 text-[11px] font-medium text-foreground transition-colors hover:bg-secondary hover:text-primary"
+                        >
+                          <ShieldCheck size={12} />
+                          Xác thực
+                        </Link>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <StatusBadge status={item.participantType} />
-                    <StatusBadge status={item.registrationStatus} />
-                    {item.attendanceStatus && <StatusBadge status={item.attendanceStatus} />}
-                    {item.eventRole && <Badge tone="neutral">{item.eventRole}</Badge>}
-                  </div>
-                </Link>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

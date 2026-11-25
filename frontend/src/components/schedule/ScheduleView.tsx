@@ -4,18 +4,46 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
 import { AlertTriangle, Calendar, ClipboardCheck, Eye, FilterX, MapPin, Search, Send, X } from "lucide-react";
-import { apiModel, TaskItem } from "@/lib/api";
-import { BreadcrumbToolbar, SegmentedTabs } from "@/components/shared/BreadcrumbToolbar";
+import { apiModel, ApplicationSummary, MyEventParticipation, TaskItem } from "@/lib/api";
+import { SegmentedTabs } from "@/components/shared/BreadcrumbToolbar";
 import { DataTable } from "@/components/shared/DataTable";
 import { DetailList, EntityDrawer, Section } from "@/components/shared/Overlays";
 import { Pagination } from "@/components/shared/Pagination";
 import { EmptyState, ErrorState, LoadingRows, Notice } from "@/components/shared/States";
 import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError, ListPage } from "@/components/shared/ListPage";
-import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
+import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/input";
 import { formatDateTime, formatDay } from "@/lib/utils";
+
+type PersonalCalendarKind = "EVENT" | "TASK_DEADLINE" | "INTERVIEW";
+type PersonalCalendarRow = { id: string; itemType: PersonalCalendarKind; clubName: string; title: string; location?: string; startTime: string; status: string };
+
+const CAL_BADGE: Record<PersonalCalendarKind, { tone: "primary" | "pending" | "success"; label: string }> = {
+  EVENT: { tone: "primary", label: "Sự kiện đã đăng ký" },
+  TASK_DEADLINE: { tone: "pending", label: "Hạn công việc" },
+  INTERVIEW: { tone: "success", label: "Lịch phỏng vấn" },
+};
+
+function buildPersonalCalendar(regs: MyEventParticipation[], tasks: TaskItem[], apps: ApplicationSummary[]): PersonalCalendarRow[] {
+  const rows: PersonalCalendarRow[] = [
+    ...regs.filter((ev) => Boolean(ev.startTime) && ev.registrationStatus === "REGISTERED" && ev.eventStatus !== "CANCELLED").map((ev) => ({
+      id: ev.eventId, itemType: "EVENT" as const, clubName: ev.clubName, title: ev.eventTitle,
+      location: ev.location, startTime: ev.startTime, status: ev.eventStatus,
+    })),
+    ...tasks.filter((t) => Boolean(t.deadline) && t.status !== "CANCELLED").map((t) => ({
+      id: t.id, itemType: "TASK_DEADLINE" as const, clubName: t.clubName ?? "", title: t.title,
+      location: t.departmentName || t.eventTitle, startTime: t.deadline!, status: t.status,
+    })),
+    ...apps.filter((a) => Boolean(a.interviewAt) && a.status !== "REJECTED" && a.status !== "CANCELLED").map((a) => ({
+      id: a.id, itemType: "INTERVIEW" as const, clubName: a.clubName,
+      title: `Phỏng vấn ứng tuyển${a.preferredDepartmentName ? ` · ${a.preferredDepartmentName}` : ""}`,
+      location: a.interviewLocation, startTime: a.interviewAt!, status: a.status,
+    })),
+  ];
+  return rows.sort((a, b) => (a.startTime ?? "").localeCompare(b.startTime ?? ""));
+}
 
 export function ScheduleView() {
   const queryClient = useQueryClient();
@@ -23,7 +51,7 @@ export function ScheduleView() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
-  const [calTypeFilter, setCalTypeFilter] = useState<"" | "EVENT" | "TASK">("");
+  const [calTypeFilter, setCalTypeFilter] = useState<"" | PersonalCalendarKind>("");
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [offset, setOffset] = useState(0);
   const [limit, setLimit] = useState(20);
@@ -38,9 +66,19 @@ export function ScheduleView() {
     queryKey: qk.myTasks(statusFilter, overdueOnly, offset, limit),
     queryFn: () => apiModel.myTasks({ status: statusFilter || undefined, overdue: overdueOnly ? true : undefined, offset, limit }),
   });
-  const myCalendar = useQuery({
-    queryKey: qk.myCalendar(),
-    queryFn: () => apiModel.myCalendar(),
+  const myRegs = useQuery({
+    queryKey: qk.myEventRegistrations("schedule"),
+    queryFn: () => apiModel.myEventRegistrations({ status: "REGISTERED", limit: 100 }),
+    enabled: tab === "calendar",
+  });
+  const myCalTasks = useQuery({
+    queryKey: qk.myTasks("schedule-calendar"),
+    queryFn: () => apiModel.myTasks({ limit: 100 }),
+    enabled: tab === "calendar",
+  });
+  const myApps = useQuery({
+    queryKey: qk.myApplications("schedule"),
+    queryFn: () => apiModel.myApplications({ limit: 100 }),
     enabled: tab === "calendar",
   });
 
@@ -58,9 +96,14 @@ export function ScheduleView() {
     });
   }, [myTasks.data?.items, search, priorityFilter]);
 
+  const personalCalendar = useMemo(
+    () => buildPersonalCalendar(myRegs.data?.items ?? [], myCalTasks.data?.items ?? [], myApps.data?.items ?? []),
+    [myApps.data?.items, myCalTasks.data?.items, myRegs.data?.items],
+  );
+
   const filteredCalendar = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return (myCalendar.data ?? []).filter((c) => {
+    return personalCalendar.filter((c) => {
       if (calTypeFilter && c.itemType !== calTypeFilter) return false;
       if (!q) return true;
       return (
@@ -69,7 +112,7 @@ export function ScheduleView() {
         (c.location ?? "").toLowerCase().includes(q)
       );
     });
-  }, [myCalendar.data, search, calTypeFilter]);
+  }, [personalCalendar, search, calTypeFilter]);
 
   const hasFilters = Boolean(search.trim() || statusFilter || priorityFilter || calTypeFilter || overdueOnly);
   const clearFilters = () => {
@@ -110,77 +153,66 @@ export function ScheduleView() {
   };
 
   return (
-    <ListPage title="Lịch & Công việc của tôi">
-      <BreadcrumbToolbar
-        crumbs={[{ label: "Trang chủ", href: "/clubs" }, { label: "Cá nhân" }, { label: "Lịch & Công việc" }]}
-        titleBadge={
-          <CountBadge>
-            {tab === "tasks" ? `${myTasks.data?.total ?? 0} việc` : `${filteredCalendar.length} mục lịch`}
-          </CountBadge>
-        }
-        extraActions={
+    <ListPage title="Công việc & Lịch cá nhân">
+      <div className="relative z-30 flex flex-wrap items-center justify-between gap-1.5 border-b border-border bg-white px-3 py-1.5 sm:px-4">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
           <SegmentedTabs
             value={tab}
             onChange={(v) => { setTab(v); setOffset(0); }}
             options={[
-              { value: "tasks", label: "Việc được giao" },
-              { value: "calendar", label: "Lịch tổng hợp" },
+              { value: "tasks", label: `Việc được giao (${myTasks.data?.total ?? 0})` },
+              { value: "calendar", label: `Lịch cá nhân (${filteredCalendar.length})` },
             ]}
           />
-        }
-        onRefresh={() => {
-          myTasks.refetch();
-          if (tab === "calendar") myCalendar.refetch();
-        }}
-      />
-      <div className="flex flex-wrap items-center gap-2 border-b border-border/60 bg-card px-4 py-2.5 sm:px-6">
-        <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-          <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setOffset(0); }}
-            placeholder={tab === "tasks" ? "Tìm tên việc, CLB, sự kiện…" : "Tìm nội dung lịch, CLB, địa điểm…"}
-            aria-label={tab === "tasks" ? "Tìm tên việc, CLB, sự kiện" : "Tìm nội dung lịch, CLB, địa điểm"}
-            className="h-8 pl-8 pr-7 text-xs"
-          />
-          {search && (
-            <button type="button" aria-label="Xoá tìm kiếm" onClick={() => { setSearch(""); setOffset(0); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              <X size={13} />
-            </button>
+          <div className="relative min-w-[160px] flex-1 sm:max-w-[220px]">
+            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setOffset(0); }}
+              placeholder={tab === "tasks" ? "Tìm tên việc, CLB…" : "Tìm nội dung lịch, CLB…"}
+              aria-label={tab === "tasks" ? "Tìm tên việc, CLB, sự kiện" : "Tìm nội dung lịch, CLB, địa điểm"}
+              className="h-8 pl-8 pr-7 text-xs"
+            />
+            {search && (
+              <button type="button" aria-label="Xoá tìm kiếm" onClick={() => { setSearch(""); setOffset(0); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X size={13} />
+              </button>
+            )}
+          </div>
+          {tab === "tasks" ? (
+            <>
+              <Select aria-label="Lọc trạng thái công việc" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setOffset(0); }} className="h-8 w-full text-xs sm:w-38">
+                <option value="">Tất cả trạng thái</option>
+                <option value="TODO">Chưa bắt đầu</option>
+                <option value="IN_PROGRESS">Đang thực hiện</option>
+                <option value="DONE">Chờ nghiệm thu</option>
+                <option value="COMPLETED">Đã nghiệm thu</option>
+                <option value="CANCELLED">Đã huỷ</option>
+              </Select>
+              <Select aria-label="Lọc độ ưu tiên" value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className="h-8 w-full text-xs sm:w-32">
+                <option value="">Mọi ưu tiên</option>
+                <option value="HIGH">Cao (HIGH)</option>
+                <option value="MEDIUM">Trung bình</option>
+                <option value="LOW">Thấp (LOW)</option>
+              </Select>
+              <Button size="sm" variant={overdueOnly ? "destructive" : "outline"} className="h-8 px-2.5 text-xs" onClick={() => { setOverdueOnly((v) => !v); setOffset(0); }}>
+                <AlertTriangle size={13} /> {overdueOnly ? "Quá hạn" : "Quá hạn"}
+              </Button>
+            </>
+          ) : (
+            <Select aria-label="Lọc loại mục lịch" value={calTypeFilter} onChange={(e) => setCalTypeFilter(e.target.value as "" | PersonalCalendarKind)} className="h-8 w-full text-xs sm:w-44">
+              <option value="">Tất cả mục lịch</option>
+              <option value="EVENT">Sự kiện đã đăng ký</option>
+              <option value="TASK_DEADLINE">Hạn công việc</option>
+              <option value="INTERVIEW">Lịch phỏng vấn</option>
+            </Select>
+          )}
+          {hasFilters && (
+            <Button size="sm" variant="outline" className="h-8" onClick={clearFilters}>
+              <FilterX size={13} /> Xoá lọc
+            </Button>
           )}
         </div>
-        {tab === "tasks" ? (
-          <>
-            <Select aria-label="Lọc trạng thái công việc" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setOffset(0); }} className="h-8 w-full text-xs sm:w-40">
-              <option value="">Tất cả trạng thái</option>
-              <option value="TODO">Chưa bắt đầu</option>
-              <option value="IN_PROGRESS">Đang thực hiện</option>
-              <option value="DONE">Chờ nghiệm thu</option>
-              <option value="COMPLETED">Đã nghiệm thu</option>
-              <option value="CANCELLED">Đã huỷ</option>
-            </Select>
-            <Select aria-label="Lọc độ ưu tiên" value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className="h-8 w-full text-xs sm:w-36">
-              <option value="">Mọi ưu tiên</option>
-              <option value="HIGH">Cao (HIGH)</option>
-              <option value="MEDIUM">Trung bình</option>
-              <option value="LOW">Thấp (LOW)</option>
-            </Select>
-            <Button size="sm" variant={overdueOnly ? "destructive" : "outline"} className="h-8" onClick={() => { setOverdueOnly((v) => !v); setOffset(0); }}>
-              <AlertTriangle size={13} /> {overdueOnly ? "Đang lọc: Quá hạn" : "Quá hạn"}
-            </Button>
-          </>
-        ) : (
-          <Select aria-label="Lọc loại mục lịch" value={calTypeFilter} onChange={(e) => setCalTypeFilter(e.target.value as "" | "EVENT" | "TASK")} className="h-8 w-full text-xs sm:w-44">
-            <option value="">Tất cả mục lịch</option>
-            <option value="EVENT">Sự kiện CLB</option>
-            <option value="TASK">Hạn công việc</option>
-          </Select>
-        )}
-        {hasFilters && (
-          <Button size="sm" variant="outline" className="h-8" onClick={clearFilters}>
-            <FilterX size={13} /> Xoá lọc
-          </Button>
-        )}
       </div>
       {notice && <Notice tone="success">{notice}</Notice>}
       {updateProgress.error && <Notice tone="error">{describeError(updateProgress.error)}</Notice>}
@@ -214,9 +246,7 @@ export function ScheduleView() {
                   render: (t) => (
                     <div>
                       <p className="font-bold">{t.clubName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {t.eventTitle ? `Sự kiện: ${t.eventTitle}` : t.departmentName || t.clubCode}
-                      </p>
+                      <p className="text-xs text-muted-foreground">{t.eventTitle ? `Sự kiện: ${t.eventTitle}` : t.departmentName || t.clubCode}</p>
                     </div>
                   ),
                 },
@@ -227,9 +257,7 @@ export function ScheduleView() {
                   render: (t) => (
                     <div>
                       <p className="font-semibold text-foreground">{t.title}</p>
-                      {t.parentTaskTitle && (
-                        <p className="text-[11px] text-muted-foreground">Việc cha: {t.parentTaskTitle}</p>
-                      )}
+                      {t.parentTaskTitle && <p className="text-[11px] text-muted-foreground">Việc cha: {t.parentTaskTitle}</p>}
                     </div>
                   ),
                 },
@@ -240,12 +268,7 @@ export function ScheduleView() {
                   key: "status",
                   header: "Trạng thái",
                   sortValue: (t) => t.status,
-                  render: (t) => (
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <StatusBadge status={t.status} />
-                      {t.overdue && <StatusBadge status="OVERDUE" />}
-                    </div>
-                  ),
+                  render: (t) => <div className="flex flex-wrap items-center gap-1.5"><StatusBadge status={t.status} />{t.overdue && <StatusBadge status="OVERDUE" />}</div>,
                 },
                 {
                   key: "actions",
@@ -258,12 +281,12 @@ export function ScheduleView() {
             {myTasks.data && <Pagination offset={offset} limit={limit} total={myTasks.data.total} onOffset={setOffset} onLimit={setLimit} />}
           </>
         )
-      ) : myCalendar.isPending ? (
+      ) : myRegs.isPending || myCalTasks.isPending || myApps.isPending ? (
         <LoadingRows />
-      ) : myCalendar.isError ? (
-        <ErrorState message={describeError(myCalendar.error)} onRetry={() => myCalendar.refetch()} />
+      ) : myRegs.isError || myCalTasks.isError || myApps.isError ? (
+        <ErrorState message={describeError(myRegs.error ?? myCalTasks.error ?? myApps.error)} onRetry={() => { myRegs.refetch(); myCalTasks.refetch(); myApps.refetch(); }} />
       ) : !filteredCalendar.length ? (
-        <EmptyState icon={<Calendar />} title={hasFilters ? "Không có mục lịch khớp bộ lọc" : "Chưa có sự kiện hoặc hạn công việc sắp tới"} actionLabel={hasFilters ? "Xoá bộ lọc" : undefined} onAction={hasFilters ? clearFilters : undefined} />
+        <EmptyState icon={<Calendar />} title={hasFilters ? "Không có mục lịch khớp bộ lọc" : "Chưa có sự kiện đã đăng ký, hạn công việc hoặc lịch phỏng vấn sắp tới"} actionLabel={hasFilters ? "Xoá bộ lọc" : undefined} onAction={hasFilters ? clearFilters : undefined} />
       ) : (
         <DataTable
           ariaLabel="Lịch tổng hợp cá nhân"
@@ -272,12 +295,7 @@ export function ScheduleView() {
           rowKey={(item) => `${item.itemType}-${item.id}`}
           columns={[
             { key: "time", header: "Thời gian", sortValue: (c) => c.startTime, render: (c) => <span className="font-mono font-bold text-primary">{formatDateTime(c.startTime)}</span> },
-            {
-              key: "type",
-              header: "Loại",
-              sortValue: (c) => c.itemType,
-              render: (c) => <Badge tone={c.itemType === "EVENT" ? "primary" : "pending"} dot={false}>{c.itemType === "EVENT" ? "Sự kiện CLB" : "Hạn công việc"}</Badge>,
-            },
+            { key: "type", header: "Loại", sortValue: (c) => c.itemType, render: (c) => <Badge tone={CAL_BADGE[c.itemType].tone} dot={false}>{CAL_BADGE[c.itemType].label}</Badge> },
             { key: "club", header: "Câu lạc bộ", sortValue: (c) => c.clubName, render: (c) => <span className="font-semibold">{c.clubName}</span> },
             { key: "title", header: "Nội dung", sortValue: (c) => c.title, render: (c) => <span className="font-bold text-foreground">{c.title}</span> },
             { key: "location", header: "Địa điểm", render: (c) => <span className="text-muted-foreground">{c.location ? <span className="inline-flex items-center gap-1"><MapPin size={12} /> {c.location}</span> : "—"}</span> },

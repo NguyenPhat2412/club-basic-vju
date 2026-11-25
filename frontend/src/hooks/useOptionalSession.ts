@@ -17,7 +17,14 @@ async function readOptional<T>(path: string): Promise<T | null> {
     credentials: "include",
     headers: { "Accept-Language": getIntlLocale() },
   });
-  if (response.status === 401) return null;
+  if (response.status === 401) {
+    if (typeof response.text === "function") {
+      await response.text().catch(() => undefined);
+    } else {
+      await response.body?.cancel?.().catch(() => undefined);
+    }
+    return null;
+  }
   if (!response.ok) throw new Error(`Request failed (${response.status})`);
   return response.json();
 }

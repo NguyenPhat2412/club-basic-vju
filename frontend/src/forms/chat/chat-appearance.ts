@@ -173,7 +173,7 @@ export const CHAT_FONT_SIZE_CLASS: Record<ChatFontSizeKey, string> = {
   lg: "text-[15px] leading-[1.45]",
 };
 
-export function telegramBubbleRadiusClass(isMine: boolean, groupedPrev: boolean, groupedNext: boolean): string {
+export function chatBubbleRadiusClass(isMine: boolean, groupedPrev: boolean, groupedNext: boolean): string {
   if (isMine) {
     if (groupedPrev && groupedNext) return "rounded-[18px] rounded-tr-[6px] rounded-br-[6px]";
     if (!groupedPrev && groupedNext) return "rounded-[18px] rounded-br-[6px]";

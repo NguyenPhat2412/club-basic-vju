@@ -5,13 +5,24 @@ import type {
   AttendanceItemInput,
   CalendarItem,
   ClubEvent,
+  CreateEventFeedbackInput,
   CreateEventInput,
   EventAttendance,
   EventAttendanceQrToken,
+  EventFeedback,
+  EventParticipantRole,
   EventRegistration,
   MyEventParticipation,
   PublicEvent,
 } from '@/types/event/event.types';
+
+export type EventFeedbackSummary = {
+  eventId: string;
+  totalCount: number;
+  averageRating: number;
+  items: EventFeedback[];
+  canSubmit?: boolean;
+};
 
 export const eventsApi = {
   publicEvents: (offset = 0, limit = 10) =>
@@ -35,10 +46,20 @@ export const eventsApi = {
       method: 'PATCH',
       body: JSON.stringify(body),
     }),
-  registerEvent: (eventId: string, note?: string) =>
+  uploadEventCover: (eventId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return apiForm<ClubEvent>(`/events/${eventId}/cover`, form);
+  },
+  deleteEventCover: (eventId: string) =>
+    api<ClubEvent>(`/events/${eventId}/cover`, { method: 'DELETE' }),
+  registerEvent: (eventId: string, note?: string, participantType?: EventParticipantRole) =>
     api<EventRegistration>(`/events/${eventId}/registrations`, {
       method: 'POST',
-      body: JSON.stringify({ note: note || undefined }),
+      body: JSON.stringify({
+        note: note || undefined,
+        participantType: participantType || undefined,
+      }),
     }),
   cancelEventRegistration: (eventId: string) =>
     api<EventRegistration>(`/events/${eventId}/registrations/me/cancel`, { method: 'PATCH' }),
@@ -52,7 +73,12 @@ export const eventsApi = {
   updateEventRegistration: (
     eventId: string,
     registrationId: string,
-    body: { eventRole?: string; status?: 'REGISTERED' | 'CANCELLED'; note?: string }
+    body: {
+      eventRole?: string;
+      participantType?: EventParticipantRole;
+      status?: 'REGISTERED' | 'CANCELLED';
+      note?: string;
+    }
   ) =>
     api<EventRegistration>(`/events/${eventId}/registrations/${registrationId}`, {
       method: 'PATCH',
@@ -83,6 +109,21 @@ export const eventsApi = {
     api<EventAttendance>(`/events/${eventId}/attendances/qr-check-in`, {
       method: 'POST',
       body: JSON.stringify({ token: token.trim() }),
+    }),
+  lockEventAttendance: (eventId: string, otpCode?: string) =>
+    api<ClubEvent>(`/events/${eventId}/attendances/lock`, {
+      method: 'POST',
+      body: JSON.stringify({ otpCode: otpCode?.trim() || undefined }),
+    }),
+  listEventFeedbacks: (eventId: string) =>
+    api<EventFeedbackSummary>(`/events/${eventId}/feedbacks`),
+  submitEventFeedback: (eventId: string, input: CreateEventFeedbackInput) =>
+    api<EventFeedback>(`/events/${eventId}/feedbacks`, {
+      method: 'POST',
+      body: JSON.stringify({
+        rating: input.rating,
+        comment: input.comment?.trim() || undefined,
+      }),
     }),
   myCalendar: (from?: string, to?: string) =>
     api<CalendarItem[]>(

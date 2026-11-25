@@ -14,6 +14,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "events")
@@ -53,6 +54,9 @@ public class Event extends TimestampedEntity {
     @Column(name = "allow_ctv", nullable = false)
     private boolean allowCtv;
 
+    @Column(name = "allow_public_attendees", nullable = false)
+    private boolean allowPublicAttendees;
+
     @Column(name = "requires_submission", nullable = false)
     private boolean requiresSubmission;
 
@@ -65,4 +69,22 @@ public class Event extends TimestampedEntity {
 
     @Column(name = "completed_at")
     private OffsetDateTime completedAt;
+
+    @Column(name = "academic_term", length = 16)
+    private String academicTerm;
+
+    @Column(name = "attendance_locked_at")
+    private OffsetDateTime attendanceLockedAt;
+
+    @Column(name = "attendance_locked_by")
+    private UUID attendanceLockedBy;
+
+    @Column(name = "attendance_signature_sha256", length = 64)
+    private String attendanceSignatureSha256;
+
+    @Column(name = "certificate_template_url", length = 500)
+    private String certificateTemplateUrl;
+
+    @Column(name = "cover_image_url", length = 500)
+    private String coverImageUrl;
 }

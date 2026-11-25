@@ -42,6 +42,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayInputStream;
+import java.net.URI;
 import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -395,8 +396,43 @@ public class ClubServiceImpl implements ClubService {
             values.put("coverStorageKey", club.getCoverStorageKey());
         }
         values.put("overviewConfig", com.vju.club.dto.record.ClubOverviewConfig.fromJson(club.getOverviewConfig()));
+        values.put("facebookUrl", club.getFacebookUrl());
         values.put("status", club.getStatus());
         return values;
+    }
+
+    private static final Set<String> ALLOWED_FACEBOOK_HOSTS = Set.of(
+            "facebook.com", "www.facebook.com", "m.facebook.com", "fb.com");
+
+    private static String normalizeFacebookUrl(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String trimmed = raw.trim();
+        if (trimmed.length() > 500) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_FACEBOOK_URL",
+                    "Liên kết Fanpage Facebook tối đa 500 ký tự.");
+        }
+        URI uri;
+        try {
+            uri = URI.create(trimmed);
+        } catch (IllegalArgumentException e) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_FACEBOOK_URL",
+                    "Liên kết Fanpage Facebook không hợp lệ (chỉ hỗ trợ https://facebook.com hoặc https://fb.com).");
+        }
+        String host = uri.getHost();
+        String path = uri.getPath();
+        if (!"https".equalsIgnoreCase(uri.getScheme())
+                || uri.getUserInfo() != null
+                || uri.getPort() != -1
+                || host == null
+                || !ALLOWED_FACEBOOK_HOSTS.contains(host.toLowerCase(Locale.ROOT))
+                || path == null
+                || path.length() <= 1) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_FACEBOOK_URL",
+                    "Liên kết Fanpage Facebook không hợp lệ (chỉ hỗ trợ https://facebook.com hoặc https://fb.com).");
+        }
+        return trimmed;
     }
 
     private void apply(Club club, ClubRequest request) {
@@ -406,6 +442,7 @@ public class ClubServiceImpl implements ClubService {
         club.setDescription(request.description());
         club.setActivityField(request.activityField());
         club.setContactEmail(request.contactEmail());
+        club.setFacebookUrl(normalizeFacebookUrl(request.facebookUrl()));
         if (request.overviewConfig() != null) {
             club.setOverviewConfig(com.vju.club.dto.record.ClubOverviewConfig.toJson(request.overviewConfig()));
         }
@@ -425,6 +462,7 @@ public class ClubServiceImpl implements ClubService {
         if (request.description() != null) club.setDescription(request.description());
         if (request.activityField() != null) club.setActivityField(request.activityField());
         if (request.contactEmail() != null) club.setContactEmail(request.contactEmail());
+        if (request.facebookUrl() != null) club.setFacebookUrl(normalizeFacebookUrl(request.facebookUrl()));
         if (request.overviewConfig() != null) {
             club.setOverviewConfig(com.vju.club.dto.record.ClubOverviewConfig.toJson(request.overviewConfig()));
         }

@@ -32,6 +32,9 @@ public interface EventRegistrationRepository extends JpaRepository<EventRegistra
     @EntityGraph(attributePaths = {"event", "user"})
     Page<EventRegistration> findByEvent_IdOrderByRegisteredAtAsc(UUID eventId, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"user"})
+    List<EventRegistration> findByEvent_Id(UUID eventId);
+
     @EntityGraph(attributePaths = {"event", "event.club", "user"})
     @Query("SELECT r FROM EventRegistration r WHERE r.user.id = :userId "
             + "AND (:status IS NULL OR r.status = :status) "

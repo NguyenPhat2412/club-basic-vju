@@ -19,7 +19,7 @@
 | **1** | `17/11/2026` | Phỏng vấn thực địa CLB ARC & CLB VAC | Lịch phỏng vấn ứng viên (`PB-76`), phân loại kho tài liệu BCN/Quỹ (`PB-77`), mẫu biểu hành chính VJU (`PB-78`) — **Đã hoàn thành (`V36`, `V37`)**. |
 | **2** | `20/11/2026` | Họp khách hàng Đoàn Thanh niên (ĐTN), Ban Điều phối (BĐP) & các CLB | Đưa ĐTN thành đơn vị thứ 13 (`DOANVJU`, `V35`), đồng bộ membership BCN (`BUG-P3-12`), sự kiện nội bộ & nộp hồ sơ (`PB-88`, `V37`), lịch sử điểm danh trên `/profile` (`PB-86`). |
 | **3** | `23/11/2026` | Phiếu góp ý chính thức từ ĐTN (`Lê Văn Thái An`, `Mỗ Bùi Hải Yến`, `Lê Thế Hùng`) | Tinh gọn quản trị 4 tầng + chuyển đổi đơn vị kiêm nhiệm (`PB-84`), tinh giản Topbar/Sidebar/Home & lọc sự kiện theo CLB (`PB-87`), Trang Portfolio CLB (`/clubs/[clubId]`, `PB-89`), Trang ứng tuyển độc lập kèm Caption + JD (`PB-90`), Truy vết IP/2FA/SHA-256 (`PB-91`), Thống kê tham gia + Biểu đồ Gantt 13 đơn vị + Khảo sát 1–5 sao (`PB-92`), Chuẩn bị hạ tầng ĐRL tham khảo NEU/FTU (`PB-93`). |
-| **4** | `24/11/2026` | Kiểm thử triển khai Facebook OAuth, `/settings` & RBAC trên Staging (`stagging.vju-club.all1.vn`) | Phân quyền chi tiết Facebook (`V40`), quản trị live cấu hình `.env` (Facebook/AI/Google) ngay trên `/settings` (`V41`), cơ chế ủy quyền cấp dưới an toàn (`PB-95`), hạ tầng bất đồng bộ tập trung + Graceful Shutdown + tự động đồng bộ Facebook định kỳ (`PB-94`, `V43`), tích hợp Feed Facebook lên Portfolio CLB (`PB-96`). |
+| **4** | `24/11/2026` | Kiểm thử triển khai Facebook OAuth, `/settings` & RBAC trên Staging (`staging.vju-club.all1.vn`) | Phân quyền chi tiết Facebook (`V40`), quản trị live cấu hình `.env` (Facebook/AI/Google) ngay trên `/settings` (`V41`), cơ chế ủy quyền cấp dưới an toàn (`PB-95`), hạ tầng bất đồng bộ tập trung + Graceful Shutdown + tự động đồng bộ Facebook định kỳ (`PB-94`, `V43`), tích hợp Feed Facebook lên Portfolio CLB (`PB-96`). |
 
 ### 1.2. Các hạng mục vừa hoàn thiện & xác minh (`24/11/2026`, mốc `Flyway V43`)
 1. **Hạ tầng Bất đồng bộ & Chống gián đoạn (`Khối 0`):**
@@ -57,7 +57,7 @@
 ### BIÊN BẢN CUỘC HỌP NHÓM 3 — RÀ SOÁT FEEDBACK BĐP/ĐTN, HẠ TẦNG BẤT ĐỒNG BỘ & KẾ HOẠCH SPRINT 4
 - **Mã biên bản:** `MM-G3-2026-11-24`
 - **Thời gian:** `13:30 – 14:30`, Thứ Ba ngày `24/11/2026`
-- **Hình thức:** Trực tuyến & rà soát trực tiếp trên môi trường Staging (`https://stagging.vju-club.all1.vn`)
+- **Hình thức:** Trực tuyến & rà soát trực tiếp trên môi trường Staging (`https://staging.vju-club.all1.vn`)
 - **Thành phần tham dự:**
   - **Nguyễn Xuân Phát** — Product Owner / Tech Lead (Chủ trì)
   - **Hà Lê Ngọc Thắng** — Tester / Business Analyst (Thư ký & QA)
@@ -81,7 +81,7 @@
 | 1 | Hoàn thiện hạ tầng Async (`SchedulingConfig`, Graceful Shutdown) & Facebook Auto-Sync (`V43`, `ClubFacebookSyncScheduler`, `/settings` UI) + pass toàn bộ CI gate | Tech Lead / Backend & Frontend | `24/11/2026` | **Hoàn thành** |
 | 2 | Cập nhật `PB-94`, `PB-95`, `PB-96` + `TC-PB-94..96` vào `Product Backlog - Sprint 3.xlsx` trên Google Drive | PO & BA/QA | `24/11/2026` | **Hoàn thành** |
 | 3 | Đồng bộ toàn bộ tài liệu kỹ thuật repo (`docs/database`, `docs/erd`, `docs/archi`, `docs/deploy`, `ADR-007`, `phase3-4-baseline-and-handoff`) lên `V43` và cập nhật `tài liệu kỹ thuật.pdf` trên Drive | Tech Lead & QA | `24/11/2026` | **Hoàn thành** |
-| 4 | Hoàn thiện cấu hình `App Domains` (`stagging.vju-club.all1.vn`, `vju-club.all1.vn`) trên Meta for Developers và xác nhận đăng nhập Facebook Fanpage trên Staging | PO (Chủ sở hữu Meta App) | `24–25/11/2026` | **Đang thực hiện** |
+| 4 | Hoàn thiện cấu hình `App Domains` (`staging.vju-club.all1.vn`, `vju-club.all1.vn`) trên Meta for Developers và xác nhận đăng nhập Facebook Fanpage trên Staging | PO (Chủ sở hữu Meta App) | `24–25/11/2026` | **Đang thực hiện** |
 | 5 | Triển khai Đợt 1 Sprint 4 (`PB-84..PB-90`, `PB-96`: Unit Switcher, tinh giản UI, Portfolio CLB + Feed FB, Trang ứng tuyển riêng + JD) | Team Dev Nhóm 3 | `30/11/2026` | **Đã chốt kế hoạch** |
 | 6 | Triển khai Đợt 2 Sprint 4 (`PB-91`, `PB-92`: Audit IP/2FA/SHA-256 Sign-off, Biểu đồ Gantt 13 đơn vị, Khảo sát 1–5 sao) & chuẩn bị đặc tả ĐRL (`PB-93`) | Team Dev & QA Nhóm 3 | `07/12/2026` | **Đã chốt kế hoạch** |
 

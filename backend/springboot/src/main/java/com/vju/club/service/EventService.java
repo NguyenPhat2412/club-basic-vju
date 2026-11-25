@@ -1,5 +1,6 @@
 package com.vju.club.service;
 
+import com.vju.club.dto.record.ClubMediaContent;
 import com.vju.club.dto.record.UploadedFile;
 import com.vju.club.dto.request.CreateEventRequest;
 import com.vju.club.dto.request.EventRegistrationRequest;
@@ -33,6 +34,12 @@ public interface EventService {
     EventResponse create(Actor actor, UUID clubId, CreateEventRequest request);
 
     EventResponse update(Actor actor, UUID clubId, UUID eventId, UpdateEventRequest request);
+
+    EventResponse uploadCover(Actor actor, UUID eventId, UploadedFile file);
+
+    EventResponse deleteCover(Actor actor, UUID eventId);
+
+    ClubMediaContent openCover(String fileName);
 
     PageResponse<EventResponse> listForClub(Actor actor, UUID clubId, EventStatus status, UUID departmentId, int offset, int limit);
 

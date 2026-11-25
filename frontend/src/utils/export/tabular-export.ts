@@ -75,6 +75,7 @@ export interface PrintableVjuReportSpec {
   clubLabel?: string;
   subtitle?: string;
   summaryLine?: string;
+  verificationFooter?: string;
   headers: string[];
   rows: unknown[][];
 }
@@ -109,6 +110,7 @@ export function buildPrintableVjuReportHtml(spec: PrintableVjuReportSpec): strin
     th { background: rgb(248, 250, 252); font-weight: 700; font-size: 11px; text-transform: uppercase; color: rgb(51, 65, 85); }
     tr:nth-child(even) td { background: rgb(252, 252, 253); }
     .signatures { display: flex; justify-content: space-between; margin-top: 28px; padding: 0 24px; page-break-inside: avoid; }
+    .verification-footer { margin-top: 14px; padding: 8px 10px; border: 1px solid rgb(203, 213, 225); background: rgb(248, 250, 252); font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: rgb(51, 65, 85); word-break: break-all; page-break-inside: avoid; }
     .sig-box { text-align: center; width: 220px; }
     .sig-title { font-weight: 700; font-size: 12px; }
     .sig-note { font-size: 11px; color: rgb(100, 116, 139); font-style: italic; margin-bottom: 52px; }
@@ -133,6 +135,7 @@ export function buildPrintableVjuReportHtml(spec: PrintableVjuReportSpec): strin
     <thead><tr>${thHtml}</tr></thead>
     <tbody>${trHtml || `<tr><td colspan="${spec.headers.length}">Không có dữ liệu</td></tr>`}</tbody>
   </table>
+  ${spec.verificationFooter ? `<div class="verification-footer">${escapeHtml(spec.verificationFooter)}</div>` : ""}
   <div class="signatures">
     <div class="sig-box">
       <div class="sig-title">Người lập biểu / TM. Ban Chủ nhiệm CLB</div>

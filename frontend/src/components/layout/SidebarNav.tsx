@@ -28,6 +28,7 @@ export function SidebarNav({
   mustChangePassword,
   unreadSummary,
   onSignOut,
+  onOpenHref,
 }: {
   isMobile?: boolean;
   collapsed: boolean;
@@ -45,6 +46,7 @@ export function SidebarNav({
   mustChangePassword?: boolean;
   unreadSummary?: NotificationUnreadSummary;
   onSignOut: () => void;
+  onOpenHref?: (href: string) => void;
 }) {
   const { t, tr } = useI18n();
   const isCollapsed = !isMobile && collapsed;
@@ -98,7 +100,12 @@ export function SidebarNav({
   return (
     <aside
       onClickCapture={(e) => {
-        if ((e.target as HTMLElement).closest("a")) clearPendingTabClose();
+        const anchor = (e.target as HTMLElement).closest("a");
+        if (anchor) {
+          clearPendingTabClose();
+          const href = anchor.getAttribute("href");
+          if (href) onOpenHref?.(href);
+        }
       }}
       className={cn(
         "flex h-full select-none flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200",
@@ -108,16 +115,16 @@ export function SidebarNav({
       <div
         className={cn(
           "flex shrink-0 border-b border-sidebar-border",
-          isCollapsed ? "flex-col items-center gap-1.5 py-2" : "h-13 items-center justify-between gap-2 px-3"
+          isCollapsed ? "flex-col items-center gap-1 py-1.5" : "h-11 items-center justify-between gap-2 px-3"
         )}
       >
-        <Link href="/home" className="flex min-w-0 shrink-0 items-center gap-2.5" aria-label="VJU ClubHub">
+        <Link href="/home" className="flex min-w-0 shrink-0 items-center gap-2" aria-label="VJU ClubHub">
           <Image
             src="/images/vju-logo.png"
             alt="Logo Trường Đại học Việt Nhật (VJU)"
-            width={36}
-            height={36}
-            className="size-9 shrink-0 rounded-full bg-white p-0.5 object-contain shadow-xs ring-1 ring-border/70"
+            width={30}
+            height={30}
+            className="size-7.5 shrink-0 rounded-full bg-white p-0.5 object-contain shadow-xs ring-1 ring-border/70"
           />
           {!isCollapsed && (
             <div className="min-w-0 leading-tight">

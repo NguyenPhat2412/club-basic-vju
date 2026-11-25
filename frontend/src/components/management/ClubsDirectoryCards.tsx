@@ -2,9 +2,10 @@
 
 import { Mail, Sparkles, Users } from "lucide-react";
 import type { Club } from "@/lib/api";
+import { isYouthUnion } from "@/lib/club/youth-union";
 import { clubSlugFromCode, type ClubMediaItem } from "@/lib/media";
 import { ClubAvatar, ClubCoverBanner } from "@/components/shared/ClubMedia";
-import { StatusBadge } from "@/components/ui/badge";
+import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ClubManagementTabKey } from "@/forms/club/club-form";
 import { cn } from "@/lib/utils";
@@ -47,7 +48,10 @@ export function ClubsDirectoryCards({
                 <div className="absolute bottom-2.5 left-3 right-3 flex items-end gap-2.5">
                   <ClubAvatar name={club.name} code={club.code} logoUrl={club.logoUrl} fallbackUrl={fallbackMedia?.logo} size="md" />
                   <div className="min-w-0 flex-1 text-white drop-shadow-xs">
-                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-white/90">{club.code}</span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-white/90">{club.code}</span>
+                      {isYouthUnion(club) && <Badge tone="primary" dot={false}>ĐTN cấp Trường</Badge>}
+                    </div>
                     <h3 className="truncate text-sm font-extrabold leading-tight">{club.name}</h3>
                   </div>
                 </div>

@@ -5,6 +5,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
 import { ShieldPlus } from "lucide-react";
 import { apiModel, PermissionGroup, Role, Scope } from "@/lib/api";
+import { useCriticalActionOtp } from "@/hooks/useCriticalActionOtp";
+import { Otp2FaChallengeModal } from "@/components/auth/Otp2FaChallengeModal";
 import { describeError } from "@/components/shared/ListPage";
 import { scopeLabel } from "@/components/shared/RolePicker";
 import { ModalShell } from "@/components/shared/Overlays";
@@ -31,6 +33,7 @@ export function CreateRoleModal({
   onCreated: (role: Role) => void;
 }) {
   const queryClient = useQueryClient();
+  const roleOtp = useCriticalActionOtp("ROLE_CHANGE");
   const [newRole, setNewRole] = useState(EMPTY_NEW_ROLE);
   const [newKeys, setNewKeys] = useState<Set<string>>(new Set());
 
@@ -40,13 +43,18 @@ export function CreateRoleModal({
 
   const create = useMutation({
     mutationFn: () =>
-      apiModel.createRole({
-        code: newCode,
-        name: newRole.name.trim(),
-        description: newRole.description.trim() || undefined,
-        scope: newRole.scope,
-        permissionIds: newFitting.map((p) => p.id),
-      }),
+      roleOtp.runWithOtp((otp) =>
+        apiModel.createRole(
+          {
+            code: newCode,
+            name: newRole.name.trim(),
+            description: newRole.description.trim() || undefined,
+            scope: newRole.scope,
+            permissionIds: newFitting.map((p) => p.id),
+          },
+          otp
+        )
+      ),
     onSuccess: async (role) => {
       setNewRole(EMPTY_NEW_ROLE);
       setNewKeys(new Set());
@@ -65,6 +73,7 @@ export function CreateRoleModal({
     });
 
   return (
+    <>
     <ModalShell
       open={open}
       onClose={onClose}
@@ -138,5 +147,7 @@ export function CreateRoleModal({
       </div>
       {create.error && <p className="text-xs text-destructive">{describeError(create.error)}</p>}
     </ModalShell>
+    <Otp2FaChallengeModal {...roleOtp.otpModalProps} />
+    </>
   );
 }

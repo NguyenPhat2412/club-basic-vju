@@ -41,6 +41,7 @@ export type Club = {
   description?: string;
   activityField?: string;
   contactEmail?: string;
+  facebookUrl?: string | null;
   overviewConfig?: ClubOverviewConfig | null;
   status: string;
   logoUrl?: string;
@@ -53,9 +54,27 @@ export type ClubInput = {
   description?: string;
   activityField?: string;
   contactEmail?: string;
+  facebookUrl?: string | null;
   overviewConfig?: ClubOverviewConfig | null;
   logoUrl?: string;
   coverUrl?: string;
+};
+
+export type ClubUsage = {
+  clubId: string;
+  storageUsedBytes: number;
+  documentBytes: number;
+  chatMediaBytes: number;
+  storageQuotaBytes: number;
+  storageQuotaMb: number;
+  channelCount: number;
+  maxChannelsPerClub: number;
+  departmentCount: number;
+  maxDepartmentsPerClub: number;
+  activeEventCount: number;
+  maxActiveEventsPerClub: number;
+  openTaskCount: number;
+  maxOpenTasksPerClub: number;
 };
 
 export type Membership = {

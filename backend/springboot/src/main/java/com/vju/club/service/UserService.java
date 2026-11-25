@@ -12,7 +12,11 @@ import com.vju.club.security.Actor;
 import java.util.UUID;
 
 public interface UserService {
-    UserResponse create(Actor actor, CreateUserRequest request);
+    default UserResponse create(Actor actor, CreateUserRequest request) {
+        return create(actor, request, null);
+    }
+
+    UserResponse create(Actor actor, CreateUserRequest request, String twoFactorOtp);
 
     void resetPassword(Actor actor, UUID userId, ResetPasswordRequest request);
 

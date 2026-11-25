@@ -20,6 +20,10 @@ public interface AuthService {
 
     SignedIn loginWithGoogle(GoogleLoginRequest request);
 
+    default UUID resolveGoogleUserIdForTwoFactor(String credential) {
+        throw new UnsupportedOperationException("Google 2FA resolution is not supported");
+    }
+
     GoogleSignInConfigResponse googleSignInConfig();
 
     UserResponse getCurrentUser(UUID userId);

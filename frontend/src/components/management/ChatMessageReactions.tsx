@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, SmilePlus } from "lucide-react";
 import {
-  TELEGRAM_ALL_REACTIONS,
-  TELEGRAM_QUICK_REACTIONS,
+  CHAT_ALL_REACTIONS,
+  CHAT_QUICK_REACTIONS,
   recordRecentEmoji,
 } from "@/forms/chat/chat-emojis";
 import type { ChatReactionSummary } from "@/types/chat/chat.types";
@@ -91,7 +91,7 @@ export function ChatReactionTrigger({
         >
           {!expanded ? (
             <div className="flex items-center gap-0.5">
-              {TELEGRAM_QUICK_REACTIONS.map((emoji) => {
+              {CHAT_QUICK_REACTIONS.map((emoji) => {
                 const active = myEmojis.has(emoji);
                 return (
                   <button
@@ -133,7 +133,7 @@ export function ChatReactionTrigger({
                 </button>
               </div>
               <div className="grid grid-cols-6 gap-0.5">
-                {TELEGRAM_ALL_REACTIONS.map((emoji) => {
+                {CHAT_ALL_REACTIONS.map((emoji) => {
                   const active = myEmojis.has(emoji);
                   return (
                     <button

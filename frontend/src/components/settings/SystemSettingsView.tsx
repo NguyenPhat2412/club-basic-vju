@@ -6,7 +6,6 @@ import { qk } from "@/lib/api/query-keys";
 import { Settings } from "lucide-react";
 import { apiModel, SystemSettings, SystemSettingsInput } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
-import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
 import { describeError, ListPage } from "@/components/shared/ListPage";
 import { EmptyState, ErrorState, LoadingRows, Notice } from "@/components/shared/States";
 import { Button } from "@/components/ui/button";
@@ -41,14 +40,9 @@ export function SystemSettingsView() {
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
-      <BreadcrumbToolbar
-        crumbs={[{ label: "Quản trị hệ thống" }, { label: "Cài đặt hệ thống" }]}
-        refreshing={settings.isFetching}
-        onRefresh={() => settings.refetch()}
-      />
+    <div className="flex min-h-full w-full min-w-0 max-w-full flex-1 flex-col overflow-x-clip">
       {notice && <Notice key={notice.seq} tone="success">{notice.text}</Notice>}
-      <div className="w-full space-y-4 px-4 py-5 sm:px-6 lg:px-8">
+      <div className="w-full min-w-0 space-y-4 px-3 py-3 sm:px-5 sm:py-4 lg:px-6">
         {settings.isPending ? (
           <LoadingRows rows={3} />
         ) : settings.isError ? (
@@ -101,16 +95,23 @@ function SettingsForm({
   };
 
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <form onSubmit={submit} className="min-w-0 space-y-4">
       {/* columns (masonry) instead of a grid: cards of different heights stack without row gaps */}
-      <div className="gap-4 @3xl:columns-2 @6xl:columns-3">
+      <div className="min-w-0 gap-4 @3xl:columns-2 @6xl:columns-3">
         {SYSTEM_SETTINGS_GROUPS.map((group) => (
-          <section key={group.title} className="mb-4 break-inside-avoid overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs">
-            <h3 className="border-b border-slate-100 bg-slate-50/70 px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-primary">{group.title}</h3>
+          <section key={group.title} className="mb-4 min-w-0 break-inside-avoid overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs">
+            <h3 className="border-b border-slate-100 bg-slate-50/70 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-primary sm:px-5">{group.title}</h3>
             <ul className="divide-y divide-slate-100">
               {group.fields.map((f) => (
-                <li key={f.key} className="flex items-center justify-between gap-4 px-5 py-3.5">
-                  <label htmlFor={f.key} className="min-w-0">
+                <li
+                  key={f.key}
+                  className={
+                    f.kind === "number"
+                      ? "flex flex-col items-stretch gap-2.5 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5"
+                      : "flex items-center justify-between gap-3 px-4 py-3.5 sm:gap-4 sm:px-5"
+                  }
+                >
+                  <label htmlFor={f.key} className="min-w-0 flex-1 break-words">
                     <span className="block text-sm font-medium text-slate-900">
                       <span>{f.label}</span>
                       {f.kind === "number" && canEdit && (
@@ -132,7 +133,7 @@ function SettingsForm({
                       <span className={`absolute left-0 top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform ${draft[f.key] ? "translate-x-5" : "translate-x-0.5"}`} />
                     </button>
                   ) : (
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex shrink-0 items-center justify-end gap-2">
                       <Input
                         id={f.key}
                         type="number"
@@ -144,7 +145,7 @@ function SettingsForm({
                         value={draft[f.key]}
                         onChange={(e) => setDraft({ ...draft, [f.key]: Math.max(f.min, Math.min(f.max, Number(e.target.value) || 0)) })}
                       />
-                      <span className="w-10 text-xs text-slate-500">{f.unit}</span>
+                      <span className="min-w-10 shrink-0 whitespace-nowrap text-xs text-slate-500">{f.unit}</span>
                     </div>
                   )}
                 </li>
@@ -171,14 +172,14 @@ function SettingsForm({
       />
 
       {save.isError && <Notice tone="error">{describeError(save.error)}</Notice>}
-      <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
-        <span className="text-[11px] text-slate-500">
+      <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5">
+        <span className="min-w-0 text-[11px] text-slate-500">
           {save.isSuccess && !changed ? "Đã lưu." : current.updatedAt ? `Cập nhật ${formatDateTime(current.updatedAt)}` : ""}
         </span>
         {canEdit ? (
-          <Button type="submit" size="sm" disabled={!changed || save.isPending}>{save.isPending ? "Đang lưu…" : "Lưu cài đặt"}</Button>
+          <Button type="submit" size="sm" className="ml-auto shrink-0" disabled={!changed || save.isPending}>{save.isPending ? "Đang lưu…" : "Lưu cài đặt"}</Button>
         ) : (
-          <span className="text-xs text-slate-500">Chỉ có quyền xem</span>
+          <span className="ml-auto shrink-0 text-xs text-slate-500">Chỉ có quyền xem</span>
         )}
       </div>
     </form>

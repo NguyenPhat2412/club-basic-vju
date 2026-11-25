@@ -52,7 +52,7 @@ export function WorkspaceTabItem({
       }}
       onMouseLeave={() => setHoveredTip(null)}
       className={cn(
-        "group relative flex h-7.5 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 text-xs transition-all focus-visible:outline-2 focus-visible:outline-primary",
+        "group relative flex h-6.5 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2 text-xs transition-all focus-visible:outline-2 focus-visible:outline-primary",
         isActive
           ? "border border-slate-200/95 bg-white font-bold text-slate-900 shadow-2xs before:absolute before:inset-x-2 before:-top-[1px] before:h-[2.5px] before:rounded-full before:bg-primary"
           : "border border-transparent bg-slate-50/55 font-medium text-slate-600 hover:border-slate-200/70 hover:bg-slate-100/90 hover:text-slate-900"

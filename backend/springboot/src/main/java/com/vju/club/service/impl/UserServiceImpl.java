@@ -17,11 +17,13 @@ import com.vju.club.enums.UserStatus;
 import com.vju.club.error.ApiException;
 import com.vju.club.mapper.UserMapper;
 import com.vju.club.repository.UserRepository;
+import com.vju.club.repository.UserRoleRepository;
 import com.vju.club.security.Actor;
 import com.vju.club.security.GrantGuard;
 import com.vju.club.security.PermissionAuthorizationService;
 import com.vju.club.service.AuditService;
 import com.vju.club.service.RoleService;
+import com.vju.club.service.TwoFactorOtpService;
 import com.vju.club.service.UserService;
 import com.vju.club.service.UserSessionService;
 import com.vju.club.specification.UserSpecifications;
@@ -62,6 +64,10 @@ public class UserServiceImpl implements UserService {
 
     @Autowired(required = false)
     private com.vju.club.config.RuntimeIntegrationConfig runtimeIntegrationConfig;
+    @Autowired(required = false)
+    private UserRoleRepository userRoleRepository;
+    @Autowired(required = false)
+    private TwoFactorOtpService twoFactorOtpService;
 
     private com.vju.club.config.RuntimeIntegrationConfig.EffectiveGoogle effectiveGoogle() {
         if (runtimeIntegrationConfig != null) {
@@ -112,7 +118,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @RequirePermission(UserConstants.PERMISSION_CREATE)
-    public UserResponse create(Actor actor, CreateUserRequest request) {
+    public UserResponse create(Actor actor, CreateUserRequest request, String twoFactorOtp) {
         String email = request.email().trim().toLowerCase(Locale.ROOT);
         String studentCode = blankToNull(request.studentCode());
         if (userRepository.existsByEmailIgnoreCase(email)) {
@@ -137,8 +143,8 @@ public class UserServiceImpl implements UserService {
         User saved = userRepository.saveAndFlush(user);
         auditService.record(actor.id(), AuditAction.USER_CREATED, saved.getId(), null, null,
                 Map.of("email", saved.getEmail()));
-        if (request.roles() != null) {
-            request.roles().forEach(role -> roleService.assign(actor, saved.getId(), role));
+        if (request.roles() != null && !request.roles().isEmpty()) {
+            roleService.assignBatch(actor, saved.getId(), request.roles(), twoFactorOtp);
         }
         return userMapper.toResponse(saved);
     }
@@ -179,6 +185,24 @@ public class UserServiceImpl implements UserService {
         }
         if (request.phone() != null) user.setPhone(blankToNull(request.phone()));
         if (request.avatarUrl() != null) user.setAvatarUrl(blankToNull(request.avatarUrl()));
+        if (request.emailNotificationsEnabled() != null) {
+            user.setEmailNotificationsEnabled(request.emailNotificationsEnabled());
+        }
+        if (request.twoFactorEnabled() != null) {
+            if (Boolean.TRUE.equals(request.twoFactorEnabled()) && !isTier1To3Admin(actor.id())) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "TWO_FACTOR_ADMIN_ROLE_REQUIRED",
+                        "Only Tier 1–3 administrators can enable two-factor authentication");
+            }
+            if (Boolean.FALSE.equals(request.twoFactorEnabled()) && user.isTwoFactorEnabled()) {
+                String headerOtp = CriticalActionOtpSupport.resolveOtp(null);
+                if (twoFactorOtpService == null || headerOtp == null || headerOtp.isBlank()) {
+                    throw new ApiException(HttpStatus.FORBIDDEN, "TWO_FACTOR_REQUIRED",
+                            "Two-factor verification code is required to disable two-factor authentication");
+                }
+                twoFactorOtpService.requireCriticalActionOtpIfEnabled(actor.id(), "DISABLE_2FA", headerOtp);
+            }
+            user.setTwoFactorEnabled(request.twoFactorEnabled());
+        }
         User saved = userRepository.saveAndFlush(user);
         auditService.recordChange(actor.id(), AuditAction.USER_PROFILE_UPDATED, saved.getId(), null, before, profile(saved));
         return userMapper.toResponse(saved);
@@ -303,6 +327,8 @@ public class UserServiceImpl implements UserService {
             user.setGoogleSubject(null);
             user.setPasswordHash(passwordEncoder.encode(unusablePassword()));
             user.setRequiresPasswordChange(false);
+            user.setEmailNotificationsEnabled(false);
+            user.setTwoFactorEnabled(false);
             user.setStatus(UserStatus.INACTIVE);
             user.setAnonymizedAt(timestamp);
             User saved = userRepository.saveAndFlush(user);
@@ -331,6 +357,8 @@ public class UserServiceImpl implements UserService {
         values.put("studentCode", user.getStudentCode());
         values.put("phone", user.getPhone());
         values.put("avatarUrl", user.getAvatarUrl());
+        values.put("emailNotificationsEnabled", user.isEmailNotificationsEnabled());
+        values.put("twoFactorEnabled", user.isTwoFactorEnabled());
         return values;
     }
 
@@ -353,6 +381,11 @@ public class UserServiceImpl implements UserService {
         byte[] bytes = new byte[32];
         RANDOM.nextBytes(bytes);
         return Base64.getEncoder().encodeToString(bytes);
+    }
+
+    private boolean isTier1To3Admin(UUID userId) {
+        return userId != null && userRoleRepository != null
+                && userRoleRepository.holdsTier1To3AdminRole(userId);
     }
 
     private User findUser(UUID userId) {

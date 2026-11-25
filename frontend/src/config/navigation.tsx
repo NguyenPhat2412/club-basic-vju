@@ -26,6 +26,29 @@ export type NavSection = {
   groups: NavParentGroup[];
 };
 
+const NAV_LABEL_FALLBACKS: Record<string, { en: string; ja: string }> = {
+  "Sự kiện các CLB": { en: "Club Events", ja: "クラブイベント" },
+  "Chứng nhận": { en: "Certificates", ja: "証明書管理" },
+  "Quản lý & Thống kê Chứng nhận": { en: "Certificate Management & Stats", ja: "証明書管理・統計" },
+  "Công việc & Lịch cá nhân": { en: "Tasks & Personal Schedule", ja: "タスク・個人スケジュール" },
+  "Thành viên & Tuyển quân": { en: "Members & Recruitment", ja: "メンバー・募集" },
+  "Các ban hoạt động": { en: "Departments", ja: "専門部署" },
+  "Tài liệu CLB & Biểu mẫu": { en: "Club Documents & Forms", ja: "クラブ資料・応募フォーム" },
+  "Không gian & Chat CLB": { en: "Club Workspace & Chat", ja: "クラブスペース・チャット" },
+  "Đơn ứng tuyển của tôi": { en: "My Applications", ja: "入部申請履歴" },
+  "Hoạt động & Tài liệu": { en: "Activities & Documents", ja: "活動・資料" },
+  "Cổng thông tin": { en: "Information Portal", ja: "情報ポータル" },
+  "Hệ thống CLB sinh viên": { en: "Student Club System", ja: "学生クラブ管理システム" },
+  "Không gian quản lý CLB": { en: "Club Management Workspace", ja: "クラブ管理ワークスペース" },
+};
+
+function translateNavLabel(text: string, locale: ReturnType<typeof getPresentationLocale>): string {
+  if (locale === "vi") return text;
+  const fallback = NAV_LABEL_FALLBACKS[text]?.[locale];
+  if (fallback) return fallback;
+  return translateUiText(text, locale);
+}
+
 export function buildNavigationSections(params: {
   authenticated: boolean;
   mustChangePassword: boolean;
@@ -126,18 +149,6 @@ export function buildNavigationSections(params: {
             id: "sec-admin",
             groups: [
               {
-                id: "grp-personal",
-                label: "Cá nhân",
-                icon: <UserRound size={15} />,
-                items: [
-                  { href: "/profile", label: "Hồ sơ cá nhân", visible: authenticated },
-                  { href: "/clubs", label: "Khám phá câu lạc bộ", visible: !canSystemAdmin },
-                  { href: "/applications", label: "Đơn đăng ký của tôi", visible: authenticated },
-                  { href: "/schedule", label: "Lịch & Công việc của tôi", visible: authenticated },
-                  { href: "/notifications", label: "Thông báo của tôi", visible: authenticated },
-                ],
-              },
-              {
                 id: "grp-club",
                 label: "Câu lạc bộ",
                 icon: <Building2 size={15} />,
@@ -163,6 +174,7 @@ export function buildNavigationSections(params: {
                 icon: <CalendarCheck2 size={15} />,
                 items: [
                   mgmt("events", "Sự kiện", canClubOps),
+                  mgmt("certificates", "Chứng nhận", canClubOps),
                   mgmt("tasks", "Công việc", canClubOps),
                   {
                     href: canClubDocs ? "/management?tab=documents" : "/management?tab=forms",
@@ -183,6 +195,18 @@ export function buildNavigationSections(params: {
                   { href: "/roles", label: "Vai trò & Phân quyền", visible: canGlobalRoleView },
                   { href: "/audit-logs", label: "Nhật ký hệ thống", visible: can("audit.view") },
                   { href: "/settings", label: "Cài đặt hệ thống", visible: can("setting.view") },
+                ],
+              },
+              {
+                id: "grp-personal",
+                label: "Cá nhân",
+                icon: <UserRound size={15} />,
+                items: [
+                  { href: "/profile", label: "Hồ sơ cá nhân", visible: authenticated },
+                  { href: "/clubs", label: "Khám phá câu lạc bộ", visible: !canSystemAdmin },
+                  { href: "/applications", label: "Đơn đăng ký của tôi", visible: authenticated },
+                  { href: "/schedule", label: "Công việc & Lịch cá nhân", visible: authenticated },
+                  { href: "/notifications", label: "Thông báo của tôi", visible: authenticated },
                 ],
               },
             ],
@@ -219,8 +243,8 @@ export function buildNavigationSections(params: {
                 label: "Hoạt động & Tài liệu",
                 icon: <CalendarCheck2 size={15} />,
                 items: [
-                  { href: "/events", label: "Sự kiện & Cộng tác viên", visible: true },
-                  { href: "/schedule", label: "Lịch & Việc của tôi", visible: authenticated },
+                  { href: "/events", label: "Sự kiện các CLB", visible: true },
+                  { href: "/schedule", label: "Công việc & Lịch cá nhân", visible: authenticated },
                   { href: "/documents", label: "Tài liệu & Quy chế", visible: authenticated },
                 ],
               },
@@ -243,7 +267,7 @@ export function buildNavigationSections(params: {
         ];
 
   const locale = getPresentationLocale();
-  const tr = (text: string) => translateUiText(text, locale);
+  const tr = (text: string) => translateNavLabel(text, locale);
 
   return rawSections
     .map((sec) => ({
@@ -294,6 +318,7 @@ const MANAGEMENT_TAB_TITLES: Record<string, string> = {
   applications: "Hồ sơ ứng tuyển",
   forms: "Biểu mẫu tuyển thành viên",
   events: "Sự kiện & Điểm danh",
+  certificates: "Quản lý & Thống kê Chứng nhận",
   tasks: "Báo cáo công việc",
   documents: "Tài liệu CLB & Biểu mẫu",
   chat: "Kênh trao đổi & AI",
@@ -306,7 +331,7 @@ export function resolveActiveNavMeta(
   currentTier?: string | null
 ): { groupLabel: string; pageTitle: string } {
   const locale = getPresentationLocale();
-  const tr = (text: string) => translateUiText(text, locale);
+  const tr = (text: string) => translateNavLabel(text, locale);
 
   if (pathname === "/dashboard") {
     return { groupLabel: tr("Bảng điều khiển"), pageTitle: tr("Tổng quan") };
@@ -326,6 +351,12 @@ export function resolveActiveNavMeta(
         }
       }
     }
+  }
+  if (pathname === "/events") {
+    return {
+      groupLabel: translateNavLabel("Hoạt động & Tài liệu", locale),
+      pageTitle: translateNavLabel("Sự kiện các CLB", locale),
+    };
   }
   if (pathname === "/notifications") {
     return { groupLabel: tr("Cổng cá nhân"), pageTitle: tr("Thông báo của tôi") };

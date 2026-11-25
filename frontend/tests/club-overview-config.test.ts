@@ -70,7 +70,8 @@ test("all custom overview and statistics frontend files stay concise (< 400 line
     "src/components/management/OverviewDepartmentPanel.tsx",
     "src/components/management/OverviewTab.tsx",
     "src/components/management/ClubSettingsTab.tsx",
-    "src/components/club/ClubRecruitmentDrawer.tsx",
+    "src/components/club/ClubPortfolioView.tsx",
+    "src/components/club/ClubApplyView.tsx",
   ];
   for (const rel of files) {
     const abs = path.join(process.cwd(), rel);

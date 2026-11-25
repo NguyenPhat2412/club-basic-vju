@@ -1,21 +1,19 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
-import { Plus, ShieldCheck, UserPlus } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { apiModel, Department, Membership } from "@/lib/api";
 import { CLUB_WORKSPACE_KEYS, useSession } from "@/hooks/useSession";
+import { useActiveUnit } from "@/hooks/useActiveUnit";
 import { useUserNames } from "@/hooks/user/useUsers";
 import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
-import { ClubAvatar } from "@/components/shared/ClubMedia";
 import { EmptyState, LoadingRows, Notice } from "@/components/shared/States";
 import { UserIdentityCell } from "@/components/shared/TableRowActions";
 import { describeError, ListPage } from "@/components/shared/ListPage";
-import { Badge, CountBadge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   CLUB_MANAGEMENT_TAB_KEYS,
   ClubManagementTabKey,
@@ -31,6 +29,7 @@ import { ClubsDirectoryTab } from "@/components/management/ClubsDirectoryTab";
 import { ApplicationsTab } from "@/components/application/ClubApplicationsTab";
 import { FormsTab } from "@/components/application/FormsTab";
 import { OverviewTab } from "@/components/management/OverviewTab";
+import { ClubCertificatesOverviewSection } from "@/components/management/ClubCertificatesOverviewSection";
 import { ClubMembersTab } from "@/components/management/ClubMembersTab";
 import {
   AddClubMemberModal,
@@ -56,6 +55,7 @@ function ClubManagementViewContent() {
   const urlTab = searchParams.get("tab") as ClubManagementTabKey | null;
   const urlClubId = searchParams.get("clubId");
   const session = useSession();
+  const unitCtx = useActiveUnit();
   const queryClient = useQueryClient();
   const canViewUsers = session.can("user.view");
   const nameOf = useUserNames(canViewUsers);
@@ -86,14 +86,18 @@ function ClubManagementViewContent() {
     enabled: session.ready,
   });
   const scope = session.clubsWith(CLUB_WORKSPACE_KEYS);
-  const manageable = (clubs.data?.items ?? []).filter((c) => scope.global || scope.ids.has(c.id));
-  const requestedClubId = urlClubId || clubId || "";
+  const manageable = useMemo(
+    () => (clubs.data?.items ?? []).filter((c) => scope.global || scope.ids.has(c.id)),
+    [clubs.data?.items, scope.global, scope.ids],
+  );
+  const requestedClubId = urlClubId || unitCtx.activeClubId || clubId || "";
   const explicitClub = manageable.find((c) => c.id === requestedClubId);
-  const clubSupportingTab =
-    explicitClub && computeVisibleClubTabs(explicitClub.id, session.canInClub).some((t) => t.value === tab)
-      ? explicitClub
-      : manageable.find((c) => computeVisibleClubTabs(c.id, session.canInClub).some((t) => t.value === tab));
-  const currentClub = clubSupportingTab ?? explicitClub ?? manageable[0];
+  const currentClub =
+    explicitClub ??
+    (!requestedClubId
+      ? manageable.find((c) => computeVisibleClubTabs(c.id, session.canInClub).some((t) => t.value === tab))
+      : undefined) ??
+    manageable[0];
   const activeClubId = currentClub?.id ?? "";
 
   const visibleTabs = useMemo(
@@ -106,26 +110,34 @@ function ClubManagementViewContent() {
     ? tab
     : (visibleTabs[0]?.value ?? "clubs");
 
+  useEffect(() => {
+    if (!session.ready || clubs.isPending || !activeClubId || urlTab === null || (activeTab === tab && urlTab === activeTab)) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", activeTab);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [activeClubId, activeTab, clubs.isPending, pathname, router, searchParams, session.ready, tab, urlTab]);
+
   const navigateClubAndTab = (nextClubId: string, nextTab: ClubManagementTabKey, section?: string) => {
     setClubId(nextClubId);
+    if (nextClubId) unitCtx.setActiveUnitId(nextClubId);
     setMemberOffset(0);
     setMemberDeptFilter("");
     setMemberSearch("");
     setNotice("");
     setErrorMsg("");
+    const targetVisible = nextClubId ? computeVisibleClubTabs(nextClubId, session.canInClub) : null;
+    const resolvedTab = !targetVisible || targetVisible.some((t) => t.value === nextTab)
+      ? nextTab : (targetVisible[0]?.value ?? "clubs");
     const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", nextTab);
+    params.set("tab", resolvedTab);
     params.delete("fbSelect");
     params.delete("fbError");
     if (section) params.set("section", section);
     else params.delete("section");
-    if (nextClubId) {
-      params.set("clubId", nextClubId);
-    }
+    if (nextClubId) params.set("clubId", nextClubId);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  const canViewApplications = session.canInClub("application.view", activeClubId);
   const canViewMembers = session.canInClub("member.view", activeClubId);
   const canAddMember = session.canInClub("member.add", activeClubId);
   const canUpdateMember = session.canInClub("member.update", activeClubId);
@@ -133,12 +145,6 @@ function ClubManagementViewContent() {
   const canViewMemberDetail =
     session.canInClub("member.view_detail", activeClubId) || canUpdateMember || canRemoveMember;
   const canCreateClub = session.can("club.create");
-
-  const pendingApps = useQuery({
-    queryKey: qk.clubApplications(activeClubId, "pending-count"),
-    queryFn: () => apiModel.clubApplications(activeClubId, { status: "PENDING", limit: 1 }),
-    enabled: !!activeClubId && activeTab === "applications" && canViewApplications,
-  });
 
   const members = useQuery({
     queryKey: qk.clubMembers(activeClubId, memberStatusFilter, memberDeptFilter, memberSearch, memberOffset, memberLimit),
@@ -229,64 +235,32 @@ function ClubManagementViewContent() {
   };
   const memberOf = (m: Membership) => who(m.userId, { name: m.userFullName, studentCode: m.userStudentCode });
 
-  const pending = pendingApps.data?.total ?? 0;
+  const tabHasOwnToolbar =
+    activeTab === "clubs" ||
+    activeTab === "overview" ||
+    activeTab === "members" ||
+    activeTab === "departments" ||
+    activeTab === "applications" ||
+    activeTab === "forms" ||
+    activeTab === "events" ||
+    activeTab === "certificates" ||
+    activeTab === "tasks" ||
+    activeTab === "documents" ||
+    activeTab === "settings";
 
   return (
     <ListPage title="Không gian & Quản lý CLB" fillViewport={activeTab === "chat"}>
-      <BreadcrumbToolbar
-        compact={activeTab === "chat"}
-        crumbs={[
-          { label: "Tổng quan", href: "/dashboard" },
-          { label: activeTab === "clubs" ? `Toàn bộ câu lạc bộ (${manageable.length})` : (currentClub?.name ?? "Không gian CLB") },
-          { label: visibleTabs.find((t) => t.value === activeTab)?.label ?? "Quản lý CLB" },
-        ]}
-        titleBadge={
-          activeTab === "clubs" ? <CountBadge>{manageable.length} CLB</CountBadge>
-          : activeTab === "applications" && canViewApplications ? <CountBadge>{pending} chờ duyệt</CountBadge>
-          : activeTab === "members" ? <CountBadge>{members.data?.total ?? 0} thành viên</CountBadge>
-          : currentClub ? <Badge tone="primary" dot={false}>{currentClub.code}</Badge> : undefined
-        }
-        extraActions={
-          <>
-            {currentClub && <ClubAvatar name={currentClub.name} code={currentClub.code} logoUrl={currentClub.logoUrl} size="sm" className="hidden sm:flex" />}
-            {manageable.length > 0 && (
-              <Select aria-label="Chọn CLB" value={activeClubId} onChange={(e) => navigateClubAndTab(e.target.value, activeTab === "clubs" ? "overview" : activeTab)} className="h-9 w-full min-w-0 max-w-full text-xs sm:w-64">
-                {manageable.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </Select>
-            )}
-            {activeTab === "members" && canAddMember && (
-              <Button size="sm" onClick={() => setAddingMember(true)}><UserPlus size={14} /> Thêm thành viên</Button>
-            )}
-            {canCreateClub && (
-              <Button size="sm" variant="outline" onClick={() => setCreatingClub(true)}><Plus size={14} /> Tạo CLB mới</Button>
-            )}
-          </>
-        }
-        onRefresh={() => {
-          clubs.refetch();
-          if (activeTab === "overview") queryClient.invalidateQueries({ queryKey: qk.clubStatistics(activeClubId) });
-          if (activeTab === "applications") queryClient.invalidateQueries({ queryKey: qk.clubApplications(activeClubId) });
-          if (activeTab === "forms") {
-            queryClient.invalidateQueries({ queryKey: qk.clubApplicationForms(activeClubId) });
-            queryClient.invalidateQueries({ queryKey: qk.clubApplicationForm(activeClubId) });
-          }
-          if (activeTab === "members") refreshMembers();
-          if (activeTab === "departments") {
-            queryClient.invalidateQueries({ queryKey: qk.departments(activeClubId) });
-            queryClient.invalidateQueries({ queryKey: qk.clubPositions(activeClubId) });
-            queryClient.invalidateQueries({ queryKey: qk.departmentMembers() });
-          }
-          if (activeTab === "events") queryClient.invalidateQueries({ queryKey: qk.clubEvents(activeClubId) });
-          if (activeTab === "tasks") queryClient.invalidateQueries({ queryKey: qk.clubTasks(activeClubId) });
-          if (activeTab === "documents") queryClient.invalidateQueries({ queryKey: qk.documents() });
-          if (activeTab === "chat") {
-            queryClient.invalidateQueries({ queryKey: qk.clubChannels(activeClubId) });
-            queryClient.invalidateQueries({ queryKey: qk.channelMessages() });
-            queryClient.invalidateQueries({ queryKey: qk.channelPinnedMessages() });
-            queryClient.invalidateQueries({ queryKey: qk.channelSummaries() });
-          }
-        }}
-      />
+      {!tabHasOwnToolbar && (
+        <BreadcrumbToolbar
+          compact={activeTab === "chat"}
+          crumbs={[
+            { label: "Tổng quan", href: "/dashboard" },
+            { label: currentClub?.name ?? "Không gian CLB" },
+            { label: visibleTabs.find((t) => t.value === activeTab)?.label ?? "Quản lý CLB" },
+          ]}
+          titleBadge={currentClub ? <Badge tone="primary" dot={false}>{currentClub.code}</Badge> : undefined}
+        />
+      )}
       {notice && <Notice key={`ok-${noticeState.seq}`} tone="success">{notice}</Notice>}
       {(errorMsg || mutationError) && <Notice key={`err-${errorState.seq}`} tone="error">{errorMsg || describeError(mutationError)}</Notice>}
 
@@ -354,6 +328,15 @@ function ClubManagementViewContent() {
         <DepartmentsTab clubId={activeClubId} onNotice={setNotice} onError={setErrorMsg} />
       ) : activeTab === "events" ? (
         <EventsTab clubId={activeClubId} departments={activeDepartments} onNotice={setNotice} onError={setErrorMsg} />
+      ) : activeTab === "certificates" ? (
+        <ClubCertificatesOverviewSection
+          key={`${activeClubId}:${searchParams.get("search") ?? ""}`}
+          clubId={activeClubId}
+          clubCode={currentClub?.code}
+          mode="page"
+          initialSearch={searchParams.get("search") ?? ""}
+          canViewAllUnits={session.hasGlobal("event.view") || session.hasGlobal("club.view") || session.hasGlobal("system.view")}
+        />
       ) : activeTab === "tasks" ? (
         <TasksTab clubId={activeClubId} departments={activeDepartments} members={activeMembersForTasks.data?.items ?? []} onNotice={setNotice} onError={setErrorMsg} />
       ) : activeTab === "documents" ? (
@@ -372,6 +355,7 @@ function ClubManagementViewContent() {
           setNotice(`Đã thành lập câu lạc bộ "${created.name}" (${created.code}).`);
           setErrorMsg("");
           setClubId(created.id);
+          unitCtx.setActiveUnitId(created.id);
           queryClient.invalidateQueries({ queryKey: qk.clubs() });
           queryClient.invalidateQueries({ queryKey: qk.home("public-clubs") });
           queryClient.invalidateQueries({ queryKey: qk.dashboard("public-clubs") });

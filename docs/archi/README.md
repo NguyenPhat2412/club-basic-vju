@@ -15,7 +15,7 @@ flowchart TB
     end
 
     subgraph Edge["Tầng Cổng & Reverse Proxy"]
-        NGX["Nginx TLS Reverse Proxy (vju-club.all1.vn / stagging)"]
+        NGX["Nginx TLS Reverse Proxy (vju-club.all1.vn / staging)"]
     end
 
     subgraph Backend["Tầng Ứng dụng (Spring Boot 4.1.1 / Java 21)"]
@@ -117,7 +117,7 @@ sequenceDiagram
 | Môi trường | Giao diện Web | REST API / Swagger | Ngăn xếp Hạ tầng |
 |---|---|---|---|
 | **Production** | `https://vju-club.all1.vn` | `https://api.vju-club.all1.vn/swagger-ui.html` | Docker Compose độc lập (`:3110` / `:8110`), sao lưu `pg_dump` tự động `02:30` hằng ngày |
-| **Stagging** | `https://stagging.vju-club.all1.vn` | `https://stagging.vju-club.all1.vn/swagger-ui.html` | Docker Compose & PostgreSQL tách biệt (`:3111` / `:8111`) |
+| **Staging** | `https://staging.vju-club.all1.vn` | `https://staging.vju-club.all1.vn/swagger-ui.html` | Docker Compose & PostgreSQL tách biệt (`:3111` / `:8111`) |
 | **Local Dev** | `http://localhost:3000` | `http://localhost:8080/swagger-ui.html` | `docker compose up -d postgres` + profile `local` |
 
 Xem chi tiết quy trình CI/CD và khôi phục dữ liệu tại [docs/deploy/README.md](../deploy/README.md) và sơ đồ thực thể cơ sở dữ liệu tại [docs/erd/README.md](../erd/README.md).

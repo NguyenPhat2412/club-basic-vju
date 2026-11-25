@@ -1,27 +1,25 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
-import { Compass, FilterX, LayoutGrid, Table2 } from "lucide-react";
+import { CheckCircle2, Clock3, Compass, FilterX, LayoutGrid, Search, Send, Settings2, ShieldCheck, Table2, X } from "lucide-react";
 import { apiModel, ApplicationSummary, Club, Membership } from "@/lib/api";
+import { isYouthUnion, unitApplyCtaLabel } from "@/lib/club/youth-union";
 import { ClubMediaItem, clubSlugFromCode } from "@/lib/media";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
-import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
-import { useClubMediaCatalog } from "@/components/shared/ClubMedia";
+import { ClubAvatar, useClubMediaCatalog } from "@/components/shared/ClubMedia";
+import { FilterPopover } from "@/components/shared/FilterPopover";
 import { Pagination } from "@/components/shared/Pagination";
 import { EmptyState, LoadingRows } from "@/components/shared/States";
 import { describeError } from "@/components/shared/ListPage";
-import { CountBadge } from "@/components/ui/badge";
+import { Badge, CountBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/input";
-import { toast } from "@/components/ui/toast";
-import { cn, validateApplicationFile } from "@/lib/utils";
-import { buildApplicationSubmitPayload, ClubApplicationDraft, EMPTY_APPLICATION_DRAFT, inferApplicantCategory } from "@/forms/application/application-form";
+import { FormField, Input, Select } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { ClubDiscoveryCard } from "./ClubDiscoveryCard";
 import { ClubDiscoveryGuestBanner, ClubsDiscoveryTable } from "./ClubsDiscoveryTable";
-import { ClubRecruitmentDrawer, PendingAttachment } from "./ClubRecruitmentDrawer";
 
 const DEFAULT_LIMIT = 20;
 
@@ -38,21 +36,18 @@ function ClubsDiscoveryContent() {
   const searchParams = useSearchParams();
   const requestedClubId = searchParams.get("clubId");
   const session = useOptionalSession();
-  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [relationFilter, setRelationFilter] = useState<"" | "OPEN" | "MEMBER" | "PENDING">("");
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [offset, setOffset] = useState(0);
   const [limit, setLimit] = useState(DEFAULT_LIMIT);
-  const [selected, setSelected] = useState<Club | null>(null);
-  const [closedDeepLinkId, setClosedDeepLinkId] = useState<string | null>(null);
-  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
-  const [draft, setDraft] = useState<ClubApplicationDraft>(EMPTY_APPLICATION_DRAFT);
-  const [customAnswers, setCustomAnswers] = useState<Record<string, unknown>>({});
-  const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
-  const [notice, setNotice] = useState("");
-  const [now] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (requestedClubId) {
+      router.replace(`/clubs/${requestedClubId}`);
+    }
+  }, [requestedClubId, router]);
 
   const mediaCatalog = useClubMediaCatalog(true);
 
@@ -68,16 +63,6 @@ function ClubsDiscoveryContent() {
     placeholderData: keepPreviousData,
     enabled: session.settled,
   });
-
-  const deepLinkedClub = useQuery({
-    queryKey: qk.publicClubDetail(requestedClubId),
-    queryFn: () => apiModel.publicClub(requestedClubId!),
-    enabled: !!requestedClubId && closedDeepLinkId !== requestedClubId,
-  });
-
-  const activeSelected: Club | null =
-    selected ??
-    (requestedClubId && closedDeepLinkId !== requestedClubId ? (deepLinkedClub.data ?? null) : null);
 
   const myMemberships = useQuery({
     queryKey: qk.myMemberships("discovery"),
@@ -129,59 +114,6 @@ function ClubsDiscoveryContent() {
     return set;
   }, [myApplications.data]);
 
-  const activeForm = useQuery({
-    queryKey: qk.clubApplicationForm(activeSelected?.id),
-    queryFn: () => apiModel.clubApplicationForm(activeSelected!.id),
-    enabled: !!activeSelected && !!session.user,
-  });
-
-  const closeDrawer = () => {
-    setSelected(null);
-    if (requestedClubId) setClosedDeepLinkId(requestedClubId);
-    setLightboxIdx(null);
-  };
-
-  const apply = useMutation({
-    mutationFn: async () => {
-      const formData = activeForm.data;
-      if (!draft.applicantPhone.trim() || !draft.facultyMajor.trim() || !draft.academicYear.trim()) {
-        throw new Error("Vui lòng điền đầy đủ Số điện thoại liên hệ, Khoa / Ngành học và Khóa / Năm học.");
-      }
-      if (formData?.requireAttachment && attachments.length === 0) {
-        throw new Error("Biểu mẫu của CLB này yêu cầu đính kèm ít nhất 1 tệp hồ sơ (.docx, .pdf hoặc hình ảnh).");
-      }
-      const created = await apiModel.apply(
-        activeSelected!.id,
-        buildApplicationSubmitPayload(draft, customAnswers, formData?.id),
-      );
-      for (const item of attachments) {
-        await apiModel.uploadApplicationFile(created.id, item.file, item.category);
-      }
-      return created;
-    },
-    onSuccess: () => {
-      setNotice(`Đã gửi đơn đăng ký vào ${activeSelected!.name}${attachments.length ? ` kèm ${attachments.length} tệp đính kèm` : ""}. Theo dõi hoặc chỉnh sửa tại "Đơn đăng ký của tôi".`);
-      setDraft(EMPTY_APPLICATION_DRAFT);
-      setCustomAnswers({});
-      setAttachments([]);
-      closeDrawer();
-      queryClient.invalidateQueries({ queryKey: qk.myApplications() });
-      queryClient.invalidateQueries({ queryKey: qk.dashboard("my-applications") });
-    },
-  });
-
-  const open = (club: Club) => {
-    setSelected(club);
-    setLightboxIdx(null);
-    setDraft({
-      ...EMPTY_APPLICATION_DRAFT,
-      applicantPhone: session.user?.phone || "",
-    });
-    setCustomAnswers({});
-    setAttachments([]);
-    apply.reset();
-  };
-
   const items = useMemo(() => {
     const rawItems = clubs.data?.items ?? [];
     if (!relationFilter) return rawItems;
@@ -191,6 +123,13 @@ function ClubsDiscoveryContent() {
       return !currentMembershipByClub.has(c.id) && !pendingAppByClub.has(c.id);
     });
   }, [clubs.data?.items, relationFilter, currentMembershipByClub, pendingAppByClub]);
+  const youthUnion = useMemo(() => items.find((c) => isYouthUnion(c)) ?? null, [items]);
+  const clubItems = useMemo(
+    () => (youthUnion ? items.filter((c) => c.id !== youthUnion.id) : items),
+    [items, youthUnion]
+  );
+  const youthUnionMember = youthUnion ? currentMembershipByClub.get(youthUnion.id) : undefined;
+  const youthUnionPending = youthUnion ? pendingAppByClub.get(youthUnion.id) : undefined;
   const hasActiveFilter = search.trim() !== "" || category !== "" || relationFilter !== "";
 
   const mediaForClub = (club?: Club | null): ClubMediaItem | undefined => {
@@ -204,79 +143,62 @@ function ClubsDiscoveryContent() {
       session.canInClub("application.view", club.id) ||
       session.can("club.create"));
 
-  const selectedMedia = mediaForClub(activeSelected);
-  const selectedGallery = selectedMedia?.gallery ?? [];
-
   const handleSearchChange = (value: string) => { setSearch(value); setOffset(0); };
   const handleCategoryChange = (value: string) => { setCategory(value); setOffset(0); };
   const clearFilters = () => { setSearch(""); setCategory(""); setRelationFilter(""); setOffset(0); };
 
-  const onDraftChange = <K extends keyof ClubApplicationDraft>(key: K, value: ClubApplicationDraft[K]) => {
-    setDraft((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleSelectFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    e.target.value = "";
-    if (!files.length) return;
-    const maxCount = activeForm.data?.maxAttachments ?? 5;
-    const valid = files.filter((file) => { const err = validateApplicationFile(file); if (err) toast.error(err); return !err; });
-    if (!valid.length) return;
-    setAttachments((prev) => [...prev, ...valid.slice(0, Math.max(0, maxCount - prev.length)).map((file) => ({ file, category: inferApplicantCategory(file.name) }))]);
-  };
-
-  const selectedMembership = activeSelected ? currentMembershipByClub.get(activeSelected.id) : undefined;
-  const selectedPendingApp = activeSelected ? pendingAppByClub.get(activeSelected.id) : undefined;
+  if (requestedClubId) {
+    return <LoadingRows />;
+  }
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <BreadcrumbToolbar
-        crumbs={[
-          { label: "Tổng quan", href: "/dashboard" },
-          { label: "Cổng cá nhân" },
-          { label: "Khám phá câu lạc bộ" },
-        ]}
-        titleBadge={<CountBadge>{clubs.data?.total ?? items.length} CLB</CountBadge>}
-        search={{ value: search, onChange: handleSearchChange, placeholder: "Tìm tên, mã CLB, lĩnh vực…" }}
-        extraActions={
-          <>
-            <Select aria-label="Lọc theo lĩnh vực hoạt động" value={category} onChange={(e) => handleCategoryChange(e.target.value)} className="h-9 w-full text-xs sm:w-48">
-              <option value="">Tất cả lĩnh vực</option>
-              {(categoriesQuery.data ?? []).map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-            </Select>
-            {session.user && (
-              <Select aria-label="Lọc theo tư cách tham gia" value={relationFilter} onChange={(e) => { setRelationFilter(e.target.value as typeof relationFilter); setOffset(0); }} className="h-9 w-full text-xs sm:w-44">
-                <option value="">Mọi tư cách</option>
-                <option value="OPEN">Mở ứng tuyển</option>
-                <option value="MEMBER">Đã là thành viên</option>
-                <option value="PENDING">Đang chờ duyệt đơn</option>
+      <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-border bg-white px-3 py-1.5 sm:px-4">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto sm:flex-1">
+          <div className="relative w-full min-w-0 sm:min-w-[160px] sm:max-w-[230px] sm:flex-1">
+            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(e) => handleSearchChange(e.target.value)} placeholder="Tìm tên, mã CLB, lĩnh vực…" className="h-8 pl-8 pr-7 text-xs" />
+            {search && (
+              <button type="button" aria-label="Xoá tìm kiếm" onClick={() => handleSearchChange("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X size={13} />
+              </button>
+            )}
+          </div>
+          <FilterPopover activeCount={[category, relationFilter].filter(Boolean).length} onClear={clearFilters} title="Lọc câu lạc bộ">
+            <FormField label="Lĩnh vực hoạt động" hideIndicator>
+              <Select aria-label="Lọc theo lĩnh vực hoạt động" value={category} onChange={(e) => handleCategoryChange(e.target.value)} className="h-8 text-xs">
+                <option value="">Tất cả lĩnh vực</option>
+                {(categoriesQuery.data ?? []).map((cat) => <option key={cat} value={cat}>{cat}</option>)}
               </Select>
+            </FormField>
+            {session.user && (
+              <FormField label="Tư cách tham gia" hideIndicator>
+                <Select aria-label="Lọc theo tư cách tham gia" value={relationFilter} onChange={(e) => { setRelationFilter(e.target.value as typeof relationFilter); setOffset(0); }} className="h-8 text-xs">
+                  <option value="">Mọi tư cách</option>
+                  <option value="OPEN">Mở ứng tuyển</option>
+                  <option value="MEMBER">Đã là thành viên</option>
+                  <option value="PENDING">Đang chờ duyệt đơn</option>
+                </Select>
+              </FormField>
             )}
-            {hasActiveFilter && (
-              <Button variant="outline" size="sm" onClick={clearFilters}>
-                <FilterX size={14} /> Xoá bộ lọc
-              </Button>
-            )}
-            <div className="inline-flex h-9 items-center rounded-lg border border-border bg-muted/40 p-0.5" role="group" aria-label="Chế độ hiển thị">
-              <button type="button" onClick={() => setViewMode("table")} className={cn("inline-flex h-full items-center gap-1 rounded-md px-2.5 text-xs font-semibold transition-colors", viewMode === "table" ? "bg-card text-primary shadow-2xs" : "text-muted-foreground hover:text-foreground")}><Table2 size={13} /> Bảng</button>
-              <button type="button" onClick={() => setViewMode("cards")} className={cn("inline-flex h-full items-center gap-1 rounded-md px-2.5 text-xs font-semibold transition-colors", viewMode === "cards" ? "bg-card text-primary shadow-2xs" : "text-muted-foreground hover:text-foreground")}><LayoutGrid size={13} /> Thẻ</button>
-            </div>
-          </>
-        }
-        onRefresh={() => {
-          clubs.refetch();
-          categoriesQuery.refetch();
-          mediaCatalog.refetch();
-          if (session.user) {
-            myMemberships.refetch();
-            myApplications.refetch();
-          }
-        }}
-      />
+          </FilterPopover>
+          {hasActiveFilter && (
+            <Button variant="outline" size="sm" className="h-8" onClick={clearFilters}>
+              <FilterX size={13} /> Xoá lọc
+            </Button>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <CountBadge>
+            {youthUnion ? `${clubItems.length} CLB · 1 ĐTN` : `${clubs.data?.total ?? items.length} CLB`}
+          </CountBadge>
+          <div className="inline-flex h-8 items-center rounded-lg border border-border bg-muted/40 p-0.5" role="group" aria-label="Chế độ hiển thị">
+            <button type="button" onClick={() => setViewMode("table")} className={cn("inline-flex h-full items-center gap-1 rounded-md px-2 text-xs font-semibold transition-colors", viewMode === "table" ? "bg-card text-primary shadow-2xs" : "text-muted-foreground hover:text-foreground")}><Table2 size={13} /> Bảng</button>
+            <button type="button" onClick={() => setViewMode("cards")} className={cn("inline-flex h-full items-center gap-1 rounded-md px-2 text-xs font-semibold transition-colors", viewMode === "cards" ? "bg-card text-primary shadow-2xs" : "text-muted-foreground hover:text-foreground")}><LayoutGrid size={13} /> Thẻ</button>
+          </div>
+        </div>
+      </div>
       <div className="mx-auto w-full max-w-7xl flex-1 space-y-5 px-4 py-5 sm:px-6">
-
-        {notice && <div role="status" className="rounded-lg border border-primary/20 bg-primary/8 px-4 py-3 text-xs font-medium text-primary">{notice}</div>}
-
         {session.settled && !session.user && (
           <ClubDiscoveryGuestBanner
             onLogin={() => router.push("/clubs?auth=login")}
@@ -284,18 +206,87 @@ function ClubsDiscoveryContent() {
           />
         )}
 
+        {!clubs.isPending && !clubs.isError && youthUnion && (
+          <section
+            aria-label="Đoàn Thanh niên Trường Đại học Việt Nhật"
+            className="overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-r from-card via-card to-rose-50/70 p-4 shadow-2xs sm:p-5"
+          >
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-start gap-3.5 sm:items-center">
+                <ClubAvatar
+                  name={youthUnion.name}
+                  code={youthUnion.code}
+                  logoUrl={youthUnion.logoUrl}
+                  fallbackUrl={mediaForClub(youthUnion)?.logo}
+                  size="lg"
+                />
+                <div className="min-w-0 space-y-1">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge tone="primary" dot={false}>
+                      <ShieldCheck size={11} /> Đơn vị điều phối cấp Trường · ĐTN
+                    </Badge>
+                    <code className="rounded-md bg-primary/10 px-2 py-0.5 font-mono text-[11px] font-bold text-primary">
+                      {youthUnion.code}
+                    </code>
+                    {youthUnionMember && (
+                      <Badge tone={youthUnionMember.status === "SUSPENDED" ? "pending" : "success"} dot={false}>
+                        <CheckCircle2 size={11} /> {youthUnionMember.status === "SUSPENDED" ? "Tạm đình chỉ" : "Thành viên / Ban ĐTN"}
+                      </Badge>
+                    )}
+                    {!youthUnionMember && youthUnionPending && (
+                      <Badge tone="pending" dot={false}>
+                        <Clock3 size={11} /> Đang chờ duyệt đơn
+                      </Badge>
+                    )}
+                  </div>
+                  <h2 className="text-base font-extrabold tracking-tight text-slate-900 sm:text-lg">
+                    Đoàn Thanh niên Trường Đại học Việt Nhật
+                  </h2>
+                  <p className="line-clamp-2 max-w-2xl text-xs leading-relaxed text-slate-600">
+                    {youthUnion.description ||
+                      "Đơn vị điều phối công tác thanh niên, phong trào sinh viên và 12 Câu lạc bộ trực thuộc Trường Đại học Việt Nhật (VJU)."}
+                  </p>
+                </div>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => router.push(`/clubs/${youthUnion.id}`)} className="border-slate-300 bg-white font-semibold">
+                  Trang Đoàn Trường
+                </Button>
+                {canManageClub(youthUnion) && (
+                  <Button variant="outline" size="sm" onClick={() => router.push(`/management?clubId=${youthUnion.id}`)} className="border-slate-300 bg-white font-semibold">
+                    <Settings2 size={13} /> Quản trị ĐTN
+                  </Button>
+                )}
+                {youthUnionMember ? (
+                  <Button variant="outline" size="sm" onClick={() => router.push("/memberships")}>
+                    <CheckCircle2 size={13} /> Tư cách thành viên
+                  </Button>
+                ) : youthUnionPending ? (
+                  <Button variant="outline" size="sm" onClick={() => router.push(`/applications?applicationId=${youthUnionPending.id}`)}>
+                    <Clock3 size={13} /> Theo dõi đơn ĐTN
+                  </Button>
+                ) : (
+                  <Button size="sm" onClick={() => router.push(`/clubs/${youthUnion.id}/apply`)} disabled={youthUnion.status !== "ACTIVE"} className="font-bold">
+                    <Send size={13} /> {unitApplyCtaLabel(youthUnion.code)}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
         {clubs.isPending ? (
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-80 animate-pulse rounded-2xl border border-slate-200 bg-white" />
+              <div key={i} className="h-80 animate-pulse rounded-2xl border border-border bg-card" />
             ))}
           </div>
         ) : clubs.isError ? (
-          <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+          <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive">
             {describeError(clubs.error)}
           </div>
         ) : items.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-white">
+          <div className="rounded-xl border border-dashed border-border bg-card">
             <EmptyState
               icon={<Compass />}
               title={hasActiveFilter ? "Không tìm thấy câu lạc bộ phù hợp" : "Hiện chưa có câu lạc bộ đang hoạt động"}
@@ -308,22 +299,23 @@ function ClubsDiscoveryContent() {
               onAction={hasActiveFilter ? clearFilters : undefined}
             />
           </div>
-        ) : viewMode === "table" ? (
+        ) : clubItems.length === 0 ? null : viewMode === "table" ? (
           <ClubsDiscoveryTable
-            items={items}
+            items={clubItems}
             offset={offset}
             currentMembershipByClub={currentMembershipByClub}
             pendingAppByClub={pendingAppByClub}
             mediaForClub={mediaForClub}
             canManageClub={canManageClub}
-            onOpenDetail={open}
+            onOpenDetail={(club) => router.push(`/clubs/${club.id}`)}
+            onApply={(club) => router.push(`/clubs/${club.id}/apply`)}
             onNavigateManage={(club) => router.push(`/management?clubId=${club.id}`)}
             onNavigateMemberships={() => router.push("/memberships")}
             onNavigatePendingApp={(appId) => router.push(`/applications?applicationId=${appId}`)}
           />
         ) : (
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {items.map((club) => (
+            {clubItems.map((club) => (
               <ClubDiscoveryCard
                 key={club.id}
                 club={club}
@@ -333,7 +325,8 @@ function ClubsDiscoveryContent() {
                 clubMedia={mediaForClub(club)}
                 isAuthenticated={!!session.user || !session.settled}
                 canManage={canManageClub(club)}
-                onOpenDetail={open}
+                onOpenDetail={(c) => router.push(`/clubs/${c.id}`)}
+                onApply={(c) => router.push(`/clubs/${c.id}/apply`)}
                 onNavigateLogin={() => router.push("/clubs?auth=login")}
                 onNavigateManage={() => router.push(`/management?clubId=${club.id}`)}
                 onNavigateMemberships={() => router.push("/memberships")}
@@ -347,30 +340,6 @@ function ClubsDiscoveryContent() {
       {clubs.data && clubs.data.total > 0 && (
         <Pagination offset={offset} limit={limit} total={clubs.data.total} onOffset={setOffset} onLimit={setLimit} />
       )}
-
-      <ClubRecruitmentDrawer
-        activeSelected={activeSelected}
-        closeDrawer={closeDrawer}
-        selectedMedia={selectedMedia}
-        selectedGallery={selectedGallery}
-        lightboxIdx={lightboxIdx}
-        setLightboxIdx={setLightboxIdx}
-        user={session.user}
-        selectedMembership={selectedMembership}
-        selectedPendingApp={selectedPendingApp}
-        formInfo={activeForm.data}
-        now={now}
-        draft={draft}
-        onDraftChange={onDraftChange}
-        customAnswers={customAnswers}
-        setCustomAnswers={setCustomAnswers}
-        attachments={attachments}
-        setAttachments={setAttachments}
-        handleSelectFiles={handleSelectFiles}
-        applyPending={apply.isPending}
-        applyError={apply.isError ? apply.error : null}
-        onApply={() => apply.mutate()}
-      />
     </div>
   );
 }

@@ -3,12 +3,12 @@
 import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
-import { Activity, Building2, Eye, FilterX, Layers, ScrollText } from "lucide-react";
+import { Activity, Building2, Eye, FilterX, Layers, ScrollText, Search, X } from "lucide-react";
 import { apiModel, AuditLogItem } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
 import { useUserNames } from "@/hooks/user/useUsers";
-import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
 import { DataTable } from "@/components/shared/DataTable";
+import { FilterPopover } from "@/components/shared/FilterPopover";
 import { DetailList, EntityDrawer, Section } from "@/components/shared/Overlays";
 import { Pagination } from "@/components/shared/Pagination";
 import { EmptyState, ErrorState, LoadingRows } from "@/components/shared/States";
@@ -16,7 +16,7 @@ import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError, ListPage } from "@/components/shared/ListPage";
 import { Badge, CountBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/input";
+import { FormField, Input, Select } from "@/components/ui/input";
 import { formatDateTime, formatDay, formatTime } from "@/lib/utils";
 import { formatAuditAction, RESOURCE_LABELS, resourceLabel } from "@/utils/audit/audit-meta";
 
@@ -73,6 +73,8 @@ export function AuditLogsView() {
         formatAuditAction(l.action).toLowerCase().includes(q) ||
         l.action.toLowerCase().includes(q) ||
         (l.resourceId ?? "").toLowerCase().includes(q) ||
+        (l.ipAddress ?? "").toLowerCase().includes(q) ||
+        (l.userAgent ?? "").toLowerCase().includes(q) ||
         clubName(l.clubId).toLowerCase().includes(q)
       );
     });
@@ -92,59 +94,53 @@ export function AuditLogsView() {
 
   return (
     <ListPage title="Nhật ký hệ thống">
-      <BreadcrumbToolbar
-        crumbs={[
-          { label: "Tổng quan", href: "/dashboard" },
-          { label: "Quản trị hệ thống" },
-          { label: "Nhật ký hệ thống" },
-        ]}
-        titleBadge={<CountBadge>{logs.data?.total ?? 0} bản ghi</CountBadge>}
-        search={{ value: search, onChange: setSearch, placeholder: "Tìm người thực hiện, hành động, ID…" }}
-        extraActions={
-          <>
-            <Select
-              aria-label="Lọc theo phân hệ"
-              value={resourceType}
-              onChange={(e) => {
-                setResourceType(e.target.value);
-                setOffset(0);
-              }}
-              className="h-9 w-full text-xs sm:w-48"
-            >
-              <option value="">Tất cả phân hệ</option>
-              {Object.keys(RESOURCE_LABELS).map((k) => (
-                <option key={k} value={k}>
-                  {resourceLabel(k)}
-                </option>
-              ))}
-            </Select>
-            <Select
-              aria-label="Lọc theo CLB"
-              value={clubId}
-              onChange={(e) => {
-                setClubId(e.target.value);
-                setOffset(0);
-              }}
-              className="h-9 w-full text-xs sm:w-52"
-            >
-              <option value="">Tất cả câu lạc bộ</option>
-              {(clubs.data?.items ?? []).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code} · {c.name}
-                </option>
-              ))}
-            </Select>
-            {hasFilters && (
-              <Button variant="outline" size="sm" onClick={clearFilters}>
-                <FilterX size={14} /> Xoá lọc
-              </Button>
+      <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-border bg-white px-3 py-1.5 sm:px-4">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto sm:flex-1">
+          <div className="relative w-full min-w-0 sm:min-w-[180px] sm:max-w-[260px] sm:flex-1">
+            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm người thực hiện, hành động, IP…"
+              className="h-8 pl-8 pr-7 text-xs"
+            />
+            {search && (
+              <button
+                type="button"
+                aria-label="Xoá tìm kiếm"
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X size={13} />
+              </button>
             )}
-          </>
-        }
-        onRefresh={() => logs.refetch()}
-      />
+          </div>
+          <FilterPopover activeCount={[resourceType, clubId].filter(Boolean).length} onClear={clearFilters} title="Lọc nhật ký hệ thống">
+            <FormField label="Phân hệ" hideIndicator>
+              <Select aria-label="Lọc theo phân hệ" value={resourceType} onChange={(e) => { setResourceType(e.target.value); setOffset(0); }} className="h-8 text-xs">
+                <option value="">Tất cả phân hệ</option>
+                {Object.keys(RESOURCE_LABELS).map((k) => <option key={k} value={k}>{resourceLabel(k)}</option>)}
+              </Select>
+            </FormField>
+            <FormField label="Đơn vị / Câu lạc bộ" hideIndicator>
+              <Select aria-label="Lọc theo CLB" value={clubId} onChange={(e) => { setClubId(e.target.value); setOffset(0); }} className="h-8 text-xs">
+                <option value="">Tất cả câu lạc bộ</option>
+                {(clubs.data?.items ?? []).map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}
+              </Select>
+            </FormField>
+          </FilterPopover>
+          {hasFilters && (
+            <Button variant="outline" size="sm" className="h-8" onClick={clearFilters}>
+              <FilterX size={13} /> Xoá lọc
+            </Button>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <CountBadge>{logs.data?.total ?? 0} bản ghi</CountBadge>
+        </div>
+      </div>
 
-      <div className="grid shrink-0 grid-cols-1 gap-3 px-4 pt-4 sm:grid-cols-3 sm:px-6">
+      <div className="grid shrink-0 grid-cols-1 gap-3 px-3 pt-2.5 sm:grid-cols-3 sm:px-5">
         <div className="flex min-w-0 items-center justify-between rounded-xl border border-border bg-card px-4 py-3 shadow-2xs">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold text-muted-foreground">Tổng số bản ghi nhật ký</p>
@@ -187,7 +183,7 @@ export function AuditLogsView() {
       ) : (
         <DataTable
           ariaLabel="Nhật ký hệ thống"
-          minWidth="min-w-[760px]"
+          minWidth="min-w-[860px]"
           rows={filteredLogs}
           rowKey={(l) => l.id}
           onRowClick={setSelected}
@@ -232,6 +228,16 @@ export function AuditLogsView() {
               render: (l) => <span className="text-xs text-muted-foreground">{clubName(l.clubId)}</span>,
             },
             {
+              key: "ipAddress",
+              header: "IP / Thiết bị",
+              sortValue: (l) => l.ipAddress ?? "",
+              render: (l) => (
+                <span className="font-mono text-xs text-muted-foreground" title={l.userAgent ?? undefined}>
+                  {l.ipAddress || "—"}
+                </span>
+              ),
+            },
+            {
               key: "actions",
               header: "Chi tiết",
               className: "text-right",
@@ -265,6 +271,13 @@ export function AuditLogsView() {
                 ["Hành động", <span key="a" className="font-semibold">{formatAuditAction(selected.action)}</span>],
                 ["Phạm vi", clubName(selected.clubId)],
                 ["Mã bản ghi đối tượng", <span key="r" className="font-mono text-xs">{selected.resourceId}</span>],
+                ["Địa chỉ IP", <span key="ip" className="font-mono text-xs">{selected.ipAddress || "—"}</span>],
+                [
+                  "Thiết bị (User-Agent)",
+                  <span key="ua" className="break-all font-mono text-xs text-muted-foreground">
+                    {selected.userAgent || "—"}
+                  </span>,
+                ],
               ]}
             />
             {selected.oldValue && (

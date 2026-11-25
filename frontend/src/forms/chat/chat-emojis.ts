@@ -1,8 +1,8 @@
 import type { ChatMessage, ChatReactionSummary } from "@/types/chat/chat.types";
 
-export const TELEGRAM_QUICK_REACTIONS = ["❤️", "👍", "🔥", "🎉", "😂", "😮", "😢"] as const;
+export const CHAT_QUICK_REACTIONS = ["❤️", "👍", "🔥", "🎉", "😂", "😮", "😢"] as const;
 
-export const TELEGRAM_EXTRA_REACTIONS = [
+export const CHAT_EXTRA_REACTIONS = [
   "🙏",
   "👏",
   "💯",
@@ -16,9 +16,9 @@ export const TELEGRAM_EXTRA_REACTIONS = [
   "🫡",
 ] as const;
 
-export const TELEGRAM_ALL_REACTIONS = [
-  ...TELEGRAM_QUICK_REACTIONS,
-  ...TELEGRAM_EXTRA_REACTIONS,
+export const CHAT_ALL_REACTIONS = [
+  ...CHAT_QUICK_REACTIONS,
+  ...CHAT_EXTRA_REACTIONS,
 ] as const;
 
 export const MAX_REACTIONS_PER_USER_PER_MESSAGE = 3;
@@ -194,7 +194,7 @@ export function toggleOptimisticMessageReaction(
     return { ...msg, reactions: current };
   }
 
-  // Enforce Telegram's 3-reactions-per-user-per-message cap by removing oldest mine first
+  // Enforce the 3-reactions-per-user-per-message cap by removing oldest mine first
   const myReactionIndices = current
     .map((r, idx) => (r.reactorIds.includes(userId) ? idx : -1))
     .filter((idx) => idx >= 0);
@@ -244,7 +244,7 @@ export function toggleOptimisticMessageReaction(
 const NON_EMOJI_TEXT_RE = /[\p{L}\p{N}\p{P}\p{S}]/u;
 const EXTENDED_PICTO_RE = /\p{Extended_Pictographic}/u;
 
-export function getTelegramJumbomojiCount(content: string, hasExtraPayload: boolean): 0 | 1 | 2 | 3 {
+export function getChatJumbomojiCount(content: string, hasExtraPayload: boolean): 0 | 1 | 2 | 3 {
   if (hasExtraPayload) return 0;
   const trimmed = content.trim();
   if (!trimmed || trimmed.length > 28) return 0;

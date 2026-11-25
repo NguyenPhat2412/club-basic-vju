@@ -107,10 +107,12 @@ export function MyEventsHistorySection({
             <option value="REGISTERED">Đang đăng ký</option>
             <option value="CANCELLED">Đã huỷ đăng ký</option>
           </Select>
-          <Select aria-label="Lọc vai trò tham gia" value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setHistoryOffset(0); }} className="h-8 w-full text-xs sm:w-40">
+          <Select aria-label="Lọc vai trò tham gia" value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setHistoryOffset(0); }} className="h-8 w-full text-xs sm:w-44">
             <option value="">Mọi tư cách</option>
             <option value="MEMBER">Thành viên CLB</option>
+            <option value="ORGANIZER">Ban tổ chức</option>
             <option value="CTV">Cộng tác viên (CTV)</option>
+            <option value="ATTENDEE">Người tham dự</option>
           </Select>
           <Select aria-label="Lọc kết quả điểm danh" value={attFilter} onChange={(e) => setAttFilter(e.target.value as "" | "COUNTED" | "PENDING")} className="h-8 w-full text-xs sm:w-44">
             <option value="">Mọi điểm danh</option>

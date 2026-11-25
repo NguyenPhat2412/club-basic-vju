@@ -47,4 +47,10 @@ public class User extends TimestampedEntity {
 
     @Column(name = "anonymized_at")
     private OffsetDateTime anonymizedAt;
+
+    @Column(name = "email_notifications_enabled", nullable = false)
+    private boolean emailNotificationsEnabled = true;
+
+    @Column(name = "two_factor_enabled", nullable = false)
+    private boolean twoFactorEnabled;
 }

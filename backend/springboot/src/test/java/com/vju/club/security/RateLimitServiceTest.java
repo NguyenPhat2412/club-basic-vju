@@ -2,6 +2,9 @@ package com.vju.club.security;
 
 import com.vju.club.config.RateLimitProperties;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.redis.RedisConnectionFailureException;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -13,6 +16,12 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class RateLimitServiceTest {
     @Test
@@ -115,6 +124,74 @@ class RateLimitServiceTest {
         clock.advance(Duration.ofSeconds(5));
 
         assertThat(service.check("login:recent").allowed()).isFalse();
+        assertThat(service.trackedKeys()).isEqualTo(1);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void usesRedisFixedWindowIncrementAndSetsExpiryOnceOnFirstHit() {
+        MutableClock clock = new MutableClock(Instant.parse("2026-01-01T00:00:00Z"));
+        Duration window = Duration.ofMinutes(1);
+        long expectedBucket = clock.millis() / window.toMillis();
+        String expectedKey = "vju:rl:login:127.0.0.1:" + expectedBucket;
+
+        StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
+        ValueOperations<String, String> valueOps = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        when(valueOps.increment(expectedKey)).thenReturn(1L, 2L, 3L);
+
+        RateLimitService service = new RateLimitService(properties(2, window), clock, redisTemplate, "redis");
+
+        assertThat(service.check("login:127.0.0.1")).satisfies(decision -> {
+            assertThat(decision.allowed()).isTrue();
+            assertThat(decision.remaining()).isEqualTo(1);
+            assertThat(decision.retryAfterSeconds()).isZero();
+        });
+        assertThat(service.check("login:127.0.0.1")).satisfies(decision -> {
+            assertThat(decision.allowed()).isTrue();
+            assertThat(decision.remaining()).isZero();
+            assertThat(decision.retryAfterSeconds()).isZero();
+        });
+        assertThat(service.check("login:127.0.0.1")).satisfies(decision -> {
+            assertThat(decision.allowed()).isFalse();
+            assertThat(decision.remaining()).isZero();
+            assertThat(decision.retryAfterSeconds()).isEqualTo(60L);
+        });
+
+        verify(valueOps, times(3)).increment(expectedKey);
+        verify(redisTemplate, times(1)).expire(eq(expectedKey), eq(window));
+        assertThat(service.trackedKeys()).isZero();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void fallsBackToLocalMemoryWhenRedisThrowsException() {
+        StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
+        ValueOperations<String, String> valueOps = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        when(valueOps.increment(any())).thenThrow(new RedisConnectionFailureException("Redis unavailable"));
+
+        RateLimitService service = new RateLimitService(
+                properties(1, Duration.ofMinutes(1)), Clock.systemUTC(), redisTemplate, "redis");
+
+        assertThat(service.check("login:127.0.0.1").allowed()).isTrue();
+        assertThat(service.check("login:127.0.0.1").allowed()).isFalse();
+        assertThat(service.trackedKeys()).isEqualTo(1);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void fallsBackToLocalMemoryWhenRedisIncrementReturnsNull() {
+        StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
+        ValueOperations<String, String> valueOps = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        when(valueOps.increment(any())).thenReturn(null);
+
+        RateLimitService service = new RateLimitService(
+                properties(1, Duration.ofMinutes(1)), Clock.systemUTC(), redisTemplate, "redis");
+
+        assertThat(service.check("login:127.0.0.1").allowed()).isTrue();
+        assertThat(service.check("login:127.0.0.1").allowed()).isFalse();
         assertThat(service.trackedKeys()).isEqualTo(1);
     }
 

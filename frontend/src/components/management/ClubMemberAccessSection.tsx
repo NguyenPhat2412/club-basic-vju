@@ -6,6 +6,8 @@ import { qk } from "@/lib/api/query-keys";
 import { KeyRound, Plus, Trash2 } from "lucide-react";
 import { apiModel, Department } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
+import { useCriticalActionOtp } from "@/hooks/useCriticalActionOtp";
+import { Otp2FaChallengeModal } from "@/components/auth/Otp2FaChallengeModal";
 import { Section } from "@/components/shared/Overlays";
 import { describeError } from "@/components/shared/ListPage";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +29,7 @@ export function ClubMemberAccessSection({
 }) {
   const session = useSession();
   const queryClient = useQueryClient();
+  const roleOtp = useCriticalActionOtp("ROLE_CHANGE");
   const canView = session.canInClub("permission.view", clubId);
   const canAssign = session.canInClub("permission.assign", clubId) && membershipStatus === "ACTIVE";
   const canRevoke = session.canInClub("permission.revoke", clubId);
@@ -71,7 +74,7 @@ export function ClubMemberAccessSection({
 
   const grantableRoles = useMemo<Role[]>(() => {
     return (rolesQuery.data ?? []).filter((r) => {
-      if (!r.active || r.scope === "GLOBAL") return false;
+      if (!r.active || r.scope === "GLOBAL" || r.code === "DEPARTMENT_HEAD") return false;
       const clubWideOk =
         session.canClubWide("permission.assign", clubId) &&
         r.permissionKeys.every((k) => session.canClubWide(k, clubId));
@@ -192,37 +195,51 @@ export function ClubMemberAccessSection({
 
   const assignRoleMut = useMutation({
     mutationFn: () =>
-      apiModel.assignRole(userId, {
-        roleId: effectiveRoleId,
-        scope: effectiveRoleDept ? "DEPARTMENT" : "CLUB",
-        clubId: effectiveRoleDept ? undefined : clubId,
-        departmentId: effectiveRoleDept || undefined,
-      }),
+      roleOtp.runWithOtp((otp) =>
+        apiModel.assignRole(
+          userId,
+          {
+            roleId: effectiveRoleId,
+            scope: effectiveRoleDept ? "DEPARTMENT" : "CLUB",
+            clubId: effectiveRoleDept ? undefined : clubId,
+            departmentId: effectiveRoleDept || undefined,
+          },
+          otp
+        )
+      ),
     onSuccess: () => { setMsg("Đã gán vai trò tại CLB / Ban."); setErr(""); refreshAccess(); },
     onError: (e) => { setErr(describeError(e)); setMsg(""); },
   });
 
   const revokeRoleMut = useMutation({
-    mutationFn: (assignmentId: string) => apiModel.revokeRole(userId, assignmentId),
+    mutationFn: (assignmentId: string) => roleOtp.runWithOtp((otp) => apiModel.revokeRole(userId, assignmentId, otp)),
     onSuccess: () => { setMsg("Đã thu hồi vai trò."); setErr(""); refreshAccess(); },
     onError: (e) => { setErr(describeError(e)); setMsg(""); },
   });
 
   const grantPermMut = useMutation({
     mutationFn: () =>
-      apiModel.grantPermission(userId, {
-        permissionId: effectivePermId,
-        scope: effectivePermDept ? "DEPARTMENT" : "CLUB",
-        clubId: effectivePermDept ? undefined : clubId,
-        departmentId: effectivePermDept || undefined,
-      }),
+      roleOtp.runWithOtp((otp) =>
+        apiModel.grantPermission(
+          userId,
+          {
+            permissionId: effectivePermId,
+            scope: effectivePermDept ? "DEPARTMENT" : "CLUB",
+            clubId: effectivePermDept ? undefined : clubId,
+            departmentId: effectivePermDept || undefined,
+          },
+          otp
+        )
+      ),
     onSuccess: () => { setMsg("Đã cấp quyền trực tiếp tại CLB / Ban."); setErr(""); refreshAccess(); },
     onError: (e) => { setErr(describeError(e)); setMsg(""); },
   });
 
   const revokePermMut = useMutation({
     mutationFn: (p: { permissionId: string; scope: "CLUB" | "DEPARTMENT"; clubId?: string; departmentId?: string }) =>
-      apiModel.revokePermission(userId, p.permissionId, { scope: p.scope, clubId: p.clubId, departmentId: p.departmentId }),
+      roleOtp.runWithOtp((otp) =>
+        apiModel.revokePermission(userId, p.permissionId, { scope: p.scope, clubId: p.clubId, departmentId: p.departmentId }, otp)
+      ),
     onSuccess: () => { setMsg("Đã thu hồi quyền trực tiếp."); setErr(""); refreshAccess(); },
     onError: (e) => { setErr(describeError(e)); setMsg(""); },
   });
@@ -344,6 +361,7 @@ export function ClubMemberAccessSection({
         {msg && <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-medium text-slate-900">{msg}</p>}
         {err && <p className="text-xs text-destructive">{err}</p>}
       </div>
+      <Otp2FaChallengeModal {...roleOtp.otpModalProps} />
     </Section>
   );
 }

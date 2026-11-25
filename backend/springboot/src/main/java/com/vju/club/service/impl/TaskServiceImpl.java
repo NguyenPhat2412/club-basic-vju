@@ -15,6 +15,7 @@ import com.vju.club.entity.Task;
 import com.vju.club.entity.User;
 import com.vju.club.enums.AuditAction;
 import com.vju.club.enums.ClubStatus;
+import com.vju.club.enums.EventParticipantType;
 import com.vju.club.enums.EventRegistrationStatus;
 import com.vju.club.enums.EventStatus;
 import com.vju.club.enums.MembershipStatus;
@@ -207,7 +208,9 @@ public class TaskServiceImpl implements TaskService {
         boolean isEligibleAssignee = task.getAssignee().getId().equals(actor.id())
                 && (isActiveMember || (task.getEvent() != null
                     && registrationRepository.findByEvent_IdAndUser_IdAndStatus(
-                        task.getEvent().getId(), actor.id(), EventRegistrationStatus.REGISTERED).isPresent()));
+                        task.getEvent().getId(), actor.id(), EventRegistrationStatus.REGISTERED)
+                        .map(r -> r.getParticipantType() == EventParticipantType.CTV)
+                        .orElse(false)));
         boolean canView = isEligibleAssignee
                 || task.getAssigner().getId().equals(actor.id())
                 || isActiveMember
@@ -415,7 +418,9 @@ public class TaskServiceImpl implements TaskService {
                 actor.id(), task.getClub().getId(), MembershipStatus.ACTIVE);
         boolean isEligibleEventCtv = task.getEvent() != null
                 && registrationRepository.findByEvent_IdAndUser_IdAndStatus(
-                        task.getEvent().getId(), actor.id(), EventRegistrationStatus.REGISTERED).isPresent();
+                        task.getEvent().getId(), actor.id(), EventRegistrationStatus.REGISTERED)
+                        .map(r -> r.getParticipantType() == EventParticipantType.CTV)
+                        .orElse(false);
         if (!isActiveMember && !isEligibleEventCtv) {
             throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED",
                     "You are no longer an active club member or registered event participant");
@@ -594,11 +599,13 @@ public class TaskServiceImpl implements TaskService {
             throw new ApiException(HttpStatus.CONFLICT, "ASSIGNEE_NOT_MEMBER",
                     "The assignee is not an active member of this club");
         }
-        boolean isRegisteredParticipant = registrationRepository.findByEvent_IdAndUser_IdAndStatus(
-                event.getId(), assignee.getId(), EventRegistrationStatus.REGISTERED).isPresent();
-        if (!isRegisteredParticipant) {
+        boolean isRegisteredCtv = registrationRepository.findByEvent_IdAndUser_IdAndStatus(
+                        event.getId(), assignee.getId(), EventRegistrationStatus.REGISTERED)
+                .map(r -> r.getParticipantType() == EventParticipantType.CTV)
+                .orElse(false);
+        if (!isRegisteredCtv) {
             throw new ApiException(HttpStatus.CONFLICT, "ASSIGNEE_NOT_ELIGIBLE_FOR_EVENT_TASK",
-                    "Non-member CTV must have an active registration in the target event");
+                    "Non-member CTV must have an active CTV registration in the target event");
         }
     }
 

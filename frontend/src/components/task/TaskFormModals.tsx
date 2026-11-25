@@ -75,8 +75,8 @@ export function CreateTaskModal({
           placeholder="Ví dụ: Thiết kế ấn phẩm truyền thông sự kiện…"
         />
       </FormField>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Thuộc công việc cha (Subtask)">
+      <div className="grid items-start gap-3 sm:grid-cols-2">
+        <FormField label="Công việc cha">
           <Select
             value={form.parentTaskId}
             onChange={(e) => {
@@ -90,7 +90,7 @@ export function CreateTaskModal({
               }));
             }}
           >
-            <option value="">Không (Công việc độc lập)</option>
+            <option value="">Không (Độc lập)</option>
             {parentTaskCandidates.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.title} (Hạn {formatDay(p.deadline)})
@@ -98,7 +98,7 @@ export function CreateTaskModal({
             ))}
           </Select>
         </FormField>
-        <FormField label="Gắn với sự kiện (hỗ trợ giao việc CTV)">
+        <FormField label="Sự kiện liên quan">
           <Select value={form.eventId} onChange={(e) => setForm((f) => ({ ...f, eventId: e.target.value }))}>
             <option value="">Không gắn sự kiện</option>
             {clubEvents
@@ -111,17 +111,16 @@ export function CreateTaskModal({
           </Select>
         </FormField>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid items-start gap-3 sm:grid-cols-2">
         <FormField
-          label="Phạm vi / Ban chuyên môn"
+          label="Ban phụ trách"
           required={!createDeptScopeAll}
-          hint={!form.departmentId ? "Công việc chung toàn CLB — giao cho mọi thành viên CLB" : undefined}
         >
           <Select
             value={form.departmentId}
             onChange={(e) => setForm((f) => ({ ...f, departmentId: e.target.value }))}
           >
-            {createDeptScopeAll && <option value="">Công việc chung toàn CLB</option>}
+            {createDeptScopeAll && <option value="">Toàn CLB</option>}
             {allowedCreateDepts.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
@@ -137,12 +136,8 @@ export function CreateTaskModal({
           </Select>
         </FormField>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField
-          label="Người nhận việc"
-          required
-          hint={form.eventId ? "Hiển thị cả Thành viên CLB & CTV đã đăng ký sự kiện" : "Thành viên CLB đang hoạt động"}
-        >
+      <div className="grid items-start gap-3 sm:grid-cols-2">
+        <FormField label="Người nhận việc" required>
           <Select value={form.assigneeId} onChange={(e) => setForm((f) => ({ ...f, assigneeId: e.target.value }))}>
             <option value="">Chọn người nhận…</option>
             {candidateAssignees.map((c) => (

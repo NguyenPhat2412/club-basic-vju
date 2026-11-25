@@ -1,25 +1,16 @@
 "use client";
 
-import {
-  Eye,
-  FilterX,
-  PauseCircle,
-  PlayCircle,
-  Search,
-  ShieldCheck,
-  UserMinus,
-  UserRound,
-  X,
-} from "lucide-react";
+import { Eye, FilterX, PauseCircle, PlayCircle, Search, ShieldCheck, UserMinus, UserPlus, UserRound, X } from "lucide-react";
 import { DataTable } from "@/components/shared/DataTable";
 import { ExportReportMenu } from "@/components/shared/ExportReportMenu";
+import { FilterPopover } from "@/components/shared/FilterPopover";
 import { Pagination } from "@/components/shared/Pagination";
 import { EmptyState, ErrorState, LoadingRows } from "@/components/shared/States";
 import { TableRowActions } from "@/components/shared/TableRowActions";
 import { describeError } from "@/components/shared/ListPage";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui/input";
+import { FormField, Input, Select } from "@/components/ui/input";
 import { formatDay } from "@/lib/utils";
 import { Department, Membership, Page } from "@/types";
 import { exportClubMembersReport } from "@/utils/export/club-reports";
@@ -106,11 +97,13 @@ export function ClubMembersTab({
     setMemberOffset(0);
   };
 
+  const popoverCount = [memberDeptFilter, memberStatusFilter].filter(Boolean).length;
+
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-card px-4 py-2.5 sm:px-6">
-        <div className="flex flex-1 flex-wrap items-center gap-2">
-          <div className="relative min-w-[180px] flex-1 sm:max-w-[260px]">
+      <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-border bg-white px-3 py-1.5 sm:px-4">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto sm:flex-1">
+          <div className="relative min-w-0 flex-1 sm:max-w-[260px]">
             <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={memberSearch}
@@ -137,39 +130,44 @@ export function ClubMembersTab({
             )}
           </div>
 
-          {activeDepartments.length > 0 && (
-            <Select
-              aria-label="Lọc theo ban chuyên môn"
-              value={memberDeptFilter}
-              onChange={(e) => {
-                setMemberDeptFilter(e.target.value);
-                setMemberOffset(0);
-              }}
-              className="h-8 w-full text-xs sm:w-40"
-            >
-              <option value="">Tất cả ban chuyên môn</option>
-              {activeDepartments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  Ban: {d.name}
-                </option>
-              ))}
-            </Select>
-          )}
-
-          <Select
-            aria-label="Lọc trạng thái thành viên"
-            value={memberStatusFilter}
-            onChange={(e) => {
-              setMemberStatusFilter(e.target.value);
-              setMemberOffset(0);
-            }}
-            className="h-8 w-full text-xs sm:w-44"
-          >
-            <option value="">Tất cả trạng thái</option>
-            <option value="ACTIVE">ACTIVE — Đang hoạt động</option>
-            <option value="SUSPENDED">SUSPENDED — Tạm đình chỉ</option>
-            <option value="LEFT">LEFT — Đã rời CLB</option>
-          </Select>
+          <FilterPopover activeCount={popoverCount} onClear={resetFilters} title="Lọc thành viên">
+            {activeDepartments.length > 0 && (
+              <FormField label="Ban chuyên môn" hideIndicator>
+                <Select
+                  aria-label="Lọc theo ban chuyên môn"
+                  value={memberDeptFilter}
+                  onChange={(e) => {
+                    setMemberDeptFilter(e.target.value);
+                    setMemberOffset(0);
+                  }}
+                  className="h-8 text-xs"
+                >
+                  <option value="">Tất cả ban chuyên môn</option>
+                  {activeDepartments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      Ban: {d.name}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+            )}
+            <FormField label="Trạng thái thành viên" hideIndicator>
+              <Select
+                aria-label="Lọc trạng thái thành viên"
+                value={memberStatusFilter}
+                onChange={(e) => {
+                  setMemberStatusFilter(e.target.value);
+                  setMemberOffset(0);
+                }}
+                className="h-8 text-xs"
+              >
+                <option value="">Tất cả trạng thái</option>
+                <option value="ACTIVE">ACTIVE — Đang hoạt động</option>
+                <option value="SUSPENDED">SUSPENDED — Tạm đình chỉ</option>
+                <option value="LEFT">LEFT — Đã rời CLB</option>
+              </Select>
+            </FormField>
+          </FilterPopover>
 
           {hasFilters && (
             <Button variant="outline" size="sm" onClick={resetFilters} className="h-8">
@@ -177,21 +175,21 @@ export function ClubMembersTab({
             </Button>
           )}
         </div>
-        {canViewMembers && Boolean(membersData?.total) && (
-          <ExportReportMenu
-            compact
-            onExport={(mode) =>
-              exportClubMembersReport({
-                mode,
-                clubId: activeClubId,
-                statusFilter: memberStatusFilter,
-                deptFilter: memberDeptFilter,
-                search: memberSearch,
-                departmentsByMember,
-              })
-            }
-          />
-        )}
+        <div className="flex w-full max-w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:shrink-0">
+          {canViewMembers && Boolean(membersData?.total) && (
+            <ExportReportMenu
+              compact
+              onExport={(mode) =>
+                exportClubMembersReport({ mode, clubId: activeClubId, statusFilter: memberStatusFilter, deptFilter: memberDeptFilter, search: memberSearch, departmentsByMember })
+              }
+            />
+          )}
+          {canAddMember && (
+            <Button size="sm" className="h-8 px-2.5 text-xs font-bold" onClick={onOpenAddMember}>
+              <UserPlus size={13} /> Thêm thành viên
+            </Button>
+          )}
+        </div>
       </div>
 
       {!canViewMembers ? (

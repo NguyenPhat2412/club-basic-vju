@@ -12,9 +12,18 @@ public interface OtpMailService {
 
     void sendTestSmtpEmail(String recipientEmail);
 
+    default boolean sendNotificationAlertEmail(
+            String recipientEmail,
+            String recipientName,
+            String title,
+            String message) {
+        return sendNotificationAlertEmail(recipientEmail, recipientName, title, message, null);
+    }
+
     boolean sendNotificationAlertEmail(
             String recipientEmail,
             String recipientName,
             String title,
-            String message);
+            String message,
+            String referenceType);
 }

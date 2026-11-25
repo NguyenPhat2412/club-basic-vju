@@ -1,23 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
-import {
-  Building2,
-  CalendarCheck2,
-  ChevronDown,
-  KeyRound,
-  LogOut,
-  Menu,
-  ShieldCheck,
-  Users,
-} from "lucide-react";
+import { ChevronDown, KeyRound, LogOut, Menu, Users } from "lucide-react";
 import type { NavSection } from "@/config/navigation";
-import { QuickActionCenter } from "@/components/layout/QuickActionCenter";
-import { QuickPageSearch } from "@/components/layout/QuickPageSearch";
+import { UnitSwitcher } from "@/components/layout/UnitSwitcher";
 import { NotificationBellDrawer } from "@/components/notification/NotificationBellDrawer";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
-import { cn, shortDisplayName } from "@/lib/utils";
+import { shortDisplayName } from "@/lib/utils";
 import { useI18n } from "@/providers/I18nContext";
 
 function userInitials(name?: string): string {
@@ -32,7 +21,6 @@ export function Topbar({
   groupLabel,
   pageTitle,
   pathname,
-  sections,
   canManageWorkspace,
   onMenu,
   authenticated,
@@ -44,11 +32,12 @@ export function Topbar({
   onLogin,
   onRegister,
   notificationsActive,
+  onOpenHref,
 }: {
   groupLabel?: string;
   pageTitle: string;
   pathname: string;
-  sections: NavSection[];
+  sections?: NavSection[];
   canManageWorkspace: boolean;
   onMenu: () => void;
   authenticated: boolean;
@@ -60,31 +49,25 @@ export function Topbar({
   onLogin: () => void;
   onRegister: () => void;
   notificationsActive: boolean;
+  onOpenHref?: (href: string) => void;
 }) {
-  const router = useRouter();
+  void pathname;
+  void canManageWorkspace;
+  void onOpenHref;
   const { tr } = useI18n();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const isOverviewZone =
-    pathname === "/dashboard" ||
-    pathname === "/users" ||
-    pathname === "/roles" ||
-    pathname === "/audit-logs" ||
-    pathname === "/settings";
-  const isClubZone = pathname === "/management" || pathname === "/documents";
-  const isPersonalZone = !isOverviewZone && !isClubZone;
-
   return (
-    <header className="relative z-40 flex h-13 w-full min-w-0 max-w-full shrink-0 select-none items-center justify-between gap-2.5 border-b border-slate-200 bg-white px-3 sm:px-5">
+    <header className="relative z-40 flex h-11 w-full min-w-0 max-w-full shrink-0 select-none items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 sm:px-4">
       {/* Left: Mobile menu + Page Title */}
       <div className="flex min-w-0 items-center gap-2">
         <button
           type="button"
           aria-label={tr("Mở menu")}
           onClick={onMenu}
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 lg:hidden"
+          className="flex size-7.5 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 lg:hidden"
         >
-          <Menu size={16} />
+          <Menu size={15} />
         </button>
         {groupLabel && (
           <>
@@ -94,69 +77,15 @@ export function Topbar({
             <span className="hidden text-xs text-slate-300 xl:inline">/</span>
           </>
         )}
-        <h2 className="truncate text-[13.5px] font-bold tracking-tight text-slate-900 sm:text-sm">
+        <h2 className="truncate text-[13px] font-bold tracking-tight text-slate-900">
           {pageTitle}
         </h2>
       </div>
 
-      {/* Right: Quick Search + Workspace Switcher + Action Queue + Notifications + Lang + User Pill */}
-      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-        <QuickPageSearch sections={sections} authenticated={authenticated} />
+      {/* Right: Unit Switcher + Notifications + Lang + User Pill */}
+      <div className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
+        {authenticated && <UnitSwitcher compact />}
 
-        {authenticated && (
-          <div
-            role="group"
-            aria-label={tr("Chuyển nhanh không gian làm việc")}
-            className="hidden items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-100/80 p-0.5 sm:inline-flex"
-          >
-            <button
-              type="button"
-              title={tr("Bảng điều khiển & Quản trị")}
-              aria-label={tr("Bảng điều khiển & Quản trị")}
-              onClick={() => router.push("/dashboard")}
-              className={cn(
-                "grid size-7 place-items-center rounded-md transition-all",
-                isOverviewZone
-                  ? "bg-white text-primary shadow-2xs ring-1 ring-slate-200/80"
-                  : "text-slate-500 hover:text-slate-900"
-              )}
-            >
-              <ShieldCheck size={14} />
-            </button>
-            {canManageWorkspace && (
-              <button
-                type="button"
-                title={tr("Không gian Quản lý CLB")}
-                aria-label={tr("Không gian Quản lý CLB")}
-                onClick={() => router.push("/management?tab=clubs")}
-                className={cn(
-                  "grid size-7 place-items-center rounded-md transition-all",
-                  isClubZone
-                    ? "bg-white text-primary shadow-2xs ring-1 ring-slate-200/80"
-                    : "text-slate-500 hover:text-slate-900"
-                )}
-              >
-                <Building2 size={14} />
-              </button>
-            )}
-            <button
-              type="button"
-              title={tr("Sự kiện & Lịch công việc cá nhân")}
-              aria-label={tr("Sự kiện & Lịch công việc cá nhân")}
-              onClick={() => router.push("/schedule")}
-              className={cn(
-                "grid size-7 place-items-center rounded-md transition-all",
-                isPersonalZone
-                  ? "bg-white text-primary shadow-2xs ring-1 ring-slate-200/80"
-                  : "text-slate-500 hover:text-slate-900"
-              )}
-            >
-              <CalendarCheck2 size={14} />
-            </button>
-          </div>
-        )}
-
-        {authenticated && <QuickActionCenter />}
         {authenticated && <NotificationBellDrawer active={notificationsActive} size="sm" />}
 
         <LanguageSwitcher variant="dropdown" size="sm" />

@@ -9,34 +9,30 @@ import {
   Calendar,
   CheckCheck,
   ClipboardCheck,
-  FileArchive,
   FilterX,
+  SlidersHorizontal,
   UserCheck,
   Users,
-  UsersRound,
 } from "lucide-react";
 import { apiModel, Club } from "@/lib/api";
-import {
-  formatBytesCompact,
-  normalizeClubOverviewConfig,
-} from "@/forms/club/club-overview-config";
-import { ClubOverviewShowcase } from "@/components/club/ClubOverviewShowcase";
+import { formatBytesCompact, normalizeClubOverviewConfig } from "@/forms/club/club-overview-config";
+import { SvgDonutChart, type DonutSegment } from "@/components/dashboard/DashboardSvgPrimitives";
+import { ClubCertificatesOverviewSection } from "@/components/management/ClubCertificatesOverviewSection";
 import { ClubFacebookInsightsCard } from "@/components/management/ClubFacebookInsightsCard";
 import { OverviewDepartmentPanel } from "@/components/management/OverviewDepartmentPanel";
 import { EmptyState, ErrorState, LoadingRows } from "@/components/shared/States";
 import { describeError } from "@/components/shared/ListPage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FormField, Input } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 function toStartIso(dateStr: string) {
-  if (!dateStr) return undefined;
-  return new Date(`${dateStr}T00:00:00`).toISOString();
+  return dateStr ? new Date(`${dateStr}T00:00:00`).toISOString() : undefined;
 }
 
 function toEndIso(dateStr: string) {
-  if (!dateStr) return undefined;
-  return new Date(`${dateStr}T23:59:59`).toISOString();
+  return dateStr ? new Date(`${dateStr}T23:59:59`).toISOString() : undefined;
 }
 
 function daysAgoYmd(days: number) {
@@ -62,6 +58,7 @@ export function OverviewTab({
 }) {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [presetKey, setPresetKey] = useState<"all" | "30d" | "term" | "custom">("all");
 
   const isValidRange = !fromDate || !toDate || fromDate <= toDate;
 
@@ -75,6 +72,17 @@ export function OverviewTab({
     enabled: !!clubId && isValidRange,
   });
 
+  const selectAll = () => {
+    setFromDate("");
+    setToDate("");
+    setPresetKey("all");
+  };
+  const selectRange = (days: number, key: "30d" | "term") => {
+    setFromDate(daysAgoYmd(days));
+    setToDate(daysAgoYmd(0));
+    setPresetKey(key);
+  };
+
   if (stats.isPending) return <LoadingRows rows={4} />;
   if (stats.isError) return <ErrorState message={describeError(stats.error)} onRetry={() => stats.refetch()} />;
   if (!stats.data) return <EmptyState icon={<BarChart3 />} title="Chưa có dữ liệu thống kê câu lạc bộ" />;
@@ -83,277 +91,254 @@ export function OverviewTab({
   const cfg = normalizeClubOverviewConfig(club?.overviewConfig);
   const showDepartmentsBlock = cfg.enabledBlocks.includes("departments");
 
+  const attendanceSegments: DonutSegment[] = [
+    { key: "member", label: "Có mặt (TV)", value: d.memberAttended ?? 0, strokeClass: "stroke-primary", dotClass: "bg-primary" },
+    { key: "ctv", label: "Có mặt (CTV)", value: d.ctvAttended ?? 0, strokeClass: "stroke-slate-800", dotClass: "bg-slate-800" },
+    { key: "absent", label: "Vắng / Có phép", value: d.absentOrExcusedCount ?? 0, strokeClass: "stroke-slate-400", dotClass: "bg-slate-400" },
+    { key: "cancelled", label: "Đã huỷ ĐK", value: d.cancelledRegistrations ?? 0, strokeClass: "stroke-rose-300", dotClass: "bg-rose-300" },
+  ];
+
+  const taskSegments: DonutSegment[] = [
+    { key: "done", label: "Đã nghiệm thu", value: d.completedTasks ?? 0, strokeClass: "stroke-primary", dotClass: "bg-primary" },
+    { key: "progress", label: "Đang làm", value: d.inProgressTasks ?? 0, strokeClass: "stroke-slate-800", dotClass: "bg-slate-800" },
+    { key: "review", label: "Chờ duyệt", value: d.reviewPendingTasks ?? 0, strokeClass: "stroke-slate-500", dotClass: "bg-slate-500" },
+    { key: "todo", label: "Cần làm", value: d.todoTasks ?? 0, strokeClass: "stroke-slate-300", dotClass: "bg-slate-300" },
+    { key: "overdue", label: "Quá hạn", value: d.overdueTasks ?? 0, strokeClass: "stroke-rose-400", dotClass: "bg-rose-400" },
+  ];
+
+  const recruitmentSegments: DonutSegment[] = [
+    { key: "approved", label: "Trúng tuyển", value: d.approvedApplications ?? 0, strokeClass: "stroke-primary", dotClass: "bg-primary" },
+    { key: "pending", label: "Chờ duyệt", value: d.periodPendingApplications ?? 0, strokeClass: "stroke-slate-500", dotClass: "bg-slate-500" },
+    { key: "rejected", label: "Từ chối", value: d.rejectedApplications ?? 0, strokeClass: "stroke-rose-300", dotClass: "bg-rose-300" },
+    { key: "withdrawn", label: "Ứng viên rút", value: d.cancelledApplications ?? 0, strokeClass: "stroke-slate-300", dotClass: "bg-slate-300" },
+  ];
+
+  const eventSegments: DonutSegment[] = [
+    { key: "completed", label: "Hoàn thành", value: d.completedEvents ?? 0, strokeClass: "stroke-primary", dotClass: "bg-primary" },
+    { key: "open", label: "Đang mở ĐK", value: d.openEvents ?? 0, strokeClass: "stroke-slate-800", dotClass: "bg-slate-800" },
+    { key: "closed", label: "Đã đóng ĐK", value: d.closedRegistrationEvents ?? 0, strokeClass: "stroke-slate-400", dotClass: "bg-slate-400" },
+    { key: "other", label: "Nháp / Huỷ", value: (d.draftEvents ?? 0) + (d.cancelledEvents ?? 0), strokeClass: "stroke-rose-300", dotClass: "bg-rose-300" },
+  ];
+
   return (
-    <div className="space-y-4 px-4 py-4 sm:px-6">
-      {club && (
-        <ClubOverviewShowcase
-          club={club}
-          variant="workspace"
-          canCustomize={canCustomize}
-          onCustomize={onOpenCustomize}
-        />
-      )}
-
-      {/* Snapshot Section: Current Club Scale & Assets */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          label="Nhân sự đang hoạt động"
-          value={d.activeMembers}
-          sub={`${d.suspendedMembers ?? 0} tạm đình chỉ · ${d.leftMembers ?? 0} đã rời CLB`}
-          icon={<Users size={16} />}
-        />
-        <MetricCard
-          label="Ban chuyên môn mở"
-          value={d.activeDepartments}
-          sub={`${(d.departmentBreakdown ?? []).length} ban trong cơ cấu tổ chức`}
-          icon={<UsersRound size={16} />}
-        />
-        <MetricCard
-          label="Hồ sơ chờ xét duyệt"
-          value={d.pendingApplications}
-          sub="Đơn trạng thái PENDING cần xử lý ngay"
-          icon={<BarChart3 size={16} />}
-        />
-        <MetricCard
-          label="Kho tài liệu & Kênh Chat"
-          value={d.liveDocuments ?? 0}
-          sub={`${formatBytesCompact(d.totalDocumentBytes)} lưu trữ · ${d.chatChannels ?? 0} kênh trao đổi`}
-          icon={<FileArchive size={16} />}
-        />
-      </div>
-
-      {showDepartmentsBlock && (
-        <OverviewDepartmentPanel
-          departments={d.departmentBreakdown ?? []}
-          totalActiveMembers={d.activeMembers}
-        />
-      )}
-
-      {/* Filter Bar for Period Operational Metrics */}
-      <div className="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-border bg-card p-4">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          <h2 className="text-sm font-bold text-foreground">Thống kê theo kỳ</h2>
-          <Badge tone="primary" dot={false}>
-            {d.clubCode}
-          </Badge>
-          <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-            {fromDate || toDate ? `${fromDate || "Đầu kỳ"} → ${toDate || "Hiện tại"}` : "Toàn thời gian"}
-          </span>
-        </div>
-
-        <div className="flex w-full flex-wrap items-end gap-2 sm:w-auto">
-          <div className="flex gap-1.5">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setFromDate(daysAgoYmd(30));
-                setToDate(daysAgoYmd(0));
-              }}
-              className="h-9 text-xs"
-            >
-              30 ngày
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setFromDate(daysAgoYmd(120));
-                setToDate(daysAgoYmd(0));
-              }}
-              className="h-9 text-xs"
-            >
-              Học kỳ
-            </Button>
+    <div className="flex flex-1 flex-col">
+      {/* Unified 1-row white top toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-border bg-white px-3 py-1.5 sm:px-4">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto sm:flex-1">
+          <Badge tone="primary" dot={false}>{d.clubCode}</Badge>
+          <div className="inline-flex h-8 items-center rounded-lg border border-border bg-muted/40 p-0.5" role="group" aria-label="Kỳ thống kê">
+            {(
+              [
+                { key: "all", label: "Toàn bộ", onClick: selectAll },
+                { key: "30d", label: "30 ngày", onClick: () => selectRange(30, "30d") },
+                { key: "term", label: "Học kỳ", onClick: () => selectRange(120, "term") },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={opt.onClick}
+                className={cn(
+                  "h-full rounded-md px-2.5 text-xs font-semibold transition-colors",
+                  presetKey === opt.key ? "bg-white text-primary shadow-2xs" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
-          <div className="flex-1 sm:flex-initial">
-            <FormField label="Từ ngày" hideIndicator>
-              <Input
-                type="date"
-                value={fromDate}
-                max={toDate || undefined}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="h-9 w-full text-xs sm:w-36"
-              />
-            </FormField>
-          </div>
-          <div className="flex-1 sm:flex-initial">
-            <FormField label="Đến ngày" hideIndicator>
-              <Input
-                type="date"
-                value={toDate}
-                min={fromDate || undefined}
-                onChange={(e) => setToDate(e.target.value)}
-                className="h-9 w-full text-xs sm:w-36"
-              />
-            </FormField>
+          <div className="flex w-full items-center gap-1.5 sm:w-auto">
+            <Input
+              type="date"
+              aria-label="Từ ngày"
+              value={fromDate}
+              max={toDate || undefined}
+              onChange={(e) => {
+                setFromDate(e.target.value);
+                setPresetKey("custom");
+              }}
+              className="h-8 min-w-0 flex-1 text-xs sm:w-[126px] sm:flex-none"
+            />
+            <span className="text-xs text-muted-foreground">–</span>
+            <Input
+              type="date"
+              aria-label="Đến ngày"
+              value={toDate}
+              min={fromDate || undefined}
+              onChange={(e) => {
+                setToDate(e.target.value);
+                setPresetKey("custom");
+              }}
+              className="h-8 min-w-0 flex-1 text-xs sm:w-[126px] sm:flex-none"
+            />
           </div>
           {(fromDate || toDate) && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setFromDate("");
-                setToDate("");
-              }}
-              className="h-9"
-            >
-              <FilterX size={14} /> Toàn bộ
+            <Button size="sm" variant="outline" onClick={selectAll} className="h-8">
+              <FilterX size={13} /> Xoá lọc
+            </Button>
+          )}
+        </div>
+
+        <div className="flex w-full max-w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:shrink-0">
+          {canCustomize && onOpenCustomize && (
+            <Button size="sm" variant="outline" onClick={onOpenCustomize} className="h-8 text-xs">
+              <SlidersHorizontal size={13} /> Tùy biến giới thiệu
             </Button>
           )}
         </div>
       </div>
 
-      {/* Period Operational Funnels (2x2 Grid) */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="min-w-0 rounded-xl border border-border bg-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2.5">
-            <div className="flex items-center gap-2">
-              <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
-                <UserCheck size={15} />
-              </span>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                Tuyển thành viên
-              </h3>
-            </div>
-            <Badge tone="primary" dot={false}>
-              Tỷ lệ duyệt: {d.approvalRate ?? 0}%
-            </Badge>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-5">
-            <MiniStat label="Tổng đơn nộp" value={d.applicationsSubmitted ?? 0} />
-            <MiniStat label="Chờ duyệt" value={d.periodPendingApplications ?? 0} tone="amber" />
-            <MiniStat label="Đã trúng tuyển" value={d.approvedApplications ?? 0} tone="emerald" />
-            <MiniStat label="Từ chối" value={d.rejectedApplications ?? 0} tone="rose" />
-            <MiniStat label="Ứng viên rút" value={d.cancelledApplications ?? 0} tone="muted" />
-          </div>
-        </section>
+      <div className="space-y-4 px-3 py-3 sm:px-5 sm:py-4">
+        {/* 4 Concise Top KPI Cards */}
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <MetricCard
+            label="Thành viên hoạt động"
+            value={d.activeMembers}
+            sub={`${d.activeDepartments} ban · ${d.liveDocuments ?? 0} tài liệu (${formatBytesCompact(d.totalDocumentBytes)})`}
+            icon={<Users size={15} />}
+          />
+          <MetricCard
+            label="Tỷ lệ điểm danh"
+            value={`${d.attendanceRate ?? 0}%`}
+            sub={`${d.attendedCount}/${d.activeRegistrations} lượt · ${d.uniqueParticipants} người`}
+            icon={<CheckCheck size={15} />}
+          />
+          <MetricCard
+            label="Tỷ lệ duyệt đơn"
+            value={`${d.approvalRate ?? 0}%`}
+            sub={`${d.pendingApplications} chờ duyệt · ${d.applicationsSubmitted ?? 0} tổng đơn`}
+            icon={<UserCheck size={15} />}
+          />
+          <MetricCard
+            label="Nghiệm thu công việc"
+            value={`${d.taskCompletionRate ?? 0}%`}
+            sub={`${d.completedTasks} xong · ${d.overdueTasks} quá hạn`}
+            icon={<ClipboardCheck size={15} />}
+          />
+        </div>
 
-        <section className="min-w-0 rounded-xl border border-border bg-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2.5">
-            <div className="flex items-center gap-2">
-              <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
-                <Calendar size={15} />
-              </span>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                Sự kiện CLB
-              </h3>
-            </div>
-            <span className="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-mono text-[11px] font-semibold text-muted-foreground">
-              Nháp (DRAFT): {d.draftEvents ?? 0}
-            </span>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-5">
-            <MiniStat label="Sự kiện công bố" value={d.totalEvents} />
-            <MiniStat label="Đang mở ĐK" value={d.openEvents} tone="primary" />
-            <MiniStat label="Đã đóng ĐK" value={d.closedRegistrationEvents ?? 0} tone="amber" />
-            <MiniStat label="Đã hoàn thành" value={d.completedEvents} tone="emerald" />
-            <MiniStat label="Đã huỷ" value={d.cancelledEvents} tone="muted" />
-          </div>
-        </section>
-
-        <section className="min-w-0 rounded-xl border border-border bg-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2.5">
-            <div className="flex items-center gap-2">
-              <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
-                <CheckCheck size={15} />
-              </span>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                Đăng ký &amp; Điểm danh
-              </h3>
-            </div>
-            <Badge tone="primary" dot={false}>
-              Có mặt: {d.attendanceRate ?? 0}%
-            </Badge>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-5">
-            <MiniStat label="Người duy nhất" value={d.uniqueParticipants} tone="primary" />
-            <MiniStat
-              label="ĐK hiệu lực"
-              value={d.activeRegistrations}
-              sub={`${d.memberRegistrations ?? 0} TV · ${d.ctvRegistrations ?? 0} CTV`}
+        {/* 2x2 Visual Donut Charts Grid */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ChartCard
+            icon={<CheckCheck size={15} />}
+            title="Đăng ký & Điểm danh"
+            badge={<Badge tone="primary" dot={false}>{d.uniqueParticipants} người tham gia</Badge>}
+          >
+            <SvgDonutChart
+              segments={attendanceSegments}
+              centerValue={`${d.attendanceRate ?? 0}%`}
+              centerLabel="Có mặt"
+              size={134}
+              strokeWidth={19}
             />
-            <MiniStat
-              label="Thực tế có mặt"
-              value={d.attendedCount}
-              tone="emerald"
-              sub={`${d.memberAttended ?? 0} TV · ${d.ctvAttended ?? 0} CTV`}
-            />
-            <MiniStat label="Vắng / Có phép" value={d.absentOrExcusedCount} tone="amber" />
-            <MiniStat label="Đã huỷ ĐK" value={d.cancelledRegistrations} tone="muted" />
-          </div>
-        </section>
+          </ChartCard>
 
-        <section className="min-w-0 rounded-xl border border-border bg-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2.5">
-            <div className="flex items-center gap-2">
-              <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
-                <ClipboardCheck size={15} />
-              </span>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                Nhiệm vụ nội bộ
-              </h3>
-            </div>
-            <Badge tone="primary" dot={false}>
-              Nghiệm thu: {d.taskCompletionRate ?? 0}%
-            </Badge>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
-            <MiniStat label="Cần làm (TODO)" value={d.todoTasks ?? 0} />
-            <MiniStat label="Đang thực hiện" value={d.inProgressTasks ?? 0} tone="primary" />
-            <MiniStat label="Chờ nghiệm thu" value={d.reviewPendingTasks ?? 0} tone="amber" />
-            <div className="rounded-lg border border-rose-200 bg-rose-50/70 px-3 py-2.5">
-              <div className="flex items-center justify-between gap-1">
-                <p className="text-[11px] font-semibold text-rose-800">Quá hạn</p>
-                <AlertTriangle size={13} className="shrink-0 text-rose-600" />
-              </div>
-              <p className="mt-1 font-mono text-xl font-extrabold tabular-nums text-rose-700">
-                {d.overdueTasks}
-              </p>
-            </div>
-            <MiniStat label="Đã nghiệm thu" value={d.completedTasks} tone="emerald" />
-            <MiniStat label="Đã huỷ" value={d.cancelledTasks ?? 0} tone="muted" />
-          </div>
-        </section>
+          <ChartCard
+            icon={<ClipboardCheck size={15} />}
+            title="Tiến độ Nhiệm vụ nội bộ"
+            badge={
+              d.overdueTasks > 0 ? (
+                <Badge tone="danger" dot={false}>
+                  <AlertTriangle size={11} /> {d.overdueTasks} quá hạn
+                </Badge>
+              ) : (
+                <Badge tone="primary" dot={false}>Nghiệm thu {d.taskCompletionRate ?? 0}%</Badge>
+              )
+            }
+          >
+            <SvgDonutChart
+              segments={taskSegments}
+              centerValue={`${d.taskCompletionRate ?? 0}%`}
+              centerLabel="Nghiệm thu"
+              size={134}
+              strokeWidth={19}
+            />
+          </ChartCard>
+
+          <ChartCard
+            icon={<UserCheck size={15} />}
+            title="Phễu Tuyển thành viên"
+            badge={<Badge tone="primary" dot={false}>{d.applicationsSubmitted ?? 0} hồ sơ</Badge>}
+          >
+            <SvgDonutChart
+              segments={recruitmentSegments}
+              centerValue={`${d.approvalRate ?? 0}%`}
+              centerLabel="Tỷ lệ duyệt"
+              size={134}
+              strokeWidth={19}
+            />
+          </ChartCard>
+
+          <ChartCard
+            icon={<Calendar size={15} />}
+            title="Cơ cấu Sự kiện CLB"
+            badge={<Badge tone="neutral" dot={false}>Nháp: {d.draftEvents ?? 0}</Badge>}
+          >
+            <SvgDonutChart
+              segments={eventSegments}
+              centerValue={d.totalEvents}
+              centerLabel="Sự kiện"
+              size={134}
+              strokeWidth={19}
+            />
+          </ChartCard>
+        </div>
+
+        {/* Certificate Summary Card (links to full /management?tab=certificates page) */}
+        <ClubCertificatesOverviewSection clubId={clubId} mode="summary" />
+
+        {/* Department Chart + Compact Table */}
+        {showDepartmentsBlock && (
+          <OverviewDepartmentPanel
+            departments={d.departmentBreakdown ?? []}
+            totalActiveMembers={d.activeMembers}
+          />
+        )}
+
+        <ClubFacebookInsightsCard
+          clubId={clubId}
+          canManage={canManageFacebook ?? canCustomize}
+          onOpenSettings={onOpenFacebookSettings ?? onOpenCustomize}
+        />
       </div>
-
-      <ClubFacebookInsightsCard
-        clubId={clubId}
-        canManage={canManageFacebook ?? canCustomize}
-        onOpenSettings={onOpenFacebookSettings ?? onOpenCustomize}
-      />
     </div>
   );
 }
 
-function MetricCard({ label, value, sub, icon }: { label: string; value: number; sub: string; icon: React.ReactNode }) {
+function MetricCard({ label, value, sub, icon }: { label: string; value: number | string; sub: string; icon: React.ReactNode }) {
   return (
-    <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3.5 shadow-2xs">
+    <div className="flex min-w-0 items-center justify-between gap-2.5 rounded-xl border border-border bg-card px-3.5 py-3 shadow-2xs">
       <div className="min-w-0">
-        <p className="truncate text-xs font-semibold text-muted-foreground">{label}</p>
-        <p className="mt-1 font-mono text-2xl font-extrabold tabular-nums text-foreground">{value}</p>
-        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{sub}</p>
+        <p className="truncate text-[11px] font-semibold text-muted-foreground">{label}</p>
+        <p className="mt-0.5 font-mono text-xl font-extrabold tabular-nums text-foreground sm:text-2xl">{value}</p>
+        <p className="mt-0.5 truncate text-[10.5px] text-muted-foreground">{sub}</p>
       </div>
-      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">{icon}</span>
+      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">{icon}</span>
     </div>
   );
 }
 
-const MINI_TONES = {
-  default: "text-foreground",
-  primary: "text-primary",
-  emerald: "text-slate-900",
-  amber: "text-slate-700",
-  rose: "text-rose-700",
-  muted: "text-muted-foreground",
-} as const;
-
-function MiniStat({ label, value, sub, tone = "default" }: { label: string; value: number; sub?: string; tone?: keyof typeof MINI_TONES }) {
+function ChartCard({
+  icon,
+  title,
+  badge,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  badge?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="min-w-0 rounded-lg border border-border/70 bg-background/60 px-3 py-2.5">
-      <p className="truncate text-[11px] font-medium text-muted-foreground">{label}</p>
-      <p className={`mt-1 font-mono text-xl font-extrabold tabular-nums ${MINI_TONES[tone]}`}>{value}</p>
-      {sub && <p className="mt-0.5 truncate text-[10px] font-medium text-muted-foreground">{sub}</p>}
-    </div>
+    <section className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-2.5">
+        <div className="flex items-center gap-2">
+          <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">{icon}</span>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">{title}</h3>
+        </div>
+        {badge}
+      </div>
+      <div className="mt-3.5">{children}</div>
+    </section>
   );
 }

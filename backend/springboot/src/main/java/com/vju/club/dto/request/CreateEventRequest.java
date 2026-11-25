@@ -21,8 +21,27 @@ public record CreateEventRequest(
         @NotNull OffsetDateTime endTime,
         @NotNull OffsetDateTime registrationDeadline,
         Boolean allowCtv,
+        Boolean allowPublicAttendees,
         Boolean requiresSubmission,
         @Min(1) @Max(100_000) Integer maxParticipants,
-        EventStatus status
+        EventStatus status,
+        @Size(max = 16) String academicTerm,
+        @Size(max = 500) String coverImageUrl
 ) {
+    public CreateEventRequest(UUID departmentId, String title, String description, EventType eventType,
+                              String location, OffsetDateTime startTime, OffsetDateTime endTime,
+                              OffsetDateTime registrationDeadline, Boolean allowCtv,
+                              Boolean requiresSubmission, Integer maxParticipants, EventStatus status) {
+        this(departmentId, title, description, eventType, location, startTime, endTime,
+                registrationDeadline, allowCtv, null, requiresSubmission, maxParticipants, status, null, null);
+    }
+
+    public CreateEventRequest(UUID departmentId, String title, String description, EventType eventType,
+                              String location, OffsetDateTime startTime, OffsetDateTime endTime,
+                              OffsetDateTime registrationDeadline, Boolean allowCtv,
+                              Boolean requiresSubmission, Integer maxParticipants, EventStatus status,
+                              String academicTerm) {
+        this(departmentId, title, description, eventType, location, startTime, endTime,
+                registrationDeadline, allowCtv, null, requiresSubmission, maxParticipants, status, academicTerm, null);
+    }
 }

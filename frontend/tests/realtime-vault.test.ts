@@ -228,8 +228,8 @@ test("PB-87 restructured 5-group officer/admin sidebar and preserved student doc
   const officerGroups = officerNav.flatMap((s) => s.groups);
   assert.deepEqual(
     officerGroups.map((g) => g.id),
-    ["grp-personal", "grp-club", "grp-members", "grp-activities"],
-    "Club Officer without global admin perms should see 4 groups and no standalone grp-documents"
+    ["grp-club", "grp-members", "grp-activities", "grp-personal"],
+    "Club Officer without global admin perms should see 4 groups with Cá nhân at the bottom"
   );
   assert.equal(officerGroups.some((g) => g.id === "grp-documents"), false, "Officer nav must omit standalone grp-documents");
   assert.equal(officerGroups.some((g) => g.id === "grp-sys"), false, "Club-only role.view should not expose System Admin group");
@@ -266,6 +266,7 @@ test("PB-87 restructured 5-group officer/admin sidebar and preserved student doc
     actGroup.items.map((i) => ({ tab: i.tab, label: i.label })),
     [
       { tab: "events", label: "Sự kiện" },
+      { tab: "certificates", label: "Chứng nhận" },
       { tab: "tasks", label: "Công việc" },
       { tab: "documents", label: "Tài liệu CLB & Biểu mẫu" },
       { tab: "chat", label: "Chat & AI" },
@@ -288,8 +289,8 @@ test("PB-87 restructured 5-group officer/admin sidebar and preserved student doc
   const adminGroups = adminNav.flatMap((s) => s.groups);
   assert.deepEqual(
     adminGroups.map((g) => g.id),
-    ["grp-personal", "grp-club", "grp-members", "grp-activities", "grp-sys"],
-    "System Admin sidebar must have exactly 5 clean groups"
+    ["grp-club", "grp-members", "grp-activities", "grp-sys", "grp-personal"],
+    "System Admin sidebar must have exactly 5 clean groups with Cá nhân at the bottom"
   );
   const adminAllHrefs = adminGroups.flatMap((g) => g.items.map((i) => i.href));
   assert.equal(

@@ -7,10 +7,33 @@ import { AuthModalMode } from "@/components/auth/AuthModal";
 import { HOME_MESSAGES } from "@/i18n/home-messages";
 import { useI18n } from "@/providers/I18nContext";
 import { SessionUser } from "@/types";
-import { formatLocalizedCopy } from "./DbText";
 import { HomeSiteHeader } from "./HomeSiteHeader";
 
 const SLIDE_INTERVAL_MS = 6500;
+
+const STREAMLINED_HERO = {
+  vi: {
+    titlePrefix: "Tìm nơi ",
+    titleHighlight: "bạn thuộc về.",
+    subtitle: "Khám phá 12+ câu lạc bộ và Đoàn Thanh niên VJU, ứng tuyển trực tuyến theo ban chuyên môn và theo dõi lịch hoạt động cá nhân.",
+    applyCta: "Ứng tuyển CLB",
+    scheduleCta: "Công việc & Lịch cá nhân",
+  },
+  en: {
+    titlePrefix: "Find where ",
+    titleHighlight: "you belong.",
+    subtitle: "Explore 12+ VJU student clubs and Youth Union units, apply online by department, and track your personal schedule.",
+    applyCta: "Apply to a Club",
+    scheduleCta: "Tasks & Personal Schedule",
+  },
+  ja: {
+    titlePrefix: "自分の居場所を",
+    titleHighlight: "見つけよう。",
+    subtitle: "VJUの12以上の学生クラブ・青年団を探索し、希望部署へオンライン応募して個人スケジュールを一元管理できます。",
+    applyCta: "クラブに応募する",
+    scheduleCta: "タスク・個人スケジュール",
+  },
+} as const;
 
 interface HomeHeaderHeroProps {
   user?: SessionUser;
@@ -35,6 +58,7 @@ export function HomeHeaderHero({
 }: HomeHeaderHeroProps) {
   const { locale } = useI18n();
   const m = HOME_MESSAGES[locale];
+  const heroCopy = STREAMLINED_HERO[locale];
   const slides = m.hero.slides;
   const [activeSlide, setActiveSlide] = useState(0);
 
@@ -67,7 +91,7 @@ export function HomeHeaderHero({
         signOut={signOut}
       />
 
-      <section className="relative isolate min-h-[520px] overflow-hidden bg-slate-950 sm:min-h-[590px] lg:min-h-[640px]">
+      <section className="relative isolate min-h-[420px] overflow-hidden bg-slate-950 sm:min-h-[470px] lg:min-h-[520px]">
         {slides.map((slide, i) => (
           <div
             key={slide.src}
@@ -78,45 +102,49 @@ export function HomeHeaderHero({
             style={{ backgroundImage: `url('${slide.src}')`, backgroundPosition: slide.position }}
           />
         ))}
-        <div className="absolute inset-0 -z-10 bg-slate-950/62" />
+        <div className="absolute inset-0 -z-10 bg-slate-950/65" />
 
-        <div className="mx-auto flex min-h-[520px] max-w-[1380px] flex-col justify-between px-5 pb-7 pt-12 sm:min-h-[590px] sm:px-8 sm:pb-8 sm:pt-16 lg:min-h-[640px] lg:px-12 lg:pb-9 lg:pt-20">
-          <div className="my-auto max-w-[680px]">
-            <div key={`${locale}-${currentSlide.src}`} className="fade-in" aria-live="polite">
-              <p className="text-sm font-semibold text-primary-on-dark sm:text-[15px]">
-                {currentSlide.kicker}
-              </p>
-              <h1 className="mt-3 font-serif text-[30px] font-semibold leading-[1.12] tracking-[-0.02em] text-white sm:text-[46px] lg:text-[54px]">
-                {currentSlide.titleLine1}
-                <br />
-                {currentSlide.titleLine2Prefix}
-                <span className="italic text-primary-on-dark">{currentSlide.titleLine2Highlight}</span>
-              </h1>
-              <p className="mt-4 min-h-[84px] max-w-[56ch] text-base font-normal leading-7 text-white/95 sm:mt-5 sm:text-[17px] sm:leading-8">
-                {formatLocalizedCopy(currentSlide.lead, locale)}
-              </p>
-            </div>
+        <div className="mx-auto flex min-h-[420px] max-w-[1380px] flex-col justify-between px-5 pb-6 pt-10 sm:min-h-[470px] sm:px-8 sm:pb-7 sm:pt-12 lg:min-h-[520px] lg:px-12 lg:pb-8 lg:pt-14">
+          <div className="my-auto max-w-[660px]">
+            <p className="text-sm font-semibold text-primary-on-dark sm:text-[15px]">
+              {currentSlide.kicker}
+            </p>
+            <h1 className="mt-2.5 font-serif text-[32px] font-semibold leading-[1.12] tracking-[-0.02em] text-white sm:text-[46px] lg:text-[54px]">
+              {heroCopy.titlePrefix}
+              <span className="italic text-primary-on-dark">{heroCopy.titleHighlight}</span>
+            </h1>
+            <p className="mt-3.5 max-w-[54ch] text-base font-normal leading-7 text-white/95 sm:text-[17px]">
+              {heroCopy.subtitle}
+            </p>
 
-            <div className="mt-6 flex flex-col gap-3 sm:mt-7 sm:flex-row sm:flex-wrap">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <a
                 href="#cau-lac-bo"
-                className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-primary px-6 text-[15px] font-semibold text-white transition-colors hover:bg-primary-hover sm:w-auto"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-primary px-6 text-[15px] font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover sm:w-auto"
               >
-                <span>{m.hero.primaryCta}</span>
+                <span>{heroCopy.applyCta}</span>
                 <ArrowRight size={16} />
               </a>
               {user ? (
-                <Link
-                  href="/dashboard"
-                  className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-white px-6 text-[15px] font-semibold text-slate-900 transition-colors hover:bg-slate-100 sm:w-auto"
-                >
-                  {m.hero.dashboardCta}
-                </Link>
+                <>
+                  <Link
+                    href="/dashboard"
+                    className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-card px-5 text-[15px] font-semibold text-foreground transition-colors hover:bg-secondary sm:w-auto"
+                  >
+                    {m.hero.dashboardCta}
+                  </Link>
+                  <Link
+                    href="/schedule"
+                    className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-white/30 bg-slate-950/45 px-5 text-[15px] font-semibold text-white transition-colors hover:bg-slate-900/70 sm:w-auto"
+                  >
+                    {heroCopy.scheduleCta}
+                  </Link>
+                </>
               ) : (
                 <button
                   type="button"
                   onClick={() => openAuthModal("register")}
-                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-6 text-[15px] font-semibold text-slate-900 transition-colors hover:bg-slate-100 sm:w-auto"
+                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-card px-6 text-[15px] font-semibold text-foreground transition-colors hover:bg-secondary sm:w-auto"
                 >
                   <span>{m.hero.registerCta}</span>
                   <ArrowRight size={15} className="text-primary" />
@@ -125,7 +153,7 @@ export function HomeHeaderHero({
             </div>
           </div>
 
-          <div className="mt-10 flex flex-wrap items-center justify-between gap-3 pt-2">
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-3 pt-2">
             <span className="rounded-full bg-slate-950/60 px-3.5 py-1.5 text-[13px] font-medium text-white/95">
               {currentSlide.caption}
             </span>
@@ -174,7 +202,7 @@ export function HomeHeaderHero({
         </div>
       </section>
 
-      <section aria-label={m.facts.sectionAria} className="bg-secondary py-6 sm:py-8">
+      <section aria-label={m.facts.sectionAria} className="bg-secondary py-5 sm:py-6">
         <div className="mx-auto grid max-w-[1380px] gap-3.5 px-5 sm:grid-cols-2 sm:px-8 lg:grid-cols-4 lg:px-12">
           <Link
             href="/clubs"

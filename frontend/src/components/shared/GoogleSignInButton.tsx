@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
-import { apiModel, type AuthUserEnvelope } from "@/lib/api";
+import { ApiError, apiModel, type AuthUserEnvelope } from "@/lib/api";
 import { describeError } from "@/components/shared/ListPage";
 import { cn } from "@/lib/utils";
 
@@ -69,10 +69,12 @@ export function useGoogleSignIn() {
 
 export function GoogleSignInButton({
   onSignedIn,
+  onTwoFactorRequired,
   width = 400,
   withDivider = false,
 }: {
   onSignedIn: (envelope?: AuthUserEnvelope) => void;
+  onTwoFactorRequired?: (credential: string) => void;
   width?: number;
   withDivider?: boolean;
 }) {
@@ -85,10 +87,12 @@ export function GoogleSignInButton({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const signedIn = useRef(onSignedIn);
+  const twoFactorRequiredRef = useRef(onTwoFactorRequired);
 
   useEffect(() => {
     signedIn.current = onSignedIn;
-  }, [onSignedIn]);
+    twoFactorRequiredRef.current = onTwoFactorRequired;
+  }, [onSignedIn, onTwoFactorRequired]);
 
   const clientId = config.data?.enabled ? config.data.clientId : null;
   const domain = config.data?.allowedDomains[0];
@@ -131,6 +135,10 @@ export function GoogleSignInButton({
             const envelope = await apiModel.googleLogin(credential, true);
             signedIn.current(envelope);
           } catch (err) {
+            if (err instanceof ApiError && err.code === "TWO_FACTOR_REQUIRED" && twoFactorRequiredRef.current) {
+              twoFactorRequiredRef.current(credential);
+              return;
+            }
             setError(describeError(err));
           } finally {
             setBusy(false);

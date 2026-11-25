@@ -72,6 +72,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
                         || ApiPaths.FULL_AUTH_GOOGLE.equals(uri)
                         || ApiPaths.FULL_AUTH_FORGOT_PASSWORD.equals(uri)
                         || ApiPaths.FULL_AUTH_RESET_PASSWORD.equals(uri)
+                        || ApiPaths.FULL_AUTH_TWO_FACTOR_SEND.equals(uri)
+                        || ApiPaths.FULL_AUTH_TWO_FACTOR_VERIFY.equals(uri)
                         || (ApiPaths.API_V1 + ApiPaths.PUBLIC_I18N_TRANSLATE_BATCH).equals(uri));
     }
 

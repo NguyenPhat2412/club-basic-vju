@@ -1,15 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Calendar, CheckCheck, Sparkles, UserCheck, XCircle } from "lucide-react";
 import { DetailList, EntityDrawer, ModalShell, Section } from "@/components/shared/Overlays";
-import { StatusBadge } from "@/components/ui/badge";
+import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormField, Textarea } from "@/components/ui/input";
-import { formatDateTime } from "@/lib/utils";
-import { EVENT_TYPE_LABELS } from "@/forms/event/event-form";
-import { MyEventParticipation, PublicEvent } from "@/types";
+import { participantRoleLabel } from "@/lib/club/youth-union";
+import { cn, formatDateTime } from "@/lib/utils";
+import { resolveMediaUrl } from "@/lib/media";
+import { EVENT_TYPE_LABELS, getEventScopeLabel } from "@/forms/event/event-form";
+import { EventParticipantRole, MyEventParticipation, PublicEvent } from "@/types";
 import { EventSubmissionBlock } from "./EventSubmissionBlock";
+import { EventFeedbackSection } from "./EventFeedbackSection";
 
 interface EventParticipationDrawersProps {
   isLoggedIn: boolean;
@@ -26,7 +30,7 @@ interface EventParticipationDrawersProps {
   canRegisterNow: (ev: PublicEvent) => boolean;
   canCancelNow: (eventStatus: string, registrationStatus: string, deadline?: string) => boolean;
   registerPending: boolean;
-  onRegister: (ev: PublicEvent) => void;
+  onRegister: (ev: PublicEvent, participantType: EventParticipantRole) => void;
   cancelPending: boolean;
   onCancel: (eventId: string) => void;
   onRefresh: () => void;
@@ -56,7 +60,33 @@ export function EventParticipationDrawers({
   onNotice,
   onError,
 }: EventParticipationDrawersProps) {
+  const [rolePick, setRolePick] = useState<{ eventId: string; role: EventParticipantRole } | null>(null);
   const selectedDiscoverReg = selectedDiscover ? activeRegByEvent.get(selectedDiscover.id) : undefined;
+
+  const isMemberOfRegEvent = registeringEvent ? activeClubIds.has(registeringEvent.clubId) : false;
+  const allowPublicOfRegEvent = registeringEvent
+    ? (registeringEvent.allowPublicAttendees ?? registeringEvent.allowCtv)
+    : false;
+  const allowCtvOfRegEvent = Boolean(registeringEvent?.allowCtv);
+  const defaultRole: EventParticipantRole = isMemberOfRegEvent
+    ? "MEMBER"
+    : allowPublicOfRegEvent
+      ? "ATTENDEE"
+      : "CTV";
+  const chosenRole: EventParticipantRole =
+    registeringEvent && rolePick?.eventId === registeringEvent.id ? rolePick.role : defaultRole;
+  const setChosenRole = (role: EventParticipantRole) => {
+    if (registeringEvent) setRolePick({ eventId: registeringEvent.id, role });
+  };
+
+  const discoverCtaLabel = (ev: PublicEvent) => {
+    if (activeClubIds.has(ev.clubId)) return "Đăng ký tham gia";
+    const allowPublic = ev.allowPublicAttendees ?? ev.allowCtv;
+    if (allowPublic && ev.allowCtv) return "Đăng ký tham dự / CTV";
+    if (ev.allowCtv) return "Đăng ký làm Cộng tác viên";
+    return "Đăng ký tham dự";
+  };
+
   return (
     <>
       <ModalShell
@@ -65,12 +95,8 @@ export function EventParticipationDrawers({
         title="Xác nhận đăng ký tham gia sự kiện"
         icon={<Sparkles />}
         size="sm"
-        onSubmit={() => registeringEvent && onRegister(registeringEvent)}
-        submitLabel={
-          registeringEvent && activeClubIds.has(registeringEvent.clubId)
-            ? "Đăng ký (Thành viên CLB)"
-            : "Đăng ký Cộng tác viên (CTV)"
-        }
+        onSubmit={() => registeringEvent && onRegister(registeringEvent, chosenRole)}
+        submitLabel={`Đăng ký (${participantRoleLabel(chosenRole)})`}
         submitLoading={registerPending}
       >
         {registeringEvent && (
@@ -78,11 +104,90 @@ export function EventParticipationDrawers({
             <p>
               Sự kiện: <b>{registeringEvent.title}</b> ({registeringEvent.clubName})
             </p>
-            <p className="text-xs text-muted-foreground">
-              {activeClubIds.has(registeringEvent.clubId)
-                ? "Bạn đang là thành viên chính thức của CLB này."
-                : "Bạn sẽ tham gia với tư cách Cộng tác viên (CTV) theo sự kiện — không tự động trở thành thành viên chính thức của CLB."}
-            </p>
+            {isMemberOfRegEvent ? (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-foreground">Chọn vai trò tham gia (Thành viên CLB)</p>
+                <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Chọn vai trò thành viên">
+                  {([
+                    {
+                      role: "MEMBER" as const,
+                      title: "Thành viên tham gia (MEMBER)",
+                      desc: "Tham dự hoạt động CLB & điểm danh ĐRL",
+                    },
+                    {
+                      role: "ORGANIZER" as const,
+                      title: "Ban tổ chức (ORGANIZER)",
+                      desc: "Điều phối tổ chức & nhận công việc sự kiện",
+                    },
+                  ]).map((opt) => (
+                    <button
+                      key={opt.role}
+                      type="button"
+                      role="radio"
+                      aria-checked={chosenRole === opt.role}
+                      onClick={() => setChosenRole(opt.role)}
+                      className={cn(
+                        "rounded-xl border px-3 py-2 text-left transition-colors",
+                        chosenRole === opt.role
+                          ? "border-primary bg-rose-50/70 text-foreground"
+                          : "border-border bg-card text-muted-foreground hover:border-primary/40"
+                      )}
+                    >
+                      <p className="text-xs font-bold text-foreground">{opt.title}</p>
+                      <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{opt.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : allowPublicOfRegEvent && allowCtvOfRegEvent ? (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-foreground">Chọn hình thức tham gia sự kiện</p>
+                <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Chọn vai trò đăng ký">
+                  {([
+                    {
+                      role: "ATTENDEE" as const,
+                      title: "Người tham dự (ATTENDEE)",
+                      desc: "Tham dự sự kiện & điểm danh ĐRL",
+                    },
+                    {
+                      role: "CTV" as const,
+                      title: "Cộng tác viên (CTV)",
+                      desc: "Hỗ trợ tổ chức & nhận công việc sự kiện",
+                    },
+                  ]).map((opt) => (
+                    <button
+                      key={opt.role}
+                      type="button"
+                      role="radio"
+                      aria-checked={chosenRole === opt.role}
+                      onClick={() => setChosenRole(opt.role)}
+                      className={cn(
+                        "rounded-xl border px-3 py-2 text-left transition-colors",
+                        chosenRole === opt.role
+                          ? "border-primary bg-rose-50/70 text-foreground"
+                          : "border-border bg-card text-muted-foreground hover:border-primary/40"
+                      )}
+                    >
+                      <p className="text-xs font-bold text-foreground">{opt.title}</p>
+                      <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{opt.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1.5 rounded-xl border border-border bg-muted/30 px-3 py-2.5">
+                <Badge tone={allowCtvOfRegEvent ? "pending" : "primary"} dot={false}>
+                  {allowCtvOfRegEvent
+                    ? "Đăng ký với vai trò: Cộng tác viên"
+                    : "Đăng ký với vai trò: Người tham dự"}
+                </Badge>
+                <p className="text-xs text-muted-foreground">
+                  {allowCtvOfRegEvent
+                    ? "Bạn sẽ hỗ trợ tổ chức sự kiện với tư cách CTV — không tự động trở thành thành viên chính thức của CLB."
+                    : "Bạn sẽ tham dự sự kiện với tư cách Người tham dự và được ghi nhận điểm danh ĐRL."}
+                </p>
+              </div>
+            )}
             <FormField label="Ghi chú / Nguyện vọng hỗ trợ">
               <Textarea
                 value={regNote}
@@ -104,12 +209,18 @@ export function EventParticipationDrawers({
       >
         {selectedDiscover && (
           <>
+            {resolveMediaUrl(selectedDiscover.coverImageUrl) && (
+              <div className="mb-4 overflow-hidden rounded-xl border border-border bg-muted/20">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={resolveMediaUrl(selectedDiscover.coverImageUrl)!} alt={selectedDiscover.title} className="h-44 w-full object-cover" />
+              </div>
+            )}
             <DetailList
               rows={[
                 ["Câu lạc bộ", selectedDiscover.clubName],
                 ["Trạng thái", <StatusBadge key="s" status={selectedDiscover.status} />],
                 ["Loại hoạt động", EVENT_TYPE_LABELS[selectedDiscover.eventType] ?? selectedDiscover.eventType],
-                ["Đối tượng", selectedDiscover.allowCtv ? "Công khai toàn trường (SV & CTV)" : "Nội bộ thành viên CLB"],
+                ["Đối tượng", getEventScopeLabel(selectedDiscover)],
                 ["Hồ sơ xét tuyển", selectedDiscover.requiresSubmission ? "Yêu cầu nộp tệp hồ sơ (tự khoá khi hết hạn)" : "Không yêu cầu"],
                 ["Địa điểm", selectedDiscover.location || "—"],
                 ["Bắt đầu", formatDateTime(selectedDiscover.startTime)],
@@ -131,7 +242,7 @@ export function EventParticipationDrawers({
                 <div className="flex items-center justify-between gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs">
                   <span>
                     Bạn đã đăng ký sự kiện này với tư cách{" "}
-                    <b>{activeRegByEvent.get(selectedDiscover.id)?.participantType === "CTV" ? "Cộng tác viên" : "Thành viên CLB"}</b>.
+                    <b>{participantRoleLabel(activeRegByEvent.get(selectedDiscover.id)?.participantType)}</b>.
                   </span>
                   {canCancelNow(selectedDiscover.status, "REGISTERED", selectedDiscover.registrationDeadline) && (
                     <Button
@@ -152,8 +263,7 @@ export function EventParticipationDrawers({
                     setRegNote("");
                   }}
                 >
-                  <UserCheck size={14} />{" "}
-                  {activeClubIds.has(selectedDiscover.clubId) ? "Đăng ký tham gia" : "Đăng ký làm Cộng tác viên"}
+                  <UserCheck size={14} /> {discoverCtaLabel(selectedDiscover)}
                 </Button>
               ) : (
                 <p className="text-xs text-muted-foreground">
@@ -171,6 +281,15 @@ export function EventParticipationDrawers({
                 submissionFileName={selectedDiscoverReg.submissionFileName}
                 submissionUploadedAt={selectedDiscoverReg.submissionUploadedAt}
                 onUploaded={onRefresh}
+                onNotice={onNotice}
+                onError={onError}
+              />
+            )}
+            {isLoggedIn && (
+              <EventFeedbackSection
+                eventId={selectedDiscover.id}
+                eventStatus={selectedDiscover.status}
+                canSubmit={Boolean(selectedDiscoverReg?.countedAsAttended)}
                 onNotice={onNotice}
                 onError={onError}
               />
@@ -256,6 +375,13 @@ export function EventParticipationDrawers({
                 onError={onError}
               />
             )}
+            <EventFeedbackSection
+              eventId={selectedParticipation.eventId}
+              eventStatus={selectedParticipation.eventStatus}
+              canSubmit={selectedParticipation.countedAsAttended}
+              onNotice={onNotice}
+              onError={onError}
+            />
           </>
         )}
       </EntityDrawer>

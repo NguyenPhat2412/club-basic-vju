@@ -5,7 +5,7 @@ import { ChevronDown, Eye, EyeOff } from "lucide-react";
 import { resolveFormFieldIndicator, sanitizeFormLabel } from "@/forms/form-field-meta";
 import { cn } from "@/lib/utils";
 
-const field = "w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-2xs outline-none transition-[box-shadow,border-color,background-color] hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50 placeholder:text-muted-foreground";
+const field = "w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-2xs outline-none transition-[box-shadow,border-color,background-color] hover:border-slate-300 focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50 placeholder:font-normal placeholder:text-slate-400/75";
 
 function nodeText(node: ReactNode): string {
   if (node == null || typeof node === "boolean") return "";
@@ -145,23 +145,23 @@ export function FormField({
   const indicator = resolveFormFieldIndicator({ required, optional, hideIndicator, isReadOnlyChild });
 
   return (
-    <label className="grid gap-1.5 text-xs font-semibold text-foreground">
-      <span className="inline-flex flex-wrap items-baseline gap-x-1">
-        <span>{cleanLabel}</span>
+    <label className="flex min-w-0 flex-col justify-start gap-1.5 self-start text-xs font-semibold text-foreground">
+      <span className="flex min-h-4 min-w-0 items-baseline gap-x-1 leading-4">
+        <span className="truncate">{cleanLabel}</span>
         {indicator === "required" && (
-          <span className="font-bold text-destructive" aria-hidden="true">
+          <span className="shrink-0 font-bold text-destructive" aria-hidden="true">
             *
           </span>
         )}
         {indicator === "optional" && (
-          <span className="text-[11px] font-normal normal-case tracking-normal text-muted-foreground">(Tuỳ chọn)</span>
+          <span className="shrink-0 text-[11px] font-normal normal-case tracking-normal text-muted-foreground">(Tuỳ chọn)</span>
         )}
       </span>
       {children}
       {error ? (
-        <span role="alert" className="font-normal text-destructive">{error}</span>
+        <span role="alert" className="text-[11px] font-normal leading-4 text-destructive">{error}</span>
       ) : (
-        hint && <span className="font-normal text-muted-foreground">{hint}</span>
+        hint && <span className="text-[11px] font-normal leading-4 text-muted-foreground">{hint}</span>
       )}
     </label>
   );

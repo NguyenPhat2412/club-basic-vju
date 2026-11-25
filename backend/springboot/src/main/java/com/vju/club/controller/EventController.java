@@ -2,9 +2,12 @@ package com.vju.club.controller;
 
 import com.vju.club.annotation.PublicEndpoint;
 import com.vju.club.common.ApiPaths;
+import com.vju.club.dto.record.ClubMediaContent;
 import com.vju.club.dto.record.UploadedFile;
+import com.vju.club.dto.request.CreateEventFeedbackRequest;
 import com.vju.club.dto.request.CreateEventRequest;
 import com.vju.club.dto.request.EventRegistrationRequest;
+import com.vju.club.dto.request.LockEventAttendanceRequest;
 import com.vju.club.dto.request.QrAttendanceCheckInRequest;
 import com.vju.club.dto.request.RecordAttendanceRequest;
 import com.vju.club.dto.request.UpdateEventRegistrationRequest;
@@ -12,6 +15,8 @@ import com.vju.club.dto.request.UpdateEventRequest;
 import com.vju.club.dto.response.CalendarItemResponse;
 import com.vju.club.dto.response.EventAttendanceQrTokenResponse;
 import com.vju.club.dto.response.EventAttendanceResponse;
+import com.vju.club.dto.response.EventFeedbackResponse;
+import com.vju.club.dto.response.EventFeedbackSummaryResponse;
 import com.vju.club.dto.response.EventRegistrationResponse;
 import com.vju.club.dto.response.EventResponse;
 import com.vju.club.dto.response.MyEventParticipationResponse;
@@ -22,11 +27,14 @@ import com.vju.club.enums.EventStatus;
 import com.vju.club.security.Actor;
 import com.vju.club.service.EventAttendanceQrService;
 import com.vju.club.service.EventService;
+import com.vju.club.service.impl.EventAttendanceLockServiceImpl;
+import com.vju.club.service.impl.EventFeedbackServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -35,6 +43,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -59,6 +68,8 @@ import java.util.UUID;
 public class EventController {
     private final EventService eventService;
     private final EventAttendanceQrService eventAttendanceQrService;
+    private final EventAttendanceLockServiceImpl eventAttendanceLockService;
+    private final EventFeedbackServiceImpl eventFeedbackService;
 
     @PublicEndpoint(reason = "Public events discovery on landing page")
     @GetMapping(ApiPaths.PUBLIC_EVENTS)
@@ -112,6 +123,37 @@ public class EventController {
                                 @PathVariable UUID eventId,
                                 @Valid @RequestBody UpdateEventRequest request) {
         return eventService.update(actor, clubId, eventId, request);
+    }
+
+    @PostMapping(value = ApiPaths.EVENT_COVER, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Tải lên ảnh bìa / poster cho sự kiện (PNG/JPG/GIF/WEBP)")
+    public EventResponse uploadCover(Actor actor,
+                                     @PathVariable UUID eventId,
+                                     @RequestPart("file") MultipartFile file) {
+        return eventService.uploadCover(actor, eventId,
+                new UploadedFile(file.getOriginalFilename(), file::getInputStream));
+    }
+
+    @DeleteMapping(ApiPaths.EVENT_COVER)
+    @Operation(summary = "Xoá ảnh bìa / poster của sự kiện")
+    public EventResponse deleteCover(Actor actor, @PathVariable UUID eventId) {
+        return eventService.deleteCover(actor, eventId);
+    }
+
+    @PublicEndpoint(reason = "Public event poster/cover images; file names are unguessable")
+    @GetMapping(ApiPaths.PUBLIC_EVENT_COVER)
+    @Operation(summary = "Tải công khai ảnh bìa / poster sự kiện")
+    public ResponseEntity<InputStreamResource> openCover(@PathVariable @Size(max = 128) String fileName) {
+        ClubMediaContent media = eventService.openCover(fileName);
+        ResponseEntity.BodyBuilder builder = ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(media.contentType()))
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=31536000, immutable")
+                .header("X-Content-Type-Options", "nosniff")
+                .header("Content-Security-Policy", "default-src 'none'; img-src 'self' data: blob:; style-src 'unsafe-inline'");
+        if (media.sizeBytes() != null && media.sizeBytes() > 0) {
+            builder.contentLength(media.sizeBytes());
+        }
+        return builder.body(new InputStreamResource(media.content()));
     }
 
     @PostMapping(ApiPaths.EVENT_REGISTRATIONS)
@@ -220,6 +262,31 @@ public class EventController {
             @Valid @RequestBody QrAttendanceCheckInRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(eventAttendanceQrService.checkInWithQr(actor, eventId, request));
+    }
+
+    @PostMapping(ApiPaths.EVENT_ATTENDANCES_LOCK)
+    @Operation(summary = "Chốt & ký xác nhận điện tử SHA-256 bảng điểm danh sự kiện")
+    public EventResponse lockAttendance(
+            Actor actor,
+            @PathVariable UUID eventId,
+            @Valid @RequestBody(required = false) LockEventAttendanceRequest request) {
+        return eventAttendanceLockService.lockAttendance(actor, eventId, request);
+    }
+
+    @PostMapping(ApiPaths.EVENT_FEEDBACKS)
+    @Operation(summary = "Gửi đánh giá khảo sát sau sự kiện (chỉ mở cho người đã điểm danh Có mặt hoặc Đi muộn)")
+    public ResponseEntity<EventFeedbackResponse> submitFeedback(
+            Actor actor,
+            @PathVariable UUID eventId,
+            @Valid @RequestBody CreateEventFeedbackRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(eventFeedbackService.submitFeedback(actor, eventId, request));
+    }
+
+    @GetMapping(ApiPaths.EVENT_FEEDBACKS)
+    @Operation(summary = "Xem tổng hợp và danh sách đánh giá sau sự kiện")
+    public EventFeedbackSummaryResponse listFeedbacks(Actor actor, @PathVariable UUID eventId) {
+        return eventFeedbackService.listFeedbacks(actor, eventId);
     }
 
     @GetMapping(ApiPaths.MY_CALENDAR)

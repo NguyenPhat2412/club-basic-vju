@@ -7,11 +7,12 @@ import { apiModel, Application, ApplicationForm } from "@/lib/api";
 import { ApplicationFilesList } from "@/components/shared/ApplicationFileView";
 import { ApplicationDetailInfoList } from "@/components/shared/ApplicationFormFields";
 import { ExportReportMenu } from "@/components/shared/ExportReportMenu";
+import { FilterPopover } from "@/components/shared/FilterPopover";
 import { DetailList, EntityDrawer, Section } from "@/components/shared/Overlays";
 import { ErrorState, LoadingRows } from "@/components/shared/States";
 import { describeError } from "@/components/shared/ListPage";
 import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui/input";
+import { FormField, Input, Select } from "@/components/ui/input";
 import { validateApplicationFile } from "@/lib/utils";
 import { ApplicationInterviewSection } from "@/components/application/ApplicationInterviewSection";
 
@@ -44,58 +45,67 @@ export function ClubApplicationsFilterBar({
   onCreateApp: () => void;
   onExport?: (mode: "csv" | "pdf") => Promise<number> | number;
 }) {
+  const popoverCount = [createdFrom, createdTo, statusFilter].filter(Boolean).length;
+
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 pt-3 sm:px-6">
-      <div className="relative min-w-52 flex-1 sm:max-w-xs">
-        <Search
-          size={14}
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-        />
-        <Input
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Tìm theo tên, email ứng viên…"
-          className="pl-8 text-xs"
-        />
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          type="date"
-          aria-label="Từ ngày"
-          title="Lọc đơn gửi từ ngày"
-          value={createdFrom}
-          onChange={(e) => onCreatedFromChange(e.target.value)}
-          className="h-9 w-36 text-xs"
-        />
-        <span className="text-xs text-muted-foreground">–</span>
-        <Input
-          type="date"
-          aria-label="Đến ngày"
-          title="Lọc đơn gửi đến ngày"
-          value={createdTo}
-          onChange={(e) => onCreatedToChange(e.target.value)}
-          className="h-9 w-36 text-xs"
-        />
-        <Select
-          aria-label="Lọc trạng thái đơn"
-          value={statusFilter}
-          onChange={(e) => onStatusFilterChange(e.target.value)}
-          className="h-9 w-48 text-xs"
-        >
-          <option value="">Tất cả trạng thái</option>
-          <option value="PENDING">PENDING — Chờ duyệt</option>
-          <option value="APPROVED">APPROVED — Đã duyệt</option>
-          <option value="REJECTED">REJECTED — Đã từ chối</option>
-          <option value="CANCELLED">CANCELLED — Đã rút</option>
-        </Select>
+    <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-border bg-white px-3 py-1.5 sm:px-4">
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto sm:flex-1">
+        <div className="relative min-w-0 flex-1 sm:max-w-[260px]">
+          <Search
+            size={13}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            value={search}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Tìm tên, email ứng viên…"
+            className="h-8 pl-8 pr-7 text-xs"
+          />
+          {search && (
+            <button
+              type="button"
+              aria-label="Xoá tìm kiếm"
+              onClick={() => onSearchChange("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+        <FilterPopover activeCount={popoverCount} onClear={onClearFilters} title="Lọc đơn ứng tuyển">
+          <FormField label="Trạng thái đơn" hideIndicator>
+            <Select
+              aria-label="Lọc trạng thái đơn"
+              value={statusFilter}
+              onChange={(e) => onStatusFilterChange(e.target.value)}
+              className="h-8 text-xs"
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="PENDING">PENDING — Chờ duyệt</option>
+              <option value="APPROVED">APPROVED — Đã duyệt</option>
+              <option value="REJECTED">REJECTED — Đã từ chối</option>
+              <option value="CANCELLED">CANCELLED — Đã rút</option>
+            </Select>
+          </FormField>
+          <div className="grid grid-cols-2 gap-2">
+            <FormField label="Từ ngày" hideIndicator>
+              <Input type="date" aria-label="Từ ngày" value={createdFrom} onChange={(e) => onCreatedFromChange(e.target.value)} className="h-8 text-xs" />
+            </FormField>
+            <FormField label="Đến ngày" hideIndicator>
+              <Input type="date" aria-label="Đến ngày" value={createdTo} onChange={(e) => onCreatedToChange(e.target.value)} className="h-8 text-xs" />
+            </FormField>
+          </div>
+        </FilterPopover>
         {hasFilters && (
-          <Button variant="outline" size="sm" onClick={onClearFilters}>
-            <FilterX size={14} /> Xoá bộ lọc
+          <Button variant="outline" size="sm" className="h-8" onClick={onClearFilters}>
+            <FilterX size={13} /> Xoá lọc
           </Button>
         )}
-        {onExport && <ExportReportMenu onExport={onExport} />}
+      </div>
+      <div className="flex w-full max-w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:shrink-0">
+        {onExport && <ExportReportMenu onExport={onExport} compact />}
         {canCreateForClub && (
-          <Button size="sm" onClick={onCreateApp}>
+          <Button size="sm" className="h-8" onClick={onCreateApp}>
             <Plus size={14} /> Tạo hồ sơ đơn
           </Button>
         )}

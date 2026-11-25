@@ -44,7 +44,7 @@ export function ModalShell({ open, onClose, title, icon, size = "md", children, 
   if (!open) return null;
   const submit = (e: FormEvent) => { e.preventDefault(); onSubmit?.(); };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 sm:p-4 fade-in" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-3 sm:p-4 fade-in" onMouseDown={onClose}>
       <form role="dialog" aria-modal="true" aria-label={title} onSubmit={submit} onMouseDown={(e) => e.stopPropagation()}
         className={cn("panel-modal flex max-h-[90dvh] w-full flex-col", sizes[size])}>
         <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5 sm:px-6 sm:py-4">

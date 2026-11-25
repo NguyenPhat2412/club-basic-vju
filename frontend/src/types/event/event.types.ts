@@ -1,6 +1,9 @@
+export type EventParticipantRole = 'MEMBER' | 'ORGANIZER' | 'CTV' | 'ATTENDEE';
+
 export type PublicEvent = {
   id: string;
   clubId: string;
+  clubCode?: string | null;
   clubName: string;
   departmentId?: string;
   departmentName?: string;
@@ -12,10 +15,17 @@ export type PublicEvent = {
   endTime: string;
   registrationDeadline?: string;
   allowCtv: boolean;
+  allowPublicAttendees?: boolean;
   requiresSubmission?: boolean;
   maxParticipants?: number;
   status: string;
   completedAt?: string;
+  academicTerm?: string | null;
+  attendanceLockedAt?: string | null;
+  attendanceLockedBy?: string | null;
+  attendanceSignatureSha256?: string | null;
+  certificateTemplateUrl?: string | null;
+  coverImageUrl?: string | null;
 };
 
 export type ClubEvent = PublicEvent & {
@@ -34,9 +44,12 @@ export type CreateEventInput = {
   endTime: string;
   registrationDeadline: string;
   allowCtv?: boolean;
+  allowPublicAttendees?: boolean;
   requiresSubmission?: boolean;
   maxParticipants?: number;
   status?: string;
+  academicTerm?: string;
+  coverImageUrl?: string;
 };
 
 export type EventRegistration = {
@@ -127,4 +140,19 @@ export type CalendarItem = {
   location?: string;
   startTime: string;
   endTime: string;
+};
+
+export type EventFeedback = {
+  id: string;
+  eventId: string;
+  userId: string;
+  userFullName?: string;
+  rating: number;
+  comment?: string | null;
+  createdAt: string;
+};
+
+export type CreateEventFeedbackInput = {
+  rating: number;
+  comment?: string;
 };

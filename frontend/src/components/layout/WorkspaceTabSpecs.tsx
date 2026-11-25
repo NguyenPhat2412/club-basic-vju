@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import {
+  Award,
   BarChart3,
   Bell,
   Building2,
@@ -42,6 +43,7 @@ export function iconForTab(href: string, tab?: string, tier?: string): ReactNode
   if (tab === "members") return <UsersRound size={13.5} />;
   if (tab === "departments") return <Layers size={13.5} />;
   if (tab === "events") return <CalendarCheck2 size={13.5} />;
+  if (tab === "certificates") return <Award size={13.5} />;
   if (tab === "tasks") return <ClipboardCheck size={13.5} />;
   if (tab === "documents") return <FolderArchive size={13.5} />;
   if (tab === "chat") return <MessageSquare size={13.5} />;
@@ -77,6 +79,65 @@ export function resolveTabId(pathname: string, currentTab: string | null, _curre
 
 export const emptySubscribe = () => () => {};
 export const TABS_SYNC_EVENT = "vju-workspace-tabs-sync";
+
+export function workspaceTabsStorageKey(userId?: string): string {
+  return `vju.workspace.tabs.v2:${userId || "guest"}`;
+}
+
+export function parseStoredTabIds(raw: string | null): string[] | null {
+  if (raw === null) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((x): x is string => typeof x === "string");
+    }
+  } catch {
+    // ignore invalid JSON
+  }
+  return null;
+}
+
+export function resolveTabIdFromHref(href: string): string | null {
+  const trimmed = href.trim();
+  if (!trimmed || !trimmed.startsWith("/") || trimmed === "/home") return null;
+  try {
+    const url = new URL(trimmed, "http://vju.local");
+    return resolveTabId(url.pathname, url.searchParams.get("tab"), url.searchParams.get("tier"));
+  } catch {
+    return null;
+  }
+}
+
+export function writeWorkspaceTabIds(storageKey: string, next: string[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(next));
+    window.dispatchEvent(new Event(TABS_SYNC_EVENT));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+export function ensureWorkspaceTabOpen(storageKey: string, tabId: string, currentRouteTabId?: string) {
+  if (typeof window === "undefined" || !tabId) return;
+  try {
+    const current = parseStoredTabIds(window.localStorage.getItem(storageKey));
+    if (current !== null && current.length === 0 && currentRouteTabId && currentRouteTabId !== tabId) {
+      recordPendingTabClose(currentRouteTabId, tabId);
+    } else {
+      clearPendingTabClose();
+    }
+    if (current === null) {
+      writeWorkspaceTabIds(storageKey, [tabId]);
+      return;
+    }
+    if (!current.includes(tabId)) {
+      writeWorkspaceTabIds(storageKey, [...current, tabId]);
+    }
+  } catch {
+    // ignore storage errors
+  }
+}
 
 export type PendingTabClose = {
   closedIds: string[];
@@ -133,6 +194,10 @@ export function computeOpenTabIds({
   rawActiveId: string;
   pending: PendingTabClose | null;
 }): string[] {
+  // Explicit empty array means the user closed all tabs (Google/IDE empty workspace mode)
+  if (storedIds !== null && storedIds.length === 0) {
+    return [];
+  }
   const effectiveActiveId = resolveEffectiveActiveTabId(rawActiveId, pending);
   const blocked = pending && pending.closedIds.includes(rawActiveId) ? new Set(pending.closedIds) : null;
   const base = storedIds && storedIds.length > 0 ? storedIds : defaultStarterIds;
@@ -144,6 +209,30 @@ export function computeOpenTabIds({
   return ensured;
 }
 
+export function computeNextPersistedTabIds({
+  storedIds,
+  defaultStarterIds,
+  catalogIds,
+  rawActiveId,
+}: {
+  storedIds: string[] | null;
+  defaultStarterIds: string[];
+  catalogIds: ReadonlySet<string>;
+  rawActiveId: string;
+}): string[] | null {
+  if (!catalogIds.has(rawActiveId)) return null;
+  // Never auto-resurrect tabs while user intentionally closed all tabs
+  if (storedIds !== null && storedIds.length === 0) return null;
+  if (storedIds && storedIds.length > 0) {
+    return storedIds.includes(rawActiveId) ? null : [...storedIds, rawActiveId];
+  }
+  const initial = defaultStarterIds.filter((id) => catalogIds.has(id));
+  if (!initial.includes(rawActiveId)) {
+    initial.push(rawActiveId);
+  }
+  return initial.length > 0 ? initial : [rawActiveId];
+}
+
 export function computeCloseTabTransition({
   openIds,
   closingId,
@@ -153,9 +242,12 @@ export function computeCloseTabTransition({
   closingId: string;
   effectiveActiveId: string;
 }): { nextIds: string[]; nextActiveId: string | null } | null {
-  if (openIds.length <= 1 || !openIds.includes(closingId)) return null;
+  if (openIds.length === 0 || !openIds.includes(closingId)) return null;
   const idx = openIds.indexOf(closingId);
   const nextIds = openIds.filter((item) => item !== closingId);
+  if (nextIds.length === 0) {
+    return { nextIds: [], nextActiveId: null };
+  }
   if (closingId !== effectiveActiveId) {
     return { nextIds, nextActiveId: null };
   }

@@ -3,9 +3,11 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
-import { Lock, LockOpen, Pencil, UserCheck, UsersRound } from "lucide-react";
+import { Lock, LockOpen, Pencil, UsersRound } from "lucide-react";
 import { apiModel, ClubPositionSlot, Department, DepartmentMember } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
+import { useCriticalActionOtp } from "@/hooks/useCriticalActionOtp";
+import { Otp2FaChallengeModal } from "@/components/auth/Otp2FaChallengeModal";
 import { ErrorState, LoadingRows } from "@/components/shared/States";
 import { RowAction } from "@/components/shared/TableRowActions";
 import { describeError } from "@/components/shared/ListPage";
@@ -30,6 +32,7 @@ export function DepartmentsTab({
 }) {
   const session = useSession();
   const queryClient = useQueryClient();
+  const roleOtp = useCriticalActionOtp("ROLE_CHANGE");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Department | null>(null);
   const [name, setName] = useState("");
@@ -96,7 +99,8 @@ export function DepartmentsTab({
   });
 
   const revokePosition = useMutation({
-    mutationFn: (assignmentId: string) => apiModel.revokeClubPosition(clubId, assignmentId),
+    mutationFn: (assignmentId: string) =>
+      roleOtp.runWithOtp((otp) => apiModel.revokeClubPosition(clubId, assignmentId, otp)),
     onSuccess: () => {
       onNotice("Đã miễn nhiệm chức danh thành công.");
       onError("");
@@ -110,9 +114,6 @@ export function DepartmentsTab({
     setName(dept.name);
     setDescription(dept.description ?? "");
   };
-
-  const deptHeadSlotFor = (departmentId: string): ClubPositionSlot | undefined =>
-    (structure.data?.departmentPositions ?? []).find((s) => s.departmentId === departmentId);
 
   const moveTargetsForSelected = useMemo(() => {
     if (!selectedDept) return [];
@@ -130,19 +131,9 @@ export function DepartmentsTab({
     const canEdit = session.canInDepartment("department.update", clubId, dept.id);
     const canActivate = dept.status !== "ACTIVE" && session.canInDepartment("department.activate", clubId, dept.id);
     const canDeactivate = dept.status === "ACTIVE" && session.canInDepartment("department.inactive", clubId, dept.id);
-    const headSlot = deptHeadSlotFor(dept.id);
     return [
       ...(canViewMembers
         ? [{ icon: <UsersRound />, label: "Thành viên ban", onClick: () => setSelectedDept(dept) }]
-        : []),
-      ...(canAssignPosition && headSlot && dept.status === "ACTIVE"
-        ? [
-            {
-              icon: <UserCheck />,
-              label: headSlot.holders.length ? "Thay thế Trưởng ban" : "Bổ nhiệm Trưởng ban",
-              onClick: () => setAssigningSlot(headSlot),
-            },
-          ]
         : []),
       ...(canEdit ? [{ icon: <Pencil />, label: "Sửa thông tin", onClick: () => openEdit(dept) }] : []),
       ...(canActivate
@@ -167,30 +158,37 @@ export function DepartmentsTab({
     ];
   };
 
-  return (
-    <div className="flex flex-1 flex-col gap-4">
-      <ClubBoardPositionsSection
-        slots={structure.data?.clubPositions ?? []}
-        isPending={structure.isPending}
-        isError={structure.isError}
-        error={structure.error}
-        canAssignPosition={canAssignPosition}
-        canRevokePosition={canRevokePosition}
-        onAssignSlot={setAssigningSlot}
-        onRevokeAssignment={(assignmentId) => revokePosition.mutate(assignmentId)}
-      />
+  const boardSection = (
+    <ClubBoardPositionsSection
+      slots={structure.data?.clubPositions ?? []}
+      isPending={structure.isPending}
+      isError={structure.isError}
+      error={structure.error}
+      canAssignPosition={canAssignPosition}
+      canRevokePosition={canRevokePosition}
+      onAssignSlot={setAssigningSlot}
+      onRevokeAssignment={(assignmentId) => revokePosition.mutate(assignmentId)}
+    />
+  );
 
+  return (
+    <div className="flex flex-1 flex-col">
       {departments.isPending ? (
-        <LoadingRows />
+        <>
+          {boardSection}
+          <LoadingRows />
+        </>
       ) : departments.isError ? (
-        <ErrorState message={describeError(departments.error)} onRetry={() => departments.refetch()} />
+        <>
+          {boardSection}
+          <ErrorState message={describeError(departments.error)} onRetry={() => departments.refetch()} />
+        </>
       ) : (
         <DepartmentTableSection
           items={departments.data.items}
           canCreate={canCreate}
-          canRevokePosition={canRevokePosition}
-          deptHeadSlotFor={deptHeadSlotFor}
           actionsFor={actionsFor}
+          betweenToolbarAndTable={boardSection}
           onRowClick={(d) => {
             if (session.canInDepartment("department.member.view", clubId, d.id)) setSelectedDept(d);
             else if (session.canInDepartment("department.update", clubId, d.id)) openEdit(d);
@@ -200,7 +198,6 @@ export function DepartmentsTab({
             setName("");
             setDescription("");
           }}
-          onRevokeHead={(assignmentId) => revokePosition.mutate(assignmentId)}
         />
       )}
 
@@ -291,6 +288,7 @@ export function DepartmentsTab({
         }}
         onError={onError}
       />
+      <Otp2FaChallengeModal {...roleOtp.otpModalProps} />
     </div>
   );
 }

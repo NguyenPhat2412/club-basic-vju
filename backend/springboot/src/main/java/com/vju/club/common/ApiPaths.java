@@ -27,6 +27,8 @@ public final class ApiPaths {
     public static final String AUTH_RESET_PASSWORD = "/auth/reset-password";
     public static final String AUTH_CHANGE_PASSWORD = "/auth/change-password";
     public static final String AUTH_ME = "/auth/me";
+    public static final String AUTH_TWO_FACTOR_SEND = "/auth/2fa/send";
+    public static final String AUTH_TWO_FACTOR_VERIFY = "/auth/2fa/verify";
 
     public static final String FULL_AUTH_CSRF = API_V1 + AUTH_CSRF;
     public static final String FULL_AUTH_LOGIN = API_V1 + AUTH_LOGIN;
@@ -37,10 +39,13 @@ public final class ApiPaths {
     public static final String FULL_AUTH_RESET_PASSWORD = API_V1 + AUTH_RESET_PASSWORD;
     public static final String FULL_AUTH_CHANGE_PASSWORD = API_V1 + AUTH_CHANGE_PASSWORD;
     public static final String FULL_AUTH_ME = API_V1 + AUTH_ME;
+    public static final String FULL_AUTH_TWO_FACTOR_SEND = API_V1 + AUTH_TWO_FACTOR_SEND;
+    public static final String FULL_AUTH_TWO_FACTOR_VERIFY = API_V1 + AUTH_TWO_FACTOR_VERIFY;
 
     // Users
     public static final String USERS = "/users";
     public static final String USERS_ME = "/users/me";
+    public static final String USERS_ME_TWO_FACTOR = "/users/me/2fa";
     public static final String USER_BY_ID = "/users/{userId}";
     public static final String USER_PASSWORD = "/users/{userId}/password";
     public static final String USER_STATUS = "/users/{userId}/status";
@@ -61,6 +66,7 @@ public final class ApiPaths {
     public static final String CLUB_STATUS = "/clubs/{clubId}/status";
     public static final String CLUB_LOGO = "/clubs/{clubId}/logo";
     public static final String CLUB_COVER = "/clubs/{clubId}/cover";
+    public static final String CLUB_USAGE = "/clubs/{clubId}/usage";
 
     // Departments & Department Members
     public static final String CLUB_DEPARTMENTS = "/clubs/{clubId}/departments";
@@ -138,11 +144,14 @@ public final class ApiPaths {
     // Events & Calendar
     public static final String PUBLIC_EVENTS = "/public/events";
     public static final String EVENTS_DISCOVER = "/events/discover";
+    public static final String EVENTS_TIMELINE = "/events/timeline";
     public static final String PUBLIC_I18N_TRANSLATIONS = "/public/i18n/translations";
     public static final String PUBLIC_I18N_TRANSLATE_BATCH = "/public/i18n/translate-batch";
     public static final String CLUB_EVENTS = "/clubs/{clubId}/events";
     public static final String CLUB_EVENT_BY_ID = "/clubs/{clubId}/events/{eventId}";
     public static final String EVENT_BY_ID = "/events/{eventId}";
+    public static final String EVENT_COVER = "/events/{eventId}/cover";
+    public static final String PUBLIC_EVENT_COVER = "/public/events/covers/{fileName}";
     public static final String EVENT_REGISTRATIONS = "/events/{eventId}/registrations";
     public static final String EVENT_REGISTRATION_BY_ID = "/events/{eventId}/registrations/{registrationId}";
     public static final String EVENT_REGISTRATION_CANCEL_ME = "/events/{eventId}/registrations/me/cancel";
@@ -152,6 +161,18 @@ public final class ApiPaths {
     public static final String EVENT_ATTENDANCES = "/events/{eventId}/attendances";
     public static final String EVENT_ATTENDANCE_QR_TOKEN = EVENT_ATTENDANCES + "/qr-token";
     public static final String EVENT_ATTENDANCE_QR_CHECK_IN = EVENT_ATTENDANCES + "/qr-check-in";
+    public static final String EVENT_ATTENDANCES_LOCK = EVENT_ATTENDANCES + "/lock";
+    public static final String EVENT_FEEDBACKS = "/events/{eventId}/feedbacks";
+    public static final String EVENT_CERTIFICATES = "/events/{eventId}/certificates";
+    public static final String EVENT_CERTIFICATES_ISSUE = "/events/{eventId}/certificates/issue";
+    public static final String EVENT_CERTIFICATE_TEMPLATE = "/events/{eventId}/certificate-template";
+    public static final String EVENT_CERTIFICATES_REMIND = "/events/{eventId}/certificates/remind";
+    public static final String CERTIFICATE_REVOKE = "/certificates/{certificateId}/revoke";
+    public static final String MY_CERTIFICATES = "/me/certificates";
+    public static final String MY_CERTIFICATE_ACKNOWLEDGE = "/me/certificates/{certificateId}/acknowledge";
+    public static final String CERTIFICATES_MANAGEMENT = "/certificates/management";
+    public static final String PUBLIC_CERTIFICATE_VERIFY = "/public/certificates/verify/{certificateCode}";
+    public static final String PUBLIC_CERTIFICATE_TEMPLATE = "/public/certificates/templates/{fileName}";
     public static final String MY_CALENDAR = "/users/me/calendar";
 
     // Tasks
@@ -165,6 +186,7 @@ public final class ApiPaths {
     // Statistics
     public static final String SYSTEM_STATISTICS = "/statistics/system";
     public static final String CLUB_STATISTICS = "/clubs/{clubId}/statistics";
+    public static final String REPORTS_TRAINING_POINTS = "/reports/training-points";
 
     // Chat & AI Summaries
     public static final String WS_ENDPOINT = API_V1 + "/ws";
@@ -220,6 +242,14 @@ public final class ApiPaths {
 
     public static String publicClubCoverPath(UUID clubId) {
         return API_V1 + "/public/clubs/" + clubId + "/cover";
+    }
+
+    public static String publicCertificateTemplatePath(String fileName) {
+        return API_V1 + "/public/certificates/templates/" + fileName;
+    }
+
+    public static String publicEventCoverPath(String fileName) {
+        return API_V1 + "/public/events/covers/" + fileName;
     }
 }
 

@@ -183,6 +183,10 @@ public class EventAttendanceQrServiceImpl implements EventAttendanceQrService {
             throw new ApiException(HttpStatus.CONFLICT, "EVENT_NOT_HELD",
                     "Attendance cannot be recorded for a draft or cancelled event");
         }
+        if (event.getAttendanceLockedAt() != null) {
+            throw new ApiException(HttpStatus.CONFLICT, "ATTENDANCE_LOCKED",
+                    "Bảng điểm danh sự kiện đã được chốt và ký xác nhận, không thể điểm danh QR");
+        }
         int opensBeforeMinutes = systemSettingsService != null
                 ? systemSettingsService.current().attendanceOpensBeforeMinutes()
                 : 120;

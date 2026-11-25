@@ -38,7 +38,7 @@ export function RolesMatrixTable({
       <table className="w-full min-w-[840px] border-collapse text-sm" aria-label="Ma trận phân quyền">
         <thead className="sticky top-0 z-20 border-b border-border bg-muted/95 backdrop-blur-xs">
           <tr>
-            <th className="min-w-[260px] max-w-[360px] border-r border-border/70 bg-muted/95 px-4 py-3 text-left align-middle text-[11px] font-bold uppercase tracking-wider text-muted-foreground md:sticky md:left-0 md:z-30">
+            <th className="min-w-[170px] max-w-[320px] border-r border-border/70 bg-muted/95 px-3 py-3 text-left align-middle text-[11px] font-bold uppercase tracking-wider text-muted-foreground sm:min-w-[250px] sm:px-4 md:sticky md:left-0 md:z-30">
               Quyền chức năng &amp; Mô tả
             </th>
             {columns.map((role) => {

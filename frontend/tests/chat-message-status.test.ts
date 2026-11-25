@@ -7,7 +7,7 @@ import {
   resolveChatMessageStatusMeta,
 } from "@/forms/chat/chat-status-meta";
 import {
-  getTelegramJumbomojiCount,
+  getChatJumbomojiCount,
   insertTextAtCursor,
   toggleOptimisticMessageReaction,
 } from "@/forms/chat/chat-emojis";
@@ -121,8 +121,8 @@ test("i18n translates all 6 chat message status labels, tooltips, and dynamic se
   assert.equal(translateUiText("Thả cảm xúc", "ja"), "リアクションを追加");
 });
 
-test("Telegram reactions toggle, cap at 3 per user, insert emojis at cursor, and detect 1-3 Jumbomojis", () => {
-  let msg = makeMsg({ id: "m-tg" });
+test("Chat reactions toggle, cap at 3 per user, insert emojis at cursor, and detect 1-3 Jumbomojis", () => {
+  let msg = makeMsg({ id: "m-react" });
   msg = toggleOptimisticMessageReaction(msg, "❤️", "u-me", "Local Admin");
   msg = toggleOptimisticMessageReaction(msg, "🔥", "u-me", "Local Admin");
   msg = toggleOptimisticMessageReaction(msg, "🎉", "u-me", "Local Admin");
@@ -131,7 +131,7 @@ test("Telegram reactions toggle, cap at 3 per user, insert emojis at cursor, and
     ["❤️", "🔥", "🎉"]
   );
 
-  // 4th distinct reaction replaces oldest ("❤️") just like Telegram
+  // 4th distinct reaction replaces oldest ("❤️")
   msg = toggleOptimisticMessageReaction(msg, "👏", "u-me", "Local Admin");
   assert.deepEqual(
     msg.reactions?.map((r) => r.emoji),
@@ -149,10 +149,10 @@ test("Telegram reactions toggle, cap at 3 per user, insert emojis at cursor, and
   assert.equal(inserted.nextValue, "Chào 🔥 CLB!");
   assert.equal(inserted.nextCursor, 7);
 
-  assert.equal(getTelegramJumbomojiCount("❤️", false), 1);
-  assert.equal(getTelegramJumbomojiCount("🔥 🎉", false), 2);
-  assert.equal(getTelegramJumbomojiCount("👍 ❤️ 🚀", false), 3);
-  assert.equal(getTelegramJumbomojiCount("👍 ❤️ 🚀 💯", false), 0);
-  assert.equal(getTelegramJumbomojiCount("Chào ❤️", false), 0);
-  assert.equal(getTelegramJumbomojiCount("❤️", true), 0);
+  assert.equal(getChatJumbomojiCount("❤️", false), 1);
+  assert.equal(getChatJumbomojiCount("🔥 🎉", false), 2);
+  assert.equal(getChatJumbomojiCount("👍 ❤️ 🚀", false), 3);
+  assert.equal(getChatJumbomojiCount("👍 ❤️ 🚀 💯", false), 0);
+  assert.equal(getChatJumbomojiCount("Chào ❤️", false), 0);
+  assert.equal(getChatJumbomojiCount("❤️", true), 0);
 });

@@ -3,23 +3,27 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
-import { Bell, Calendar, CheckCheck, MapPin, Pencil, QrCode, Search, Settings2, UserCheck, Users, X } from "lucide-react";
+import { Bell, Calendar, CheckCheck, MapPin, Pencil, QrCode, UserCheck } from "lucide-react";
 import { apiModel, AttendanceStatus, ClubEvent, EventRegistration } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
 import { ExportReportMenu } from "@/components/shared/ExportReportMenu";
 import { DetailList, EntityDrawer, Section } from "@/components/shared/Overlays";
-import { LoadingRows } from "@/components/shared/States";
 import { describeError } from "@/components/shared/ListPage";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormField, Input, Select } from "@/components/ui/input";
 import { formatDateTime } from "@/lib/utils";
+import { resolveMediaUrl } from "@/lib/media";
 import { EVENT_TYPE_LABELS } from "@/forms/event/event-form";
 import { buildAttendanceStatusMap, filterEventRegistrations, ParticipantStatusFilter } from "@/utils/event-participants";
 import { exportEventAttendanceReport } from "@/utils/export/club-reports";
 import { EventQrOrganizerModal } from "@/components/event/EventQrModals";
 import { EventAdminFormButton } from "@/components/event/EventAdminFormButton";
-import { EventSubmissionBlock, EventSubmissionDownloadButton } from "@/components/event/EventSubmissionBlock";
+import { EventSubmissionBlock } from "@/components/event/EventSubmissionBlock";
+import { EventAttendanceRosterSection } from "@/components/event/EventAttendanceRosterSection";
+import { EventAttendanceLockPanel } from "@/components/event/EventAttendanceLockPanel";
+import { EventCertificatesSection } from "@/components/event/EventCertificatesSection";
+import { EventFeedbackSection } from "@/components/event/EventFeedbackSection";
 
 type EventAttendanceDrawerProps = {
   clubId: string;
@@ -42,12 +46,15 @@ export function EventAttendanceDrawer({
   const [attendanceDraft, setAttendanceDraft] = useState<Record<string, AttendanceStatus>>({});
   const [attendanceReason, setAttendanceReason] = useState("");
   const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [lockedSnapshot, setLockedSnapshot] = useState<ClubEvent | null>(null);
   const [filterState, setFilterState] = useState<{ eventId?: string; query: string; status: ParticipantStatusFilter }>({
     eventId: selected?.id,
     query: "",
     status: "ALL",
   });
 
+  const effectiveSelected = selected && lockedSnapshot?.id === selected.id ? lockedSnapshot : selected;
+  const isAttendanceLocked = Boolean(effectiveSelected?.attendanceLockedAt);
   const participantQuery = filterState.eventId === selected?.id ? filterState.query : "";
   const participantStatus: ParticipantStatusFilter = filterState.eventId === selected?.id ? filterState.status : "ALL";
   const updateFilter = (next: Partial<{ query: string; status: ParticipantStatusFilter }>) =>
@@ -59,13 +66,14 @@ export function EventAttendanceDrawer({
     enabled: !!selected,
   });
 
-  const canAttendRecord = !!selected && session.canInDepartment("event.attendance", clubId, selected.departmentId);
-  const canAttendEdit = !!selected && session.canInDepartment("event.attendance_edit", clubId, selected.departmentId);
+  const canAttendRecord = !!effectiveSelected && session.canInDepartment("event.attendance", clubId, effectiveSelected.departmentId);
+  const canAttendEdit = !!effectiveSelected && session.canInDepartment("event.attendance_edit", clubId, effectiveSelected.departmentId);
   const canAttend = canAttendRecord || canAttendEdit;
+  const canLockAttendance = canAttendEdit || canUpdate;
   const canNotify =
-    !!selected &&
-    (session.canInDepartment("notification.send", clubId, selected.departmentId) ||
-      session.canInDepartment("event.update", clubId, selected.departmentId));
+    !!effectiveSelected &&
+    (session.canInDepartment("notification.send", clubId, effectiveSelected.departmentId) ||
+      session.canInDepartment("event.update", clubId, effectiveSelected.departmentId));
 
   const attendances = useQuery({
     queryKey: qk.eventAttendances(selected?.id),
@@ -86,8 +94,18 @@ export function EventAttendanceDrawer({
   const savedStatusFor = (userId: string): AttendanceStatus =>
     attendanceDraft[userId] ?? existingAttendanceFor(userId)?.status ?? "PRESENT";
 
-  const hasExistingAttendances = (attendances.data?.length ?? 0) > 0;
-  const requiresEditReason = selected?.status === "COMPLETED" || hasExistingAttendances;
+  const pendingAttendanceItems = activeRegistrations
+    .map((r) => {
+      const existing = existingAttendanceFor(r.userId);
+      const nextStatus = savedStatusFor(r.userId);
+      const changedExisting = Boolean(existing && attendanceDraft[r.userId] !== undefined && nextStatus !== existing.status);
+      if (existing && !changedExisting) return null;
+      return { userId: r.userId, status: nextStatus, expectedVersion: existing?.version, isUpdate: Boolean(existing) };
+    })
+    .filter((item): item is { userId: string; status: AttendanceStatus; expectedVersion: number | undefined; isUpdate: boolean } => item !== null);
+
+  const modifyingExisting = pendingAttendanceItems.some((item) => item.isUpdate);
+  const requiresEditReason = effectiveSelected?.status === "COMPLETED" || modifyingExisting;
 
   const register = useMutation({
     mutationFn: () => apiModel.registerEvent(selected!.id, regNote.trim() || undefined),
@@ -112,14 +130,11 @@ export function EventAttendanceDrawer({
 
   const saveAttendance = useMutation({
     mutationFn: () => {
-      const items = activeRegistrations.map((r) => {
-        const existing = existingAttendanceFor(r.userId);
-        return {
-          userId: r.userId,
-          status: savedStatusFor(r.userId),
-          expectedVersion: existing?.version,
-        };
-      });
+      const items = pendingAttendanceItems.map(({ userId, status, expectedVersion }) => ({
+        userId,
+        status,
+        expectedVersion,
+      }));
       return apiModel.recordAttendance(selected!.id, items, attendanceReason.trim() || undefined);
     },
     onSuccess: () => {
@@ -134,15 +149,15 @@ export function EventAttendanceDrawer({
 
   return (
     <EntityDrawer
-      open={!!selected}
+      open={!!effectiveSelected}
       onClose={onClose}
-      title={selected?.title ?? "Chi tiết sự kiện"}
-      subtitle={selected ? EVENT_TYPE_LABELS[selected.eventType] ?? selected.eventType : undefined}
+      title={effectiveSelected?.title ?? "Chi tiết sự kiện"}
+      subtitle={effectiveSelected ? EVENT_TYPE_LABELS[effectiveSelected.eventType] ?? effectiveSelected.eventType : undefined}
       icon={<Calendar />}
       footer={
-        selected ? (
+        effectiveSelected ? (
           <div className="flex flex-wrap items-center gap-2">
-            {canAttend && selected.status !== "DRAFT" && selected.status !== "CANCELLED" && (
+            {canAttend && !isAttendanceLocked && effectiveSelected.status !== "DRAFT" && effectiveSelected.status !== "CANCELLED" && (
               <Button size="sm" onClick={() => setQrModalOpen(true)}>
                 <QrCode size={14} /> Mã QR điểm danh
               </Button>
@@ -153,7 +168,7 @@ export function EventAttendanceDrawer({
                 onExport={(mode) =>
                   exportEventAttendanceReport({
                     mode,
-                    event: selected,
+                    event: effectiveSelected,
                     registrations: allRegistrations,
                     attendances: attendances.data ?? [],
                   })
@@ -168,13 +183,13 @@ export function EventAttendanceDrawer({
             {(canUpdate || canAttend) && (
               <EventAdminFormButton
                 compact
-                event={selected}
+                event={effectiveSelected}
                 activeRegistrationsCount={activeRegistrations.length}
                 requester={session.user ? { fullName: session.user.fullName, studentCode: session.user.studentCode, email: session.user.email } : undefined}
               />
             )}
             {canUpdate && (
-              <Button size="sm" variant="outline" onClick={() => onOpenEdit(selected)}>
+              <Button size="sm" variant="outline" onClick={() => onOpenEdit(effectiveSelected)}>
                 <Pencil size={14} /> Chỉnh sửa sự kiện
               </Button>
             )}
@@ -182,36 +197,43 @@ export function EventAttendanceDrawer({
         ) : undefined
       }
     >
-      {selected && (
+      {effectiveSelected && (
         <>
+          {resolveMediaUrl(effectiveSelected.coverImageUrl) && (
+            <div className="mb-4 overflow-hidden rounded-xl border border-border bg-muted/20">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={resolveMediaUrl(effectiveSelected.coverImageUrl)!} alt={effectiveSelected.title} className="h-44 w-full object-cover" />
+            </div>
+          )}
           <DetailList
             rows={[
-              ["Trạng thái", <StatusBadge key="s" status={selected.status} />],
-              ["Ban phụ trách", selected.departmentName || "Toàn câu lạc bộ"],
+              ["Trạng thái", <StatusBadge key="s" status={effectiveSelected.status} />],
+              ["Ban phụ trách", effectiveSelected.departmentName || "Toàn câu lạc bộ"],
+              ...(effectiveSelected.academicTerm ? ([["Học kỳ ĐRL", effectiveSelected.academicTerm]] as [string, React.ReactNode][]) : []),
               [
                 "Địa điểm",
-                selected.location ? (
+                effectiveSelected.location ? (
                   <span key="l" className="inline-flex items-center gap-1">
-                    <MapPin size={13} /> {selected.location}
+                    <MapPin size={13} /> {effectiveSelected.location}
                   </span>
                 ) : (
                   "—"
                 ),
               ],
-              ["Bắt đầu", formatDateTime(selected.startTime)],
-              ["Kết thúc", formatDateTime(selected.endTime)],
-              ["Hạn đăng ký", formatDateTime(selected.registrationDeadline)],
-              ...(selected.completedAt
-                ? ([["Hoàn thành lúc", formatDateTime(selected.completedAt)]] as [string, React.ReactNode][])
+              ["Bắt đầu", formatDateTime(effectiveSelected.startTime)],
+              ["Kết thúc", formatDateTime(effectiveSelected.endTime)],
+              ["Hạn đăng ký", formatDateTime(effectiveSelected.registrationDeadline)],
+              ...(effectiveSelected.completedAt
+                ? ([["Hoàn thành lúc", formatDateTime(effectiveSelected.completedAt)]] as [string, React.ReactNode][])
                 : []),
-              ["Giới hạn", selected.maxParticipants ? `${selected.maxParticipants} người` : "Không giới hạn"],
-              ["Phạm vi", selected.allowCtv ? "Công khai toàn trường (SV & CTV)" : "Nội bộ thành viên CLB"],
-              ["Hồ sơ xét tuyển", selected.requiresSubmission ? "Yêu cầu nộp tệp (tự khoá khi hết hạn)" : "Không yêu cầu"],
-              ["Mô tả", <p key="d" className="whitespace-pre-line">{selected.description || "—"}</p>],
+              ["Giới hạn", effectiveSelected.maxParticipants ? `${effectiveSelected.maxParticipants} người` : "Không giới hạn"],
+              ["Phạm vi", effectiveSelected.allowCtv ? "Công khai toàn trường (SV & CTV)" : "Nội bộ thành viên CLB"],
+              ["Hồ sơ xét tuyển", effectiveSelected.requiresSubmission ? "Yêu cầu nộp tệp (tự khoá khi hết hạn)" : "Không yêu cầu"],
+              ["Mô tả", <p key="d" className="whitespace-pre-line">{effectiveSelected.description || "—"}</p>],
             ]}
           />
 
-          {selected.status === "OPEN_REGISTRATION" && (
+          {effectiveSelected.status === "OPEN_REGISTRATION" && (
             <Section title="Đăng ký tham gia" icon={<UserCheck />}>
               {myRegistration ? (
                 <div className="flex items-center justify-between gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs">
@@ -233,109 +255,61 @@ export function EventAttendanceDrawer({
 
           {myRegistration && (
             <EventSubmissionBlock
-              eventId={selected.id} registrationId={myRegistration.id} eventStatus={selected.status}
-              registrationDeadline={selected.registrationDeadline} requiresSubmission={selected.requiresSubmission}
+              eventId={effectiveSelected.id} registrationId={myRegistration.id} eventStatus={effectiveSelected.status}
+              registrationDeadline={effectiveSelected.registrationDeadline} requiresSubmission={effectiveSelected.requiresSubmission}
               submissionFileName={myRegistration.submissionFileName} submissionUploadedAt={myRegistration.submissionUploadedAt}
               onUploaded={onRefresh} onNotice={onNotice} onError={onError}
             />
           )}
 
-          <Section
-            title={`Danh sách nhân sự đăng ký (${activeRegistrations.length} hiệu lực / ${allRegistrations.length} tổng)`}
-            icon={<Users />}
-          >
-            {registrations.isPending ? (
-              <LoadingRows rows={2} />
-            ) : !allRegistrations.length ? (
-              <p className="text-xs text-muted-foreground">Chưa có người đăng ký tham gia.</p>
-            ) : (
-              <div className="space-y-2.5">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <div className="relative flex-1">
-                    <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      aria-label="Tìm nhân sự đăng ký"
-                      maxLength={200}
-                      value={participantQuery}
-                      onChange={(e) => updateFilter({ query: e.target.value })}
-                      placeholder="Tìm sinh viên theo tên, MSSV, email…"
-                      className="h-8 pl-8 pr-7 text-xs"
-                    />
-                    {participantQuery && (
-                      <button
-                        type="button"
-                        aria-label="Xoá từ khoá tìm kiếm"
-                        onClick={() => updateFilter({ query: "" })}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        <X size={13} />
-                      </button>
-                    )}
-                  </div>
-                  <Select
-                    aria-label="Lọc trạng thái đăng ký nhân sự"
-                    className="h-8 w-full text-xs sm:w-36"
-                    value={participantStatus}
-                    onChange={(e) => updateFilter({ status: e.target.value as ParticipantStatusFilter })}
-                  >
-                    <option value="ALL">Tất cả</option>
-                    <option value="REGISTERED">Đã đăng ký</option>
-                    <option value="CANCELLED">Đã huỷ</option>
-                  </Select>
-                </div>
+          <EventAttendanceRosterSection
+            eventId={effectiveSelected.id}
+            isPending={registrations.isPending}
+            allRegistrationsCount={allRegistrations.length}
+            activeRegistrationsCount={activeRegistrations.length}
+            filteredRegistrations={filteredRegistrations}
+            participantQuery={participantQuery}
+            participantStatus={participantStatus}
+            onUpdateFilter={updateFilter}
+            attendanceMap={attendanceMap}
+            canUpdate={canUpdate}
+            onOpenParticipantModal={onOpenParticipantModal}
+            onError={onError}
+          />
 
-                {!filteredRegistrations.length ? (
-                  <div className="flex items-center justify-between gap-2 rounded-lg border border-dashed border-border px-3 py-2.5 text-xs text-muted-foreground">
-                    <span>Không tìm thấy sinh viên khớp bộ lọc.</span>
-                    <Button size="sm" variant="outline" onClick={() => updateFilter({ query: "", status: "ALL" })}>
-                      Xoá lọc
-                    </Button>
-                  </div>
-                ) : (
-                  <ul className="divide-y divide-border/60 rounded-lg border border-border">
-                    {filteredRegistrations.map((r) => {
-                      const savedAttendance = attendanceMap.get(r.userId);
-                      return (
-                        <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-xs">
-                          <div className="min-w-0">
-                            <p className="font-semibold">{r.userFullName || r.userEmail || r.userId.slice(0, 8)}</p>
-                            <p className="text-[11px] text-muted-foreground">
-                              {[r.studentCode, r.userEmail].filter(Boolean).join(" · ")}
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <StatusBadge status={r.participantType} />
-                            {r.eventRole && <Badge tone="neutral">{r.eventRole}</Badge>}
-                            {savedAttendance && <StatusBadge status={savedAttendance.status} />}
-                            {r.status === "CANCELLED" && <StatusBadge status="CANCELLED" />}
-                            {r.submissionFileName && (
-                              <EventSubmissionDownloadButton eventId={selected.id} registrationId={r.id} fileName={r.submissionFileName} onError={onError} />
-                            )}
-                            {canUpdate && (
-                              <Button size="sm" variant="outline" onClick={() => onOpenParticipantModal(r)}>
-                                <Settings2 size={12} /> Phân vai
-                              </Button>
-                            )}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            )}
-          </Section>
+          <EventAttendanceLockPanel
+            event={effectiveSelected}
+            canLock={canLockAttendance}
+            onLocked={(updated) => {
+              setLockedSnapshot(updated);
+              onRefresh();
+            }}
+            onNotice={onNotice}
+            onError={onError}
+          />
 
-          {canAttend && activeRegistrations.length > 0 && selected.status !== "DRAFT" && selected.status !== "CANCELLED" && (
+          <EventCertificatesSection
+            event={effectiveSelected}
+            canManage={canAttend || canUpdate}
+            canRevoke={canLockAttendance}
+            onNotice={onNotice}
+            onError={onError}
+          />
+
+          {canAttend && !isAttendanceLocked && activeRegistrations.length > 0 && effectiveSelected.status !== "DRAFT" && effectiveSelected.status !== "CANCELLED" && (
             <Section title="Điểm danh & Hậu kiểm sự kiện" icon={<CheckCheck />}>
               <div className="space-y-2.5">
+                <div className="max-h-64 space-y-2 overflow-y-auto pr-0.5">
                 {activeRegistrations.map((r) => {
                   const current = savedStatusFor(r.userId);
                   const existing = existingAttendanceFor(r.userId);
                   return (
                     <div key={r.userId} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 px-3 py-2 text-xs">
-                      <div className="min-w-0">
-                        <span className="truncate font-semibold">{r.userFullName || r.userEmail || r.userId.slice(0, 8)}</span>
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="truncate font-semibold">{r.userFullName || r.userEmail || r.userId.slice(0, 8)}</span>
+                          {existing ? <StatusBadge status={existing.status} /> : <Badge tone="neutral" dot={false}>Chưa lưu</Badge>}
+                        </div>
                         {existing?.editReason && (
                           <p className="text-[11px] text-muted-foreground">Lý do sửa gần nhất (v{existing.version}): {existing.editReason}</p>
                         )}
@@ -353,6 +327,7 @@ export function EventAttendanceDrawer({
                     </div>
                   );
                 })}
+                </div>
 
                 {requiresEditReason && (
                   <FormField
@@ -372,17 +347,29 @@ export function EventAttendanceDrawer({
                 <Button
                   size="sm"
                   className="w-full"
-                  disabled={saveAttendance.isPending || (requiresEditReason && !attendanceReason.trim())}
+                  disabled={saveAttendance.isPending || pendingAttendanceItems.length === 0 || (requiresEditReason && !attendanceReason.trim())}
                   onClick={() => saveAttendance.mutate()}
                 >
-                  <CheckCheck size={14} /> {saveAttendance.isPending ? "Đang lưu…" : "Lưu điểm danh"}
+                  <CheckCheck size={14} />{" "}
+                  {saveAttendance.isPending
+                    ? "Đang lưu…"
+                    : pendingAttendanceItems.length > 0
+                      ? `Lưu điểm danh (${pendingAttendanceItems.length})`
+                      : "Đã lưu đầy đủ điểm danh"}
                 </Button>
               </div>
             </Section>
           )}
+
+          <EventFeedbackSection
+            eventId={effectiveSelected.id}
+            eventStatus={effectiveSelected.status}
+            canSubmit={false}
+          />
+
           <EventQrOrganizerModal
-            open={qrModalOpen}
-            event={selected}
+            open={qrModalOpen && !isAttendanceLocked}
+            event={effectiveSelected}
             activeRegistrationsCount={activeRegistrations.length}
             onClose={() => setQrModalOpen(false)}
             onAttendanceUpdated={onRefresh}

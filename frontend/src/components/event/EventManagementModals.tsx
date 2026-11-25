@@ -2,25 +2,37 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Bell, Calendar, Settings2 } from "lucide-react";
-import { apiModel, ClubEvent, Department, EventRegistration } from "@/lib/api";
+import { Calendar } from "lucide-react";
+import { apiModel, ClubEvent, Department } from "@/lib/api";
 import { ModalShell } from "@/components/shared/Overlays";
 import { describeError } from "@/components/shared/ListPage";
-import { StatusBadge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { FormField, Input, Select, Textarea } from "@/components/ui/input";
-import { EVENT_TYPE_LABELS, EventFormValues, toIso } from "@/forms/event/event-form";
+import { EventCoverUploadField } from "@/components/event/EventCoverUploadField";
+import { EVENT_TYPE_LABELS, EventFormValues, getEventScopeLabel, isEventPublic, toIso } from "@/forms/event/event-form";
 
-export function UpsertEventModal({
-  clubId,
-  creating,
-  editing,
-  form,
-  setForm,
-  departments,
-  onClose,
-  onSaved,
-  onError,
-}: {
+export { NotifyEventModal, UpdateParticipantModal } from "@/components/event/EventParticipantAndNotifyModals";
+
+const ACADEMIC_TERM_RE = /^\d{4}-[123]$/;
+
+function deriveAcademicTermFromLocal(startTimeStr: string): string {
+  if (!startTimeStr) return "";
+  const date = new Date(startTimeStr);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "numeric",
+  }).formatToParts(date);
+  const year = Number(parts.find((p) => p.type === "year")?.value);
+  const month = Number(parts.find((p) => p.type === "month")?.value);
+  if (!year || !month) return "";
+  if (month >= 9) return `${year}-1`;
+  if (month <= 5) return `${year - 1}-2`;
+  return `${year - 1}-3`;
+}
+
+type UpsertEventModalProps = {
   clubId: string;
   creating: boolean;
   editing: ClubEvent | null;
@@ -30,10 +42,45 @@ export function UpsertEventModal({
   onClose: () => void;
   onSaved: (ev: ClubEvent, isEdit: boolean) => void;
   onError: (msg: string) => void;
-}) {
+};
+
+export function UpsertEventModal(props: UpsertEventModalProps) {
+  const open = props.creating || !!props.editing;
+  if (!open) return null;
+  return <UpsertEventModalForm key={props.editing?.id ?? "new"} {...props} />;
+}
+
+function UpsertEventModalForm({
+  clubId,
+  editing,
+  form,
+  setForm,
+  departments,
+  onClose,
+  onSaved,
+  onError,
+}: UpsertEventModalProps) {
+  const [termDraft, setTermDraft] = useState<{ value: string; touched: boolean }>(() => ({
+    value: editing?.academicTerm ?? "",
+    touched: Boolean(editing?.academicTerm),
+  }));
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverCleared, setCoverCleared] = useState(false);
+
+  const derivedTerm = deriveAcademicTermFromLocal(form.startTime);
+  const effectiveTerm = termDraft.touched ? termDraft.value : derivedTerm;
+  const trimmedTerm = effectiveTerm.trim();
+  const termInvalid = trimmedTerm.length > 0 && !ACADEMIC_TERM_RE.test(trimmedTerm);
+
+  const syncEventCover = async (saved: ClubEvent): Promise<ClubEvent> => {
+    if (coverFile) return apiModel.uploadEventCover(saved.id, coverFile);
+    if (coverCleared && saved.coverImageUrl) return apiModel.deleteEventCover(saved.id);
+    return saved;
+  };
+
   const create = useMutation({
-    mutationFn: () =>
-      apiModel.createEvent(clubId, {
+    mutationFn: async () => {
+      const created = await apiModel.createEvent(clubId, {
         title: form.title.trim(),
         eventType: form.eventType,
         departmentId: form.departmentId || undefined,
@@ -43,10 +90,14 @@ export function UpsertEventModal({
         registrationDeadline: toIso(form.registrationDeadline || form.startTime),
         maxParticipants: form.maxParticipants ? Number(form.maxParticipants) : undefined,
         allowCtv: form.allowCtv,
+        allowPublicAttendees: form.allowPublicAttendees,
         requiresSubmission: form.requiresSubmission,
         status: form.status,
         description: form.description.trim() || undefined,
-      }),
+        academicTerm: trimmedTerm || undefined,
+      });
+      return syncEventCover(created);
+    },
     onSuccess: (ev) => {
       onSaved(ev, false);
       onClose();
@@ -55,8 +106,8 @@ export function UpsertEventModal({
   });
 
   const update = useMutation({
-    mutationFn: () =>
-      apiModel.updateEvent(clubId, editing!.id, {
+    mutationFn: async () => {
+      const updated = await apiModel.updateEvent(clubId, editing!.id, {
         title: form.title.trim(),
         eventType: form.eventType,
         departmentId: form.departmentId || undefined,
@@ -66,10 +117,14 @@ export function UpsertEventModal({
         registrationDeadline: toIso(form.registrationDeadline || form.startTime),
         maxParticipants: form.maxParticipants ? Number(form.maxParticipants) : undefined,
         allowCtv: form.allowCtv,
+        allowPublicAttendees: form.allowPublicAttendees,
         requiresSubmission: form.requiresSubmission,
         status: form.status,
         description: form.description.trim() || undefined,
-      }),
+        academicTerm: trimmedTerm || undefined,
+      });
+      return syncEventCover(updated);
+    },
     onSuccess: (ev) => {
       onSaved(ev, true);
       onClose();
@@ -77,17 +132,24 @@ export function UpsertEventModal({
     onError: (e) => onError(describeError(e)),
   });
 
+  const modalError = create.error || update.error;
+
   return (
     <ModalShell
-      open={creating || !!editing}
+      open
       onClose={onClose}
       title={editing ? "Cập nhật sự kiện" : "Tạo sự kiện & lịch sinh hoạt"}
       icon={<Calendar />}
       onSubmit={() => (editing ? update.mutate() : create.mutate())}
       submitLabel={editing ? "Lưu thay đổi" : "Tạo sự kiện"}
       submitLoading={create.isPending || update.isPending}
-      submitDisabled={!form.title.trim() || !form.startTime || !form.endTime}
+      submitDisabled={!form.title.trim() || !form.startTime || !form.endTime || termInvalid}
     >
+      {modalError && (
+        <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
+          {describeError(modalError)}
+        </div>
+      )}
       <FormField label="Tên sự kiện / buổi sinh hoạt" required>
         <Input
           value={form.title}
@@ -133,8 +195,8 @@ export function UpsertEventModal({
           />
         </FormField>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Hạn đăng ký" hint="Mặc định trước giờ bắt đầu">
+      <div className="grid items-start gap-3 sm:grid-cols-2">
+        <FormField label="Hạn đăng ký">
           <Input
             type="datetime-local"
             value={form.registrationDeadline}
@@ -190,22 +252,67 @@ export function UpsertEventModal({
         </FormField>
       </div>
       <FormField
-        label="Phạm vi sự kiện"
-        required
-        hint={
-          form.allowCtv
-            ? "Hiển thị công khai trên Cổng sự kiện, sinh viên toàn trường và CTV có thể đăng ký."
-            : "Ẩn hoàn toàn với người ngoài — chỉ thành viên đang hoạt động trong CLB mới thấy và đăng ký."
-        }
+        label="Học kỳ ĐRL"
+        optional
+        hint="Tự suy ra từ giờ bắt đầu (YYYY-1, YYYY-2, YYYY-3)"
+        error={termInvalid ? "Định dạng hợp lệ: YYYY-1, YYYY-2 hoặc YYYY-3 (ví dụ: 2026-1)." : undefined}
       >
-        <Select
-          value={form.allowCtv ? "PUBLIC" : "INTERNAL"}
-          onChange={(e) => setForm((f) => ({ ...f, allowCtv: e.target.value === "PUBLIC" }))}
-        >
-          <option value="PUBLIC">Công khai toàn trường — Mở cho SV & CTV</option>
-          <option value="INTERNAL">Nội bộ thành viên CLB</option>
-        </Select>
+        <Input
+          value={effectiveTerm}
+          maxLength={16}
+          onChange={(e) => setTermDraft({ value: e.target.value, touched: true })}
+          placeholder={derivedTerm || "Ví dụ: 2026-1"}
+        />
       </FormField>
+      <div className="space-y-2.5 rounded-xl border border-border bg-muted/25 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs font-bold text-foreground">Phạm vi & đối tượng tham gia</span>
+          <Badge tone={isEventPublic(form) ? "primary" : "neutral"} dot={false}>
+            {getEventScopeLabel(form)}
+          </Badge>
+        </div>
+        <label className="flex items-start gap-2.5 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 size-4 accent-primary"
+            checked={form.allowPublicAttendees}
+            onChange={(e) => setForm((f) => ({ ...f, allowPublicAttendees: e.target.checked }))}
+          />
+          <span className="leading-snug">
+            <span className="block text-xs font-semibold text-foreground">
+              Mở đăng ký Tham dự toàn trường (ATTENDEE)
+            </span>
+            <span className="block text-[11px] text-muted-foreground">
+              SV ngoài CLB được đăng ký làm Người tham dự & điểm danh ĐRL.
+            </span>
+          </span>
+        </label>
+        <label className="flex items-start gap-2.5 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 size-4 accent-primary"
+            checked={form.allowCtv}
+            onChange={(e) => setForm((f) => ({ ...f, allowCtv: e.target.checked }))}
+          />
+          <span className="leading-snug">
+            <span className="block text-xs font-semibold text-foreground">
+              Mở tuyển Cộng tác viên sự kiện (CTV)
+            </span>
+            <span className="block text-[11px] text-muted-foreground">
+              SV ngoài CLB được đăng ký làm CTV và nhận công việc sự kiện.
+            </span>
+          </span>
+        </label>
+        <p className="text-[11px] text-muted-foreground">
+          {!isEventPublic(form)
+            ? "Nội bộ thành viên CLB — chỉ thành viên đang hoạt động trong CLB mới thấy và đăng ký."
+            : form.allowPublicAttendees && form.allowCtv
+              ? "Công khai toàn trường — Mở cho SV & CTV tự chọn vai trò Người tham dự hoặc CTV."
+              : form.allowPublicAttendees
+                ? "Hiển thị công khai toàn trường để sinh viên đăng ký làm Người tham dự."
+                : "Hiển thị công khai toàn trường để sinh viên đăng ký làm Cộng tác viên sự kiện."}
+        </p>
+      </div>
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
@@ -215,155 +322,25 @@ export function UpsertEventModal({
         />
         <span>Yêu cầu nộp tệp hồ sơ xét tuyển (tự khóa khi hết hạn)</span>
       </label>
+      <EventCoverUploadField
+        existingUrl={editing?.coverImageUrl}
+        pendingFile={coverFile}
+        cleared={coverCleared}
+        busy={create.isPending || update.isPending}
+        onPickFile={(file) => {
+          setCoverFile(file);
+          setCoverCleared(false);
+        }}
+        onClear={() => {
+          setCoverFile(null);
+          setCoverCleared(true);
+        }}
+      />
       <FormField label="Nội dung chi tiết">
         <Textarea
           value={form.description}
           maxLength={4000}
           onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-        />
-      </FormField>
-    </ModalShell>
-  );
-}
-
-export function UpdateParticipantModal({
-  eventId,
-  participant,
-  onClose,
-  onUpdated,
-  onError,
-}: {
-  eventId: string;
-  participant: EventRegistration | null;
-  onClose: () => void;
-  onUpdated: () => void;
-  onError: (msg: string) => void;
-}) {
-  const [role, setRole] = useState(participant?.eventRole ?? "");
-  const [status, setStatus] = useState<"REGISTERED" | "CANCELLED">(
-    participant?.status === "CANCELLED" ? "CANCELLED" : "REGISTERED"
-  );
-  const [note, setNote] = useState(participant?.note ?? "");
-
-  const updateParticipant = useMutation({
-    mutationFn: () =>
-      apiModel.updateEventRegistration(eventId, participant!.id, {
-        eventRole: role.trim(),
-        status,
-        note: note.trim(),
-      }),
-    onSuccess: () => {
-      onUpdated();
-      onClose();
-    },
-    onError: (e) => onError(describeError(e)),
-  });
-
-  return (
-    <ModalShell
-      open={!!participant}
-      onClose={onClose}
-      title="Phân vai trò & trạng thái nhân sự sự kiện"
-      icon={<Settings2 />}
-      size="sm"
-      onSubmit={() => updateParticipant.mutate()}
-      submitLabel="Lưu phân công"
-      submitLoading={updateParticipant.isPending}
-    >
-      {participant && (
-        <div className="space-y-3 text-sm">
-          <p>
-            Nhân sự: <b>{participant.userFullName || participant.userEmail || participant.userId}</b> (
-            <StatusBadge status={participant.participantType} />)
-          </p>
-          <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            Vai trò trong sự kiện chỉ áp dụng cho sự kiện này, không tự động kết nạp Cộng tác viên thành thành viên chính thức CLB.
-          </p>
-          <FormField label="Vai trò trong sự kiện" hint="Ví dụ: Ban Hậu cần, Lễ tân Check-in, Truyền thông…">
-            <Input
-              value={role}
-              maxLength={100}
-              onChange={(e) => setRole(e.target.value)}
-              placeholder="Nhập vai trò phân công…"
-            />
-          </FormField>
-          <FormField label="Trạng thái tham gia" required>
-            <Select value={status} onChange={(e) => setStatus(e.target.value as "REGISTERED" | "CANCELLED")}>
-              <option value="REGISTERED">REGISTERED — Đang tham gia</option>
-              <option value="CANCELLED">CANCELLED — Rút / Huỷ tham gia (tự trả việc sự kiện mở)</option>
-            </Select>
-          </FormField>
-          <FormField label="Ghi chú">
-            <Textarea value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
-          </FormField>
-        </div>
-      )}
-    </ModalShell>
-  );
-}
-
-export function NotifyEventModal({
-  selected,
-  open,
-  onClose,
-  onNotified,
-  onError,
-}: {
-  selected: ClubEvent | null;
-  open: boolean;
-  onClose: () => void;
-  onNotified: (recipientCount: number) => void;
-  onError: (msg: string) => void;
-}) {
-  const [title, setTitle] = useState(selected ? `Thông báo sự kiện: ${selected.title}` : "");
-  const [message, setMessage] = useState("");
-  const [idempotencyKey] = useState(() => `ev-${selected?.id ?? "x"}-${Date.now()}`);
-
-  const sendEventNotification = useMutation({
-    mutationFn: () =>
-      apiModel.notifyEventParticipants(selected!.id, {
-        title: title.trim(),
-        message: message.trim(),
-        idempotencyKey,
-      }),
-    onSuccess: (res) => {
-      onNotified(res.recipientCount);
-      setMessage("");
-      onClose();
-    },
-    onError: (e) => onError(describeError(e)),
-  });
-
-  return (
-    <ModalShell
-      open={open}
-      onClose={onClose}
-      title="Gửi thông báo tới Member & CTV sự kiện"
-      icon={<Bell />}
-      size="sm"
-      onSubmit={() => sendEventNotification.mutate()}
-      submitLabel="Gửi thông báo"
-      submitLoading={sendEventNotification.isPending}
-      submitDisabled={!title.trim() || !message.trim()}
-    >
-      <p className="text-xs text-muted-foreground">
-        Thông báo sẽ gửi đồng thời tới toàn bộ <b>Thành viên CLB</b> và <b>Cộng tác viên (CTV)</b> đang ở trạng thái{" "}
-        <code>REGISTERED</code> của sự kiện <b>{selected?.title}</b>.
-      </p>
-      <FormField label="Tiêu đề thông báo" required>
-        <Input
-          value={title}
-          maxLength={160}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Ví dụ: Nhắc lịch tập trung & tổng duyệt sự kiện…"
-        />
-      </FormField>
-      <FormField label="Nội dung chi tiết" required>
-        <Textarea
-          value={message}
-          maxLength={2000}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Nhập hướng dẫn thời gian, địa điểm, trang phục…"
         />
       </FormField>
     </ModalShell>

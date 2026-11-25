@@ -14,6 +14,12 @@ interface HomeOnboardingFooterProps {
   openAuthModal: (mode: AuthModalMode) => void;
 }
 
+const LEGAL_LINKS_COPY = {
+  vi: { privacy: "Chính sách bảo mật", dataDeletion: "Hướng dẫn xoá dữ liệu" },
+  en: { privacy: "Privacy Policy", dataDeletion: "Data Deletion" },
+  ja: { privacy: "プライバシーポリシー", dataDeletion: "データ削除ガイド" },
+} as const;
+
 export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFooterProps) {
   const { locale } = useI18n();
   const m = HOME_MESSAGES[locale];
@@ -331,9 +337,17 @@ export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFoot
         </div>
 
         <div className="bg-background">
-          <div className="mx-auto flex max-w-[1380px] flex-col gap-2 px-5 py-4 text-[13px] text-slate-600 sm:px-8 md:flex-row md:justify-between lg:px-12">
+          <div className="mx-auto flex max-w-[1380px] flex-col gap-2 px-5 py-4 text-[13px] text-slate-600 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12">
             <span>{m.footer.copyright}</span>
-            <span>{m.footer.imprintRight}</span>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <Link className="transition-colors hover:text-primary" href="/privacy">
+                {LEGAL_LINKS_COPY[locale].privacy}
+              </Link>
+              <Link className="transition-colors hover:text-primary" href="/data-deletion">
+                {LEGAL_LINKS_COPY[locale].dataDeletion}
+              </Link>
+              <span>{m.footer.imprintRight}</span>
+            </div>
           </div>
         </div>
       </footer>

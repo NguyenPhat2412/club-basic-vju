@@ -352,6 +352,70 @@ paths:
               newPassword: NewDemoPassword456!
       description: Xác minh currentPassword, đổi mật khẩu và thu hồi các phiên đăng nhập khác của tài khoản.
         Phiên hiện tại vẫn được giữ nguyên (hoặc frontend làm mới thông tin tài khoản qua GET /auth/me).
+  /auth/2fa/send:
+    post:
+      operationId: auth.twoFactorSend
+      summary: Send 6-digit 2FA OTP code
+      tags:
+      - Auth
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      security: []
+      description: Gửi mã OTP 6 chữ số qua email cho xác thực 2 bước khi đăng nhập (LOGIN_2FA) hoặc xác nhận thao tác trọng yếu (CRITICAL_ACTION).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TwoFactorSendRequest'
+      responses:
+        '200':
+          description: OTP policy and delivery status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoFactorOtpPolicy'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/2fa/verify:
+    post:
+      operationId: auth.twoFactorVerify
+      summary: Verify 6-digit 2FA OTP code
+      tags:
+      - Auth
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      security: []
+      description: Xác minh mã OTP 2FA; với LOGIN_2FA hoàn tất đăng nhập và trả AuthResponse, với CRITICAL_ACTION trả TwoFactorVerifyResult.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TwoFactorVerifyRequest'
+      responses:
+        '200':
+          description: 2FA verification succeeded
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/TwoFactorVerifyResult'
+                - $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /users/me:
     get:
       operationId: user.me
@@ -427,6 +491,34 @@ paths:
               phone: 0900000000
       description: Cập nhật fullName, phone, avatarUrl của tài khoản hiện tại. Không
         cho sửa status, permission hay membership. Field bỏ qua/null giữ nguyên.
+  /users/me/2fa:
+    patch:
+      operationId: user.setTwoFactor
+      summary: Enable or disable optional 2FA OTP for current Tier 1-3 admin account
+      tags:
+      - User
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      description: Bật hoặc tắt xác thực 2 bước (2FA) qua email OTP cho tài khoản quản trị Tầng 1–3. Yêu cầu xác minh OTP nếu tắt 2FA khi đang bật.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetTwoFactorRequest'
+      responses:
+        '200':
+          description: Updated user profile with twoFactorEnabled status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /users:
     post:
       operationId: user.create
@@ -435,6 +527,14 @@ paths:
       - User
       x-permission: user.create
       x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: X-2FA-OTP
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 12
+        description: Mã OTP 2FA bắt buộc nếu kèm roles và tài khoản thao tác đã bật 2FA (actionContext=ROLE_CHANGE).
       responses:
         '201':
           description: Created
@@ -1262,6 +1362,35 @@ paths:
               $ref: '#/components/schemas/ClubPatchRequest'
             example:
               description: Thông tin mới
+  /clubs/{clubId}/usage:
+    get:
+      operationId: club.usage
+      summary: Get club storage and anti-inflation resource usage quotas
+      tags:
+      - Club
+      x-permission: club.view | document.view
+      x-implementation-status: IMPLEMENTED
+      description: Trả về dung lượng kho tài liệu/media chat đang sử dụng và số lượng kênh, ban, sự kiện, công việc so với hạn mức của CLB.
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Club resource usage and quotas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubUsage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /clubs/{clubId}/status:
     patch:
       operationId: club.status
@@ -2170,6 +2299,13 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: X-2FA-OTP
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 12
+        description: Mã OTP 2FA bắt buộc nếu tài khoản thao tác đã bật 2FA (actionContext=ROLE_CHANGE).
       requestBody:
         required: true
         content:
@@ -2241,6 +2377,13 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: X-2FA-OTP
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 12
+        description: Mã OTP 2FA bắt buộc nếu tài khoản thao tác đã bật 2FA (actionContext=ROLE_CHANGE).
       requestBody:
         required: true
         content:
@@ -2305,6 +2448,13 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: X-2FA-OTP
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 12
+        description: Mã OTP 2FA bắt buộc nếu tài khoản thao tác đã bật 2FA (actionContext=ROLE_CHANGE).
       description: permissionId là ID định nghĩa permission. Nên luôn gửi scope và
         clubId/departmentId tương ứng. Nếu bỏ scope và có nhiều grant phù hợp, trả
         400 AMBIGUOUS_PERMISSION_GRANT; không tự chọn một grant. Thu hồi có hiệu lực
@@ -2359,6 +2509,13 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: X-2FA-OTP
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 12
+        description: Mã OTP 2FA bắt buộc nếu tài khoản thao tác đã bật 2FA (actionContext=ROLE_CHANGE).
   /roles:
     get:
       operationId: role.list
@@ -2392,6 +2549,14 @@ paths:
       description: Tạo vai trò tuỳ chỉnh. Mã được chuẩn hoá thành chữ hoa và là duy
         nhất không phân biệt hoa thường. Mọi permission phải đang hoạt động và có scope
         không rộng hơn scope của vai trò (ROLE_PERMISSION_SCOPE_MISMATCH).
+      parameters:
+      - name: X-2FA-OTP
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 12
+        description: Mã OTP 2FA bắt buộc nếu tài khoản thao tác đã bật 2FA (actionContext=ROLE_CHANGE).
       requestBody:
         required: true
         content:
@@ -2453,6 +2618,14 @@ paths:
       description: Cập nhật một phần. permissionIds (nếu gửi) thay thế toàn bộ tập
         quyền; thay đổi có hiệu lực ngay với mọi người đang giữ vai trò. Vai trò hệ
         thống trả 409 SYSTEM_ROLE_IMMUTABLE. active=false vô hiệu hoá vai trò.
+      parameters:
+      - name: X-2FA-OTP
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 12
+        description: Mã OTP 2FA bắt buộc nếu tài khoản thao tác đã bật 2FA (actionContext=ROLE_CHANGE).
       requestBody:
         required: true
         content:
@@ -2537,6 +2710,14 @@ paths:
       x-implementation-status: IMPLEMENTED
       description: Gán vai trò theo scope, ghi audit. Scope phải bằng hoặc rộng hơn scope
         của vai trò (ROLE_SCOPE_MISMATCH); gán trùng trả 409 ROLE_ALREADY_ASSIGNED.
+      parameters:
+      - name: X-2FA-OTP
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 12
+        description: Mã OTP 2FA bắt buộc nếu tài khoản thao tác đã bật 2FA (actionContext=ROLE_CHANGE).
       requestBody:
         required: true
         content:
@@ -2583,6 +2764,13 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: X-2FA-OTP
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 12
+        description: Mã OTP 2FA bắt buộc nếu tài khoản thao tác đã bật 2FA (actionContext=ROLE_CHANGE).
       responses:
         '204':
           description: Revoked
@@ -2629,6 +2817,14 @@ paths:
       x-permission: permission.assign
       x-implementation-status: IMPLEMENTED
       description: Bổ nhiệm hoặc thay thế chức danh tổ chức của CLB/Ban. Kiểm tra bắt buộc người được gán phải có Membership ACTIVE trong CLB (và thuộc ban nếu là chức danh cấp DEPARTMENT), kiểm tra giới hạn số lượng người giữ chức danh (maxHolders) và tự động thay thế người đương nhiệm khi replaceHolder=true.
+      parameters:
+      - name: X-2FA-OTP
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 12
+        description: Mã OTP 2FA bắt buộc nếu tài khoản thao tác đã bật 2FA (actionContext=ROLE_CHANGE).
       requestBody:
         required: true
         content:
@@ -2673,6 +2869,13 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: X-2FA-OTP
+        in: header
+        required: false
+        schema:
+          type: string
+          maxLength: 12
+        description: Mã OTP 2FA bắt buộc nếu tài khoản thao tác đã bật 2FA (actionContext=ROLE_CHANGE).
       responses:
         '204':
           description: Revoked
@@ -4342,6 +4545,7 @@ paths:
       x-permission: event.view
       x-scope: CLUB
       x-implementation-status: IMPLEMENTED
+      description: 'Thành viên ACTIVE hoặc người có quyền event.view/event.update/club.view xem toàn bộ sự kiện (bao gồm DRAFT và nội bộ allowCtv=false). Người ngoài CLB chỉ nhận các sự kiện công khai (status=OPEN_REGISTRATION và allowCtv=true); sự kiện DRAFT và nội bộ (allowCtv=false) bị ẩn kể cả khi truyền tham số status.'
       parameters:
       - name: clubId
         in: path
@@ -4365,6 +4569,37 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/EventListResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /events/timeline:
+    get:
+      operationId: event.timeline
+      summary: Get multi-unit events GANTT timeline
+      tags: [Event]
+      x-permission: event.attendance | event.attendance_edit | event.update | event.create | club.update | user.view
+      x-implementation-status: IMPLEMENTED
+      description: Tổng hợp dòng thời gian sự kiện theo 13 đơn vị (Đoàn TN và 12 CLB) phục vụ biểu đồ GANTT và tỷ lệ tham gia theo học kỳ.
+      parameters:
+      - name: clubId
+        in: query
+        schema: {type: string, format: uuid}
+      - name: academicTerm
+        in: query
+        schema: {type: string, maxLength: 16}
+      - name: from
+        in: query
+        schema: {type: string, format: date-time}
+      - name: to
+        in: query
+        schema: {type: string, format: date-time}
+      responses:
+        '200':
+          description: Events timeline grouped by unit
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EventsTimeline'}
         '400': {$ref: '#/components/responses/BadRequest'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
@@ -4772,6 +5007,382 @@ paths:
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
+  /events/{eventId}/attendances/lock:
+    post:
+      operationId: event.lockAttendance
+      summary: Lock and SHA-256 sign event attendance ledger
+      tags: [Event]
+      x-permission: event.attendance_edit | event.update
+      x-implementation-status: IMPLEMENTED
+      description: Chốt sổ điểm danh sự kiện và ký xác nhận điện tử SHA-256. Yêu cầu OTP 2FA nếu tài khoản đang bật 2FA.
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LockEventAttendanceRequest'}
+      responses:
+        '200':
+          description: Event with attendance lock signature
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Event'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /events/{eventId}/feedbacks:
+    post:
+      operationId: event.submitFeedback
+      summary: Submit post-event survey feedback
+      tags: [Event]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      description: Gửi đánh giá khảo sát sau sự kiện (1–5 sao và nhận xét). Chỉ cho phép người đã được điểm danh PRESENT hoặc LATE, mỗi người 1 lần.
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateEventFeedbackRequest'}
+      responses:
+        '201':
+          description: Created event feedback
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EventFeedback'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    get:
+      operationId: event.listFeedbacks
+      summary: List and summarize post-event feedbacks
+      tags: [Event]
+      x-permission: event.view | event.update | event.attendance | club.view
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Event feedback summary and items
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EventFeedbackSummary'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /events/{eventId}/cover:
+    post:
+      operationId: event.uploadCover
+      summary: Upload event poster or cover image
+      tags: [Event]
+      x-permission: event.update | event.create
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: {type: string, format: binary}
+      responses:
+        '200':
+          description: Updated event with coverImageUrl
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Event'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    delete:
+      operationId: event.deleteCover
+      summary: Delete event poster or cover image
+      tags: [Event]
+      x-permission: event.update
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Updated event with cover cleared
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Event'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /public/events/covers/{fileName}:
+    get:
+      operationId: event.publicCover
+      summary: Serve public event poster image
+      tags: [Event]
+      security: []
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: fileName
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: Image binary stream
+          content:
+            application/octet-stream:
+              schema: {type: string, format: binary}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /events/{eventId}/certificates/issue:
+    post:
+      operationId: certificate.issueForEvent
+      summary: Issue e-certificates for attended participants of a locked event
+      tags: [Event]
+      x-permission: event.attendance | event.attendance_edit | event.update
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Issued certificates summary and list
+          content:
+            application/json:
+              schema: {type: object}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /events/{eventId}/certificates:
+    get:
+      operationId: certificate.listForEvent
+      summary: List e-certificates issued for an event
+      tags: [Event]
+      x-permission: event.view | event.attendance | event.attendance_edit | event.update
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Event certificate list
+          content:
+            application/json:
+              schema: {type: object}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /events/{eventId}/certificates/remind:
+    post:
+      operationId: certificate.remindForEvent
+      summary: Remind unacknowledged certificate recipients via in-app notification and email
+      tags: [Event]
+      x-permission: event.attendance | event.attendance_edit | event.update
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Reminder summary
+          content:
+            application/json:
+              schema: {type: object}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /events/{eventId}/certificate-template:
+    post:
+      operationId: certificate.uploadTemplate
+      summary: Upload custom club or Youth Union certificate template image
+      tags: [Event]
+      x-permission: event.attendance | event.attendance_edit | event.update
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: {type: string, format: binary}
+      responses:
+        '200':
+          description: Updated certificate template URL
+          content:
+            application/json:
+              schema: {type: object}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    delete:
+      operationId: certificate.deleteTemplate
+      summary: Remove custom certificate template image from event
+      tags: [Event]
+      x-permission: event.attendance | event.attendance_edit | event.update
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Cleared certificate template URL
+          content:
+            application/json:
+              schema: {type: object}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /certificates/{certificateId}/revoke:
+    post:
+      operationId: certificate.revoke
+      summary: Revoke an issued e-certificate with reason and audit log
+      tags: [Event]
+      x-permission: event.update | event.attendance_edit
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: certificateId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Revoked certificate
+          content:
+            application/json:
+              schema: {type: object}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /me/certificates:
+    get:
+      operationId: certificate.listMine
+      summary: List e-certificates issued to the signed-in user
+      tags: [Event]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      responses:
+        '200':
+          description: Signed-in user certificates
+          content:
+            application/json:
+              schema: {type: object}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /me/certificates/{certificateId}/acknowledge:
+    post:
+      operationId: certificate.acknowledgeMine
+      summary: Recipient confirms receipt of their e-certificate
+      tags: [Event]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: certificateId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Acknowledged certificate
+          content:
+            application/json:
+              schema: {type: object}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /certificates/management:
+    get:
+      operationId: certificate.managementList
+      summary: List and summarize issued certificates across club or all 13 units
+      tags: [Event]
+      x-permission: event.view | event.attendance | event.attendance_edit | event.update | club.view | system.view
+      x-implementation-status: IMPLEMENTED
+      responses:
+        '200':
+          description: Certificate summary statistics and paginated list
+          content:
+            application/json:
+              schema: {type: object}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /public/certificates/verify/{certificateCode}:
+    get:
+      operationId: certificate.verifyPublic
+      summary: Publicly verify an e-certificate by code
+      tags: [Event]
+      security: []
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: certificateCode
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: Verification status and certificate metadata
+          content:
+            application/json:
+              schema: {type: object}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /public/certificates/templates/{fileName}:
+    get:
+      operationId: certificate.publicTemplate
+      summary: Serve public certificate template image
+      tags: [Event]
+      security: []
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: fileName
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: Image binary stream
+          content:
+            application/octet-stream:
+              schema: {type: string, format: binary}
+        '404': {$ref: '#/components/responses/NotFound'}
   /users/me/calendar:
     get:
       operationId: event.myCalendar
@@ -5859,6 +6470,40 @@ paths:
             application/json:
               schema: {type: object}
         '404': {$ref: '#/components/responses/NotFound'}
+  /reports/training-points:
+    get:
+      operationId: report.trainingPoints
+      summary: Generate training points report by student, club, and academic term
+      tags: [Reports]
+      x-permission: event.attendance | event.attendance_edit | event.update | user.view
+      x-implementation-status: IMPLEMENTED
+      description: Tổng hợp báo cáo điểm rèn luyện (số sự kiện đã điểm danh hợp lệ, chi tiết trạng thái khoá sổ SHA-256) phục vụ xuất CSV và in A4.
+      parameters:
+      - name: clubId
+        in: query
+        schema: {type: string, format: uuid}
+      - name: academicTerm
+        in: query
+        schema: {type: string, maxLength: 16}
+      - name: search
+        in: query
+        schema: {type: string, maxLength: 120}
+      - name: from
+        in: query
+        schema: {type: string, format: date-time}
+      - name: to
+        in: query
+        schema: {type: string, format: date-time}
+      responses:
+        '200':
+          description: Training points report
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TrainingPointReport'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
 components:
   securitySchemes:
     sessionAuth:
@@ -5898,6 +6543,12 @@ components:
             $ref: '#/components/schemas/Problem'
     NotFound:
       description: Không tìm thấy resource hoặc grant.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    TooManyRequests:
+      description: Vượt quá giới hạn tần suất hoặc số lần thử (rate limit / OTP cooldown).
       content:
         application/problem+json:
           schema:
@@ -6387,6 +7038,12 @@ components:
           - 'null'
           description: true khi bấm "Đăng ký bằng Google" (tạo tài khoản nếu chưa có). Bỏ trống/false khi đăng
             nhập; email chưa đăng ký trả 403 GOOGLE_ACCOUNT_NOT_REGISTERED.
+        otpCode:
+          type:
+          - string
+          - 'null'
+          maxLength: 12
+          description: Mã OTP 2FA gồm 6 chữ số nếu tài khoản quản trị Tầng 1–3 đã bật xác thực 2 bước.
     GoogleSignInConfig:
       type: object
       required:
@@ -6544,6 +7201,12 @@ components:
         requiresPasswordChange:
           type: boolean
           description: true khi tài khoản do admin tạo hoặc reset mật khẩu; phải đổi mật khẩu trước khi dùng các API khác
+        emailNotificationsEnabled:
+          type: boolean
+          description: Bật/tắt nhận email cảnh báo thông báo nghiệp vụ
+        twoFactorEnabled:
+          type: boolean
+          description: Bật/tắt xác thực 2 bước qua email OTP (dành cho tài khoản quản trị Tầng 1–3)
         status:
           type: string
           enum:
@@ -6567,6 +7230,8 @@ components:
       - avatarUrl
       - status
       - requiresPasswordChange
+      - emailNotificationsEnabled
+      - twoFactorEnabled
       - createdAt
       - updatedAt
       examples:
@@ -6576,6 +7241,9 @@ components:
         studentCode: '23110209'
         phone: 0900000000
         avatarUrl: null
+        requiresPasswordChange: false
+        emailNotificationsEnabled: true
+        twoFactorEnabled: false
         status: ACTIVE
         createdAt: '2026-09-29T12:00:00Z'
         updatedAt: '2026-09-29T12:00:00Z'
@@ -6598,6 +7266,14 @@ components:
           maxLength: 500
           format: uri
           pattern: '^(https?://.+)?$'
+        emailNotificationsEnabled:
+          type:
+          - boolean
+          - 'null'
+        twoFactorEnabled:
+          type:
+          - boolean
+          - 'null'
       examples:
       - fullName: Nguyễn Xuân Phát
         phone: 0900000000
@@ -6656,6 +7332,17 @@ components:
           - 'null'
           format: email
           maxLength: 320
+        overviewConfig:
+          anyOf:
+          - $ref: '#/components/schemas/ClubOverviewConfig'
+          - type: 'null'
+        facebookUrl:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+          format: uri
+          pattern: '^(https?://.+)?$'
       examples:
       - code: VJUA
         name: CLB VJUA
@@ -6710,6 +7397,13 @@ components:
           anyOf:
           - $ref: '#/components/schemas/ClubOverviewConfig'
           - type: 'null'
+        facebookUrl:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+          format: uri
+          pattern: '^(https?://.+)?$'
         id:
           type: string
           format: uuid
@@ -6748,6 +7442,7 @@ components:
         description: Câu lạc bộ sinh viên
         activityField: Sinh viên
         contactEmail: vjua@example.test
+        facebookUrl: null
         status: ACTIVE
         createdAt: '2026-09-29T12:00:00Z'
         updatedAt: '2026-09-29T12:00:00Z'
@@ -7345,6 +8040,17 @@ components:
           - 'null'
           format: email
           maxLength: 320
+        overviewConfig:
+          anyOf:
+          - $ref: '#/components/schemas/ClubOverviewConfig'
+          - type: 'null'
+        facebookUrl:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+          format: uri
+          pattern: '^(https?://.+)?$'
       description: Mỗi field đều tùy chọn. Field bỏ qua hoặc null giữ nguyên giá trị
         hiện có. Gửi chuỗi rỗng để xóa nội dung field văn bản tùy chọn; code/name
         không được trống.
@@ -7712,6 +8418,16 @@ components:
         createdAt:
           type: string
           format: date-time
+        ipAddress:
+          type:
+          - string
+          - 'null'
+          maxLength: 64
+        userAgent:
+          type:
+          - string
+          - 'null'
+          maxLength: 512
     AuditLogListResponse:
       type: object
       required:
@@ -7869,8 +8585,10 @@ components:
         endTime: {type: string, format: date-time}
         registrationDeadline: {type: string, format: date-time}
         allowCtv: {type: [boolean, 'null']}
+        requiresSubmission: {type: [boolean, 'null']}
         maxParticipants: {type: [integer, 'null'], minimum: 1}
         status: {type: [string, 'null'], enum: [DRAFT, OPEN_REGISTRATION, CLOSED_REGISTRATION, COMPLETED, CANCELLED, null]}
+        academicTerm: {type: [string, 'null'], maxLength: 16, pattern: '^\d{4}-[123]$'}
     UpdateEventRequest:
       type: object
       properties:
@@ -7883,8 +8601,10 @@ components:
         endTime: {type: [string, 'null'], format: date-time}
         registrationDeadline: {type: [string, 'null'], format: date-time}
         allowCtv: {type: [boolean, 'null']}
+        requiresSubmission: {type: [boolean, 'null']}
         maxParticipants: {type: [integer, 'null'], minimum: 1}
         status: {type: [string, 'null'], enum: [DRAFT, OPEN_REGISTRATION, CLOSED_REGISTRATION, COMPLETED, CANCELLED, null]}
+        academicTerm: {type: [string, 'null'], maxLength: 16, pattern: '^\d{4}-[123]$'}
     RegisterEventRequest:
       type: object
       properties:
@@ -7929,6 +8649,10 @@ components:
         completedAt: {type: [string, 'null'], format: date-time}
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}
+        academicTerm: {type: [string, 'null'], maxLength: 16}
+        attendanceLockedAt: {type: [string, 'null'], format: date-time}
+        attendanceLockedBy: {type: [string, 'null'], format: uuid}
+        attendanceSignatureSha256: {type: [string, 'null'], maxLength: 64}
     EventListResponse:
       type: object
       required: [items, total, offset, limit]
@@ -8430,6 +9154,209 @@ components:
         token: {type: string}
         expiresAt: {type: string, format: date-time}
         ttlSeconds: {type: integer}
+    TwoFactorSendRequest:
+      type: object
+      required: [purpose]
+      properties:
+        purpose: {type: string, maxLength: 32, enum: [LOGIN_2FA, CRITICAL_ACTION]}
+        actionContext: {type: [string, 'null'], maxLength: 120}
+        email: {type: [string, 'null'], maxLength: 320}
+        password: {type: [string, 'null'], maxLength: 128}
+        credential: {type: [string, 'null'], maxLength: 4096}
+    TwoFactorVerifyRequest:
+      type: object
+      required: [purpose, otp]
+      properties:
+        purpose: {type: string, maxLength: 32, enum: [LOGIN_2FA, CRITICAL_ACTION]}
+        actionContext: {type: [string, 'null'], maxLength: 120}
+        otp: {type: string, maxLength: 12}
+        email: {type: [string, 'null'], maxLength: 320}
+        password: {type: [string, 'null'], maxLength: 128}
+        credential: {type: [string, 'null'], maxLength: 4096}
+    SetTwoFactorRequest:
+      type: object
+      required: [enabled]
+      properties:
+        enabled: {type: boolean}
+        otpCode: {type: [string, 'null'], maxLength: 12}
+    TwoFactorOtpPolicy:
+      type: object
+      required: [expirySeconds, resendCooldownSeconds, maxVerifyAttempts, mailConfigured, purpose]
+      properties:
+        expirySeconds: {type: integer}
+        resendCooldownSeconds: {type: integer}
+        maxVerifyAttempts: {type: integer}
+        mailConfigured: {type: boolean}
+        purpose: {type: string}
+        actionContext: {type: [string, 'null']}
+    TwoFactorVerifyResult:
+      type: object
+      required: [userId, email, purpose]
+      properties:
+        userId: {type: string, format: uuid}
+        email: {type: string, format: email}
+        purpose: {type: string}
+        actionContext: {type: [string, 'null']}
+    ClubUsage:
+      type: object
+      required:
+      - clubId
+      - storageUsedBytes
+      - documentBytes
+      - chatMediaBytes
+      - storageQuotaBytes
+      - storageQuotaMb
+      - channelCount
+      - maxChannelsPerClub
+      - departmentCount
+      - maxDepartmentsPerClub
+      - activeEventCount
+      - maxActiveEventsPerClub
+      - openTaskCount
+      - maxOpenTasksPerClub
+      properties:
+        clubId: {type: string, format: uuid}
+        storageUsedBytes: {type: integer, format: int64}
+        documentBytes: {type: integer, format: int64}
+        chatMediaBytes: {type: integer, format: int64}
+        storageQuotaBytes: {type: integer, format: int64}
+        storageQuotaMb: {type: integer}
+        channelCount: {type: integer, format: int64}
+        maxChannelsPerClub: {type: integer}
+        departmentCount: {type: integer, format: int64}
+        maxDepartmentsPerClub: {type: integer}
+        activeEventCount: {type: integer, format: int64}
+        maxActiveEventsPerClub: {type: integer}
+        openTaskCount: {type: integer, format: int64}
+        maxOpenTasksPerClub: {type: integer}
+    TimelineEventItem:
+      type: object
+      required: [id, clubId, clubCode, clubName, title, eventType, status, startTime, endTime, registrationCount, presentCount, participationRate, attendanceLocked]
+      properties:
+        id: {type: string, format: uuid}
+        clubId: {type: string, format: uuid}
+        clubCode: {type: string}
+        clubName: {type: string}
+        title: {type: string}
+        eventType: {type: string}
+        status: {type: string}
+        location: {type: [string, 'null']}
+        academicTerm: {type: [string, 'null']}
+        startTime: {type: string, format: date-time}
+        endTime: {type: string, format: date-time}
+        registrationCount: {type: integer, format: int64}
+        presentCount: {type: integer, format: int64}
+        maxParticipants: {type: [integer, 'null']}
+        participationRate: {type: number, format: double}
+        attendanceLocked: {type: boolean}
+        attendanceSignatureSha256: {type: [string, 'null']}
+    TimelineUnitSummary:
+      type: object
+      required: [clubId, clubCode, clubName, eventCount, totalRegistrations, totalPresent, participationRate, events]
+      properties:
+        clubId: {type: string, format: uuid}
+        clubCode: {type: string}
+        clubName: {type: string}
+        eventCount: {type: integer}
+        totalRegistrations: {type: integer, format: int64}
+        totalPresent: {type: integer, format: int64}
+        participationRate: {type: number, format: double}
+        events:
+          type: array
+          items: {$ref: '#/components/schemas/TimelineEventItem'}
+    EventsTimeline:
+      type: object
+      required: [generatedAt, totalUnits, totalEvents, units]
+      properties:
+        generatedAt: {type: string, format: date-time}
+        academicTerm: {type: [string, 'null']}
+        from: {type: [string, 'null'], format: date-time}
+        to: {type: [string, 'null'], format: date-time}
+        totalUnits: {type: integer}
+        totalEvents: {type: integer}
+        units:
+          type: array
+          items: {$ref: '#/components/schemas/TimelineUnitSummary'}
+    LockEventAttendanceRequest:
+      type: object
+      properties:
+        otpCode: {type: [string, 'null'], maxLength: 16}
+    CreateEventFeedbackRequest:
+      type: object
+      required: [rating]
+      properties:
+        rating: {type: integer, minimum: 1, maximum: 5}
+        comment: {type: [string, 'null'], maxLength: 1000}
+    EventFeedback:
+      type: object
+      required: [id, eventId, userId, userFullName, rating, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        eventId: {type: string, format: uuid}
+        userId: {type: string, format: uuid}
+        userFullName: {type: string}
+        rating: {type: integer}
+        comment: {type: [string, 'null']}
+        createdAt: {type: string, format: date-time}
+    EventFeedbackSummary:
+      type: object
+      required: [eventId, totalCount, averageRating, items, canSubmit]
+      properties:
+        eventId: {type: string, format: uuid}
+        totalCount: {type: integer, format: int64}
+        averageRating: {type: number, format: double}
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/EventFeedback'}
+        canSubmit: {type: boolean}
+    AttendedEventItem:
+      type: object
+      required: [eventId, clubId, clubCode, clubName, title, startTime, attendanceStatus, attendanceLocked]
+      properties:
+        eventId: {type: string, format: uuid}
+        clubId: {type: string, format: uuid}
+        clubCode: {type: string}
+        clubName: {type: string}
+        title: {type: string}
+        academicTerm: {type: [string, 'null']}
+        startTime: {type: string, format: date-time}
+        attendanceStatus: {type: string}
+        attendanceLocked: {type: boolean}
+        attendanceLockedAt: {type: [string, 'null'], format: date-time}
+        attendanceSignatureSha256: {type: [string, 'null']}
+    StudentTrainingPointItem:
+      type: object
+      required: [userId, fullName, email, activeClubs, presentEventCount, attendedEventTitles, attendedEvents]
+      properties:
+        userId: {type: string, format: uuid}
+        fullName: {type: string}
+        studentCode: {type: [string, 'null']}
+        email: {type: string, format: email}
+        activeClubs:
+          type: array
+          items: {type: string}
+        presentEventCount: {type: integer}
+        attendedEventTitles:
+          type: array
+          items: {type: string}
+        attendedEvents:
+          type: array
+          items: {$ref: '#/components/schemas/AttendedEventItem'}
+    TrainingPointReport:
+      type: object
+      required: [generatedAt, clubName, totalStudents, totalPresentCheckIns, items]
+      properties:
+        generatedAt: {type: string, format: date-time}
+        clubId: {type: [string, 'null'], format: uuid}
+        clubName: {type: string}
+        academicTerm: {type: [string, 'null']}
+        from: {type: [string, 'null'], format: date-time}
+        to: {type: [string, 'null'], format: date-time}
+        totalStudents: {type: integer}
+        totalPresentCheckIns: {type: integer}
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/StudentTrainingPointItem'}
 tags:
 - name: System
   description: Danh mục và trạng thái API
@@ -8465,3 +9392,5 @@ tags:
   description: Kênh trao đổi nội bộ và AI Bot tóm tắt cuộc họp CLB
 - name: Statistics
   description: Thống kê tổng quan quản trị hệ thống và thống kê hoạt động CLB
+- name: Reports
+  description: Báo cáo tổng hợp điểm rèn luyện theo sinh viên, CLB và học kỳ

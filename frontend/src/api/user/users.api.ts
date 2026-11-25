@@ -1,15 +1,27 @@
 import { api, apiForm, cleanParams } from '@/lib/api/client';
 import { API_ROUTES } from '@/lib/api/routes';
 import type { Page } from '@/types/common.types';
-import type { CreateUserInput, UpdateUserInput, User, UserStatus } from '@/types/user/user.types';
+import type { CreateUserInput, UpdateProfileInput, UpdateUserInput, User, UserStatus } from '@/types/user/user.types';
+
+export type UpdateMyProfileInput = UpdateProfileInput & {
+  twoFactorEnabled?: boolean;
+};
+
+const otpHeaders = (otpCode?: string) => (otpCode ? { 'X-2FA-OTP': otpCode } : undefined);
 
 export const usersApi = {
   users: (query = '', offset = 0, limit = 20) =>
     api<Page<User>>(
       `${API_ROUTES.users.list}?${new URLSearchParams({ query, offset: String(offset), limit: String(limit) })}`
     ),
-  createUser: (body: CreateUserInput) =>
-    api<User>(API_ROUTES.users.list, { method: 'POST', body: JSON.stringify(body) }),
+  updateProfile: (body: UpdateMyProfileInput) =>
+    api<User>(API_ROUTES.users.me, { method: 'PATCH', body: JSON.stringify(body) }),
+  createUser: (body: CreateUserInput, otpCode?: string) =>
+    api<User>(API_ROUTES.users.list, {
+      method: 'POST',
+      headers: otpHeaders(otpCode),
+      body: JSON.stringify(body),
+    }),
   updateUser: (id: string, body: UpdateUserInput) =>
     api<User>(API_ROUTES.users.detail(id), { method: 'PATCH', body: JSON.stringify(body) }),
   deleteUser: (id: string, anonymize?: boolean) =>

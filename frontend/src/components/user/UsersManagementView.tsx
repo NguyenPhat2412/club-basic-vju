@@ -3,22 +3,11 @@
 import { useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
-import {
-  Ban,
-  CheckCircle2,
-  Eye,
-  KeyRound,
-  Lock,
-  LockOpen,
-  Pencil,
-  ShieldAlert,
-  Trash2,
-  Users,
-} from "lucide-react";
+import { Ban, CheckCircle2, Eye, FilterX, KeyRound, Lock, LockOpen, Pencil, Plus, Search, ShieldAlert, Trash2, Users, X } from "lucide-react";
 import { apiModel, User } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
-import { BreadcrumbToolbar } from "@/components/shared/BreadcrumbToolbar";
 import { DataTable } from "@/components/shared/DataTable";
+import { FilterPopover } from "@/components/shared/FilterPopover";
 import { useRoleOptions } from "@/components/shared/RolePicker";
 import { Pagination } from "@/components/shared/Pagination";
 import { StatSummaryStrip } from "@/components/shared/StatCards";
@@ -27,7 +16,8 @@ import { RowAction, TableRowActions } from "@/components/shared/TableRowActions"
 import { describeError, ListPage } from "@/components/shared/ListPage";
 import { useGoogleSignIn } from "@/components/shared/GoogleSignInButton";
 import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
-import { Select } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { FormField, Input, Select } from "@/components/ui/input";
 import { formatDay } from "@/lib/utils";
 import {
   CreateUserModal,
@@ -35,6 +25,7 @@ import {
   ResetUserPasswordModal,
 } from "@/components/user/UserAccountModals";
 import { UserDetailDrawer } from "@/components/user/UserDetailDrawer";
+import { UserRoleClubCell } from "@/components/user/UserRoleClubCell";
 
 const LIMIT = 20;
 
@@ -69,10 +60,12 @@ export function UsersManagementView() {
   };
 
   const canAssign = session.can("permission.assign");
+  const canViewUserRoles = canAssign || session.can("permission.view");
   const canUpdateUser = session.can("user.update");
   const canDeleteUser = session.can("user.delete");
   const canLoadRoles = canAssign && (session.can("role.view") || session.can("role.manage"));
-  const options = useRoleOptions({ loadClubs: canAssign || session.can("permission.view"), loadRoles: canLoadRoles });
+  const options = useRoleOptions({ loadClubs: canViewUserRoles, loadRoles: canLoadRoles });
+  const clubsById = useMemo(() => new Map(options.clubs.map((c) => [c.id, c])), [options.clubs]);
   const google = useGoogleSignIn();
   const googleDomains = google.data?.enabled ? google.data.allowedDomains : [];
   const isGoogleEmail = (email: string) =>
@@ -124,50 +117,19 @@ export function UsersManagementView() {
     { icon: <Eye />, label: "Xem chi tiết", onClick: () => setDetail(user) },
     ...(canUpdateUser ? [{ icon: <Pencil />, label: "Sửa thông tin", onClick: () => setDetail(user) }] : []),
     ...(session.can("user.reset_password") && !isGoogleEmail(user.email)
-      ? [
-          {
-            icon: <KeyRound />,
-            label: "Đặt lại mật khẩu",
-            onClick: () => setResetFor(user),
-          },
-        ]
+      ? [{ icon: <KeyRound />, label: "Đặt lại mật khẩu", onClick: () => setResetFor(user) }]
       : []),
     ...(user.id !== session.user?.id && user.status === "ACTIVE" && session.can("user.inactive")
       ? [
-          {
-            icon: <Lock />,
-            label: "Khoá tạm thời",
-            onClick: () => changeStatus(user, "LOCKED"),
-            disabled: lock.isPending,
-          },
-          {
-            icon: <Ban />,
-            label: "Vô hiệu hoá",
-            danger: true,
-            onClick: () => changeStatus(user, "INACTIVE"),
-            disabled: lock.isPending,
-          },
+          { icon: <Lock />, label: "Khoá tạm thời", onClick: () => changeStatus(user, "LOCKED"), disabled: lock.isPending },
+          { icon: <Ban />, label: "Vô hiệu hoá", danger: true, onClick: () => changeStatus(user, "INACTIVE"), disabled: lock.isPending },
         ]
       : []),
     ...(user.id !== session.user?.id && user.status !== "ACTIVE" && session.can("user.active")
-      ? [
-          {
-            icon: <LockOpen />,
-            label: user.status === "LOCKED" ? "Mở khoá tài khoản" : "Kích hoạt lại tài khoản",
-            onClick: () => changeStatus(user, "ACTIVE"),
-            disabled: lock.isPending,
-          },
-        ]
+      ? [{ icon: <LockOpen />, label: user.status === "LOCKED" ? "Mở khoá tài khoản" : "Kích hoạt lại tài khoản", onClick: () => changeStatus(user, "ACTIVE"), disabled: lock.isPending }]
       : []),
     ...(user.id !== session.user?.id && canDeleteUser
-      ? [
-          {
-            icon: <Trash2 />,
-            label: "Xoá tài khoản",
-            danger: true,
-            onClick: () => setDeletingUser(user),
-          },
-        ]
+      ? [{ icon: <Trash2 />, label: "Xoá tài khoản", danger: true, onClick: () => setDeletingUser(user) }]
       : []),
   ];
 
@@ -179,44 +141,50 @@ export function UsersManagementView() {
     );
   }
 
+  const hasFilters = Boolean(search.trim() || statusFilter !== "ALL");
+
   return (
     <ListPage title="Hồ sơ tài khoản">
-      <BreadcrumbToolbar
-        crumbs={[
-          { label: "Tổng quan", href: "/dashboard" },
-          { label: "Quản trị hệ thống" },
-          { label: "Hồ sơ tài khoản" },
-        ]}
-        titleBadge={<CountBadge>{users.data?.total ?? 0} tài khoản</CountBadge>}
-        search={{
-          value: search,
-          onChange: (v) => {
-            setSearch(v);
-            setOffset(0);
-          },
-          placeholder: "Tìm email, họ tên, mã SV…",
-        }}
-        extraActions={
-          <Select
-            aria-label="Lọc theo trạng thái"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-            className="h-9 w-full text-xs sm:w-44"
-          >
-            <option value="ALL">Tất cả trạng thái</option>
-            <option value="ACTIVE">Đang hoạt động</option>
-            <option value="LOCKED">Tạm khoá</option>
-            <option value="INACTIVE">Vô hiệu hoá</option>
-            <option value="MUST_CHANGE">Chờ đổi mật khẩu</option>
-          </Select>
-        }
-        onRefresh={() => users.refetch()}
-        addLabel="Tạo tài khoản"
-        onAdd={session.can("user.create") ? () => setCreating(true) : undefined}
-      />
+      <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-border bg-white px-3 py-1.5 sm:px-4">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto sm:flex-1">
+          <div className="relative w-full min-w-0 sm:min-w-[170px] sm:max-w-[240px] sm:flex-1">
+            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(e) => { setSearch(e.target.value); setOffset(0); }} placeholder="Tìm email, họ tên, mã SV…" className="h-8 pl-8 pr-7 text-xs" />
+            {search && (
+              <button type="button" aria-label="Xoá tìm kiếm" onClick={() => { setSearch(""); setOffset(0); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X size={13} />
+              </button>
+            )}
+          </div>
+          <FilterPopover activeCount={statusFilter !== "ALL" ? 1 : 0} onClear={() => { setStatusFilter("ALL"); setOffset(0); }} title="Lọc tài khoản">
+            <FormField label="Trạng thái tài khoản" hideIndicator>
+              <Select aria-label="Lọc theo trạng thái" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} className="h-8 text-xs">
+                <option value="ALL">Tất cả trạng thái</option>
+                <option value="ACTIVE">Đang hoạt động</option>
+                <option value="LOCKED">Tạm khoá</option>
+                <option value="INACTIVE">Vô hiệu hoá</option>
+                <option value="MUST_CHANGE">Chờ đổi mật khẩu</option>
+              </Select>
+            </FormField>
+          </FilterPopover>
+          {hasFilters && (
+            <Button variant="outline" size="sm" className="h-8" onClick={() => { setSearch(""); setStatusFilter("ALL"); setOffset(0); }}>
+              <FilterX size={13} /> Xoá lọc
+            </Button>
+          )}
+        </div>
+        <div className="flex w-full max-w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:shrink-0">
+          <CountBadge>{users.data?.total ?? 0} tài khoản</CountBadge>
+          {session.can("user.create") && (
+            <Button size="sm" className="h-8" onClick={() => setCreating(true)}>
+              <Plus size={14} /> Tạo tài khoản
+            </Button>
+          )}
+        </div>
+      </div>
 
       <StatSummaryStrip
-        className="shrink-0 px-4 pt-4 sm:px-6"
+        className="shrink-0 px-3 pt-2.5 sm:px-5"
         items={[
           {
             label: "Tổng số tài khoản hệ thống",
@@ -279,24 +247,28 @@ export function UsersManagementView() {
               header: "Người dùng",
               sortValue: (u) => u.fullName || u.email,
               render: (u) => (
-                <div className="flex items-center gap-3">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-extrabold text-primary">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-extrabold text-primary">
                     {(u.fullName ?? u.email).slice(0, 1).toUpperCase()}
                   </span>
                   <div className="min-w-0">
-                    <p className="max-w-60 truncate font-bold text-foreground">{u.fullName || "—"}</p>
-                    <p className="max-w-60 truncate text-[11px] text-muted-foreground">{u.email}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="max-w-36 truncate font-bold text-foreground" title={u.fullName || u.email}>{u.fullName || "—"}</p>
+                      {u.requiresPasswordChange && <Badge tone="pending" dot={false}>Đổi MK</Badge>}
+                    </div>
+                    <p className="max-w-36 truncate text-[11px] text-muted-foreground" title={u.email}>{u.email}</p>
                   </div>
                 </div>
               ),
             },
             {
               key: "code",
-              header: "Mã sinh viên",
+              header: "MSSV",
+              className: "whitespace-nowrap",
               sortValue: (u) => u.studentCode ?? "",
               render: (u) =>
                 u.studentCode ? (
-                  <code className="rounded-md bg-primary/8 px-2 py-0.5 font-mono text-[11px] font-bold text-primary">
+                  <code className="inline-block max-w-22 truncate rounded-md bg-primary/8 px-1.5 py-0.5 font-mono text-[11px] font-bold text-primary" title={u.studentCode}>
                     {u.studentCode}
                   </code>
                 ) : (
@@ -304,28 +276,35 @@ export function UsersManagementView() {
                 ),
             },
             {
-              key: "phone",
-              header: "Điện thoại",
-              render: (u) => <span className="font-mono text-muted-foreground">{u.phone || "—"}</span>,
+              key: "role",
+              header: "Chức vụ",
+              render: (u) => <UserRoleClubCell userId={u.id} clubsById={clubsById} canViewRoles={canViewUserRoles} mode="role" />,
             },
             {
-              key: "security",
-              header: "Bảo mật",
-              sortValue: (u) => Number(u.requiresPasswordChange),
-              render: (u) =>
-                u.requiresPasswordChange ? (
-                  <Badge tone="pending">Chờ đổi MK lần đầu</Badge>
-                ) : (
-                  <Badge tone="neutral">Đã thiết lập</Badge>
-                ),
+              key: "club",
+              header: "Câu lạc bộ",
+              render: (u) => <UserRoleClubCell userId={u.id} clubsById={clubsById} canViewRoles={canViewUserRoles} mode="club" />,
+            },
+            {
+              key: "phone",
+              header: "Điện thoại",
+              className: "whitespace-nowrap",
+              render: (u) => <span className="font-mono text-muted-foreground">{u.phone || "—"}</span>,
             },
             {
               key: "created",
               header: "Ngày tạo",
+              className: "whitespace-nowrap",
               sortValue: (u) => u.createdAt ?? "",
-              render: (u) => <span className="font-mono font-semibold text-foreground">{formatDay(u.createdAt)}</span>,
+              render: (u) => <span className="font-mono text-muted-foreground">{formatDay(u.createdAt)}</span>,
             },
-            { key: "status", header: "Trạng thái", sortValue: (u) => u.status, render: (u) => <StatusBadge status={u.status} /> },
+            {
+              key: "status",
+              header: "Trạng thái",
+              className: "whitespace-nowrap",
+              sortValue: (u) => u.status,
+              render: (u) => <StatusBadge status={u.status} />,
+            },
             {
               key: "actions",
               header: "Thao tác",

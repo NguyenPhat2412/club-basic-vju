@@ -27,6 +27,9 @@ public class UserAccountPurgeSupport {
                 SELECT EXISTS (SELECT 1 FROM club_applications WHERE applicant_id = ? OR reviewed_by = ?)
                     OR EXISTS (SELECT 1 FROM event_registrations WHERE user_id = ?)
                     OR EXISTS (SELECT 1 FROM event_attendances WHERE user_id = ? OR checked_by = ?)
+                    OR EXISTS (SELECT 1 FROM events WHERE attendance_locked_by = ?)
+                    OR EXISTS (SELECT 1 FROM event_feedbacks WHERE user_id = ?)
+                    OR EXISTS (SELECT 1 FROM event_certificates WHERE user_id = ? OR issued_by = ? OR revoked_by = ?)
                     OR EXISTS (SELECT 1 FROM tasks WHERE assignee_id = ? OR assigner_id = ? OR verified_by = ?)
                     OR EXISTS (SELECT 1 FROM documents WHERE owner_id = ?)
                     OR EXISTS (SELECT 1 FROM chat_messages WHERE sender_id = ?)
@@ -37,6 +40,9 @@ public class UserAccountPurgeSupport {
                 userId, userId,
                 userId,
                 userId, userId,
+                userId,
+                userId,
+                userId, userId, userId,
                 userId, userId, userId,
                 userId,
                 userId,
