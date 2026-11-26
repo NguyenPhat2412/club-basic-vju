@@ -197,11 +197,18 @@ export function exportEventAttendanceReport({
     "Email",
     "Đối tượng",
     "Vai trò sự kiện",
+    "Xe bus MĐ↔HL",
     "Trạng thái ĐK",
     "Kết quả điểm danh",
     "Thời gian điểm danh",
     "Ghi chú",
   ];
+  const participantLabel = (pt: string) => {
+    if (pt === "ORGANIZER") return "Ban tổ chức";
+    if (pt === "CTV" || pt === "COLLABORATOR") return "Cộng tác viên (CTV)";
+    if (pt === "ATTENDEE") return "Người tham dự";
+    return "Thành viên CLB";
+  };
   const rows = registrations.map((r, idx) => {
     const att = attendanceMap.get(r.userId);
     return [
@@ -209,8 +216,9 @@ export function exportEventAttendanceReport({
       r.userFullName || "—",
       r.studentCode || "—",
       r.userEmail || "—",
-      r.participantType === "COLLABORATOR" ? "Cộng tác viên (CTV)" : "Thành viên CLB",
+      participantLabel(r.participantType),
       r.eventRole || "Tham gia",
+      r.needsShuttleBus ? "Có" : "Không",
       r.status === "CANCELLED" ? "Đã huỷ" : "Đã đăng ký",
       att ? ATTENDANCE_STATUS_VI[att.status] ?? att.status : "Chưa điểm danh",
       att?.checkedAt ? formatDateTime(att.checkedAt) : "—",
@@ -220,6 +228,7 @@ export function exportEventAttendanceReport({
 
   const presentCount = attendances.filter((a) => a.status === "PRESENT" || a.status === "LATE").length;
   const activeRegCount = registrations.filter((r) => r.status === "REGISTERED").length;
+  const shuttleCount = registrations.filter((r) => r.status === "REGISTERED" && r.needsShuttleBus).length;
   const sha256 = event.attendanceSignatureSha256?.trim();
   const lockStamp = event.attendanceLockedAt ? formatDateTime(event.attendanceLockedAt) : "Đã chốt";
   const verificationFooter = sha256
@@ -236,7 +245,7 @@ export function exportEventAttendanceReport({
       title: `BẢNG ĐIỂM DANH SỰ KIỆN: ${event.title}`,
       clubLabel: event.clubName,
       subtitle: `Thời gian: ${formatDateTime(event.startTime)} – ${formatDateTime(event.endTime)}${event.location ? ` · Địa điểm: ${event.location}` : ""}`,
-      summaryLine: `Có mặt / Đi muộn: ${presentCount} / ${activeRegCount} nhân sự đăng ký hiệu lực`,
+      summaryLine: `Có mặt / Đi muộn: ${presentCount} / ${activeRegCount} nhân sự đăng ký hiệu lực${event.allowShuttleBus || shuttleCount > 0 ? ` · Đăng ký xe bus Mỹ Đình ↔ Hòa Lạc: ${shuttleCount}` : ""}`,
       verificationFooter,
       headers,
       rows,

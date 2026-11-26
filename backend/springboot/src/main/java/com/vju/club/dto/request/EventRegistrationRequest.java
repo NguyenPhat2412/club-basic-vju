@@ -5,9 +5,14 @@ import jakarta.validation.constraints.Size;
 
 public record EventRegistrationRequest(
         @Size(max = 500) String note,
-        EventParticipantType participantType
+        EventParticipantType participantType,
+        Boolean needsShuttleBus
 ) {
     public EventRegistrationRequest(String note) {
-        this(note, null);
+        this(note, null, null);
+    }
+
+    public EventRegistrationRequest(String note, EventParticipantType participantType) {
+        this(note, participantType, null);
     }
 }

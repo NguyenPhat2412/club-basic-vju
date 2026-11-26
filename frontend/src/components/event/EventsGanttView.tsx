@@ -12,6 +12,7 @@ import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/input";
 import { cn, formatDateTime } from "@/lib/utils";
+import { areEventsRelatedInFestival } from "@/forms/event/event-form";
 import {
   buildAcademicTermOptions,
   computeGanttBarGeometry,
@@ -92,7 +93,7 @@ export function EventsGanttView({ activeClubId }: { activeClubId?: string }) {
       const aEnd = new Date(a.endTime).getTime();
       for (let j = i + 1; j < allEvents.length; j += 1) {
         const b = allEvents[j];
-        if (a.clubId === b.clubId) continue;
+        if (a.clubId === b.clubId || areEventsRelatedInFestival(a, b)) continue;
         const bStart = new Date(b.startTime).getTime();
         const bEnd = new Date(b.endTime).getTime();
         if (aStart < bEnd && bStart < aEnd) {
@@ -217,7 +218,10 @@ export function EventsGanttView({ activeClubId }: { activeClubId?: string }) {
                                   )}
                                 >
                                   {ev.attendanceLocked && <Lock size={10} className="shrink-0" />}
-                                  <span className="truncate">{ev.title}</span>
+                                  <span className="truncate">
+                                    {ev.boothCode ? `[Gian ${ev.boothCode}] ` : ""}
+                                    {ev.title}
+                                  </span>
                                 </button>
                               </div>
                             );

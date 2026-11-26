@@ -17,6 +17,14 @@ public record EventRegistrationResponse(
         OffsetDateTime registeredAt,
         OffsetDateTime cancelledAt,
         String submissionFileName,
-        OffsetDateTime submissionUploadedAt
+        OffsetDateTime submissionUploadedAt,
+        boolean needsShuttleBus
 ) {
+    public EventRegistrationResponse(UUID id, UUID eventId, UUID userId, String userEmail, String userFullName,
+                                     String studentCode, String participantType, String eventRole, String status,
+                                     String note, OffsetDateTime registeredAt, OffsetDateTime cancelledAt,
+                                     String submissionFileName, OffsetDateTime submissionUploadedAt) {
+        this(id, eventId, userId, userEmail, userFullName, studentCode, participantType, eventRole, status,
+                note, registeredAt, cancelledAt, submissionFileName, submissionUploadedAt, false);
+    }
 }

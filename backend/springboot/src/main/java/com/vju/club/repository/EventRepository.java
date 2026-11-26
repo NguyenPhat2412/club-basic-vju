@@ -18,10 +18,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface EventRepository extends JpaRepository<Event, UUID> {
-    @EntityGraph(attributePaths = {"club", "department"})
+    @EntityGraph(attributePaths = {"club", "department", "parentEvent", "coHosts"})
     Optional<Event> findWithRelationsById(UUID id);
 
-    @EntityGraph(attributePaths = {"club", "department"})
+    @EntityGraph(attributePaths = {"club", "department", "parentEvent"})
     @Query("SELECT e FROM Event e WHERE e.club.id = :clubId "
             + "AND (:status IS NULL OR e.status = :status) "
             + "AND (:departmentId IS NULL OR e.department.id = :departmentId) "
@@ -36,7 +36,7 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
         return findByClub(clubId, status, departmentId, false, pageable);
     }
 
-    @EntityGraph(attributePaths = {"club", "department"})
+    @EntityGraph(attributePaths = {"club", "department", "parentEvent"})
     @Query("SELECT e FROM Event e WHERE e.club.status = com.vju.club.enums.ClubStatus.ACTIVE "
             + "AND (e.allowCtv = true OR e.allowPublicAttendees = true) "
             + "AND e.status IN (com.vju.club.enums.EventStatus.OPEN_REGISTRATION, "
@@ -44,14 +44,14 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
             + "com.vju.club.enums.EventStatus.COMPLETED)")
     Page<Event> findPublicEvents(Pageable pageable);
 
-    @EntityGraph(attributePaths = {"club", "department"})
+    @EntityGraph(attributePaths = {"club", "department", "parentEvent"})
     @Query("SELECT e FROM Event e WHERE e.club.status = com.vju.club.enums.ClubStatus.ACTIVE "
             + "AND e.status IN (com.vju.club.enums.EventStatus.OPEN_REGISTRATION, "
             + "com.vju.club.enums.EventStatus.CLOSED_REGISTRATION, "
             + "com.vju.club.enums.EventStatus.COMPLETED)")
     Page<Event> findAllDiscoverableEvents(Pageable pageable);
 
-    @EntityGraph(attributePaths = {"club", "department"})
+    @EntityGraph(attributePaths = {"club", "department", "parentEvent"})
     @Query("SELECT e FROM Event e WHERE e.club.status = com.vju.club.enums.ClubStatus.ACTIVE "
             + "AND (e.allowCtv = true OR e.allowPublicAttendees = true OR e.club.id IN :clubIds) "
             + "AND e.status IN (com.vju.club.enums.EventStatus.OPEN_REGISTRATION, "
@@ -75,4 +75,33 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
     Optional<Event> lockById(@Param("id") UUID id);
 
     long countByClub_IdAndStatusNotIn(UUID clubId, Collection<EventStatus> statuses);
+
+    @EntityGraph(attributePaths = {"club", "department", "parentEvent", "coHosts"})
+    @Query("SELECT e FROM Event e WHERE e.parentEvent.id = :parentEventId "
+            + "AND e.club.status = com.vju.club.enums.ClubStatus.ACTIVE "
+            + "AND (e.allowCtv = true OR e.allowPublicAttendees = true) "
+            + "AND e.status IN (com.vju.club.enums.EventStatus.OPEN_REGISTRATION, "
+            + "com.vju.club.enums.EventStatus.CLOSED_REGISTRATION, "
+            + "com.vju.club.enums.EventStatus.COMPLETED) "
+            + "ORDER BY CASE WHEN e.boothCode IS NULL OR e.boothCode = '' THEN 1 ELSE 0 END ASC, "
+            + "e.boothCode ASC, e.startTime ASC, e.id ASC")
+    List<Event> findPublicBoothsByParentId(@Param("parentEventId") UUID parentEventId);
+
+    @Query("SELECT COUNT(e) FROM Event e WHERE e.parentEvent.id = :parentEventId "
+            + "AND e.status <> com.vju.club.enums.EventStatus.CANCELLED "
+            + "AND UPPER(TRIM(e.boothCode)) = UPPER(TRIM(:boothCode)) "
+            + "AND (:excludeEventId IS NULL OR e.id <> :excludeEventId)")
+    long countConflictingBoothCode(@Param("parentEventId") UUID parentEventId,
+                                   @Param("boothCode") String boothCode,
+                                   @Param("excludeEventId") UUID excludeEventId);
+
+    @Query("SELECT e.parentEvent.id, COUNT(e) FROM Event e "
+            + "WHERE e.parentEvent.id IN :parentIds "
+            + "AND e.club.status = com.vju.club.enums.ClubStatus.ACTIVE "
+            + "AND (e.allowCtv = true OR e.allowPublicAttendees = true) "
+            + "AND e.status IN (com.vju.club.enums.EventStatus.OPEN_REGISTRATION, "
+            + "com.vju.club.enums.EventStatus.CLOSED_REGISTRATION, "
+            + "com.vju.club.enums.EventStatus.COMPLETED) "
+            + "GROUP BY e.parentEvent.id")
+    List<Object[]> countPublicBoothsByParentIds(@Param("parentIds") Collection<UUID> parentIds);
 }

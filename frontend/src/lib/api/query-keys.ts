@@ -58,6 +58,7 @@ export const qk = {
   publicClubDetail: key("public-club-detail"),
   publicClubFacebook: key("public-club-facebook"),
   publicClubs: key("public-clubs"),
+  publicEventBooths: key("public-event-booths"),
   roles: key("roles"),
   systemSettings: key("system-settings"),
   systemStatistics: key("system-statistics"),

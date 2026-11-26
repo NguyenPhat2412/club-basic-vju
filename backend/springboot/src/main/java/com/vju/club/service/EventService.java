@@ -29,6 +29,8 @@ public interface EventService {
 
     PageResponse<EventResponse> listPublic(int offset, int limit);
 
+    List<EventResponse> listPublicBooths(UUID parentEventId);
+
     PageResponse<EventResponse> listDiscover(Actor actor, int offset, int limit);
 
     EventResponse create(Actor actor, UUID clubId, CreateEventRequest request);

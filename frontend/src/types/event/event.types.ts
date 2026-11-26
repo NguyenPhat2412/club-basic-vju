@@ -1,5 +1,11 @@
 export type EventParticipantRole = 'MEMBER' | 'ORGANIZER' | 'CTV' | 'ATTENDEE';
 
+export type EventCoHostItem = {
+  clubId: string;
+  clubCode: string;
+  clubName: string;
+};
+
 export type PublicEvent = {
   id: string;
   clubId: string;
@@ -26,6 +32,15 @@ export type PublicEvent = {
   attendanceSignatureSha256?: string | null;
   certificateTemplateUrl?: string | null;
   coverImageUrl?: string | null;
+  parentEventId?: string | null;
+  parentEventTitle?: string | null;
+  boothCode?: string | null;
+  venueMapUrl?: string | null;
+  facebookPostUrl?: string | null;
+  recapAlbumUrl?: string | null;
+  allowShuttleBus?: boolean;
+  childBoothCount?: number;
+  coHosts?: EventCoHostItem[];
 };
 
 export type ClubEvent = PublicEvent & {
@@ -50,6 +65,14 @@ export type CreateEventInput = {
   status?: string;
   academicTerm?: string;
   coverImageUrl?: string;
+  parentEventId?: string;
+  clearParentEvent?: boolean;
+  boothCode?: string;
+  venueMapUrl?: string;
+  facebookPostUrl?: string;
+  recapAlbumUrl?: string;
+  allowShuttleBus?: boolean;
+  coHostClubIds?: string[];
 };
 
 export type EventRegistration = {
@@ -67,6 +90,7 @@ export type EventRegistration = {
   cancelledAt?: string;
   submissionFileName?: string;
   submissionUploadedAt?: string;
+  needsShuttleBus?: boolean;
 };
 
 export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';

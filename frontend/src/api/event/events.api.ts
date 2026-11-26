@@ -27,6 +27,8 @@ export type EventFeedbackSummary = {
 export const eventsApi = {
   publicEvents: (offset = 0, limit = 10) =>
     api<Page<PublicEvent>>(`/public/events?${new URLSearchParams({ offset: String(offset), limit: String(limit) })}`),
+  publicEventBooths: (eventId: string) =>
+    api<PublicEvent[]>(`/public/events/${eventId}/booths`),
   discoverEvents: (offset = 0, limit = 50) =>
     api<Page<PublicEvent>>(`${API_ROUTES.events.discover}?${cleanParams({ offset, limit })}`),
   clubEvents: (clubId: string, q: { status?: string; departmentId?: string; offset?: number; limit?: number } = {}) =>
@@ -53,12 +55,18 @@ export const eventsApi = {
   },
   deleteEventCover: (eventId: string) =>
     api<ClubEvent>(`/events/${eventId}/cover`, { method: 'DELETE' }),
-  registerEvent: (eventId: string, note?: string, participantType?: EventParticipantRole) =>
+  registerEvent: (
+    eventId: string,
+    note?: string,
+    participantType?: EventParticipantRole,
+    needsShuttleBus?: boolean,
+  ) =>
     api<EventRegistration>(`/events/${eventId}/registrations`, {
       method: 'POST',
       body: JSON.stringify({
         note: note || undefined,
         participantType: participantType || undefined,
+        needsShuttleBus: needsShuttleBus ?? undefined,
       }),
     }),
   cancelEventRegistration: (eventId: string) =>

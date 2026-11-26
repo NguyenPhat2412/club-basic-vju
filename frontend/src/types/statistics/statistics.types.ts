@@ -157,6 +157,8 @@ export type TimelineEventItem = {
   participationRate: number;
   attendanceLocked?: boolean;
   attendanceSignatureSha256?: string | null;
+  parentEventId?: string | null;
+  boothCode?: string | null;
 };
 
 export type TimelineUnitSummary = {

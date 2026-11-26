@@ -141,6 +141,9 @@ public class EventServiceImpl implements EventService {
     @Autowired(required = false)
     private AiTranslationService aiTranslationService;
 
+    @Autowired(required = false)
+    private EventFestivalSupport festivalSupport;
+
     @Value("${app.public-api-base-url:http://localhost:${server.port:8080}}")
     private String publicApiBaseUrl = "http://localhost:8080";
 
@@ -152,7 +155,16 @@ public class EventServiceImpl implements EventService {
         List<EventResponse> items = page.getContent().stream()
                 .map(eventMapper::toResponse)
                 .toList();
+        if (festivalSupport != null) {
+            items = festivalSupport.enrichBoothCounts(items);
+        }
         return new PageResponse<>(items, page.getTotalElements(), offset, limit);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EventResponse> listPublicBooths(UUID parentEventId) {
+        return festivalSupport == null ? List.of() : festivalSupport.listPublicBooths(parentEventId);
     }
 
     @Override
@@ -163,7 +175,8 @@ public class EventServiceImpl implements EventService {
                 || authorizationService.hasGlobalPermission(actor, EventConstants.PERMISSION_UPDATE);
         if (hasGlobalAccess) {
             var page = eventRepository.findAllDiscoverableEvents(pageable);
-            return new PageResponse<>(page.getContent().stream().map(eventMapper::toResponse).toList(),
+            List<EventResponse> items = page.getContent().stream().map(eventMapper::toResponse).toList();
+            return new PageResponse<>(festivalSupport == null ? items : festivalSupport.enrichBoothCounts(items),
                     page.getTotalElements(), offset, limit);
         }
         Set<UUID> visibleClubIds = new LinkedHashSet<>(membershipRepository.findActiveClubIdsByUserId(actor.id()));
@@ -172,7 +185,8 @@ public class EventServiceImpl implements EventService {
         var page = visibleClubIds.isEmpty()
                 ? eventRepository.findPublicEvents(pageable)
                 : eventRepository.findDiscoverableEvents(visibleClubIds, pageable);
-        return new PageResponse<>(page.getContent().stream().map(eventMapper::toResponse).toList(),
+        List<EventResponse> items = page.getContent().stream().map(eventMapper::toResponse).toList();
+        return new PageResponse<>(festivalSupport == null ? items : festivalSupport.enrichBoothCounts(items),
                 page.getTotalElements(), offset, limit);
     }
 
@@ -230,6 +244,9 @@ public class EventServiceImpl implements EventService {
         event.setMaxParticipants(request.maxParticipants());
         if (request.coverImageUrl() != null) {
             event.setCoverImageUrl(normalizeCoverImageUrl(request.coverImageUrl()));
+        }
+        if (festivalSupport != null) {
+            festivalSupport.applyOnCreate(event, request);
         }
         EventStatus initialStatus = request.status() == null ? EventStatus.OPEN_REGISTRATION : request.status();
         if (initialStatus != EventStatus.DRAFT && initialStatus != EventStatus.OPEN_REGISTRATION) {
@@ -327,6 +344,9 @@ public class EventServiceImpl implements EventService {
         if (request.coverImageUrl() != null) {
             event.setCoverImageUrl(normalizeCoverImageUrl(request.coverImageUrl()));
         }
+        if (festivalSupport != null) {
+            festivalSupport.applyOnUpdate(event, request);
+        }
         if (request.maxParticipants() != null) {
             long registered = registrationRepository.countByEvent_IdAndStatus(eventId, EventRegistrationStatus.REGISTERED);
             if (request.maxParticipants() < registered) {
@@ -363,7 +383,8 @@ public class EventServiceImpl implements EventService {
         }
         auditService.recordChange(actor.id(), AuditAction.EVENT_UPDATED, saved.getId(), clubId, before, snapshot(saved));
         warmTranslateEvent(saved);
-        return eventMapper.toResponse(saved);
+        EventResponse resp = eventMapper.toResponse(saved);
+        return festivalSupport == null ? resp : festivalSupport.enrichSingleBoothCount(resp);
     }
 
     @Override
@@ -459,7 +480,8 @@ public class EventServiceImpl implements EventService {
         EventStatus effectiveStatus = canViewAll ? status : EventStatus.OPEN_REGISTRATION;
         var page = eventRepository.findByClub(club.getId(), effectiveStatus, departmentId, !canViewAll,
                 new OffsetLimitRequest(offset, limit, EVENT_SORT));
-        return new PageResponse<>(page.getContent().stream().map(eventMapper::toResponse).toList(),
+        List<EventResponse> items = page.getContent().stream().map(eventMapper::toResponse).toList();
+        return new PageResponse<>(festivalSupport == null ? items : festivalSupport.enrichBoothCounts(items),
                 page.getTotalElements(), offset, limit);
     }
 
@@ -482,7 +504,8 @@ public class EventServiceImpl implements EventService {
         if (!canView) {
             throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
         }
-        return eventMapper.toResponse(event);
+        EventResponse resp = eventMapper.toResponse(event);
+        return festivalSupport == null ? resp : festivalSupport.enrichSingleBoothCount(resp);
     }
 
     @Override
@@ -529,6 +552,7 @@ public class EventServiceImpl implements EventService {
         registration.setParticipantType(resolvedType);
         registration.setStatus(EventRegistrationStatus.REGISTERED);
         registration.setNote(request == null || request.note() == null ? null : request.note().strip());
+        registration.setNeedsShuttleBus(event.isAllowShuttleBus() && request != null && Boolean.TRUE.equals(request.needsShuttleBus()));
         registration.setRegisteredAt(now);
 
         EventRegistration saved = registrationRepository.save(registration);

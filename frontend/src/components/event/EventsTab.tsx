@@ -23,7 +23,7 @@ import {
   EVENT_TYPE_LABELS,
   EventFormValues,
   getEventScopeLabel,
-  toLocalInput,
+  toEventFormValues,
 } from "@/forms/event/event-form";
 import {
   NotifyEventModal,
@@ -151,21 +151,7 @@ export function EventsTab({
 
   const openEdit = (ev: ClubEvent) => {
     setEditing(ev);
-    setForm({
-      title: ev.title,
-      eventType: ev.eventType,
-      departmentId: ev.departmentId ?? "",
-      location: ev.location ?? "",
-      startTime: toLocalInput(ev.startTime),
-      endTime: toLocalInput(ev.endTime),
-      registrationDeadline: toLocalInput(ev.registrationDeadline),
-      maxParticipants: ev.maxParticipants ? String(ev.maxParticipants) : "",
-      allowCtv: ev.allowCtv,
-      allowPublicAttendees: ev.allowPublicAttendees ?? ev.allowCtv,
-      requiresSubmission: Boolean(ev.requiresSubmission),
-      status: ev.status,
-      description: ev.description ?? "",
-    });
+    setForm(toEventFormValues(ev));
   };
 
   return (

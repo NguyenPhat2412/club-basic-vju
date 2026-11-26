@@ -142,7 +142,9 @@ public class EventsTimelineServiceImpl {
                         LEFT JOIN event_registrations r ON r.event_id = a.event_id AND r.user_id = a.user_id
                         WHERE a.event_id = e.id
                           AND a.status IN ('PRESENT', 'LATE')
-                          AND (r.id IS NULL OR r.status = 'REGISTERED')) AS present_count
+                          AND (r.id IS NULL OR r.status = 'REGISTERED')) AS present_count,
+                       e.parent_event_id,
+                       e.booth_code
                 FROM events e
                 JOIN clubs c ON c.id = e.club_id
                 WHERE c.status = 'ACTIVE'
@@ -198,6 +200,8 @@ public class EventsTimelineServiceImpl {
             String signature = asString(row[13]);
             long regCount = asLong(row[14]);
             long presentCount = asLong(row[15]);
+            UUID parentEventId = asUuid(row[16]);
+            String boothCode = asString(row[17]);
             double rate = computeRate(presentCount, regCount);
 
             UnitAccumulator unitAcc = unitsByClubId.computeIfAbsent(
@@ -223,7 +227,9 @@ public class EventsTimelineServiceImpl {
                     maxParticipants,
                     rate,
                     lockedAt != null && signature != null && !signature.isBlank(),
-                    signature
+                    signature,
+                    parentEventId,
+                    boothCode
             ));
             totalEvents++;
         }

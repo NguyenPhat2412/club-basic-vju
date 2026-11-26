@@ -706,6 +706,13 @@ entries:
   status: IMPLEMENTED
   authRequired: false
   permission: null
+- method: GET
+  path: /api/v1/public/events/{eventId}/booths
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: null
 - method: POST
   path: /api/v1/clubs/{clubId}/events
   module: event

@@ -14,6 +14,7 @@ import { EVENT_TYPE_LABELS, getEventScopeLabel } from "@/forms/event/event-form"
 import { EventParticipantRole, MyEventParticipation, PublicEvent } from "@/types";
 import { EventSubmissionBlock } from "./EventSubmissionBlock";
 import { EventFeedbackSection } from "./EventFeedbackSection";
+import { EventFestivalDetailSection } from "./EventFestivalDetailSection";
 
 interface EventParticipationDrawersProps {
   isLoggedIn: boolean;
@@ -30,7 +31,7 @@ interface EventParticipationDrawersProps {
   canRegisterNow: (ev: PublicEvent) => boolean;
   canCancelNow: (eventStatus: string, registrationStatus: string, deadline?: string) => boolean;
   registerPending: boolean;
-  onRegister: (ev: PublicEvent, participantType: EventParticipantRole) => void;
+  onRegister: (ev: PublicEvent, participantType: EventParticipantRole, needsShuttleBus?: boolean) => void;
   cancelPending: boolean;
   onCancel: (eventId: string) => void;
   onRefresh: () => void;
@@ -61,7 +62,11 @@ export function EventParticipationDrawers({
   onError,
 }: EventParticipationDrawersProps) {
   const [rolePick, setRolePick] = useState<{ eventId: string; role: EventParticipantRole } | null>(null);
+  const [shuttlePick, setShuttlePick] = useState<{ eventId: string; needed: boolean } | null>(null);
   const selectedDiscoverReg = selectedDiscover ? activeRegByEvent.get(selectedDiscover.id) : undefined;
+  const needsShuttleBus = Boolean(
+    registeringEvent?.allowShuttleBus && shuttlePick && shuttlePick.eventId === registeringEvent.id && shuttlePick.needed,
+  );
 
   const isMemberOfRegEvent = registeringEvent ? activeClubIds.has(registeringEvent.clubId) : false;
   const allowPublicOfRegEvent = registeringEvent
@@ -95,7 +100,7 @@ export function EventParticipationDrawers({
         title="Xác nhận đăng ký tham gia sự kiện"
         icon={<Sparkles />}
         size="sm"
-        onSubmit={() => registeringEvent && onRegister(registeringEvent, chosenRole)}
+        onSubmit={() => registeringEvent && onRegister(registeringEvent, chosenRole, needsShuttleBus)}
         submitLabel={`Đăng ký (${participantRoleLabel(chosenRole)})`}
         submitLoading={registerPending}
       >
@@ -108,18 +113,10 @@ export function EventParticipationDrawers({
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-foreground">Chọn vai trò tham gia (Thành viên CLB)</p>
                 <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Chọn vai trò thành viên">
-                  {([
-                    {
-                      role: "MEMBER" as const,
-                      title: "Thành viên tham gia (MEMBER)",
-                      desc: "Tham dự hoạt động CLB & điểm danh ĐRL",
-                    },
-                    {
-                      role: "ORGANIZER" as const,
-                      title: "Ban tổ chức (ORGANIZER)",
-                      desc: "Điều phối tổ chức & nhận công việc sự kiện",
-                    },
-                  ]).map((opt) => (
+                {([
+                  { role: "MEMBER" as const, title: "Thành viên tham gia (MEMBER)", desc: "Tham dự hoạt động CLB & điểm danh ĐRL" },
+                  { role: "ORGANIZER" as const, title: "Ban tổ chức (ORGANIZER)", desc: "Điều phối tổ chức & nhận công việc sự kiện" },
+                ]).map((opt) => (
                     <button
                       key={opt.role}
                       type="button"
@@ -143,18 +140,10 @@ export function EventParticipationDrawers({
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-foreground">Chọn hình thức tham gia sự kiện</p>
                 <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Chọn vai trò đăng ký">
-                  {([
-                    {
-                      role: "ATTENDEE" as const,
-                      title: "Người tham dự (ATTENDEE)",
-                      desc: "Tham dự sự kiện & điểm danh ĐRL",
-                    },
-                    {
-                      role: "CTV" as const,
-                      title: "Cộng tác viên (CTV)",
-                      desc: "Hỗ trợ tổ chức & nhận công việc sự kiện",
-                    },
-                  ]).map((opt) => (
+                {([
+                  { role: "ATTENDEE" as const, title: "Người tham dự (ATTENDEE)", desc: "Tham dự sự kiện & điểm danh ĐRL" },
+                  { role: "CTV" as const, title: "Cộng tác viên (CTV)", desc: "Hỗ trợ tổ chức & nhận công việc sự kiện" },
+                ]).map((opt) => (
                     <button
                       key={opt.role}
                       type="button"
@@ -187,6 +176,20 @@ export function EventParticipationDrawers({
                     : "Bạn sẽ tham dự sự kiện với tư cách Người tham dự và được ghi nhận điểm danh ĐRL."}
                 </p>
               </div>
+            )}
+            {registeringEvent.allowShuttleBus && (
+              <label className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/30 px-3 py-2 text-xs">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 size-4 accent-primary"
+                  checked={needsShuttleBus}
+                  onChange={(e) => setShuttlePick({ eventId: registeringEvent.id, needed: e.target.checked })}
+                />
+                <span>
+                  <b className="block text-foreground">Đăng ký xe bus đưa đón Mỹ Đình ↔ Hòa Lạc</b>
+                  <span className="text-[11px] text-muted-foreground">BTC tổng hợp danh sách theo email &amp; MSSV của bạn.</span>
+                </span>
+              </label>
             )}
             <FormField label="Ghi chú / Nguyện vọng hỗ trợ">
               <Textarea
@@ -230,6 +233,7 @@ export function EventParticipationDrawers({
                 ["Nội dung", <p key="d" className="whitespace-pre-line">{selectedDiscover.description || "—"}</p>],
               ]}
             />
+            <EventFestivalDetailSection event={selectedDiscover} onSelectBooth={setSelectedDiscover} />
             <Section title="Đăng ký tham gia" icon={<UserCheck />}>
               {!isLoggedIn ? (
                 <div className="flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2.5 text-xs">

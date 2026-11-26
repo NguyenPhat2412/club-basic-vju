@@ -8,12 +8,16 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -87,4 +91,32 @@ public class Event extends TimestampedEntity {
 
     @Column(name = "cover_image_url", length = 500)
     private String coverImageUrl;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_event_id")
+    private Event parentEvent;
+
+    @Column(name = "booth_code", length = 32)
+    private String boothCode;
+
+    @Column(name = "venue_map_url", length = 500)
+    private String venueMapUrl;
+
+    @Column(name = "facebook_post_url", length = 500)
+    private String facebookPostUrl;
+
+    @Column(name = "recap_album_url", length = 500)
+    private String recapAlbumUrl;
+
+    @Column(name = "allow_shuttle_bus", nullable = false)
+    private boolean allowShuttleBus;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "event_co_hosts",
+            joinColumns = @JoinColumn(name = "event_id"),
+            inverseJoinColumns = @JoinColumn(name = "club_id")
+    )
+    @org.hibernate.annotations.BatchSize(size = 50)
+    private Set<Club> coHosts = new LinkedHashSet<>();
 }

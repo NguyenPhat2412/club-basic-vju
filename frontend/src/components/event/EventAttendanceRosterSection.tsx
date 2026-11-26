@@ -42,6 +42,7 @@ export function EventAttendanceRosterSection({
   const attendedCount = Array.from(attendanceMap.values()).filter(
     (a) => a.status === "PRESENT" || a.status === "LATE",
   ).length;
+  const shuttleCount = filteredRegistrations.filter((r) => r.status === "REGISTERED" && r.needsShuttleBus).length;
 
   return (
     <Section
@@ -58,6 +59,7 @@ export function EventAttendanceRosterSection({
             <div className="flex flex-wrap items-center gap-1.5">
               <Badge tone="neutral" dot={false}>Đăng ký: <strong className="font-mono">{activeRegistrationsCount}</strong></Badge>
               <Badge tone="primary" dot={false}>Có mặt: <strong className="font-mono">{attendedCount}</strong></Badge>
+              {shuttleCount > 0 && <Badge tone="pending" dot={false}>Xe bus MĐ↔HL: <strong className="font-mono">{shuttleCount}</strong></Badge>}
             </div>
             <Button
               type="button"
@@ -131,6 +133,7 @@ export function EventAttendanceRosterSection({
                         </div>
                         <div className="flex flex-wrap items-center gap-1.5">
                           <StatusBadge status={r.participantType} />
+                          {r.needsShuttleBus && <Badge tone="pending" dot={false}>Xe bus MĐ↔HL</Badge>}
                           {r.eventRole && <Badge tone="neutral">{r.eventRole}</Badge>}
                           {savedAttendance && <StatusBadge status={savedAttendance.status} />}
                           {r.status === "CANCELLED" && <StatusBadge status="CANCELLED" />}

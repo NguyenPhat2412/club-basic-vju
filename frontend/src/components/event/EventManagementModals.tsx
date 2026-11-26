@@ -9,7 +9,8 @@ import { describeError } from "@/components/shared/ListPage";
 import { Badge } from "@/components/ui/badge";
 import { FormField, Input, Select, Textarea } from "@/components/ui/input";
 import { EventCoverUploadField } from "@/components/event/EventCoverUploadField";
-import { EVENT_TYPE_LABELS, EventFormValues, getEventScopeLabel, isEventPublic, toIso } from "@/forms/event/event-form";
+import { EventFestivalCampaignFields } from "@/components/event/EventFestivalCampaignFields";
+import { EVENT_TYPE_LABELS, EventFormValues, getEventScopeLabel, isEventPublic, toCreateEventPayload } from "@/forms/event/event-form";
 
 export { NotifyEventModal, UpdateParticipantModal } from "@/components/event/EventParticipantAndNotifyModals";
 
@@ -80,22 +81,7 @@ function UpsertEventModalForm({
 
   const create = useMutation({
     mutationFn: async () => {
-      const created = await apiModel.createEvent(clubId, {
-        title: form.title.trim(),
-        eventType: form.eventType,
-        departmentId: form.departmentId || undefined,
-        location: form.location.trim() || undefined,
-        startTime: toIso(form.startTime),
-        endTime: toIso(form.endTime),
-        registrationDeadline: toIso(form.registrationDeadline || form.startTime),
-        maxParticipants: form.maxParticipants ? Number(form.maxParticipants) : undefined,
-        allowCtv: form.allowCtv,
-        allowPublicAttendees: form.allowPublicAttendees,
-        requiresSubmission: form.requiresSubmission,
-        status: form.status,
-        description: form.description.trim() || undefined,
-        academicTerm: trimmedTerm || undefined,
-      });
+      const created = await apiModel.createEvent(clubId, toCreateEventPayload(form, trimmedTerm));
       return syncEventCover(created);
     },
     onSuccess: (ev) => {
@@ -107,22 +93,11 @@ function UpsertEventModalForm({
 
   const update = useMutation({
     mutationFn: async () => {
-      const updated = await apiModel.updateEvent(clubId, editing!.id, {
-        title: form.title.trim(),
-        eventType: form.eventType,
-        departmentId: form.departmentId || undefined,
-        location: form.location.trim() || undefined,
-        startTime: toIso(form.startTime),
-        endTime: toIso(form.endTime),
-        registrationDeadline: toIso(form.registrationDeadline || form.startTime),
-        maxParticipants: form.maxParticipants ? Number(form.maxParticipants) : undefined,
-        allowCtv: form.allowCtv,
-        allowPublicAttendees: form.allowPublicAttendees,
-        requiresSubmission: form.requiresSubmission,
-        status: form.status,
-        description: form.description.trim() || undefined,
-        academicTerm: trimmedTerm || undefined,
-      });
+      const updated = await apiModel.updateEvent(
+        clubId,
+        editing!.id,
+        toCreateEventPayload(form, trimmedTerm, editing?.parentEventId),
+      );
       return syncEventCover(updated);
     },
     onSuccess: (ev) => {
@@ -336,6 +311,7 @@ function UpsertEventModalForm({
           setCoverCleared(true);
         }}
       />
+      <EventFestivalCampaignFields clubId={clubId} editingId={editing?.id} form={form} setForm={setForm} />
       <FormField label="Nội dung chi tiết">
         <Textarea
           value={form.description}

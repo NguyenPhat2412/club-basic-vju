@@ -62,4 +62,7 @@ public class EventRegistration extends TimestampedEntity {
 
     @Column(name = "submission_uploaded_at")
     private OffsetDateTime submissionUploadedAt;
+
+    @Column(name = "needs_shuttle_bus", nullable = false)
+    private boolean needsShuttleBus;
 }

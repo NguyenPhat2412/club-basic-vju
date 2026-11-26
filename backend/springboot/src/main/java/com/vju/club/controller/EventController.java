@@ -80,6 +80,13 @@ public class EventController {
         return eventService.listPublic(offset, limit);
     }
 
+    @PublicEndpoint(reason = "Public festival booths listing under a parent umbrella event")
+    @GetMapping(ApiPaths.PUBLIC_EVENT_BOOTHS)
+    @Operation(summary = "Danh sách gian hàng / hoạt động CLB con thuộc một sự kiện lễ hội lớn")
+    public List<EventResponse> listPublicBooths(@PathVariable UUID eventId) {
+        return eventService.listPublicBooths(eventId);
+    }
+
     @GetMapping(ApiPaths.EVENTS_DISCOVER)
     @Operation(summary = "Danh sách sự kiện khám phá cho người dùng đã đăng nhập (PB-88 AC01)",
             description = "Trả về sự kiện công khai (allowCtv=true) và sự kiện nội bộ chỉ thuộc các CLB mà người dùng là thành viên ACTIVE.")

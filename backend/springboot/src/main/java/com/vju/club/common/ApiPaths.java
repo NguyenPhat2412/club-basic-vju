@@ -143,6 +143,7 @@ public final class ApiPaths {
 
     // Events & Calendar
     public static final String PUBLIC_EVENTS = "/public/events";
+    public static final String PUBLIC_EVENT_BOOTHS = "/public/events/{eventId}/booths";
     public static final String EVENTS_DISCOVER = "/events/discover";
     public static final String EVENTS_TIMELINE = "/events/timeline";
     public static final String PUBLIC_I18N_TRANSLATIONS = "/public/i18n/translations";

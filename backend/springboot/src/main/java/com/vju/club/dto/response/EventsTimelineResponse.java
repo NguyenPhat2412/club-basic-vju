@@ -42,7 +42,18 @@ public record EventsTimelineResponse(
             Integer maxParticipants,
             double participationRate,
             boolean attendanceLocked,
-            String attendanceSignatureSha256
+            String attendanceSignatureSha256,
+            UUID parentEventId,
+            String boothCode
     ) {
+        public TimelineEventItem(UUID id, UUID clubId, String clubCode, String clubName, String title,
+                                 String eventType, String status, String location, String academicTerm,
+                                 OffsetDateTime startTime, OffsetDateTime endTime, long registrationCount,
+                                 long presentCount, Integer maxParticipants, double participationRate,
+                                 boolean attendanceLocked, String attendanceSignatureSha256) {
+            this(id, clubId, clubCode, clubName, title, eventType, status, location, academicTerm,
+                    startTime, endTime, registrationCount, presentCount, maxParticipants, participationRate,
+                    attendanceLocked, attendanceSignatureSha256, null, null);
+        }
     }
 }

@@ -4468,6 +4468,28 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/EventListResponse'}
         '400': {$ref: '#/components/responses/BadRequest'}
+  /public/events/{eventId}/booths:
+    get:
+      operationId: event.listPublicBooths
+      summary: List public club booths and sub-events belonging to an umbrella festival event
+      tags: [Event]
+      security: []
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Ordered list of active club booths under the parent festival
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Event'}
+        '404': {$ref: '#/components/responses/NotFound'}
   /public/i18n/translations:
     get:
       operationId: i18n.listPublicTranslations
@@ -8585,10 +8607,22 @@ components:
         endTime: {type: string, format: date-time}
         registrationDeadline: {type: string, format: date-time}
         allowCtv: {type: [boolean, 'null']}
+        allowPublicAttendees: {type: [boolean, 'null']}
         requiresSubmission: {type: [boolean, 'null']}
         maxParticipants: {type: [integer, 'null'], minimum: 1}
         status: {type: [string, 'null'], enum: [DRAFT, OPEN_REGISTRATION, CLOSED_REGISTRATION, COMPLETED, CANCELLED, null]}
         academicTerm: {type: [string, 'null'], maxLength: 16, pattern: '^\d{4}-[123]$'}
+        coverImageUrl: {type: [string, 'null'], maxLength: 500}
+        parentEventId: {type: [string, 'null'], format: uuid}
+        boothCode: {type: [string, 'null'], maxLength: 32}
+        venueMapUrl: {type: [string, 'null'], maxLength: 500}
+        facebookPostUrl: {type: [string, 'null'], maxLength: 500}
+        recapAlbumUrl: {type: [string, 'null'], maxLength: 500}
+        allowShuttleBus: {type: [boolean, 'null']}
+        coHostClubIds:
+          type: [array, 'null']
+          maxItems: 20
+          items: {type: string, format: uuid}
     UpdateEventRequest:
       type: object
       properties:
@@ -8601,14 +8635,29 @@ components:
         endTime: {type: [string, 'null'], format: date-time}
         registrationDeadline: {type: [string, 'null'], format: date-time}
         allowCtv: {type: [boolean, 'null']}
+        allowPublicAttendees: {type: [boolean, 'null']}
         requiresSubmission: {type: [boolean, 'null']}
         maxParticipants: {type: [integer, 'null'], minimum: 1}
         status: {type: [string, 'null'], enum: [DRAFT, OPEN_REGISTRATION, CLOSED_REGISTRATION, COMPLETED, CANCELLED, null]}
         academicTerm: {type: [string, 'null'], maxLength: 16, pattern: '^\d{4}-[123]$'}
+        coverImageUrl: {type: [string, 'null'], maxLength: 500}
+        parentEventId: {type: [string, 'null'], format: uuid}
+        clearParentEvent: {type: [boolean, 'null']}
+        boothCode: {type: [string, 'null'], maxLength: 32}
+        venueMapUrl: {type: [string, 'null'], maxLength: 500}
+        facebookPostUrl: {type: [string, 'null'], maxLength: 500}
+        recapAlbumUrl: {type: [string, 'null'], maxLength: 500}
+        allowShuttleBus: {type: [boolean, 'null']}
+        coHostClubIds:
+          type: [array, 'null']
+          maxItems: 20
+          items: {type: string, format: uuid}
     RegisterEventRequest:
       type: object
       properties:
-        note: {type: [string, 'null'], maxLength: 1000}
+        note: {type: [string, 'null'], maxLength: 500}
+        participantType: {type: [string, 'null'], enum: [MEMBER, ORGANIZER, CTV, ATTENDEE, null]}
+        needsShuttleBus: {type: [boolean, 'null']}
     ResourceNotificationRequest:
       type: object
       required: [title, message]
@@ -8625,6 +8674,13 @@ components:
         referenceId: {type: string, format: uuid}
         clubId: {type: string, format: uuid}
         recipientCount: {type: integer}
+    EventCoHostResponse:
+      type: object
+      required: [clubId, clubCode, clubName]
+      properties:
+        clubId: {type: string, format: uuid}
+        clubCode: {type: string}
+        clubName: {type: string}
     Event:
       type: object
       required: [id, clubId, title, eventType, startTime, endTime, registrationDeadline, allowCtv, status, createdAt, updatedAt]
@@ -8643,6 +8699,7 @@ components:
         endTime: {type: string, format: date-time}
         registrationDeadline: {type: string, format: date-time}
         allowCtv: {type: boolean}
+        allowPublicAttendees: {type: boolean}
         requiresSubmission: {type: boolean}
         maxParticipants: {type: [integer, 'null']}
         status: {type: string, enum: [DRAFT, OPEN_REGISTRATION, CLOSED_REGISTRATION, COMPLETED, CANCELLED]}
@@ -8653,6 +8710,19 @@ components:
         attendanceLockedAt: {type: [string, 'null'], format: date-time}
         attendanceLockedBy: {type: [string, 'null'], format: uuid}
         attendanceSignatureSha256: {type: [string, 'null'], maxLength: 64}
+        certificateTemplateUrl: {type: [string, 'null'], maxLength: 500}
+        coverImageUrl: {type: [string, 'null'], maxLength: 500}
+        parentEventId: {type: [string, 'null'], format: uuid}
+        parentEventTitle: {type: [string, 'null']}
+        boothCode: {type: [string, 'null'], maxLength: 32}
+        venueMapUrl: {type: [string, 'null'], maxLength: 500}
+        facebookPostUrl: {type: [string, 'null'], maxLength: 500}
+        recapAlbumUrl: {type: [string, 'null'], maxLength: 500}
+        allowShuttleBus: {type: boolean}
+        childBoothCount: {type: integer}
+        coHosts:
+          type: array
+          items: {$ref: '#/components/schemas/EventCoHostResponse'}
     EventListResponse:
       type: object
       required: [items, total, offset, limit]
@@ -8679,7 +8749,7 @@ components:
         userEmail: {type: [string, 'null']}
         userFullName: {type: [string, 'null']}
         studentCode: {type: [string, 'null']}
-        participantType: {type: string, enum: [MEMBER, CTV]}
+        participantType: {type: string, enum: [MEMBER, ORGANIZER, CTV, ATTENDEE]}
         eventRole: {type: [string, 'null']}
         status: {type: string, enum: [REGISTERED, CANCELLED]}
         note: {type: [string, 'null']}
@@ -8687,6 +8757,7 @@ components:
         cancelledAt: {type: [string, 'null'], format: date-time}
         submissionFileName: {type: [string, 'null']}
         submissionUploadedAt: {type: [string, 'null'], format: date-time}
+        needsShuttleBus: {type: boolean}
     MyEventParticipation:
       type: object
       required: [registrationId, eventId, clubId, clubCode, clubName, eventTitle, eventType, eventStatus, startTime, endTime, registrationDeadline, participantType, registrationStatus, registeredAt, countedAsAttended]
@@ -9250,6 +9321,8 @@ components:
         participationRate: {type: number, format: double}
         attendanceLocked: {type: boolean}
         attendanceSignatureSha256: {type: [string, 'null']}
+        parentEventId: {type: [string, 'null'], format: uuid}
+        boothCode: {type: [string, 'null'], maxLength: 32}
     TimelineUnitSummary:
       type: object
       required: [clubId, clubCode, clubName, eventCount, totalRegistrations, totalPresent, participationRate, events]

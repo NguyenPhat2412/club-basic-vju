@@ -170,8 +170,8 @@ function EventsPortalContent() {
   };
 
   const registerMutation = useMutation({
-    mutationFn: ({ ev, participantType }: { ev: PublicEvent; participantType: EventParticipantRole }) =>
-      apiModel.registerEvent(ev.id, regNote.trim() || undefined, participantType),
+    mutationFn: ({ ev, participantType, needsShuttleBus }: { ev: PublicEvent; participantType: EventParticipantRole; needsShuttleBus?: boolean }) =>
+      apiModel.registerEvent(ev.id, regNote.trim() || undefined, participantType, needsShuttleBus),
     onSuccess: (reg, { ev }) => {
       setNotice(`Đã đăng ký tham gia "${ev.title}" với tư cách ${participantRoleLabel(reg.participantType)}.`);
       setErrorMsg("");
@@ -275,8 +275,8 @@ function EventsPortalContent() {
                   sortValue: (ev) => ev.title,
                   render: (ev) => (
                     <div>
-                      <p className="font-bold text-foreground">{ev.title}</p>
-                      <p className="text-xs text-muted-foreground">{ev.clubName} · {EVENT_TYPE_LABELS[ev.eventType] ?? ev.eventType}</p>
+                      <p className="font-bold text-foreground">{ev.boothCode ? `[Gian ${ev.boothCode}] ` : ""}{ev.title}</p>
+                      <p className="text-xs text-muted-foreground">{ev.clubName} · {EVENT_TYPE_LABELS[ev.eventType] ?? ev.eventType}{(ev.childBoothCount ?? 0) > 0 ? ` · ${ev.childBoothCount} gian hàng` : ""}</p>
                     </div>
                   ),
                 },
@@ -364,7 +364,7 @@ function EventsPortalContent() {
         selectedParticipation={selectedParticipation} setSelectedParticipation={setSelectedParticipation}
         canRegisterNow={canRegisterNow} canCancelNow={canCancelNow}
         registerPending={registerMutation.isPending}
-        onRegister={(ev, participantType) => registerMutation.mutate({ ev, participantType })}
+        onRegister={(ev, participantType, needsShuttleBus) => registerMutation.mutate({ ev, participantType, needsShuttleBus })}
         cancelPending={cancelMutation.isPending} onCancel={(eventId) => cancelMutation.mutate(eventId)}
         onRefresh={refreshAll} onNotice={setNotice} onError={setErrorMsg}
       />
