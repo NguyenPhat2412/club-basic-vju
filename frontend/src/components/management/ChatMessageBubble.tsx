@@ -65,7 +65,7 @@ export function ChatMessageBubble({
   const isFailed = statusMeta?.status === "failed";
   const isPending = statusMeta?.status === "uploading" || statusMeta?.status === "sending";
   const showSender = !isMine && !groupedPrev;
-  const showTime = !isFailed && !editing;
+  const showTime = !isFailed && !editing && !groupedNext;
   const showExplicitReceiptFooter = Boolean(isMine && statusMeta && !isFailed && (isLatestOwn || isPending));
   const attachments = m.attachments ?? [];
   const reactions = m.reactions ?? [];

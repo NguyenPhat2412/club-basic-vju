@@ -102,6 +102,26 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
     }
 
     @Query(value = """
+            SELECT DISTINCT ON (m.channel_id)
+                   m.channel_id AS channelId,
+                   m.content AS content,
+                   m.sender_type AS senderType,
+                   u.full_name AS senderName
+            FROM chat_messages m
+            LEFT JOIN users u ON u.id = m.sender_id
+            WHERE m.channel_id IN (:channelIds)
+            ORDER BY m.channel_id, m.created_at DESC, m.id DESC
+            """, nativeQuery = true)
+    List<ChannelLatestMessageRow> findLatestMessages(@Param("channelIds") Collection<UUID> channelIds);
+
+    interface ChannelLatestMessageRow {
+        UUID getChannelId();
+        String getContent();
+        String getSenderType();
+        String getSenderName();
+    }
+
+    @Query(value = """
             WITH unread_msgs AS (
                 SELECT m.id, m.channel_id, c.club_id, m.created_at
                 FROM chat_messages m

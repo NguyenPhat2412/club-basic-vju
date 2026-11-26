@@ -22,26 +22,42 @@ export function ChatReactionTrigger({
   isMine,
   myEmojis,
   onToggleReaction,
+  controlledOpen,
+  onControlledOpenChange,
+  popupAlign,
+  popupRef,
 }: {
   isMine: boolean;
   myEmojis: Set<string>;
   onToggleReaction: (emoji: string) => void;
+  controlledOpen?: boolean;
+  onControlledOpenChange?: (open: boolean) => void;
+  popupAlign?: "left" | "right";
+  popupRef?: React.RefObject<HTMLDivElement | null>;
 }) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+
+  const setOpenState = (next: boolean) => {
+    if (isControlled) onControlledOpenChange?.(next);
+    else setInternalOpen(next);
+    if (!next) setExpanded(false);
+  };
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || isControlled) return;
     const onDocDown = (ev: MouseEvent) => {
       if (!wrapRef.current?.contains(ev.target as Node)) {
-        setOpen(false);
+        setInternalOpen(false);
         setExpanded(false);
       }
     };
     const onKey = (ev: KeyboardEvent) => {
       if (ev.key === "Escape") {
-        setOpen(false);
+        setInternalOpen(false);
         setExpanded(false);
       }
     };
@@ -51,14 +67,15 @@ export function ChatReactionTrigger({
       document.removeEventListener("mousedown", onDocDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, isControlled]);
 
   const handlePick = (emoji: string) => {
     recordRecentEmoji(emoji);
     onToggleReaction(emoji);
-    setOpen(false);
-    setExpanded(false);
+    setOpenState(false);
   };
+
+  const alignClass = popupAlign ? (popupAlign === "right" ? "right-0" : "left-0") : isMine ? "right-0" : "left-0";
 
   return (
     <div ref={wrapRef} className={cn("relative", open && "opacity-100")}>
@@ -67,10 +84,7 @@ export function ChatReactionTrigger({
         title="Thả cảm xúc"
         aria-label="Thả cảm xúc"
         aria-expanded={open}
-        onClick={() => {
-          setOpen((v) => !v);
-          if (open) setExpanded(false);
-        }}
+        onClick={() => setOpenState(!open)}
         className={cn(
           "grid h-6 w-6 place-items-center rounded-full transition-colors hover:bg-muted",
           open ? "bg-primary/12 text-primary" : "text-muted-foreground hover:text-foreground"
@@ -81,12 +95,13 @@ export function ChatReactionTrigger({
 
       {open && (
         <div
+          ref={popupRef}
           role="dialog"
           aria-label="Thanh cảm xúc nhanh"
           className={cn(
-            "tg-pop-in absolute bottom-full z-30 mb-1.5 border border-border/80 bg-card/98 shadow-lg backdrop-blur-xs",
+            "tg-pop-in absolute bottom-full z-40 mb-1.5 border border-border/80 bg-card/98 shadow-lg backdrop-blur-xs",
             expanded ? "w-[224px] rounded-2xl p-1.5" : "rounded-full px-1.5 py-1",
-            isMine ? "right-0" : "left-0"
+            alignClass,
           )}
         >
           {!expanded ? (

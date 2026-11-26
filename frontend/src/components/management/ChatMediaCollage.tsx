@@ -77,10 +77,10 @@ function MediaThumb({
           src={mediaUrl}
           alt={attachment.fileName}
           decoding="async"
-          className="h-full w-full object-cover transition-transform duration-200 group-hover/tile:scale-[1.02]"
+          className="block h-full w-full object-cover transition-transform duration-200 group-hover/tile:scale-[1.02]"
         />
       ) : (
-        <div className="flex h-full min-h-[88px] w-full items-center justify-center text-muted-foreground">
+        <div className="flex h-24 w-full items-center justify-center text-muted-foreground">
           <ImageIcon size={18} className="animate-pulse" />
         </div>
       )}
@@ -98,7 +98,7 @@ function SingleVideoPlayer({ attachment }: { attachment: ChatAttachment }) {
   const videoSrc = cached || chatApi.chatAttachmentStreamUrl(attachment.id);
 
   return (
-    <div className="w-[min(336px,72vw)] max-w-full overflow-hidden rounded-lg border border-border/60 bg-black">
+    <div className="w-[min(336px,100%)] max-w-full overflow-hidden rounded-lg border border-border/60 bg-black">
       <video
         controls
         playsInline
@@ -162,17 +162,17 @@ export function ChatMediaCollage({
     : "";
 
   return (
-    <div className={cn("flex w-fit max-w-full flex-col gap-1.5 text-left", flushTop ? "mt-0" : "mt-1.5")}>
+    <div className={cn("flex w-full min-w-0 max-w-full flex-col gap-1.5 text-left", flushTop ? "mt-0" : "mt-1.5")}>
       {singleMedia?.mediaKind === "IMAGE" ? (
         <MediaThumb
           attachment={singleMedia}
-          className="max-h-64 min-h-[96px] w-[min(264px,68vw)] rounded-lg border border-border/50"
+          className="max-h-64 w-[min(264px,100%)] max-w-full rounded-lg border border-border/50"
           onClick={() => setViewerIdx(0)}
         />
       ) : singleMedia?.mediaKind === "VIDEO" ? (
         <SingleVideoPlayer attachment={singleMedia} />
       ) : media.length > 1 ? (
-        <div className="grid w-[min(300px,72vw)] max-w-full gap-0.5 overflow-hidden rounded-lg border border-border/50">
+        <div className="grid w-[min(300px,100%)] max-w-full gap-0.5 overflow-hidden rounded-lg border border-border/50">
           {chunkAlbumRows(visibleMedia).map((row, rowIdx) => (
             <div key={rowIdx} className="flex gap-0.5">
               {row.map(({ index, item }) => (
@@ -198,7 +198,7 @@ export function ChatMediaCollage({
           key={file.id}
           type="button"
           onClick={() => void handleDownload(file)}
-          className="flex w-[min(288px,72vw)] max-w-full items-center gap-2.5 rounded-lg border border-border/70 bg-card px-2.5 py-2 text-left transition-colors hover:bg-muted/60"
+          className="flex w-[min(288px,100%)] max-w-full items-center gap-2.5 rounded-lg border border-border/70 bg-card px-2.5 py-2 text-left transition-colors hover:bg-muted/60"
         >
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-primary/10 font-mono text-[9.5px] font-bold uppercase text-primary">
             {fileExtension(file.fileName, file.contentType)}

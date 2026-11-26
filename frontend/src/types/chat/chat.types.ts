@@ -47,6 +47,14 @@ export type ChatChannel = {
   updatedAt: string;
 };
 
+export type MyChatChannel = ChatChannel & {
+  clubCode: string;
+  clubName: string;
+  clubLogoUrl?: string | null;
+  lastMessagePreview?: string | null;
+  lastSenderName?: string | null;
+};
+
 export type ChatMessageDeliveryStatus =
   | 'uploading'
   | 'sending'

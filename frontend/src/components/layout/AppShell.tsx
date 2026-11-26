@@ -12,6 +12,8 @@ import {
 } from "@/hooks/notification/useGlobalRealtimeNotifications";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { useI18n } from "@/providers/I18nContext";
+import { ChatDockProvider } from "@/providers/ChatDockProvider";
+import { FloatingChatDock } from "@/components/chat/FloatingChatDock";
 import { AuthModal, AuthModalMode } from "@/components/auth/AuthModal";
 import { SmartAuthPrompt } from "@/components/auth/SmartAuthPrompt";
 import { ChangePasswordModal } from "./ChangePasswordModal";
@@ -181,6 +183,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
     });
 
   return (
+    <ChatDockProvider key={session.user?.id ?? "guest"} userId={session.user?.id}>
     <div className="flex h-svh min-h-0 w-full overflow-hidden bg-background text-foreground">
       <div className="hidden h-full shrink-0 lg:block">
         <SidebarNav
@@ -289,6 +292,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
         </main>
       </div>
 
+      <FloatingChatDock enabled={realtimeReady} />
       <ChangePasswordModal open={passwordOpen} onClose={() => setPasswordOpen(false)} />
       <SmartAuthPrompt
         authenticated={!!session.user}
@@ -303,5 +307,6 @@ function AppShellInner({ children }: { children: ReactNode }) {
         onSuccessRedirect={null}
       />
     </div>
+    </ChatDockProvider>
   );
 }

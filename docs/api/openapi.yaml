@@ -5739,6 +5739,23 @@ paths:
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
+  /chat/my-channels:
+    get:
+      operationId: chat.listMyChannels
+      summary: List all accessible chat channels across clubs for the authenticated user (Messenger Dock)
+      tags: [Chat]
+      x-permission: chat.view
+      x-scope: SELF
+      x-implementation-status: IMPLEMENTED
+      responses:
+        '200':
+          description: Accessible chat channels across active clubs
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/MyChatChannel'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
   /clubs/{clubId}/channels:
     post:
       operationId: chat.createChannel
@@ -8987,6 +9004,27 @@ components:
         name: {type: string}
         channelType: {type: string, enum: [CLUB_GENERAL, DEPARTMENT, EVENT_THREAD]}
         createdAt: {type: string, format: date-time}
+    MyChatChannel:
+      type: object
+      required: [id, clubId, clubCode, clubName, name, channelType, unreadCount, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        clubId: {type: string, format: uuid}
+        clubCode: {type: string}
+        clubName: {type: string}
+        clubLogoUrl: {type: [string, 'null']}
+        departmentId: {type: [string, 'null'], format: uuid}
+        departmentName: {type: [string, 'null']}
+        eventId: {type: [string, 'null'], format: uuid}
+        eventTitle: {type: [string, 'null']}
+        name: {type: string}
+        channelType: {type: string, enum: [CLUB_GENERAL, DEPARTMENT, EVENT_THREAD]}
+        unreadCount: {type: integer, format: int64}
+        lastMessageAt: {type: [string, 'null'], format: date-time}
+        lastMessagePreview: {type: [string, 'null']}
+        lastSenderName: {type: [string, 'null']}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: [string, 'null'], format: date-time}
     SendChatMessageRequest:
       type: object
       properties:

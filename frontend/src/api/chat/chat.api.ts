@@ -7,6 +7,7 @@ import type {
   ChatChannel,
   ChatMessage,
   ChatQuickReply,
+  MyChatChannel,
 } from '@/types/chat/chat.types';
 
 export type SendMessageInput =
@@ -26,6 +27,7 @@ export type QuickReplyInput = {
 };
 
 export const chatApi = {
+  myChannels: () => api<MyChatChannel[]>(API_ROUTES.channels.myChannels),
   clubChannels: (clubId: string) => api<ChatChannel[]>(API_ROUTES.clubs.channels(clubId)),
   createChannel: (
     clubId: string,

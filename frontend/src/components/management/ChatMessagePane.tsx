@@ -87,7 +87,7 @@ export function ChatMessagePane(props: ChatMessagePaneProps) {
   const [summaryChannelId, setSummaryChannelId] = useState("");
   const [highlightedId, setHighlightedId] = useState("");
   const [draggingOver, setDraggingOver] = useState(false);
-  const { config: appearance, update: updateAppearance, reset: resetAppearance } = useChatAppearance();
+  const { config: appearance, update: updateAppearance, reset: resetAppearance } = useChatAppearance(activeChannel?.id);
 
   const hasUnreadBelow = unreadChannelId === channelKey;
   const showJumpBtn = jumpChannelId === channelKey;

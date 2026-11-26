@@ -10,12 +10,14 @@ import com.vju.club.dto.request.UpdateChatMessageRequest;
 import com.vju.club.dto.response.AiSummaryResponse;
 import com.vju.club.dto.response.ChatChannelResponse;
 import com.vju.club.dto.response.ChatMessageResponse;
+import com.vju.club.dto.response.MyChatChannelResponse;
 import com.vju.club.dto.response.PageResponse;
 import com.vju.club.security.Actor;
 import com.vju.club.service.ChatService;
 import com.vju.club.service.impl.ChatModerationService;
 import com.vju.club.service.impl.ChatPinService;
 import com.vju.club.service.impl.ChatReactionService;
+import com.vju.club.service.impl.MyChatChannelsQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -44,9 +46,16 @@ import java.util.UUID;
 @Tag(name = "Chat & AI Assistant", description = "Kênh trao đổi nội bộ CLB/Ban/Sự kiện qua WebSocket STOMP thời gian thực, đính kèm tài liệu kho tập trung và AI Bot tóm tắt.")
 public class ChatController {
     private final ChatService chatService;
+    private final MyChatChannelsQueryService myChatChannelsQueryService;
     private final ChatModerationService chatModerationService;
     private final ChatPinService chatPinService;
     private final ChatReactionService chatReactionService;
+
+    @GetMapping(ApiPaths.MY_CHAT_CHANNELS)
+    @Operation(summary = "Danh sách kênh chat tổng hợp trên mọi CLB mà người dùng hiện tại được truy cập (Messenger Dock)")
+    public List<MyChatChannelResponse> listMyChannels(Actor actor) {
+        return myChatChannelsQueryService.listMyChannels(actor);
+    }
 
     @PostMapping(ApiPaths.CLUB_CHANNELS)
     @Operation(summary = "Tạo kênh trao đổi nội bộ CLB, Ban hoặc Sự kiện")

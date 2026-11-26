@@ -47,6 +47,7 @@ export const qk = {
   myApplications: key("my-applications"),
   myCalendar: key("my-calendar"),
   myCertificates: key("my-certificates"),
+  myChatChannels: key("my-chat-channels"),
   myEventRegistrations: key("my-event-registrations"),
   myMemberships: key("my-memberships"),
   myTasks: key("my-tasks"),

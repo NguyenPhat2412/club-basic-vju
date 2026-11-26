@@ -13,6 +13,13 @@ import {
   type ChatWallpaperKey,
 } from "@/forms/chat/chat-appearance";
 import { cn } from "@/lib/utils";
+import type { FloatingChatSize } from "@/providers/ChatDockProvider";
+
+const FLOATING_SIZE_OPTIONS: { key: FloatingChatSize; label: string }[] = [
+  { key: "compact", label: "Gọn" },
+  { key: "medium", label: "Vừa" },
+  { key: "large", label: "Lớn" },
+];
 
 const WALLPAPER_OPTIONS: { key: ChatWallpaperKey; label: string }[] = [
   { key: "dots", label: "Chấm bi" },
@@ -42,10 +49,16 @@ export function ChatAppearancePopover({
   config,
   onUpdate,
   onReset,
+  iconOnly = false,
+  floatingSize,
+  onFloatingSizeChange,
 }: {
   config: ChatAppearanceConfig;
   onUpdate: (patch: Partial<ChatAppearanceConfig>) => void;
   onReset: () => void;
+  iconOnly?: boolean;
+  floatingSize?: FloatingChatSize;
+  onFloatingSizeChange?: (size: FloatingChatSize) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -85,7 +98,7 @@ export function ChatAppearancePopover({
   };
 
   return (
-    <div ref={wrapRef} className="relative">
+    <div ref={wrapRef} className={iconOnly ? "static" : "relative"}>
       <button
         type="button"
         title="Tuỳ chỉnh giao diện chat"
@@ -93,21 +106,31 @@ export function ChatAppearancePopover({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "inline-flex h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-semibold transition-colors",
+          "inline-flex h-7 items-center justify-center gap-1 rounded-lg transition-colors",
+          iconOnly ? "w-7" : "border px-2 text-[11px] font-semibold",
           open
-            ? "border-primary/35 bg-primary/10 text-primary"
-            : "border-border/70 bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+            ? iconOnly
+              ? "bg-primary/10 text-primary"
+              : "border-primary/35 bg-primary/10 text-primary"
+            : iconOnly
+              ? "text-slate-500 hover:bg-slate-100 hover:text-primary"
+              : "border-border/70 bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
         )}
       >
-        <Palette size={12.5} className={open ? "text-primary" : undefined} />
-        <span className="hidden sm:inline">Giao diện</span>
+        <Palette size={iconOnly ? 14 : 12.5} className={open ? "text-primary" : undefined} />
+        {!iconOnly && <span className="hidden sm:inline">Giao diện</span>}
       </button>
 
       {open && (
         <div
           role="dialog"
           aria-label="Tuỳ chỉnh giao diện chat"
-          className="tg-pop-in absolute top-full right-0 z-50 mt-1.5 max-h-[min(520px,calc(100vh-140px))] w-[292px] space-y-3 overflow-y-auto rounded-2xl border border-border bg-card/98 p-3.5 text-xs shadow-xl backdrop-blur-xs"
+          className={cn(
+            "tg-pop-in absolute top-full z-50 mt-1.5 space-y-3 overflow-y-auto rounded-2xl border border-border bg-card/98 p-3.5 text-xs shadow-xl backdrop-blur-xs",
+            iconOnly
+              ? "inset-x-2 max-h-[368px] w-auto"
+              : "right-0 max-h-[min(520px,calc(100vh-140px))] w-[292px] max-w-[calc(100vw-24px)]",
+          )}
         >
           <div className="flex items-center justify-between border-b border-border/60 pb-2">
             <span className="font-bold text-foreground">Tuỳ chỉnh giao diện</span>
@@ -119,6 +142,27 @@ export function ChatAppearancePopover({
               <RotateCcw size={11} /> Mặc định
             </button>
           </div>
+
+          {floatingSize && onFloatingSizeChange && (
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold text-muted-foreground">Kích thước khung chat</p>
+              <div className="grid grid-cols-3 gap-1 rounded-lg border border-border/70 bg-muted/40 p-0.5">
+                {FLOATING_SIZE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => onFloatingSizeChange(opt.key)}
+                    className={cn(
+                      "rounded-md px-2 py-1 text-[11px] font-semibold transition-all",
+                      floatingSize === opt.key ? "bg-card text-primary shadow-2xs" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <p className="text-[11px] font-semibold text-muted-foreground">Hoạ tiết nền</p>

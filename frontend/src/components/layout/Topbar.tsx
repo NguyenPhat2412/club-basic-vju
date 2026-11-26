@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronDown, KeyRound, LogOut, Menu, Users } from "lucide-react";
 import type { NavSection } from "@/config/navigation";
 import { UnitSwitcher } from "@/components/layout/UnitSwitcher";
+import { TopbarChatMenu } from "@/components/chat/TopbarChatMenu";
 import { NotificationBellDrawer } from "@/components/notification/NotificationBellDrawer";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { UserAvatar } from "@/components/user/UserAvatar";
@@ -53,7 +54,7 @@ export function Topbar({
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="relative z-40 flex h-11 w-full min-w-0 max-w-full shrink-0 select-none items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 sm:px-4">
+    <header className="relative z-50 flex h-11 w-full min-w-0 max-w-full shrink-0 select-none items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 sm:px-4">
       {/* Left: Mobile menu + Page Title */}
       <div className="flex min-w-0 items-center gap-2">
         <button
@@ -80,6 +81,8 @@ export function Topbar({
       {/* Right: Unit Switcher + Notifications + Lang + User Pill */}
       <div className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
         {authenticated && <UnitSwitcher compact />}
+
+        {authenticated && <TopbarChatMenu size="sm" />}
 
         {authenticated && <NotificationBellDrawer active={notificationsActive} size="sm" />}
 

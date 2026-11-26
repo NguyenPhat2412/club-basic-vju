@@ -99,6 +99,7 @@ export const API_ROUTES = {
     downloadUrl: (id: string) => `/documents/${id}/download-url`,
   },
   channels: {
+    myChannels: '/chat/my-channels',
     messages: (channelId: string) => `/channels/${channelId}/messages`,
     messageItem: (channelId: string, messageId: string) =>
       `/channels/${channelId}/messages/${messageId}`,

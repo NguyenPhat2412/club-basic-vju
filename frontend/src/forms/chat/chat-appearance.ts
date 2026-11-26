@@ -126,36 +126,42 @@ function subscribeAppearance(cb: () => void) {
   };
 }
 
-function readSnapshot(): string {
+function storageKeyFor(channelId?: string): string {
+  return channelId ? `${STORAGE_KEY}:${channelId}` : STORAGE_KEY;
+}
+
+function readSnapshot(key: string): string {
   try {
-    return window.localStorage.getItem(STORAGE_KEY) || DEFAULT_JSON;
+    return window.localStorage.getItem(key) || DEFAULT_JSON;
   } catch {
     return DEFAULT_JSON;
   }
 }
 
-export function useChatAppearance() {
-  const raw = useSyncExternalStore(subscribeAppearance, readSnapshot, () => DEFAULT_JSON);
+export function useChatAppearance(channelId?: string) {
+  const key = storageKeyFor(channelId);
+  const getSnapshot = useCallback(() => readSnapshot(key), [key]);
+  const raw = useSyncExternalStore(subscribeAppearance, getSnapshot, () => DEFAULT_JSON);
   const config = parseChatAppearance(raw);
 
   const update = useCallback((patch: Partial<ChatAppearanceConfig>) => {
-    const next: ChatAppearanceConfig = { ...parseChatAppearance(readSnapshot()), ...patch };
+    const next: ChatAppearanceConfig = { ...parseChatAppearance(readSnapshot(key)), ...patch };
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      window.localStorage.setItem(key, JSON.stringify(next));
       window.dispatchEvent(new Event(SYNC_EVENT));
     } catch {
       // ignore storage quota errors
     }
-  }, []);
+  }, [key]);
 
   const reset = useCallback(() => {
     try {
-      window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem(key);
       window.dispatchEvent(new Event(SYNC_EVENT));
     } catch {
       // ignore storage errors
     }
-  }, []);
+  }, [key]);
 
   return { config, update, reset };
 }

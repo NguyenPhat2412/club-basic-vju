@@ -20,6 +20,9 @@ public interface ClubRepository extends JpaRepository<Club, UUID>, JpaSpecificat
 
     Optional<Club> findByIdAndStatus(UUID id, ClubStatus status);
 
+    @Query("SELECT c.id FROM Club c WHERE c.status = com.vju.club.enums.ClubStatus.ACTIVE ORDER BY c.name ASC")
+    List<UUID> findActiveIds();
+
     @Query("SELECT DISTINCT trim(c.activityField) FROM Club c "
             + "WHERE c.status = com.vju.club.enums.ClubStatus.ACTIVE "
             + "AND c.activityField IS NOT NULL AND trim(c.activityField) <> '' "

@@ -171,6 +171,8 @@ export function useGlobalRealtimeNotifications({
         });
       });
 
+      queryClient.invalidateQueries({ queryKey: qk.myChatChannels() });
+
       const senderLabel = event.actorName || incoming.senderFullName || "Tin nhắn mới";
       const channelLabel = event.channel?.name ? ` · #${event.channel.name}` : "";
       const preview = incoming.content?.trim()
@@ -203,6 +205,7 @@ export function useGlobalRealtimeNotifications({
         if (isReconnect) {
           queryClient.invalidateQueries({ queryKey: qk.unreadSummary() });
           queryClient.invalidateQueries({ queryKey: qk.notifications() });
+          queryClient.invalidateQueries({ queryKey: qk.myChatChannels() });
         }
       },
     });

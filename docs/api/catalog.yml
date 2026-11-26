@@ -902,6 +902,13 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: task.verify
+- method: GET
+  path: /api/v1/chat/my-channels
+  module: chat
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: chat.view
 - method: POST
   path: /api/v1/clubs/{clubId}/channels
   module: chat

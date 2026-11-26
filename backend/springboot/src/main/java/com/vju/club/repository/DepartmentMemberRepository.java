@@ -41,4 +41,8 @@ public interface DepartmentMemberRepository extends JpaRepository<DepartmentMemb
             + "AND dm.membership.user.id = :userId "
             + "AND dm.membership.status = com.vju.club.enums.MembershipStatus.ACTIVE")
     List<UUID> findActiveDepartmentIdsInClub(@Param("clubId") UUID clubId, @Param("userId") UUID userId);
+
+    @Query("SELECT dm.department.id FROM DepartmentMember dm WHERE dm.membership.user.id = :userId "
+            + "AND dm.membership.status = com.vju.club.enums.MembershipStatus.ACTIVE")
+    List<UUID> findActiveDepartmentIdsByUserId(@Param("userId") UUID userId);
 }

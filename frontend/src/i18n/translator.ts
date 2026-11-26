@@ -5,6 +5,7 @@ import type {
   TranslationParams,
 } from '@/types';
 import { getCachedAutoTranslation } from './auto-translate';
+import { createChatDynamicPatterns, type PatternRule } from './chat-patterns';
 import { defaultLocale, normalizeLocale } from './config';
 import { CORE_MESSAGES } from './messages-core';
 import { PHRASES_EN_CORE } from './phrases-en';
@@ -80,13 +81,8 @@ export function translateKey(
   return interpolateMessage(localized, params);
 }
 
-interface PatternRule {
-  pattern: RegExp;
-  en: (...matches: string[]) => string;
-  ja: (...matches: string[]) => string;
-}
-
 const DYNAMIC_PATTERNS: PatternRule[] = [
+  ...createChatDynamicPatterns((text, loc) => translateUiText(text, loc)),
   {
     pattern: /^Tất cả\s*\((\d+)\)$/i,
     en: (_, count) => `All (${count})`,
@@ -116,41 +112,6 @@ const DYNAMIC_PATTERNS: PatternRule[] = [
     pattern: /^Tệp phiên bản mới\s*\(\.([a-z0-9]+)\)$/i,
     en: (_, ext) => `New Version File (.${ext})`,
     ja: (_, ext) => `新バージョンファイル (.${ext})`,
-  },
-  {
-    pattern: /^Đã xem\s*\((\d+)\)$/i,
-    en: (_, count) => `Seen (${count})`,
-    ja: (_, count) => `既読 (${count})`,
-  },
-  {
-    pattern: /^Đã xem\s*·\s*(.+)$/i,
-    en: (_, name) => `Seen · ${name}`,
-    ja: (_, name) => `既読 · ${name}`,
-  },
-  {
-    pattern: /^Gửi lỗi:\s*(.+)$/i,
-    en: (_, err) => `Failed: ${translateUiText(err, 'en')}`,
-    ja: (_, err) => `送信失敗: ${translateUiText(err, 'ja')}`,
-  },
-  {
-    pattern: /^Đã gửi lên máy chủ lúc\s+(.+)$/i,
-    en: (_, when) => `Sent to server at ${when}`,
-    ja: (_, when) => `サーバー送信日時: ${when}`,
-  },
-  {
-    pattern: /^Đã nhận lúc\s+(.+)$/i,
-    en: (_, when) => `Delivered at ${when}`,
-    ja: (_, when) => `受信日時: ${when}`,
-  },
-  {
-    pattern: /^Đã xem bởi\s+(.+?)(?:\s+lúc\s+(.+))?$/i,
-    en: (_, who, when) => (when ? `Seen by ${who} at ${when}` : `Seen by ${who}`),
-    ja: (_, who, when) => (when ? `${who} が既読 (${when})` : `${who} が既読`),
-  },
-  {
-    pattern: /^Đã thả\s+(\S+):\s*(.+)$/i,
-    en: (_, emoji, who) => `Reacted ${emoji}: ${who}`,
-    ja: (_, emoji, who) => `${emoji} でリアクション: ${who}`,
   },
   {
     pattern: /^XEM TẤT CẢ CÂU LẠC BỘ(?:\s*\((\d+)\))?$/i,
@@ -311,16 +272,6 @@ const DYNAMIC_PATTERNS: PatternRule[] = [
     pattern: /^Ảnh bìa(?:\s+câu lạc bộ)?\s+(.+)$/i,
     en: (_, club) => `Cover image — ${translateUiText(club, 'en')}`,
     ja: (_, club) => `${translateUiText(club, 'ja')} カバー画像`,
-  },
-  {
-    pattern: /^\+(\d+)\s+ghim$/i,
-    en: (_, count) => `+${count} pinned`,
-    ja: (_, count) => `他 ${count} 件ピン留め`,
-  },
-  {
-    pattern: /^Tin nhắn đã ghim\s*\((\d+)\)$/i,
-    en: (_, count) => `Pinned messages (${count})`,
-    ja: (_, count) => `ピン留めメッセージ (${count})`,
   },
   {
     pattern: /^(\d+)\s+quyền\s+hạn$/i,

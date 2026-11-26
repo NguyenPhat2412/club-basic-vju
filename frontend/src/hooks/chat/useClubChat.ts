@@ -13,6 +13,15 @@ import {
 } from '@/lib/chat-message-cache';
 import type { ChatChannel } from '@/types/chat/chat.types';
 
+export function useMyChatChannels(enabled = true) {
+  return useQuery({
+    queryKey: qk.myChatChannels(),
+    queryFn: () => chatApi.myChannels(),
+    enabled,
+    staleTime: 20_000,
+  });
+}
+
 export function useClubChannels(clubId: string, enabled = true) {
   return useQuery({
     queryKey: qk.clubChannels(clubId),
