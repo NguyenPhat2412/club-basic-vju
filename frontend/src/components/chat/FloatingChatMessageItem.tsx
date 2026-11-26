@@ -28,6 +28,7 @@ type FloatingChatMessageItemProps = {
   groupedNext: boolean;
   isLatestOwn: boolean;
   highlighted: boolean;
+  searchMatch?: boolean;
   appearance: ChatAppearanceConfig;
   canSend: boolean;
   canModerate: boolean;
@@ -51,7 +52,7 @@ function StatusGlyph({ status }: { status: ReturnType<typeof resolveChatMessageS
 
 export function FloatingChatMessageItem({
   message: m, galleryMedia, currentUserId, showDivider, groupedPrev, groupedNext, isLatestOwn,
-  highlighted, appearance, canSend, canModerate, onReply, onToggleReaction,
+  highlighted, searchMatch = false, appearance, canSend, canModerate, onReply, onToggleReaction,
   onTogglePin, onEditMessage, onDeleteMessage, onRetryMessage, onJumpToMessage,
 }: FloatingChatMessageItemProps) {
   const [popupActive, setPopupActive] = useState(false);
@@ -114,7 +115,9 @@ export function FloatingChatMessageItem({
           popupActive && "z-40",
           groupedPrev ? (appearance.density === "compact" ? "mt-0.5" : "mt-1") : "mt-2",
           isMine ? "justify-end" : "justify-start",
-          highlighted && "bg-primary/10 p-1 ring-1 ring-primary/35",
+          highlighted
+            ? "bg-primary/10 p-1 ring-1 ring-primary/35"
+            : searchMatch && "bg-primary/5 p-0.5 ring-1 ring-primary/20",
         )}
       >
         {!isMine && (

@@ -27,7 +27,8 @@ final class TestDatabase {
             container = new PostgreSQLContainer("postgres:16-alpine")
                     .withDatabaseName("club_test")
                     .withUsername("club_test")
-                    .withPassword("club_test_local");
+                    .withPassword("club_test_local")
+                    .withCommand("postgres", "-c", "max_connections=200");
             container.start();
         }
         return container;

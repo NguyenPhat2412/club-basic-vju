@@ -25,6 +25,9 @@ import com.vju.club.security.GoogleIdTokenVerifier;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
 import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 
 @Configuration
 @EnableConfigurationProperties({BootstrapAdminProperties.class, RateLimitProperties.class, AiProperties.class,
@@ -32,7 +35,32 @@ import java.time.Clock;
 public class SecurityBeansConfig {
     @Bean
     Clock applicationClock() {
-        return Clock.systemUTC();
+        // Align to PostgreSQL TIMESTAMPTZ microsecond precision so Linux nanosecond instants
+        // never drift after a database roundtrip (e.g. idempotent timestamp checks).
+        return new MicrosecondClock(Clock.systemUTC());
+    }
+
+    private static final class MicrosecondClock extends Clock {
+        private final Clock delegate;
+
+        private MicrosecondClock(Clock delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return delegate.getZone();
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return new MicrosecondClock(delegate.withZone(zone));
+        }
+
+        @Override
+        public Instant instant() {
+            return delegate.instant().truncatedTo(ChronoUnit.MICROS);
+        }
     }
 
     @Bean

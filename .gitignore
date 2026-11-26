@@ -35,3 +35,6 @@ data/
 
 # Dependencies
 node_modules/
+
+# Local scratch E2E harness
+e2e/

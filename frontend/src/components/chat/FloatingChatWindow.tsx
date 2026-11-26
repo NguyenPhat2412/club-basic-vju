@@ -1,46 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Hash, Images, Maximize2, Minus, X } from "lucide-react";
 import { chatApi } from "@/api/chat/chat.api";
 import { useSession } from "@/hooks/useSession";
 import { useChannelMessages, useChannelPinnedMessages } from "@/hooks/chat/useClubChat";
 import { useChatMessageActions } from "@/hooks/chat/useChatMessageActions";
 import { useChatRealtime } from "@/hooks/chat/useChatRealtime";
 import { useChatMessageSender } from "@/hooks/chat/useChatMessageSender";
-import {
-  CHAT_WALLPAPER_CLASS,
-  isDifferentCalendarDay,
-  useChatAppearance,
-} from "@/forms/chat/chat-appearance";
-import {
-  areMessagesInSameDisplayGroup,
-  filterChannelMessages,
-} from "@/lib/chat-message-cache";
-import { resolveMediaUrl } from "@/lib/media";
+import { useChatAppearance } from "@/forms/chat/chat-appearance";
+import { useChatChannelMuted } from "@/forms/chat/chat-mute";
+import { filterChannelMessages } from "@/lib/chat-message-cache";
 import { qk } from "@/lib/api/query-keys";
 import { FLOATING_CHAT_SIZE_PRESETS, useChatDock } from "@/providers/ChatDockProvider";
-import { ChatAppearancePopover } from "@/components/management/ChatAppearancePopover";
 import { ChatMediaLightbox } from "@/components/management/ChatMediaLightbox";
 import { ChatPinnedBar } from "@/components/management/ChatPinnedBar";
-import { FloatingChatAiPopover } from "@/components/chat/FloatingChatAiPopover";
 import { FloatingChatComposer } from "@/components/chat/FloatingChatComposer";
-import { FloatingChatMessageItem } from "@/components/chat/FloatingChatMessageItem";
+import { FloatingChatHeader } from "@/components/chat/FloatingChatHeader";
+import { FloatingChatMessageList } from "@/components/chat/FloatingChatMessageList";
+import { FloatingChatSearchBar } from "@/components/chat/FloatingChatSearchBar";
+import { describeError } from "@/components/shared/ListPage";
 import { toast } from "@/components/ui/toast";
 import { cn, saveBlob } from "@/lib/utils";
 import type { ChatAttachment, ChatMessage, MyChatChannel } from "@/types/chat/chat.types";
 
-const TIME_DIVIDER_GAP_MS = 15 * 60_000;
-
-function shouldShowTimeDivider(prevIso: string | undefined, currIso: string): boolean {
-  if (!prevIso) return true;
-  if (isDifferentCalendarDay(prevIso, currIso)) return true;
-  const a = new Date(prevIso).getTime();
-  const b = new Date(currIso).getTime();
-  return Number.isFinite(a) && Number.isFinite(b) && b - a >= TIME_DIVIDER_GAP_MS;
-}
+const OLDER_PAGE_SIZE = 30;
 
 export function FloatingChatWindow({
   channel,
@@ -58,20 +43,30 @@ export function FloatingChatWindow({
   const userId = session.user?.id;
   const canSend = session.canInClub("chat.send", channel.clubId);
   const canSummarize = session.canInClub("chat.summarize", channel.clubId);
+  const canViewClubDocs = session.canInClub("document.view", channel.clubId);
   const canModerate = session.canClubWide("club.update", channel.clubId) || canSummarize;
   const { config: appearance, update: updateAppearance, reset: resetAppearance } = useChatAppearance(channel.id);
+  const { muted, toggle: toggleMute } = useChatChannelMuted(channel.id);
 
-  const [logoFailed, setLogoFailed] = useState(false);
   const [draggingOver, setDraggingOver] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchIdx, setSearchIdx] = useState(0);
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
   const [highlightedId, setHighlightedId] = useState("");
-  const [, setOlderNoop] = useState<Record<string, ChatMessage[]>>({});
+  const [olderByChannel, setOlderByChannel] = useState<Record<string, ChatMessage[]>>({});
+  const [exhaustedChannels, setExhaustedChannels] = useState<Record<string, boolean>>({});
+  const [loadingOlder, setLoadingOlder] = useState(false);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
   const listEndRef = useRef<HTMLDivElement>(null);
+  const prependHeightRef = useRef<number | null>(null);
+  const prevNewestIdRef = useRef("");
   const highlightTimerRef = useRef<number | null>(null);
   const lastReadMarkedRef = useRef("");
 
-  const messagesQuery = useChannelMessages(channel.id, 30, true, userId);
+  const messagesQuery = useChannelMessages(channel.id, OLDER_PAGE_SIZE, true, userId);
   const pinnedQuery = useChannelPinnedMessages(channel.id, true, userId);
   const { status: wsStatus, typingUsers, sendTyping } = useChatRealtime({
     clubId: channel.clubId,
@@ -92,17 +87,25 @@ export function FloatingChatWindow({
     activeChannelId: channel.id,
     userId,
     userFullName: session.user?.fullName || session.user?.email,
-    setOlderByChannel: setOlderNoop,
+    setOlderByChannel,
     onNotice: (msg) => { if (msg?.trim()) toast.success(msg); },
     onError: (msg) => { if (msg?.trim()) toast.error(msg); },
   });
 
-  const items = useMemo(() => {
-    const raw = filterChannelMessages(messagesQuery.data?.items ?? [], channel.id);
-    return [...raw].reverse();
-  }, [messagesQuery.data?.items, channel.id]);
+  const mergedDesc = useMemo(() => {
+    const primaryDesc = filterChannelMessages(messagesQuery.data?.items ?? [], channel.id);
+    const extraOlder = filterChannelMessages(olderByChannel[channel.id], channel.id);
+    const seen = new Set(primaryDesc.map((m) => m.id));
+    return [...primaryDesc, ...extraOlder.filter((m) => !seen.has(m.id))];
+  }, [messagesQuery.data?.items, olderByChannel, channel.id]);
 
+  const items = useMemo(() => [...mergedDesc].reverse(), [mergedDesc]);
   const newestId = items[items.length - 1]?.id ?? "";
+  const hasMore =
+    !exhaustedChannels[channel.id] &&
+    mergedDesc.length > 0 &&
+    mergedDesc.length < (messagesQuery.data?.total ?? 0);
+
   const hasUserMessages = useMemo(() => items.some((m) => m.senderType === "USER"), [items]);
   const channelMedia = useMemo<ChatAttachment[]>(
     () => items.flatMap((m) => (m.attachments ?? []).filter((a) => a.mediaKind === "IMAGE" || a.mediaKind === "VIDEO")),
@@ -115,9 +118,37 @@ export function FloatingChatWindow({
     return -1;
   }, [items, userId]);
 
-  useEffect(() => {
-    listEndRef.current?.scrollIntoView({ behavior: appearance.animations ? "smooth" : "auto", block: "end" });
-  }, [newestId, items.length, appearance.animations]);
+  const searchMatches = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!searchOpen || !q) return [];
+    const matchedIds: string[] = [];
+    for (let i = items.length - 1; i >= 0; i -= 1) {
+      const m = items[i]!;
+      const haystack = `${m.content ?? ""} ${m.senderFullName ?? ""} ${m.documentName ?? ""}`.toLowerCase();
+      if (haystack.includes(q)) matchedIds.push(m.id);
+    }
+    return matchedIds;
+  }, [items, searchOpen, searchQuery]);
+
+  const searchMatchSet = useMemo(() => new Set(searchMatches), [searchMatches]);
+  const activeSearchIdx = searchMatches.length > 0 ? Math.min(searchIdx, searchMatches.length - 1) : 0;
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el && prependHeightRef.current !== null && !loadingOlder) {
+      el.scrollTop = Math.max(0, el.scrollHeight - prependHeightRef.current);
+      prependHeightRef.current = null;
+      return;
+    }
+    if (newestId && prevNewestIdRef.current !== newestId) {
+      const isInitial = !prevNewestIdRef.current;
+      prevNewestIdRef.current = newestId;
+      listEndRef.current?.scrollIntoView({
+        behavior: isInitial || !appearance.animations ? "auto" : "smooth",
+        block: "end",
+      });
+    }
+  }, [newestId, items.length, loadingOlder, appearance.animations]);
 
   useEffect(() => {
     if (!newestId || lastReadMarkedRef.current === newestId) return;
@@ -143,6 +174,44 @@ export function FloatingChatWindow({
     highlightTimerRef.current = window.setTimeout(() => setHighlightedId(""), 2000);
   };
 
+  const handleLoadOlder = async () => {
+    const oldest = mergedDesc.filter((m) => !m.optimistic).at(-1);
+    if (!oldest || loadingOlder) return;
+    prependHeightRef.current = scrollRef.current?.scrollHeight ?? null;
+    setLoadingOlder(true);
+    try {
+      const page = await chatApi.channelMessages(channel.id, 0, OLDER_PAGE_SIZE, oldest.id);
+      const safeItems = filterChannelMessages(page.items, channel.id);
+      if (!safeItems.length) {
+        setExhaustedChannels((prev) => ({ ...prev, [channel.id]: true }));
+      } else {
+        setOlderByChannel((prev) => {
+          const existing = prev[channel.id] ?? [];
+          const seen = new Set(existing.map((m) => m.id));
+          return {
+            ...prev,
+            [channel.id]: [...existing, ...safeItems.filter((m) => !seen.has(m.id))],
+          };
+        });
+        if (safeItems.length < OLDER_PAGE_SIZE) {
+          setExhaustedChannels((prev) => ({ ...prev, [channel.id]: true }));
+        }
+      }
+    } catch (e) {
+      prependHeightRef.current = null;
+      toast.error(describeError(e));
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
+
+  const stepSearch = (delta: number) => {
+    if (!searchMatches.length) return;
+    const next = (activeSearchIdx + delta + searchMatches.length) % searchMatches.length;
+    setSearchIdx(next);
+    jumpToMessage(searchMatches[next]!);
+  };
+
   const handleSend = (overrideText?: string) => {
     if (!canSend) return;
     sender.handleDispatchSend(overrideText);
@@ -151,7 +220,6 @@ export function FloatingChatWindow({
     }, 450);
   };
 
-  const clubLogo = logoFailed ? null : resolveMediaUrl(channel.clubLogoUrl);
   const windowSize = dock?.windowSize ?? "compact";
   const sizeClass = FLOATING_CHAT_SIZE_PRESETS[windowSize].className;
 
@@ -182,100 +250,42 @@ export function FloatingChatWindow({
         </div>
       )}
 
-      <header className="relative z-40 flex items-center justify-between gap-1.5 rounded-t-2xl border-b border-slate-200 bg-white px-2.5 py-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="relative shrink-0">
-            {clubLogo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={clubLogo}
-                alt={channel.clubName}
-                referrerPolicy="no-referrer"
-                onError={() => setLogoFailed(true)}
-                className="size-8 rounded-full border border-slate-200 object-cover"
-              />
-            ) : (
-              <span data-no-i18n="true" className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-[10.5px] font-extrabold text-primary">
-                {channel.clubCode.slice(0, 3).toUpperCase()}
-              </span>
-            )}
-            <span
-              title={wsStatus === "connected" ? "Trực tuyến" : "Đang kết nối…"}
-              className={cn(
-                "absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-white",
-                wsStatus === "connected" ? "bg-primary" : "bg-slate-400",
-              )}
-            />
-          </div>
-          <div className="min-w-0 leading-tight">
-            <p className="flex items-center gap-1 truncate text-xs font-extrabold text-slate-900">
-              <Hash size={11} className="shrink-0 text-primary" />
-              <span data-no-i18n="true" className="truncate">{channel.name}</span>
-            </p>
-            <p data-no-i18n="true" className="truncate text-[10.5px] text-slate-500">
-              {channel.clubCode} · {channel.clubName}
-            </p>
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-0.5">
-          {channelMedia.length > 0 && (
-            <button
-              type="button"
-              title="Ảnh & video trong đoạn chat"
-              aria-label="Ảnh & video trong đoạn chat"
-              onClick={() => setGalleryIndex(channelMedia.length - 1)}
-              className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-primary"
-            >
-              <Images size={13.5} />
-            </button>
-          )}
-          <FloatingChatAiPopover
-            channelId={channel.id}
-            canSummarize={canSummarize}
-            hasUserMessages={hasUserMessages}
-            open={aiOpen}
-            onOpenChange={setAiOpen}
-          />
-          <ChatAppearancePopover
-            iconOnly
-            config={appearance}
-            onUpdate={updateAppearance}
-            onReset={resetAppearance}
-            floatingSize={windowSize}
-            onFloatingSizeChange={dock?.setWindowSize}
-          />
-          <button
-            type="button"
-            title="Mở toàn màn hình"
-            aria-label="Mở toàn màn hình"
-            onClick={() => {
-              onClose();
-              router.push(`/management?tab=chat&clubId=${encodeURIComponent(channel.clubId)}&channelId=${encodeURIComponent(channel.id)}`);
-            }}
-            className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-primary"
-          >
-            <Maximize2 size={13} />
-          </button>
-          <button
-            type="button"
-            title="Thu gọn thành bong bóng"
-            aria-label="Thu gọn thành bong bóng"
-            onClick={onMinimize}
-            className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-          >
-            <Minus size={14} />
-          </button>
-          <button
-            type="button"
-            title="Đóng khung chat"
-            aria-label="Đóng khung chat"
-            onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-destructive"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      </header>
+      <FloatingChatHeader
+        channel={channel}
+        wsStatus={wsStatus}
+        muted={muted}
+        onToggleMute={() => {
+          const next = toggleMute();
+          toast.info(next ? "Đã tắt thông báo kênh" : "Đã bật thông báo kênh");
+        }}
+        searchOpen={searchOpen}
+        onToggleSearch={() => {
+          setSearchOpen((prev) => {
+            if (prev) {
+              setSearchQuery("");
+              setSearchIdx(0);
+            }
+            return !prev;
+          });
+        }}
+        channelMediaCount={channelMedia.length}
+        onOpenGallery={() => setGalleryIndex(channelMedia.length - 1)}
+        canSummarize={canSummarize}
+        hasUserMessages={hasUserMessages}
+        aiOpen={aiOpen}
+        onAiOpenChange={setAiOpen}
+        appearance={appearance}
+        onUpdateAppearance={updateAppearance}
+        onResetAppearance={resetAppearance}
+        windowSize={windowSize}
+        onWindowSizeChange={dock?.setWindowSize}
+        onExpandFull={() => {
+          onClose();
+          router.push(`/management?tab=chat&clubId=${encodeURIComponent(channel.clubId)}&channelId=${encodeURIComponent(channel.id)}`);
+        }}
+        onMinimize={onMinimize}
+        onClose={onClose}
+      />
 
       <ChatPinnedBar
         pinnedMessages={pinnedQuery.data ?? []}
@@ -287,87 +297,70 @@ export function FloatingChatWindow({
         }}
       />
 
-      <div
-        className={cn(
-          "relative flex min-h-0 flex-1 flex-col overflow-hidden",
-          !appearance.backgroundImage && CHAT_WALLPAPER_CLASS[appearance.wallpaper],
-        )}
-        style={
-          appearance.backgroundImage
-            ? { backgroundImage: `url("${appearance.backgroundImage}")`, backgroundSize: "cover", backgroundPosition: "center" }
-            : undefined
-        }
-      >
-        {appearance.backgroundImage && (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0"
-            style={{ backgroundColor: `rgba(255,255,255,${(100 - appearance.backgroundDim) / 100})` }}
-          />
-        )}
-        <div data-chat-scroll="true" className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-2.5 py-2.5">
-          {messagesQuery.isPending && !items.length ? (
-            <div className="space-y-2 pt-2">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className={cn("h-9 w-2/3 animate-pulse rounded-2xl bg-slate-200/70", i === 2 && "ml-auto")} />
-              ))}
-            </div>
-          ) : !items.length ? (
-            <div className="flex h-64 flex-col items-center justify-center px-4 text-center">
-              <p className="text-xs font-bold text-slate-700">Chưa có tin nhắn nào</p>
-              <p className="mt-1 text-[11px] text-slate-500">Gửi tin nhắn hoặc ảnh để bắt đầu trao đổi.</p>
-            </div>
-          ) : (
-            items.map((m, idx) => {
-              const prev = idx > 0 ? items[idx - 1] : undefined;
-              const next = idx < items.length - 1 ? items[idx + 1] : undefined;
-              const showDivider = shouldShowTimeDivider(prev?.createdAt, m.createdAt);
-              const groupedPrev = !showDivider && areMessagesInSameDisplayGroup(prev, m);
-              const groupedNext = next
-                ? !shouldShowTimeDivider(m.createdAt, next.createdAt) && areMessagesInSameDisplayGroup(m, next)
-                : false;
-              return (
-                <FloatingChatMessageItem
-                  key={m.clientTempId ?? m.id}
-                  message={m}
-                  galleryMedia={channelMedia}
-                  currentUserId={userId}
-                  showDivider={showDivider}
-                  groupedPrev={groupedPrev}
-                  groupedNext={groupedNext}
-                  isLatestOwn={idx === latestOwnIndex}
-                  highlighted={highlightedId === m.id}
-                  appearance={appearance}
-                  canSend={canSend}
-                  canModerate={canModerate}
-                  onReply={(msg) => sender.setReplyTo(msg)}
-                  onToggleReaction={actions.toggleReactionMessage}
-                  onTogglePin={(msg) => actions.togglePinMessage(msg)}
-                  onEditMessage={actions.editMessage}
-                  onDeleteMessage={actions.deleteMessage}
-                  onRetryMessage={sender.handleRetryMessage}
-                  onJumpToMessage={jumpToMessage}
-                />
-              );
-            })
-          )}
-          {typingUsers.length > 0 && (
-            <p className="mt-1 px-2 text-[10.5px] italic text-slate-500">
-              {typingUsers.slice(0, 2).join(", ")} đang nhập…
-            </p>
-          )}
-          <div ref={listEndRef} />
-        </div>
-      </div>
+      <FloatingChatSearchBar
+        open={searchOpen}
+        query={searchQuery}
+        onQueryChange={(val) => {
+          setSearchQuery(val);
+          setSearchIdx(0);
+          const q = val.trim().toLowerCase();
+          if (q) {
+            const firstMatch = [...items]
+              .reverse()
+              .find((m) => `${m.content ?? ""} ${m.senderFullName ?? ""} ${m.documentName ?? ""}`.toLowerCase().includes(q));
+            if (firstMatch) jumpToMessage(firstMatch.id);
+          }
+        }}
+        matchCount={searchMatches.length}
+        activeIndex={activeSearchIdx}
+        onPrev={() => stepSearch(-1)}
+        onNext={() => stepSearch(1)}
+        onClose={() => {
+          setSearchOpen(false);
+          setSearchQuery("");
+          setSearchIdx(0);
+        }}
+      />
+
+      <FloatingChatMessageList
+        scrollRef={scrollRef}
+        listEndRef={listEndRef}
+        appearance={appearance}
+        items={items}
+        isPending={messagesQuery.isPending}
+        hasMore={hasMore}
+        loadingOlder={loadingOlder}
+        onLoadOlder={() => void handleLoadOlder()}
+        channelMedia={channelMedia}
+        userId={userId}
+        latestOwnIndex={latestOwnIndex}
+        highlightedId={highlightedId}
+        searchMatchSet={searchMatchSet}
+        typingUsers={typingUsers}
+        canSend={canSend}
+        canModerate={canModerate}
+        onReply={(msg) => sender.setReplyTo(msg)}
+        onToggleReaction={actions.toggleReactionMessage}
+        onTogglePin={(msg) => actions.togglePinMessage(msg)}
+        onEditMessage={actions.editMessage}
+        onDeleteMessage={actions.deleteMessage}
+        onRetryMessage={sender.handleRetryMessage}
+        onJumpToMessage={jumpToMessage}
+      />
 
       <FloatingChatComposer
+        clubId={channel.clubId}
         canSend={canSend}
         canSummarize={canSummarize}
+        canViewClubDocs={canViewClubDocs}
         fontSize={appearance.fontSize}
         content={sender.content}
         onContentChange={sender.setContent}
         replyTo={sender.replyTo}
         onClearReply={() => sender.setReplyTo(null)}
+        attachedDoc={sender.attachedDoc}
+        onSelectDoc={sender.setAttachedDoc}
+        onClearAttachedDoc={() => sender.setAttachedDoc(null)}
         stagedMedia={sender.stagedMedia}
         onAddFiles={sender.handleAddFiles}
         onRemoveStagedMedia={sender.handleRemoveStagedMedia}

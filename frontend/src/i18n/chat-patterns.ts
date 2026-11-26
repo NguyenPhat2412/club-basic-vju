@@ -105,5 +105,10 @@ export function createChatDynamicPatterns(
       en: (_, emoji) => `React ${emoji}`,
       ja: (_, emoji) => `${emoji} でリアクション`,
     },
+    {
+      pattern: /^(\d+)\/(\d+)\s+kết quả$/i,
+      en: (_, current, total) => `${current}/${total} results`,
+      ja: (_, current, total) => `${current}/${total}件`,
+    },
   ];
 }

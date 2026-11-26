@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiModel } from "@/lib/api";
 import { qk } from "@/lib/api/query-keys";
 import { toast } from "@/components/ui/toast";
+import { isChatChannelMuted } from "@/forms/chat/chat-mute";
 import { targetHrefForNotification } from "@/forms/notification/notification-links";
 import { dispatchBackgroundBrowserNotification } from "@/lib/realtime/browser-notifications";
 import { acquireStompConnection } from "@/lib/realtime/stomp-connection";
@@ -110,10 +111,12 @@ export function useGlobalRealtimeNotifications({
         notif.referenceType === "CHAT" &&
         notif.referenceId &&
         getActiveViewedChatChannel() === notif.referenceId;
+      const isMutedChatNotif =
+        notif.referenceType === "CHAT" && isChatChannelMuted(notif.referenceId);
       const suppressDuplicateChatToast =
         notif.referenceType === "CHAT" && Date.now() - lastChatToastAt < 2_500;
 
-      if (!isViewingSameChat && !suppressDuplicateChatToast) {
+      if (!isViewingSameChat && !isMutedChatNotif && !suppressDuplicateChatToast) {
         const go = target ? () => routerRef.current.push(target.href) : undefined;
         toast.info(notif.message, {
           title: notif.title,
@@ -172,6 +175,8 @@ export function useGlobalRealtimeNotifications({
       });
 
       queryClient.invalidateQueries({ queryKey: qk.myChatChannels() });
+
+      if (isChatChannelMuted(event.channelId)) return;
 
       const senderLabel = event.actorName || incoming.senderFullName || "Tin nhắn mới";
       const channelLabel = event.channel?.name ? ` · #${event.channel.name}` : "";

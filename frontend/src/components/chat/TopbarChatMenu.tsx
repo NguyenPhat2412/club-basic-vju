@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ExternalLink, Hash, MessageCircle, Search, X } from "lucide-react";
+import { BellOff, ExternalLink, Hash, MessageCircle, Search, X } from "lucide-react";
 import { useOptionalSession } from "@/hooks/useOptionalSession";
 import { useMyChatChannels } from "@/hooks/chat/useClubChat";
 import { useUnreadNotificationSummary } from "@/hooks/notification/useGlobalRealtimeNotifications";
+import { useMutedChatChannels } from "@/forms/chat/chat-mute";
 import { useChatDock } from "@/providers/ChatDockProvider";
 import { formatChatTimeCompact } from "@/lib/chat-message-cache";
 import { resolveMediaUrl } from "@/lib/media";
@@ -51,6 +52,7 @@ export function TopbarChatMenu({ size = "sm" }: { size?: "sm" | "md" }) {
   const canQuery = Boolean(session.user && !session.mustChangePassword);
   const unreadSummary = useUnreadNotificationSummary(canQuery);
   const channelsQuery = useMyChatChannels(canQuery);
+  const mutedChannels = useMutedChatChannels();
 
   const channels = useMemo(() => channelsQuery.data ?? [], [channelsQuery.data]);
   const channelUnreadSum = useMemo(
@@ -231,6 +233,7 @@ export function TopbarChatMenu({ size = "sm" }: { size?: "sm" | "md" }) {
               <ul className="space-y-0.5">
                 {filtered.map((ch) => {
                   const unread = ch.unreadCount ?? 0;
+                  const isMuted = mutedChannels.has(ch.id);
                   const time = ch.lastMessageAt ? formatChatTimeCompact(ch.lastMessageAt) : "";
                   return (
                     <li key={ch.id}>
@@ -245,6 +248,11 @@ export function TopbarChatMenu({ size = "sm" }: { size?: "sm" | "md" }) {
                             <p className={cn("flex min-w-0 items-center gap-1 truncate text-xs text-slate-900", unread > 0 ? "font-extrabold" : "font-semibold")}>
                               <Hash size={11} className="shrink-0 text-slate-400" />
                               <span data-no-i18n="true" className="truncate">{ch.name}</span>
+                              {isMuted && (
+                                <span title="Đã tắt thông báo kênh" className="inline-flex shrink-0 text-slate-400">
+                                  <BellOff size={10.5} />
+                                </span>
+                              )}
                             </p>
                             {time && (
                               <span className={cn("shrink-0 text-[10px]", unread > 0 ? "font-bold text-primary" : "text-slate-400")}>
