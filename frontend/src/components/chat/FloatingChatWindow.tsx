@@ -152,7 +152,7 @@ export function FloatingChatWindow({
   };
 
   const clubLogo = logoFailed ? null : resolveMediaUrl(channel.clubLogoUrl);
-  const windowSize = dock?.getWindowSize(channel.id) ?? "compact";
+  const windowSize = dock?.windowSize ?? "compact";
   const sizeClass = FLOATING_CHAT_SIZE_PRESETS[windowSize].className;
 
   return (
@@ -242,7 +242,7 @@ export function FloatingChatWindow({
             onUpdate={updateAppearance}
             onReset={resetAppearance}
             floatingSize={windowSize}
-            onFloatingSizeChange={(size) => dock?.setWindowSize(size, channel.id)}
+            onFloatingSizeChange={dock?.setWindowSize}
           />
           <button
             type="button"

@@ -24,7 +24,6 @@ type DockSnapshot = {
   openIds: string[];
   minimizedIds: string[];
   windowSize: FloatingChatSize;
-  windowSizeByChannel: Record<string, FloatingChatSize>;
 };
 
 type ChatDockContextValue = {
@@ -34,8 +33,7 @@ type ChatDockContextValue = {
   pickerOpen: boolean;
   setPickerOpen: (open: boolean) => void;
   togglePicker: () => void;
-  getWindowSize: (channelId: string) => FloatingChatSize;
-  setWindowSize: (size: FloatingChatSize, channelId?: string) => void;
+  setWindowSize: (size: FloatingChatSize) => void;
   openChannel: (channelId: string) => void;
   minimizeChannel: (channelId: string) => void;
   closeChannel: (channelId: string) => void;
@@ -44,17 +42,8 @@ type ChatDockContextValue = {
 
 const ChatDockContext = createContext<ChatDockContextValue | null>(null);
 
-function sanitizeSizeMap(raw: unknown): Record<string, FloatingChatSize> {
-  if (!raw || typeof raw !== "object") return {};
-  const out: Record<string, FloatingChatSize> = {};
-  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-    if (VALID_SIZES.has(v as FloatingChatSize)) out[k] = v as FloatingChatSize;
-  }
-  return out;
-}
-
 function readDockStorage(userId?: string): DockSnapshot {
-  const empty: DockSnapshot = { openIds: [], minimizedIds: [], windowSize: "compact", windowSizeByChannel: {} };
+  const empty: DockSnapshot = { openIds: [], minimizedIds: [], windowSize: "compact" };
   if (typeof window === "undefined" || !userId) return empty;
   try {
     const raw = window.sessionStorage.getItem(`${STORAGE_PREFIX}${userId}`);
@@ -67,7 +56,6 @@ function readDockStorage(userId?: string): DockSnapshot {
       openIds: Array.isArray(parsed.openIds) ? parsed.openIds.slice(0, MAX_OPEN_WINDOWS) : [],
       minimizedIds: Array.isArray(parsed.minimizedIds) ? parsed.minimizedIds.slice(0, MAX_MINIMIZED_HEADS) : [],
       windowSize: size,
-      windowSizeByChannel: sanitizeSizeMap(parsed.windowSizeByChannel),
     };
   } catch {
     return empty;
@@ -93,19 +81,9 @@ export function ChatDockProvider({
     }
   }, [dockState, userId]);
 
-  const getWindowSize = useCallback(
-    (channelId: string): FloatingChatSize =>
-      dockState.windowSizeByChannel[channelId] ?? dockState.windowSize,
-    [dockState.windowSize, dockState.windowSizeByChannel],
-  );
-
-  const setWindowSize = useCallback((windowSize: FloatingChatSize, channelId?: string) => {
+  const setWindowSize = useCallback((windowSize: FloatingChatSize) => {
     if (!VALID_SIZES.has(windowSize)) return;
-    setDockState((prev) =>
-      channelId
-        ? { ...prev, windowSizeByChannel: { ...prev.windowSizeByChannel, [channelId]: windowSize } }
-        : { ...prev, windowSize },
-    );
+    setDockState((prev) => ({ ...prev, windowSize }));
   }, []);
 
   const openChannel = useCallback((channelId: string) => {
@@ -170,7 +148,6 @@ export function ChatDockProvider({
       pickerOpen,
       setPickerOpen,
       togglePicker,
-      getWindowSize,
       setWindowSize,
       openChannel,
       minimizeChannel,
@@ -181,7 +158,6 @@ export function ChatDockProvider({
       dockState,
       pickerOpen,
       togglePicker,
-      getWindowSize,
       setWindowSize,
       openChannel,
       minimizeChannel,
