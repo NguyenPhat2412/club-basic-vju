@@ -17,10 +17,11 @@ import { FloatingChatMessageActions } from "@/components/chat/FloatingChatMessag
 import { UserAvatar } from "@/components/user/UserAvatar";
 import { toast } from "@/components/ui/toast";
 import { cn, formatDateTime } from "@/lib/utils";
-import type { ChatMessage } from "@/types/chat/chat.types";
+import type { ChatAttachment, ChatMessage } from "@/types/chat/chat.types";
 
 type FloatingChatMessageItemProps = {
   message: ChatMessage;
+  galleryMedia?: ChatAttachment[];
   currentUserId?: string;
   showDivider: boolean;
   groupedPrev: boolean;
@@ -49,7 +50,7 @@ function StatusGlyph({ status }: { status: ReturnType<typeof resolveChatMessageS
 }
 
 export function FloatingChatMessageItem({
-  message: m, currentUserId, showDivider, groupedPrev, groupedNext, isLatestOwn,
+  message: m, galleryMedia, currentUserId, showDivider, groupedPrev, groupedNext, isLatestOwn,
   highlighted, appearance, canSend, canModerate, onReply, onToggleReaction,
   onTogglePin, onEditMessage, onDeleteMessage, onRetryMessage, onJumpToMessage,
 }: FloatingChatMessageItemProps) {
@@ -186,8 +187,9 @@ export function FloatingChatMessageItem({
               {hasAttachments && (
                 <ChatMediaCollage
                   attachments={m.attachments}
+                  galleryMedia={galleryMedia}
                   flushTop={!m.content && !m.replyToId}
-                  onError={(msg) => toast.error(msg)}
+                  onError={(msg) => { if (msg?.trim()) toast.error(msg); }}
                 />
               )}
 

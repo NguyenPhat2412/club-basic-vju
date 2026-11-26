@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FileText, ImagePlus, Loader2, Paperclip, Reply, Send, Smile, Sparkles, X } from "lucide-react";
+import { FileText, ImagePlus, Loader2, Paperclip, Reply, Send, Sparkles, X } from "lucide-react";
 import { CHAT_FONT_SIZE_CLASS, type ChatFontSizeKey } from "@/forms/chat/chat-appearance";
+import { insertTextAtCursor } from "@/forms/chat/chat-emojis";
+import { ChatEmojiPopover } from "@/components/management/ChatEmojiPopover";
 import { cn } from "@/lib/utils";
 import type { ChatMessage, StagedChatMedia } from "@/types/chat/chat.types";
 
 const MAX_CHAT_CHARS = 4000;
 const WARN_CHAT_CHARS = 3600;
 const MAX_TEXTAREA_HEIGHT = 120;
-const QUICK_EMOJIS = ["👍", "❤️", "😂", "🎉", "🙏", "🔥", "👀", "✅"];
 const IMAGE_ACCEPT = "image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm,.png,.jpg,.jpeg,.gif,.webp,.mp4,.webm";
 const FILE_ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.md,.zip,.png,.jpg,.jpeg,.gif,.webp,.mp4,.webm";
 
@@ -150,25 +151,6 @@ export function FloatingChatComposer({
         </div>
       )}
 
-      {emojiOpen && (
-        <div className="mb-1.5 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-2 py-1">
-          {QUICK_EMOJIS.map((emoji) => (
-            <button
-              key={emoji}
-              type="button"
-              onClick={() => {
-                onContentChange(`${content}${emoji}`.slice(0, MAX_CHAT_CHARS));
-                setEmojiOpen(false);
-                textareaRef.current?.focus();
-              }}
-              className="rounded-md px-1 py-0.5 text-base hover:bg-white"
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
-      )}
-
       <div className="flex items-end gap-1">
         <button
           type="button"
@@ -247,18 +229,26 @@ export function FloatingChatComposer({
               CHAT_FONT_SIZE_CLASS[fontSize],
             )}
           />
-          <button
-            type="button"
-            title="Chèn biểu cảm"
-            aria-label="Chèn biểu cảm"
-            onClick={() => setEmojiOpen((v) => !v)}
-            className={cn(
-              "mb-1 flex size-6.5 shrink-0 items-center justify-center rounded-full transition-colors",
-              emojiOpen ? "bg-primary/15 text-primary" : "text-primary/80 hover:bg-primary/10 hover:text-primary",
-            )}
-          >
-            <Smile size={16} />
-          </button>
+          <ChatEmojiPopover
+            floating
+            open={emojiOpen}
+            onOpenChange={setEmojiOpen}
+            onSelectEmoji={(emoji) => {
+              const el = textareaRef.current;
+              const { nextValue, nextCursor } = insertTextAtCursor(
+                content,
+                emoji,
+                el?.selectionStart,
+                el?.selectionEnd,
+                MAX_CHAT_CHARS,
+              );
+              onContentChange(nextValue);
+              window.requestAnimationFrame(() => {
+                el?.focus();
+                el?.setSelectionRange(nextCursor, nextCursor);
+              });
+            }}
+          />
         </div>
 
         {hasPayload ? (

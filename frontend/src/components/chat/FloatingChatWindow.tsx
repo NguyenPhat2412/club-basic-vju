@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Hash, Maximize2, Minus, X } from "lucide-react";
+import { Hash, Images, Maximize2, Minus, X } from "lucide-react";
 import { chatApi } from "@/api/chat/chat.api";
 import { useSession } from "@/hooks/useSession";
 import { useChannelMessages, useChannelPinnedMessages } from "@/hooks/chat/useClubChat";
@@ -23,13 +23,14 @@ import { resolveMediaUrl } from "@/lib/media";
 import { qk } from "@/lib/api/query-keys";
 import { FLOATING_CHAT_SIZE_PRESETS, useChatDock } from "@/providers/ChatDockProvider";
 import { ChatAppearancePopover } from "@/components/management/ChatAppearancePopover";
+import { ChatMediaLightbox } from "@/components/management/ChatMediaLightbox";
 import { ChatPinnedBar } from "@/components/management/ChatPinnedBar";
 import { FloatingChatAiPopover } from "@/components/chat/FloatingChatAiPopover";
 import { FloatingChatComposer } from "@/components/chat/FloatingChatComposer";
 import { FloatingChatMessageItem } from "@/components/chat/FloatingChatMessageItem";
 import { toast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
-import type { ChatMessage, MyChatChannel } from "@/types/chat/chat.types";
+import { cn, saveBlob } from "@/lib/utils";
+import type { ChatAttachment, ChatMessage, MyChatChannel } from "@/types/chat/chat.types";
 
 const TIME_DIVIDER_GAP_MS = 15 * 60_000;
 
@@ -63,6 +64,7 @@ export function FloatingChatWindow({
   const [logoFailed, setLogoFailed] = useState(false);
   const [draggingOver, setDraggingOver] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
   const [highlightedId, setHighlightedId] = useState("");
   const [, setOlderNoop] = useState<Record<string, ChatMessage[]>>({});
   const listEndRef = useRef<HTMLDivElement>(null);
@@ -82,7 +84,7 @@ export function FloatingChatWindow({
     activeChannelId: channel.id,
     userId,
     userFullName: session.user?.fullName || session.user?.email,
-    onError: (msg) => toast.error(msg),
+    onError: (msg) => { if (msg?.trim()) toast.error(msg); },
   });
 
   const actions = useChatMessageActions({
@@ -91,8 +93,8 @@ export function FloatingChatWindow({
     userId,
     userFullName: session.user?.fullName || session.user?.email,
     setOlderByChannel: setOlderNoop,
-    onNotice: (msg) => toast.success(msg),
-    onError: (msg) => toast.error(msg),
+    onNotice: (msg) => { if (msg?.trim()) toast.success(msg); },
+    onError: (msg) => { if (msg?.trim()) toast.error(msg); },
   });
 
   const items = useMemo(() => {
@@ -102,6 +104,10 @@ export function FloatingChatWindow({
 
   const newestId = items[items.length - 1]?.id ?? "";
   const hasUserMessages = useMemo(() => items.some((m) => m.senderType === "USER"), [items]);
+  const channelMedia = useMemo<ChatAttachment[]>(
+    () => items.flatMap((m) => (m.attachments ?? []).filter((a) => a.mediaKind === "IMAGE" || a.mediaKind === "VIDEO")),
+    [items],
+  );
   const latestOwnIndex = useMemo(() => {
     for (let i = items.length - 1; i >= 0; i -= 1) {
       if (items[i]!.senderType !== "AI_BOT" && items[i]!.senderId === userId) return i;
@@ -212,6 +218,17 @@ export function FloatingChatWindow({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
+          {channelMedia.length > 0 && (
+            <button
+              type="button"
+              title="Ảnh & video trong đoạn chat"
+              aria-label="Ảnh & video trong đoạn chat"
+              onClick={() => setGalleryIndex(channelMedia.length - 1)}
+              className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-primary"
+            >
+              <Images size={13.5} />
+            </button>
+          )}
           <FloatingChatAiPopover
             channelId={channel.id}
             canSummarize={canSummarize}
@@ -313,6 +330,7 @@ export function FloatingChatWindow({
                 <FloatingChatMessageItem
                   key={m.clientTempId ?? m.id}
                   message={m}
+                  galleryMedia={channelMedia}
                   currentUserId={userId}
                   showDivider={showDivider}
                   groupedPrev={groupedPrev}
@@ -358,6 +376,18 @@ export function FloatingChatWindow({
         onQuickLike={() => handleSend("👍")}
         onTyping={sendTyping}
         onOpenAi={() => setAiOpen(true)}
+      />
+
+      <ChatMediaLightbox
+        media={channelMedia}
+        activeIndex={galleryIndex}
+        onIndexChange={setGalleryIndex}
+        onDownload={(att) => {
+          void chatApi
+            .streamChatAttachment(att.id, true)
+            .then((blob) => saveBlob(blob, att.fileName))
+            .catch(() => toast.error("Không tải được tệp đính kèm. Vui lòng thử lại."));
+        }}
       />
     </section>
   );

@@ -31,10 +31,13 @@ function dismiss(id: number) {
 }
 
 function push(message: string, variant: ToastVariant, opts?: ToastOptions) {
+  const cleanMessage = message?.trim() ?? "";
+  const cleanTitle = opts?.title?.trim();
+  if (!cleanMessage && !cleanTitle) return;
   const id = nextId++;
   toasts = [
     ...toasts.slice(-3),
-    { id, title: opts?.title, message, variant, onClick: opts?.onClick },
+    { id, title: cleanTitle, message: cleanMessage, variant, onClick: opts?.onClick },
   ];
   emit();
   setTimeout(() => dismiss(id), opts?.durationMs ?? 5200);
@@ -56,7 +59,7 @@ const empty: Toast[] = [];
 export function Toaster() {
   const items = useSyncExternalStore(subscribe, () => toasts, () => empty);
   return (
-    <div aria-live="polite" className="pointer-events-none fixed bottom-4 right-4 z-[100] flex w-[min(368px,calc(100vw-32px))] flex-col gap-2">
+    <div aria-live="polite" className="pointer-events-none fixed right-4 top-14 z-[100] flex w-[min(368px,calc(100vw-32px))] flex-col gap-2">
       {items.map((t) => {
         const clickable = Boolean(t.onClick);
         return (
