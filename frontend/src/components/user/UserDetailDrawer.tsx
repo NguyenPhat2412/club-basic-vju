@@ -1,5 +1,6 @@
 "use client";
 import { AvatarField } from "./AvatarField";
+import { UserAvatar } from "./UserAvatar";
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -229,7 +230,18 @@ export function UserDetailDrawer({
       onClose={handleRequestClose}
       title={detail?.fullName ?? ""}
       subtitle={detail?.email}
-      icon={<Users />}
+      icon={
+        detail ? (
+          <UserAvatar
+            avatarUrl={editAvatarUrl || detail.avatarUrl}
+            name={editFullName || detail.fullName}
+            email={detail.email}
+            size="md"
+          />
+        ) : (
+          <Users />
+        )
+      }
       footer={
         detail ? (
           <>

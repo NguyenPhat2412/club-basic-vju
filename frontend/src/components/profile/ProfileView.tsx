@@ -163,6 +163,7 @@ export function ProfileView() {
                     <img
                       src={resolvedAvatar}
                       alt={displayName}
+                      referrerPolicy="no-referrer"
                       className="relative z-10 -mt-12 size-20 shrink-0 rounded-full border-4 border-card bg-card object-cover shadow-sm sm:-mt-14 sm:size-24"
                     />
                   ) : (

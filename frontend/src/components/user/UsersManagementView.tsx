@@ -24,6 +24,7 @@ import {
   DeleteUserAccountModal,
   ResetUserPasswordModal,
 } from "@/components/user/UserAccountModals";
+import { UserAvatar } from "@/components/user/UserAvatar";
 import { UserDetailDrawer } from "@/components/user/UserDetailDrawer";
 import { UserRoleClubCell } from "@/components/user/UserRoleClubCell";
 
@@ -248,9 +249,7 @@ export function UsersManagementView() {
               sortValue: (u) => u.fullName || u.email,
               render: (u) => (
                 <div className="flex items-center gap-2.5">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-extrabold text-primary">
-                    {(u.fullName ?? u.email).slice(0, 1).toUpperCase()}
-                  </span>
+                  <UserAvatar avatarUrl={u.avatarUrl} name={u.fullName} email={u.email} />
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className="max-w-36 truncate font-bold text-foreground" title={u.fullName || u.email}>{u.fullName || "—"}</p>

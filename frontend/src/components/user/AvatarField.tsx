@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, Upload, X } from "lucide-react";
 import { describeError, type User } from "@/lib/api";
@@ -24,6 +24,7 @@ export function AvatarField({
   onUploaded: (user: User) => void;
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const mutation = useMutation({
     mutationFn: upload,
     onSuccess: (user) => {
@@ -33,15 +34,22 @@ export function AvatarField({
     onError: (err) => toast.error(describeError(err)),
   });
   const url = resolveMediaUrl(value) ?? "";
+  const canRenderImg = Boolean(url && failedUrl !== url);
 
   return (
     <FormField label="Ảnh đại diện">
       <div className="@container rounded-xl border border-border/60 bg-muted/25 p-2.5 sm:p-3">
         <div className="flex flex-col gap-2.5 @sm:flex-row @sm:items-center @sm:justify-between">
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            {url ? (
+            {canRenderImg ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={url} alt="" className="size-11 shrink-0 rounded-full border border-border object-cover sm:size-12" />
+              <img
+                src={url}
+                alt=""
+                referrerPolicy="no-referrer"
+                onError={() => setFailedUrl(url)}
+                className="size-11 shrink-0 rounded-full border border-border object-cover sm:size-12"
+              />
             ) : (
               <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-base font-bold text-primary-foreground sm:size-12">
                 {(fallbackName || "?").slice(0, 1).toUpperCase()}
