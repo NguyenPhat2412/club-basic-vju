@@ -21,6 +21,7 @@ import { EventQrOrganizerModal } from "@/components/event/EventQrModals";
 import { EventAdminFormButton } from "@/components/event/EventAdminFormButton";
 import { EventSubmissionBlock } from "@/components/event/EventSubmissionBlock";
 import { EventAttendanceRosterSection } from "@/components/event/EventAttendanceRosterSection";
+import { UserAvatar } from "@/components/user/UserAvatar";
 import { EventAttendanceLockPanel } from "@/components/event/EventAttendanceLockPanel";
 import { EventCertificatesSection } from "@/components/event/EventCertificatesSection";
 import { EventFeedbackSection } from "@/components/event/EventFeedbackSection";
@@ -305,14 +306,17 @@ export function EventAttendanceDrawer({
                   const existing = existingAttendanceFor(r.userId);
                   return (
                     <div key={r.userId} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 px-3 py-2 text-xs">
-                      <div className="min-w-0 space-y-0.5">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="truncate font-semibold">{r.userFullName || r.userEmail || r.userId.slice(0, 8)}</span>
-                          {existing ? <StatusBadge status={existing.status} /> : <Badge tone="neutral" dot={false}>Chưa lưu</Badge>}
+                      <div className="flex min-w-0 items-center gap-2">
+                        <UserAvatar avatarUrl={r.userAvatarUrl} name={r.userFullName} email={r.userEmail} size="chat" rounded="full" />
+                        <div className="min-w-0 space-y-0.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="truncate font-semibold">{r.userFullName || r.userEmail || r.userId.slice(0, 8)}</span>
+                            {existing ? <StatusBadge status={existing.status} /> : <Badge tone="neutral" dot={false}>Chưa lưu</Badge>}
+                          </div>
+                          {existing?.editReason && (
+                            <p className="text-[11px] text-muted-foreground">Lý do sửa gần nhất (v{existing.version}): {existing.editReason}</p>
+                          )}
                         </div>
-                        {existing?.editReason && (
-                          <p className="text-[11px] text-muted-foreground">Lý do sửa gần nhất (v{existing.version}): {existing.editReason}</p>
-                        )}
                       </div>
                       <Select
                         className="h-8 w-40 text-xs"

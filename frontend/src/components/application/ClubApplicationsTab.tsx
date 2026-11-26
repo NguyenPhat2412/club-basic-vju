@@ -121,7 +121,7 @@ export function ApplicationsTab({
       [a.applicantStudentCode ?? user?.studentCode, a.applicantEmail ?? user?.email]
         .filter(Boolean)
         .join(" · ") || a.applicantId.slice(0, 8);
-    return <UserIdentityCell name={a.applicantName ?? user?.fullName} subtitle={sub} />;
+    return <UserIdentityCell name={a.applicantName ?? user?.fullName} subtitle={sub} avatarUrl={a.applicantAvatarUrl ?? user?.avatarUrl} />;
   };
 
   const openCreateApp = () => {

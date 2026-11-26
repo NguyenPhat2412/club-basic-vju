@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { apiModel } from "@/lib/api";
+import { UserAvatar } from "@/components/user/UserAvatar";
 import { isYouthUnion, unitApplyCtaLabel } from "@/lib/club/youth-union";
 import { qk } from "@/lib/api/query-keys";
 import { clubSlugFromCode } from "@/lib/media";
@@ -295,9 +296,7 @@ export function ClubPortfolioView({ clubId }: { clubId: string }) {
               <ul className="mt-3 space-y-2.5">
                 {boardHolders.map((h) => (
                   <li key={h.assignmentId} className="flex items-center gap-2.5 rounded-xl border border-border/60 bg-background p-2.5">
-                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                      {(h.fullName || "B").slice(0, 1).toUpperCase()}
-                    </span>
+                    <UserAvatar avatarUrl={h.avatarUrl} name={h.fullName} rounded="full" />
                     <div className="min-w-0">
                       <p className="truncate text-xs font-bold text-foreground">{h.fullName}</p>
                       <p className="truncate text-[11px] font-medium text-primary">{h.roleName}</p>

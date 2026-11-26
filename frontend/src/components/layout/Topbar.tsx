@@ -6,16 +6,9 @@ import type { NavSection } from "@/config/navigation";
 import { UnitSwitcher } from "@/components/layout/UnitSwitcher";
 import { NotificationBellDrawer } from "@/components/notification/NotificationBellDrawer";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
+import { UserAvatar } from "@/components/user/UserAvatar";
 import { shortDisplayName } from "@/lib/utils";
 import { useI18n } from "@/providers/I18nContext";
-
-function userInitials(name?: string): string {
-  const clean = (name ?? "").trim();
-  if (!clean) return "U";
-  const parts = clean.split(/\s+/).filter(Boolean);
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return `${parts[0]![0] ?? ""}${parts[parts.length - 1]![0] ?? ""}`.toUpperCase();
-}
 
 export function Topbar({
   groupLabel,
@@ -26,6 +19,7 @@ export function Topbar({
   authenticated,
   name,
   subtitle,
+  avatarUrl,
   onPassword,
   onProfile,
   onSignOut,
@@ -43,6 +37,7 @@ export function Topbar({
   authenticated: boolean;
   name?: string;
   subtitle?: string;
+  avatarUrl?: string | null;
   onPassword: () => void;
   onProfile: () => void;
   onSignOut: () => void;
@@ -100,9 +95,14 @@ export function Topbar({
               aria-haspopup="menu"
               aria-expanded={menuOpen}
             >
-              <span className="flex size-6 items-center justify-center rounded-full bg-slate-800 text-[10.5px] font-bold tracking-tight text-white">
-                {userInitials(name)}
-              </span>
+              <UserAvatar
+                avatarUrl={avatarUrl}
+                name={name}
+                email={subtitle}
+                size="xs"
+                rounded="full"
+                fallbackClassName="bg-slate-800 text-white"
+              />
               <span className="hidden max-w-24 truncate text-xs font-semibold text-slate-800 2xl:inline">
                 {shortDisplayName(name)}
               </span>

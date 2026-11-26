@@ -38,6 +38,7 @@ public interface ChatMapper {
     @Mapping(target = "channelId", source = "channel.id")
     @Mapping(target = "senderId", source = "sender.id")
     @Mapping(target = "senderFullName", source = "sender.fullName")
+    @Mapping(target = "senderAvatarUrl", source = "sender.avatarUrl")
     @Mapping(target = "replyToId", source = "replyTo.id")
     @Mapping(target = "replyToSenderName", source = "replyTo.sender.fullName")
     @Mapping(target = "replyToPreview", expression = "java(snippetOf(message.getReplyTo()))")

@@ -82,6 +82,7 @@ export type EventRegistration = {
   userEmail?: string;
   userFullName?: string;
   studentCode?: string;
+  userAvatarUrl?: string;
   participantType: string;
   eventRole?: string;
   status: string;

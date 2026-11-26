@@ -226,14 +226,14 @@ function ClubManagementViewContent() {
 
   const mutationError = assign.error || unassign.error || status.error;
 
-  const who = (userId: string, known?: { name?: string; email?: string; studentCode?: string }) => {
+  const who = (userId: string, known?: { name?: string; email?: string; studentCode?: string; avatarUrl?: string }) => {
     const user = nameOf(userId);
     const sub =
       [known?.studentCode ?? user?.studentCode, known?.email ?? user?.email].filter(Boolean).join(" · ") ||
       userId.slice(0, 8);
-    return <UserIdentityCell name={known?.name ?? user?.fullName} subtitle={sub} />;
+    return <UserIdentityCell name={known?.name ?? user?.fullName} subtitle={sub} avatarUrl={known?.avatarUrl ?? user?.avatarUrl} />;
   };
-  const memberOf = (m: Membership) => who(m.userId, { name: m.userFullName, studentCode: m.userStudentCode });
+  const memberOf = (m: Membership) => who(m.userId, { name: m.userFullName, studentCode: m.userStudentCode, avatarUrl: m.userAvatarUrl });
 
   const tabHasOwnToolbar =
     activeTab === "clubs" ||

@@ -209,9 +209,14 @@ public class AuthServiceImpl implements AuthService {
         user.setGoogleSubject(identity.subject());
         user.setRequiresPasswordChange(false);
         String picture = identity.picture();
-        if ((user.getAvatarUrl() == null || user.getAvatarUrl().isBlank())
-                && picture != null && picture.startsWith("https://") && picture.length() <= 500) {
-            user.setAvatarUrl(picture);
+        if (picture != null && picture.startsWith("https://") && picture.length() <= 500) {
+            String currentAvatar = user.getAvatarUrl();
+            boolean isBlankOrGoogle = currentAvatar == null
+                    || currentAvatar.isBlank()
+                    || currentAvatar.contains("googleusercontent.com");
+            if (isBlankOrGoogle) {
+                user.setAvatarUrl(picture);
+            }
         }
         User saved = userRepository.saveAndFlush(user);
         auditService.record(saved.getId(), AuditAction.USER_LOGGED_IN, saved.getId(), null, null,

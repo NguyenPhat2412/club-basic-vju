@@ -82,6 +82,7 @@ export type Membership = {
   userId: string;
   userFullName?: string;
   userStudentCode?: string;
+  userAvatarUrl?: string;
   clubId: string;
   clubCode: string;
   clubName: string;

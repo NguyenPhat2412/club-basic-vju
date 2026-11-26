@@ -6,6 +6,7 @@ import { useRef, useState, type FocusEvent, type MouseEvent } from "react";
 import { ChevronDown, LayoutDashboard, LogOut, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { isNavItemActive, NavSection } from "@/config/navigation";
 import { cn } from "@/lib/utils";
+import { UserAvatar } from "@/components/user/UserAvatar";
 import { useI18n } from "@/providers/I18nContext";
 import type { NotificationUnreadSummary } from "@/types/notification/notification.types";
 import type { User } from "@/types/user/user.types";
@@ -366,14 +367,17 @@ export function SidebarNav({
 
       {!isCollapsed && user && (
         <div className="border-t border-sidebar-border p-2">
-          <div className="flex items-center justify-between gap-1.5 rounded-lg bg-sidebar-accent/50 px-2.5 py-1.5">
-            <div className="min-w-0 leading-tight">
-              <p className="truncate text-[11px] font-bold text-foreground">
-                {user.fullName || user.email}
-              </p>
-              <p className="truncate text-[10px] text-muted-foreground">
-                {user.studentCode || user.email}
-              </p>
+          <div className="flex items-center justify-between gap-2 rounded-lg bg-sidebar-accent/50 px-2 py-1.5">
+            <div className="flex min-w-0 items-center gap-2">
+              <UserAvatar avatarUrl={user.avatarUrl} name={user.fullName} email={user.email} size="xs" rounded="full" />
+              <div className="min-w-0 leading-tight">
+                <p className="truncate text-[11px] font-bold text-foreground">
+                  {user.fullName || user.email}
+                </p>
+                <p className="truncate text-[10px] text-muted-foreground">
+                  {user.studentCode || user.email}
+                </p>
+              </div>
             </div>
             <button
               type="button"

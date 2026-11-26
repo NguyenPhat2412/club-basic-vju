@@ -29,6 +29,7 @@ function HolderAvatar({ holder }: { holder: ClubPositionHolder }) {
       <img
         src={src}
         alt={label}
+        referrerPolicy="no-referrer"
         onError={() => setImgFailed(true)}
         className="size-9 shrink-0 rounded-full border border-border/70 object-cover"
       />

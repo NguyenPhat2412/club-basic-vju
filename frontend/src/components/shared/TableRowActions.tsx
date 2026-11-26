@@ -4,6 +4,7 @@ import { MouseEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { UserAvatar } from "@/components/user/UserAvatar";
 
 export type RowAction = {
   icon: ReactNode;
@@ -171,18 +172,18 @@ export function TableRowActions({ actions }: { actions: RowAction[] }) {
 export function UserIdentityCell({
   name,
   subtitle,
+  avatarUrl,
   fallbackLabel = "Thành viên",
 }: {
   name?: string | null;
   subtitle?: string | null;
+  avatarUrl?: string | null;
   fallbackLabel?: string;
 }) {
   const displayName = name?.trim() || fallbackLabel;
   return (
     <div className="flex items-center gap-2.5">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 font-bold text-primary">
-        {displayName.slice(0, 1).toUpperCase()}
-      </span>
+      <UserAvatar avatarUrl={avatarUrl} name={displayName} />
       <div className="min-w-0">
         <p className="max-w-56 truncate font-bold text-foreground">{displayName}</p>
         {subtitle && <p className="max-w-56 truncate font-mono text-[10.5px] text-muted-foreground">{subtitle}</p>}

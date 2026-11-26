@@ -11,6 +11,7 @@ public record ClubApplicationResponse(
         String applicantName,
         String applicantEmail,
         String applicantStudentCode,
+        String applicantAvatarUrl,
         UUID clubId,
         String clubCode,
         String clubName,

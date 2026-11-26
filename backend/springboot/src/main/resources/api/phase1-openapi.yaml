@@ -6852,6 +6852,7 @@ components:
         applicantName: {type: [string, 'null'], description: Họ tên người nộp (cho người duyệt đơn)}
         applicantEmail: {type: [string, 'null']}
         applicantStudentCode: {type: [string, 'null']}
+        applicantAvatarUrl: {type: [string, 'null']}
         clubId: {type: string, format: uuid}
         clubCode: {type: string}
         clubName: {type: string}
@@ -7557,6 +7558,10 @@ components:
           - string
           - 'null'
         userStudentCode:
+          type:
+          - string
+          - 'null'
+        userAvatarUrl:
           type:
           - string
           - 'null'
@@ -8749,6 +8754,7 @@ components:
         userEmail: {type: [string, 'null']}
         userFullName: {type: [string, 'null']}
         studentCode: {type: [string, 'null']}
+        userAvatarUrl: {type: [string, 'null']}
         participantType: {type: string, enum: [MEMBER, ORGANIZER, CTV, ATTENDEE]}
         eventRole: {type: [string, 'null']}
         status: {type: string, enum: [REGISTERED, CANCELLED]}
@@ -9070,6 +9076,7 @@ components:
         channelId: {type: string, format: uuid}
         senderId: {type: [string, 'null'], format: uuid}
         senderFullName: {type: [string, 'null']}
+        senderAvatarUrl: {type: [string, 'null']}
         senderType: {type: string, enum: [USER, AI_BOT]}
         content: {type: string}
         reactions:

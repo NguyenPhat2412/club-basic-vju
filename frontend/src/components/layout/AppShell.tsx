@@ -243,6 +243,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
           authenticated={!!session.user}
           name={session.user?.fullName || session.user?.email}
           subtitle={session.user?.studentCode || session.user?.email}
+          avatarUrl={session.user?.avatarUrl}
           onPassword={() => setPasswordOpen(true)}
           onProfile={() => {
             handleOpenHref("/profile");

@@ -19,15 +19,8 @@ import { formatChatTimeCompact } from "@/lib/chat-message-cache";
 import { ChatMediaCollage } from "@/components/management/ChatMediaCollage";
 import { ChatInlineEditBox, ChatMessageContextMenu, type ContextMenuAnchor } from "@/components/management/ChatMessageContextMenu";
 import { ChatReactionPills, ChatReactionTrigger } from "@/components/management/ChatMessageReactions";
+import { UserAvatar } from "@/components/user/UserAvatar";
 import { cn, formatDateTime, formatSize } from "@/lib/utils";
-
-function senderInitials(name: string): string {
-  const parts = name.replace(/\s*\([^)]*\)/g, "").trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "TV";
-  return parts.length === 1
-    ? parts[0].slice(0, 2).toUpperCase()
-    : `${parts[0][0] ?? ""}${parts.at(-1)?.[0] ?? ""}`.toUpperCase();
-}
 
 function DeliveryStatusIcon({
   status,
@@ -160,9 +153,13 @@ export function ChatMessageBubble({
       {!isMine && (
         <div className="w-7 shrink-0 self-end pb-0.5">
           {!groupedNext && (
-            <div className={cn("grid h-7 w-7 place-items-center rounded-full text-[10.5px] font-bold shadow-2xs", isBot ? "bg-primary text-primary-foreground" : "bg-primary/12 text-primary ring-1 ring-primary/15")}>
-              {isBot ? <Bot size={14} /> : senderInitials(senderLabel)}
-            </div>
+            isBot ? (
+              <div className="grid h-7 w-7 place-items-center rounded-full bg-primary text-[10.5px] font-bold text-primary-foreground shadow-2xs">
+                <Bot size={14} />
+              </div>
+            ) : (
+              <UserAvatar avatarUrl={m.senderAvatarUrl} name={senderLabel} size="chat" rounded="full" />
+            )
           )}
         </div>
       )}

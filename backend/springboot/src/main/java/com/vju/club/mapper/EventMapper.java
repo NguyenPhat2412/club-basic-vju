@@ -50,6 +50,7 @@ public interface EventMapper {
     @Mapping(target = "userEmail", source = "user.email")
     @Mapping(target = "userFullName", source = "user.fullName")
     @Mapping(target = "studentCode", source = "user.studentCode")
+    @Mapping(target = "userAvatarUrl", source = "user.avatarUrl")
     EventRegistrationResponse toRegistrationResponse(EventRegistration registration);
 
     @Mapping(target = "eventId", source = "event.id")

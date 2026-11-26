@@ -10,6 +10,7 @@ public record EventRegistrationResponse(
         String userEmail,
         String userFullName,
         String studentCode,
+        String userAvatarUrl,
         String participantType,
         String eventRole,
         String status,
@@ -24,7 +25,7 @@ public record EventRegistrationResponse(
                                      String studentCode, String participantType, String eventRole, String status,
                                      String note, OffsetDateTime registeredAt, OffsetDateTime cancelledAt,
                                      String submissionFileName, OffsetDateTime submissionUploadedAt) {
-        this(id, eventId, userId, userEmail, userFullName, studentCode, participantType, eventRole, status,
+        this(id, eventId, userId, userEmail, userFullName, studentCode, null, participantType, eventRole, status,
                 note, registeredAt, cancelledAt, submissionFileName, submissionUploadedAt, false);
     }
 }

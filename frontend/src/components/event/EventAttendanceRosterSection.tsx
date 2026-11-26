@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { ParticipantStatusFilter } from "@/utils/event-participants";
 import { EventSubmissionDownloadButton } from "@/components/event/EventSubmissionBlock";
+import { UserAvatar } from "@/components/user/UserAvatar";
 
 export function EventAttendanceRosterSection({
   eventId,
@@ -125,11 +126,14 @@ export function EventAttendanceRosterSection({
                     const savedAttendance = attendanceMap.get(r.userId);
                     return (
                       <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-xs">
-                        <div className="min-w-0">
-                          <p className="font-semibold">{r.userFullName || r.userEmail || r.userId.slice(0, 8)}</p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {[r.studentCode, r.userEmail].filter(Boolean).join(" · ")}
-                          </p>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <UserAvatar avatarUrl={r.userAvatarUrl} name={r.userFullName} email={r.userEmail} size="chat" rounded="full" />
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold">{r.userFullName || r.userEmail || r.userId.slice(0, 8)}</p>
+                            <p className="truncate text-[11px] text-muted-foreground">
+                              {[r.studentCode, r.userEmail].filter(Boolean).join(" · ")}
+                            </p>
+                          </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-1.5">
                           <StatusBadge status={r.participantType} />

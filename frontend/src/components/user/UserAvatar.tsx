@@ -4,9 +4,11 @@ import { useState } from "react";
 import { resolveMediaUrl } from "@/lib/media";
 import { cn } from "@/lib/utils";
 
-type UserAvatarSize = "sm" | "md";
+type UserAvatarSize = "xs" | "chat" | "sm" | "md";
 
 const SIZE_CLASSES: Record<UserAvatarSize, string> = {
+  xs: "size-6 text-[10px]",
+  chat: "size-7 text-[10.5px]",
   sm: "size-8 text-xs",
   md: "size-9 text-xs",
 };
@@ -18,6 +20,7 @@ export function UserAvatar({
   size = "sm",
   rounded = "lg",
   className,
+  fallbackClassName,
 }: {
   avatarUrl?: string | null;
   name?: string | null;
@@ -25,6 +28,7 @@ export function UserAvatar({
   size?: UserAvatarSize;
   rounded?: "lg" | "full";
   className?: string;
+  fallbackClassName?: string;
 }) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const src = resolveMediaUrl(avatarUrl);
@@ -57,6 +61,7 @@ export function UserAvatar({
         "flex shrink-0 items-center justify-center bg-primary/10 font-extrabold text-primary",
         SIZE_CLASSES[size],
         radius,
+        fallbackClassName,
         className,
       )}
     >

@@ -145,6 +145,7 @@ export type Application = ApplicationSummary & {
   applicantName?: string;
   applicantEmail?: string;
   applicantStudentCode?: string;
+  applicantAvatarUrl?: string;
   applicantPhone?: string;
   facultyMajor?: string;
   academicYear?: string;

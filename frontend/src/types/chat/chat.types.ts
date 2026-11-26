@@ -67,6 +67,7 @@ export type ChatMessage = {
   channelId: string;
   senderId?: string;
   senderFullName?: string;
+  senderAvatarUrl?: string;
   senderType: 'USER' | 'AI_BOT';
   replyToId?: string;
   replyToSenderName?: string;

@@ -39,6 +39,7 @@ public interface ClubApplicationMapper {
                 full.applicantName(),
                 full.applicantEmail(),
                 full.applicantStudentCode(),
+                full.applicantAvatarUrl(),
                 full.clubId(),
                 full.clubCode(),
                 full.clubName(),
@@ -81,6 +82,7 @@ public interface ClubApplicationMapper {
     @Mapping(target = "applicantName", source = "application.applicant.fullName")
     @Mapping(target = "applicantEmail", source = "application.applicant.email")
     @Mapping(target = "applicantStudentCode", source = "application.applicant.studentCode")
+    @Mapping(target = "applicantAvatarUrl", source = "application.applicant.avatarUrl")
     @Mapping(target = "clubId", source = "application.club.id")
     @Mapping(target = "clubCode", source = "application.club.code")
     @Mapping(target = "clubName", source = "application.club.name")

@@ -16,6 +16,7 @@ public interface MembershipMapper {
     @Mapping(target = "userId", source = "user.id")
     @Mapping(target = "userFullName", source = "user.fullName")
     @Mapping(target = "userStudentCode", source = "user.studentCode")
+    @Mapping(target = "userAvatarUrl", source = "user.avatarUrl")
     @Mapping(target = "clubId", source = "club.id")
     MembershipResponse toResponse(Membership membership);
 
