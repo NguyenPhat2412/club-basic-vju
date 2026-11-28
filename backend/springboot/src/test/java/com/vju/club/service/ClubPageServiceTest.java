@@ -17,6 +17,7 @@ import com.vju.club.repository.ClubPostRepository;
 import com.vju.club.repository.ClubRepository;
 import com.vju.club.repository.UserRepository;
 import com.vju.club.security.Actor;
+import com.vju.club.security.PermissionAuthorizationService;
 import com.vju.club.service.impl.ClubPageServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,13 +42,15 @@ class ClubPageServiceTest {
     @Mock private ClubFollowerRepository followerRepository;
     @Mock private UserRepository userRepository;
     @Mock private AuditService auditService;
+    @Mock private PermissionAuthorizationService authorizationService;
 
     private ClubPageServiceImpl service;
 
     @BeforeEach
     void setUp() {
         service = new ClubPageServiceImpl(
-                clubRepository, postRepository, postLikeRepository, followerRepository, userRepository, auditService);
+                clubRepository, postRepository, postLikeRepository, followerRepository, userRepository, auditService, authorizationService);
+        when(authorizationService.hasPermission(any(), any(), any(), any())).thenReturn(true);
     }
 
     @Test

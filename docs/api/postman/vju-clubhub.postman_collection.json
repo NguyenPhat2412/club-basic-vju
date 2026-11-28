@@ -932,6 +932,27 @@
           "uid": "40814722-277cb0b3-7ee9-4fac-b1fa-e921e3091545"
         },
         {
+          "name": "GET My Certificate Share Links (/me/certificate-share-links)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Share links envelope present', () => { const j = pm.response.json(); pm.expect(j.items).to.be.an('array'); pm.expect(j).to.have.property('total'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/me/certificate-share-links"
+          },
+          "response": []
+        },
+        {
           "name": "GET Audit Logs",
           "event": [
             {

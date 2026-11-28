@@ -1,6 +1,7 @@
 package com.vju.club.service.impl;
 
 import com.vju.club.common.ApiPaths;
+import com.vju.club.common.CertificateConstants;
 import com.vju.club.common.ClubConstants;
 import com.vju.club.common.EventConstants;
 import com.vju.club.config.CacheConfig;
@@ -132,7 +133,7 @@ public class EventCertificateServiceImpl implements EventCertificateService {
         UUID clubId = club.getId();
         UUID deptId = event.getDepartment() == null ? null : event.getDepartment().getId();
 
-        requireEventManagePermission(actor, clubId, deptId);
+        requireCertificatePermission(actor, clubId, deptId, CertificateConstants.PERMISSION_ISSUE);
         if (event.getAttendanceLockedAt() == null) {
             throw new ApiException(HttpStatus.CONFLICT, "ATTENDANCE_NOT_LOCKED",
                     "Vui lòng chốt & ký khoá sổ điểm danh SHA-256 trước khi phát hành chứng nhận.");
@@ -261,10 +262,11 @@ public class EventCertificateServiceImpl implements EventCertificateService {
         UUID clubId = event.getClub().getId();
         UUID deptId = event.getDepartment() == null ? null : event.getDepartment().getId();
 
-        boolean allowed = authorizationService.hasPermission(actor, EventConstants.PERMISSION_VIEW, clubId, deptId)
-                || authorizationService.hasPermission(actor, EventConstants.PERMISSION_ATTENDANCE, clubId, deptId)
-                || authorizationService.hasPermission(actor, EventConstants.PERMISSION_ATTENDANCE_EDIT, clubId, deptId)
-                || authorizationService.hasPermission(actor, EventConstants.PERMISSION_UPDATE, clubId, deptId);
+        boolean allowed = authorizationService.hasPermission(actor, CertificateConstants.PERMISSION_VIEW, clubId, deptId)
+                || authorizationService.hasPermission(actor, CertificateConstants.PERMISSION_ISSUE, clubId, deptId)
+                || authorizationService.hasPermission(actor, CertificateConstants.PERMISSION_TEMPLATE, clubId, deptId)
+                || authorizationService.hasPermission(actor, CertificateConstants.PERMISSION_REVOKE, clubId, deptId)
+                || authorizationService.hasPermission(actor, EventConstants.PERMISSION_VIEW, clubId, deptId);
         if (!allowed) {
             throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
         }
@@ -283,11 +285,7 @@ public class EventCertificateServiceImpl implements EventCertificateService {
 
         UUID clubId = cert.getClub().getId();
         UUID deptId = cert.getEvent().getDepartment() == null ? null : cert.getEvent().getDepartment().getId();
-        boolean allowed = authorizationService.hasPermission(actor, EventConstants.PERMISSION_UPDATE, clubId, deptId)
-                || authorizationService.hasPermission(actor, EventConstants.PERMISSION_ATTENDANCE_EDIT, clubId, deptId);
-        if (!allowed) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
-        }
+        requireCertificatePermission(actor, clubId, deptId, CertificateConstants.PERMISSION_REVOKE);
         if (cert.getStatus() == CertificateStatus.REVOKED) {
             throw new ApiException(HttpStatus.CONFLICT, "CERTIFICATE_ALREADY_REVOKED",
                     "Chứng nhận này đã bị thu hồi trước đó");
@@ -372,7 +370,7 @@ public class EventCertificateServiceImpl implements EventCertificateService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
         UUID clubId = event.getClub().getId();
         UUID deptId = event.getDepartment() == null ? null : event.getDepartment().getId();
-        requireEventManagePermission(actor, clubId, deptId);
+        requireCertificatePermission(actor, clubId, deptId, CertificateConstants.PERMISSION_TEMPLATE);
 
         ImageUploads.ValidatedImage image = ImageUploads.read(file, TEMPLATE_MAX_BYTES);
         String fileName = eventId + "-" + UUID.randomUUID().toString().replace("-", "") + image.extension();
@@ -410,7 +408,7 @@ public class EventCertificateServiceImpl implements EventCertificateService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
         UUID clubId = event.getClub().getId();
         UUID deptId = event.getDepartment() == null ? null : event.getDepartment().getId();
-        requireEventManagePermission(actor, clubId, deptId);
+        requireCertificatePermission(actor, clubId, deptId, CertificateConstants.PERMISSION_TEMPLATE);
 
         String previousUrl = event.getCertificateTemplateUrl();
         event.setCertificateTemplateUrl(null);
@@ -482,7 +480,7 @@ public class EventCertificateServiceImpl implements EventCertificateService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", "Event not found"));
         UUID clubId = event.getClub().getId();
         UUID deptId = event.getDepartment() == null ? null : event.getDepartment().getId();
-        requireEventManagePermission(actor, clubId, deptId);
+        requireCertificatePermission(actor, clubId, deptId, CertificateConstants.PERMISSION_ISSUE);
 
         Set<UUID> filterIds = (request != null && request.certificateIds() != null && !request.certificateIds().isEmpty())
                 ? new HashSet<>(request.certificateIds()) : null;
@@ -548,16 +546,19 @@ public class EventCertificateServiceImpl implements EventCertificateService {
     public CertificateManagementResponse listManagement(Actor actor, UUID clubId, String academicTerm,
                                                         String status, Boolean acknowledged, String search,
                                                         int offset, int limit) {
-        boolean hasGlobal = authorizationService.hasGlobalPermission(actor, "system.view")
+        boolean hasGlobal = authorizationService.hasGlobalPermission(actor, CertificateConstants.PERMISSION_VIEW)
+                || authorizationService.hasGlobalPermission(actor, CertificateConstants.PERMISSION_ISSUE)
+                || authorizationService.hasGlobalPermission(actor, CertificateConstants.PERMISSION_REVOKE)
                 || authorizationService.hasGlobalPermission(actor, ClubConstants.PERMISSION_VIEW)
                 || authorizationService.hasGlobalPermission(actor, EventConstants.PERMISSION_VIEW);
 
         if (clubId != null) {
             boolean allowed = hasGlobal
+                    || authorizationService.hasPermission(actor, CertificateConstants.PERMISSION_VIEW, clubId, null)
+                    || authorizationService.hasPermission(actor, CertificateConstants.PERMISSION_ISSUE, clubId, null)
+                    || authorizationService.hasPermission(actor, CertificateConstants.PERMISSION_TEMPLATE, clubId, null)
+                    || authorizationService.hasPermission(actor, CertificateConstants.PERMISSION_REVOKE, clubId, null)
                     || authorizationService.hasPermission(actor, EventConstants.PERMISSION_VIEW, clubId, null)
-                    || authorizationService.hasPermission(actor, EventConstants.PERMISSION_ATTENDANCE, clubId, null)
-                    || authorizationService.hasPermission(actor, EventConstants.PERMISSION_ATTENDANCE_EDIT, clubId, null)
-                    || authorizationService.hasPermission(actor, EventConstants.PERMISSION_UPDATE, clubId, null)
                     || authorizationService.hasPermission(actor, ClubConstants.PERMISSION_VIEW, clubId, null);
             if (!allowed) {
                 throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
@@ -600,11 +601,8 @@ public class EventCertificateServiceImpl implements EventCertificateService {
         return new CertificateManagementResponse(summary, pageItems, total);
     }
 
-    private void requireEventManagePermission(Actor actor, UUID clubId, UUID deptId) {
-        boolean allowed = authorizationService.hasPermission(actor, EventConstants.PERMISSION_ATTENDANCE, clubId, deptId)
-                || authorizationService.hasPermission(actor, EventConstants.PERMISSION_ATTENDANCE_EDIT, clubId, deptId)
-                || authorizationService.hasPermission(actor, EventConstants.PERMISSION_UPDATE, clubId, deptId);
-        if (!allowed) {
+    private void requireCertificatePermission(Actor actor, UUID clubId, UUID deptId, String permissionKey) {
+        if (!authorizationService.hasPermission(actor, permissionKey, clubId, deptId)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
         }
     }

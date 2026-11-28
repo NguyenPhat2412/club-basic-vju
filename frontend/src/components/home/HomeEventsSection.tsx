@@ -3,28 +3,39 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ArrowRight, Calendar, MapPin, ShieldCheck, Users } from "lucide-react";
+import { useClubMediaCatalog } from "@/components/shared/ClubMedia";
 import { EVENT_TYPE_LABELS } from "@/forms/event/event-form";
 import { HOME_MESSAGES } from "@/i18n/home-messages";
 import { isYouthUnionCode } from "@/lib/club/youth-union";
-import { resolveMediaUrl } from "@/lib/media";
+import { clubSlugFromCode, resolveMediaUrl } from "@/lib/media";
 import { useI18n } from "@/providers/I18nContext";
-import { EventItem } from "@/types";
+import { ClubItem, EventItem } from "@/types";
 import { DbText, formatLocalizedCopy } from "./DbText";
 import { useHomeEventDateFormat } from "./useHomeEventDateFormat";
 
 type HomeEventFilter = "all" | "dtn" | "ctv";
 
 export function HomeEventsSection({
+  allClubs = [],
   featuredEvents,
   eventsPending,
 }: {
+  allClubs?: ClubItem[];
   featuredEvents: EventItem[];
   eventsPending: boolean;
 }) {
   const { locale } = useI18n();
   const m = HOME_MESSAGES[locale];
   const [filter, setFilter] = useState<HomeEventFilter>("all");
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const { formatDate, formatDayMonth, formatTimeRange } = useHomeEventDateFormat();
+  const mediaCatalog = useClubMediaCatalog(true);
+
+  const clubById = useMemo(() => {
+    const map = new Map<string, ClubItem>();
+    for (const c of allClubs) map.set(c.id, c);
+    return map;
+  }, [allClubs]);
 
   const dtnEventsCount = useMemo(
     () => featuredEvents.filter((ev) => isYouthUnionCode(ev.clubCode)).length,
@@ -116,10 +127,20 @@ export function HomeEventsSection({
         </div>
       ) : (
         <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleEvents.map((ev) => {
+          {visibleEvents.map((ev, idx) => {
             const typeLabel = EVENT_TYPE_LABELS[ev.eventType];
             const isDtn = isYouthUnionCode(ev.clubCode);
-            const coverSrc = resolveMediaUrl(ev.coverImageUrl);
+            const clubMedia = mediaCatalog.data?.clubs[clubSlugFromCode(ev.clubCode)];
+            const clubCoverFallback = clubById.get(ev.clubId)?.coverUrl;
+            const galleryFallback = clubMedia?.gallery.length
+              ? clubMedia.gallery[idx % clubMedia.gallery.length]
+              : clubMedia?.cover;
+            const candidates = [
+              resolveMediaUrl(ev.coverImageUrl),
+              isDtn ? "/images/intro/campus-awards.jpg" : galleryFallback,
+              resolveMediaUrl(clubCoverFallback),
+            ].filter((u): u is string => Boolean(u));
+            const coverSrc = candidates.find((u) => !failedImages[`${ev.id}:${u}`]) ?? null;
             const allowPublic = ev.allowPublicAttendees ?? ev.allowCtv;
 
             return (
@@ -134,6 +155,10 @@ export function HomeEventsSection({
                     <img
                       src={coverSrc}
                       alt={ev.title}
+                      loading="lazy"
+                      onError={() =>
+                        setFailedImages((prev) => ({ ...prev, [`${ev.id}:${coverSrc}`]: true }))
+                      }
                       className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                     />
                   ) : (

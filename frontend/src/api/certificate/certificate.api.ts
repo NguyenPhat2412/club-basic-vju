@@ -2,9 +2,13 @@ import { api, apiForm } from '@/lib/api/client';
 import type {
   CertificateManagementQuery,
   CertificateManagementResponse,
+  CertificateShareLink,
+  CertificateShareLinkListResponse,
   CertificateTemplateResponse,
+  CreateCertificateShareLinkInput,
   EventCertificate,
   IssueCertificatesResponse,
+  PublicCertificateProof,
   PublicCertificateVerification,
   RemindCertificatesRequest,
   RemindCertificatesResponse,
@@ -71,5 +75,20 @@ export const certificateApi = {
   verifyCertificate: (certificateCode: string) =>
     api<PublicCertificateVerification>(
       `/public/certificates/verify/${encodeURIComponent(certificateCode.trim())}`,
+    ),
+  myCertificateShareLinks: () =>
+    api<CertificateShareLinkListResponse>('/me/certificate-share-links'),
+  createCertificateShareLink: (payload?: CreateCertificateShareLinkInput) =>
+    api<CertificateShareLink>('/me/certificate-share-links', {
+      method: 'POST',
+      body: JSON.stringify(payload ?? {}),
+    }),
+  revokeCertificateShareLink: (linkId: string) =>
+    api<void>(`/me/certificate-share-links/${linkId}`, {
+      method: 'DELETE',
+    }),
+  resolveCertificateProof: (token: string) =>
+    api<PublicCertificateProof>(
+      `/public/certificates/proof/${encodeURIComponent(token.trim())}`,
     ),
 };

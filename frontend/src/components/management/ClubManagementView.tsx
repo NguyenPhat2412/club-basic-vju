@@ -335,7 +335,13 @@ function ClubManagementViewContent() {
           clubCode={currentClub?.code}
           mode="page"
           initialSearch={searchParams.get("search") ?? ""}
-          canViewAllUnits={session.hasGlobal("event.view") || session.hasGlobal("club.view") || session.hasGlobal("system.view")}
+          canViewAllUnits={
+            session.hasGlobal("certificate.view") ||
+            session.hasGlobal("certificate.issue") ||
+            session.hasGlobal("certificate.revoke") ||
+            session.hasGlobal("event.view") ||
+            session.hasGlobal("club.view")
+          }
         />
       ) : activeTab === "tasks" ? (
         <TasksTab clubId={activeClubId} departments={activeDepartments} members={activeMembersForTasks.data?.items ?? []} onNotice={setNotice} onError={setErrorMsg} />

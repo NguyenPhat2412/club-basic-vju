@@ -7,6 +7,7 @@ import { ArrowUpRight, Award, CheckCircle2, Clock, ExternalLink, Mail, Printer, 
 import { apiModel, describeError, type CertificateStatus, type EventCertificate } from "@/lib/api";
 import { qk } from "@/lib/api/query-keys";
 import { isYouthUnionCode } from "@/lib/club/youth-union";
+import { useSession } from "@/hooks/useSession";
 import { cn, formatDateTime } from "@/lib/utils";
 import { SvgDonutChart, type DonutSegment } from "@/components/dashboard/DashboardSvgPrimitives";
 import { DataTable, type Column } from "@/components/shared/DataTable";
@@ -45,6 +46,7 @@ export function ClubCertificatesOverviewSection({
   initialSearch?: string;
 }) {
   const qc = useQueryClient();
+  const session = useSession();
   const [scopeAll, setScopeAll] = useState(!clubId);
   const [search, setSearch] = useState(initialSearch);
   const [academicTerm, setAcademicTerm] = useState("");
@@ -251,7 +253,7 @@ export function ClubCertificatesOverviewSection({
       header: "Thao tác",
       className: "whitespace-nowrap text-right",
       render: (c) => {
-        const canRemind = c.status === "ISSUED" && !c.acknowledgedAt;
+        const canRemind = c.status === "ISSUED" && !c.acknowledgedAt && session.canInClub("certificate.issue", c.clubId);
         const isReminding = remindingCertId === c.id && remindMutation.isPending;
         return (
           <div className="flex items-center justify-end gap-0.5">

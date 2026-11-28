@@ -5335,7 +5335,7 @@ paths:
       operationId: certificate.issueForEvent
       summary: Issue e-certificates for attended participants of a locked event
       tags: [Event]
-      x-permission: event.attendance | event.attendance_edit | event.update
+      x-permission: certificate.issue
       x-implementation-status: IMPLEMENTED
       parameters:
       - name: eventId
@@ -5357,7 +5357,7 @@ paths:
       operationId: certificate.listForEvent
       summary: List e-certificates issued for an event
       tags: [Event]
-      x-permission: event.view | event.attendance | event.attendance_edit | event.update
+      x-permission: certificate.view | certificate.issue | certificate.template | certificate.revoke | event.view
       x-implementation-status: IMPLEMENTED
       parameters:
       - name: eventId
@@ -5378,7 +5378,7 @@ paths:
       operationId: certificate.remindForEvent
       summary: Remind unacknowledged certificate recipients via in-app notification and email
       tags: [Event]
-      x-permission: event.attendance | event.attendance_edit | event.update
+      x-permission: certificate.issue
       x-implementation-status: IMPLEMENTED
       parameters:
       - name: eventId
@@ -5399,7 +5399,7 @@ paths:
       operationId: certificate.uploadTemplate
       summary: Upload custom club or Youth Union certificate template image
       tags: [Event]
-      x-permission: event.attendance | event.attendance_edit | event.update
+      x-permission: certificate.template
       x-implementation-status: IMPLEMENTED
       parameters:
       - name: eventId
@@ -5428,7 +5428,7 @@ paths:
       operationId: certificate.deleteTemplate
       summary: Remove custom certificate template image from event
       tags: [Event]
-      x-permission: event.attendance | event.attendance_edit | event.update
+      x-permission: certificate.template
       x-implementation-status: IMPLEMENTED
       parameters:
       - name: eventId
@@ -5449,7 +5449,7 @@ paths:
       operationId: certificate.revoke
       summary: Revoke an issued e-certificate with reason and audit log
       tags: [Event]
-      x-permission: event.update | event.attendance_edit
+      x-permission: certificate.revoke
       x-implementation-status: IMPLEMENTED
       parameters:
       - name: certificateId
@@ -5508,7 +5508,7 @@ paths:
       operationId: certificate.managementList
       summary: List and summarize issued certificates across club or all 13 units
       tags: [Event]
-      x-permission: event.view | event.attendance | event.attendance_edit | event.update | club.view | system.view
+      x-permission: certificate.view | certificate.issue | certificate.template | certificate.revoke | event.view | club.view
       x-implementation-status: IMPLEMENTED
       responses:
         '200':
@@ -6759,7 +6759,7 @@ paths:
       operationId: report.trainingPoints
       summary: Generate training points report by student, club, and academic term
       tags: [Reports]
-      x-permission: event.attendance | event.attendance_edit | event.update | user.view
+      x-permission: report.training_points.view | certificate.view | event.attendance | event.attendance_edit | event.update | user.view
       x-implementation-status: IMPLEMENTED
       description: Tổng hợp báo cáo điểm rèn luyện (số sự kiện đã điểm danh hợp lệ, chi tiết trạng thái khoá sổ SHA-256) phục vụ xuất CSV và in A4.
       parameters:
@@ -6819,7 +6819,7 @@ paths:
       operationId: clubPage.createPost
       summary: Publish a new post on the club feed
       tags: [Club]
-      x-permission: club.update
+      x-permission: club.post.manage | club.update
       x-implementation-status: IMPLEMENTED
       parameters:
       - name: clubId
@@ -6846,7 +6846,7 @@ paths:
       operationId: clubPage.updatePost
       summary: Edit or pin/unpin a club post
       tags: [Club]
-      x-permission: club.update
+      x-permission: club.post.manage | club.update
       x-implementation-status: IMPLEMENTED
       parameters:
       - name: clubId
@@ -6876,7 +6876,7 @@ paths:
       operationId: clubPage.deletePost
       summary: Delete a club feed post
       tags: [Club]
-      x-permission: club.update
+      x-permission: club.post.manage | club.update
       x-implementation-status: IMPLEMENTED
       parameters:
       - name: clubId
@@ -6958,6 +6958,80 @@ paths:
               schema: {$ref: '#/components/schemas/ClubFollowStatusResponse'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /me/certificate-share-links:
+    get:
+      operationId: certificateShare.listMine
+      summary: List signed-in student verifiable certificate proof share links
+      tags: [Event]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      responses:
+        '200':
+          description: Student certificate share links
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CertificateShareLinkListResponse'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+    post:
+      operationId: certificateShare.create
+      summary: Create a verifiable certificate proof share link for DRL reviewers
+      tags: [Event]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateCertificateShareLinkRequest'}
+      responses:
+        '201':
+          description: Share link created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CertificateShareLinkResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /me/certificate-share-links/{linkId}:
+    delete:
+      operationId: certificateShare.revoke
+      summary: Revoke an existing certificate proof share link
+      tags: [Event]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '204':
+          description: Share link revoked
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /public/certificates/proof/{token}:
+    get:
+      operationId: certificateShare.resolvePublicProof
+      summary: Publicly verify a student's certificate portfolio proof link
+      tags: [Event]
+      security: []
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: token
+        in: path
+        required: true
+        schema: {type: string, maxLength: 64}
+      responses:
+        '200':
+          description: Verifiable student certificate proof bundle
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PublicCertificateProofResponse'}
         '404': {$ref: '#/components/responses/NotFound'}
 components:
   securitySchemes:
@@ -10155,6 +10229,74 @@ components:
         clubId: {type: string, format: uuid}
         following: {type: boolean}
         followersCount: {type: integer, format: int64}
+    CreateCertificateShareLinkRequest:
+      type: object
+      properties:
+        academicTerm: {type: [string, 'null'], maxLength: 32}
+        title: {type: [string, 'null'], maxLength: 160}
+        expiresInDays: {type: [integer, 'null'], minimum: 1, maximum: 365}
+    CertificateShareLinkResponse:
+      type: object
+      required: [id, token, active, viewCount, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        token: {type: string}
+        academicTerm: {type: [string, 'null']}
+        title: {type: [string, 'null']}
+        expiresAt: {type: [string, 'null'], format: date-time}
+        revokedAt: {type: [string, 'null'], format: date-time}
+        active: {type: boolean}
+        viewCount: {type: integer}
+        lastViewedAt: {type: [string, 'null'], format: date-time}
+        createdAt: {type: string, format: date-time}
+    CertificateShareLinkListResponse:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/CertificateShareLinkResponse'}
+        total: {type: integer, format: int64}
+    PublicCertificateProofItem:
+      type: object
+      required: [certificateCode, status, clubCode, clubName, eventTitle, participantType, verificationSha256]
+      properties:
+        certificateCode: {type: string}
+        status: {type: string}
+        clubCode: {type: string}
+        clubName: {type: string}
+        eventTitle: {type: string}
+        eventStartTime: {type: [string, 'null'], format: date-time}
+        academicTerm: {type: [string, 'null']}
+        participantType: {type: string}
+        eventRole: {type: [string, 'null']}
+        issuedAt: {type: [string, 'null'], format: date-time}
+        acknowledgedAt: {type: [string, 'null'], format: date-time}
+        revokedAt: {type: [string, 'null'], format: date-time}
+        revocationReason: {type: [string, 'null']}
+        verificationSha256: {type: string}
+        templateImageUrl: {type: [string, 'null']}
+    PublicCertificateProofResponse:
+      type: object
+      required: [token, active, revoked, expired, createdAt, viewCount, verifiedAt, issuedCount, revokedCount, items]
+      properties:
+        token: {type: string}
+        title: {type: [string, 'null']}
+        academicTerm: {type: [string, 'null']}
+        active: {type: boolean}
+        revoked: {type: boolean}
+        expired: {type: boolean}
+        createdAt: {type: string, format: date-time}
+        expiresAt: {type: [string, 'null'], format: date-time}
+        viewCount: {type: integer}
+        verifiedAt: {type: string, format: date-time}
+        studentName: {type: [string, 'null']}
+        studentCode: {type: [string, 'null']}
+        issuedCount: {type: integer, format: int64}
+        revokedCount: {type: integer, format: int64}
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/PublicCertificateProofItem'}
 tags:
 - name: System
   description: Danh mục và trạng thái API

@@ -14,25 +14,29 @@ import { Button } from "@/components/ui/button";
 
 type EventCertificatesSectionProps = {
   event: ClubEvent;
-  canManage: boolean;
-  canRevoke: boolean;
+  canView: boolean;
+  canIssue: boolean;
+  canManageTemplate: boolean;
   onNotice: (msg: string) => void;
   onError: (msg: string) => void;
 };
 
 export function EventCertificatesSection({
   event,
-  canManage,
+  canView,
+  canIssue,
+  canManageTemplate,
   onNotice,
   onError,
 }: EventCertificatesSectionProps) {
   const qc = useQueryClient();
   const isLocked = Boolean(event.attendanceLockedAt);
+  const canAccessSection = canView || canIssue || canManageTemplate;
 
   const certificatesQuery = useQuery({
     queryKey: qk.eventCertificates(event.id),
     queryFn: () => apiModel.eventCertificates(event.id),
-    enabled: canManage && isLocked,
+    enabled: canAccessSection && isLocked,
   });
 
   const invalidateAll = () => {
@@ -73,7 +77,7 @@ export function EventCertificatesSection({
     onError: (err) => onError(describeError(err)),
   });
 
-  if (!canManage || event.status === "DRAFT" || event.status === "CANCELLED") return null;
+  if (!canAccessSection || event.status === "DRAFT" || event.status === "CANCELLED") return null;
 
   const items = certificatesQuery.data?.items ?? [];
   const issuedItems = items.filter((c) => c.status === "ISSUED");
@@ -84,13 +88,15 @@ export function EventCertificatesSection({
   return (
     <Section title="Chứng nhận điện tử (e-Certificate)" icon={<Award />}>
       <div className="space-y-3">
-        <EventCertificateTemplateBox
-          eventId={event.id}
-          initialTemplateUrl={event.certificateTemplateUrl}
-          onChanged={invalidateAll}
-          onNotice={onNotice}
-          onError={onError}
-        />
+        {canManageTemplate && (
+          <EventCertificateTemplateBox
+            eventId={event.id}
+            initialTemplateUrl={event.certificateTemplateUrl}
+            onChanged={invalidateAll}
+            onNotice={onNotice}
+            onError={onError}
+          />
+        )}
 
         {!isLocked ? (
           <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground">
@@ -121,18 +127,20 @@ export function EventCertificatesSection({
               </Link>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Button type="button" size="sm" disabled={issueMutation.isPending} onClick={() => issueMutation.mutate()}>
-                <Award size={14} />
-                {issueMutation.isPending ? "Đang phát hành…" : "Phát hành chứng nhận"}
-              </Button>
-              {pendingAckCount > 0 && (
-                <Button type="button" size="sm" variant="outline" disabled={remindMutation.isPending} onClick={() => remindMutation.mutate()}>
-                  <Mail size={13} />
-                  {remindMutation.isPending ? "Đang gửi nhắc…" : `Nhắc xác nhận qua Email (${pendingAckCount})`}
+            {canIssue && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Button type="button" size="sm" disabled={issueMutation.isPending} onClick={() => issueMutation.mutate()}>
+                  <Award size={14} />
+                  {issueMutation.isPending ? "Đang phát hành…" : "Phát hành chứng nhận"}
                 </Button>
-              )}
-            </div>
+                {pendingAckCount > 0 && (
+                  <Button type="button" size="sm" variant="outline" disabled={remindMutation.isPending} onClick={() => remindMutation.mutate()}>
+                    <Mail size={13} />
+                    {remindMutation.isPending ? "Đang gửi nhắc…" : `Nhắc xác nhận qua Email (${pendingAckCount})`}
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

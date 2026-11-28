@@ -112,3 +112,63 @@ export type PublicCertificateVerification = {
   templateImageUrl?: string | null;
   acknowledgedAt?: string | null;
 };
+
+export type CreateCertificateShareLinkInput = {
+  academicTerm?: string | null;
+  title?: string | null;
+  expiresInDays?: number | null;
+};
+
+export type CertificateShareLink = {
+  id: string;
+  token: string;
+  academicTerm?: string | null;
+  title?: string | null;
+  expiresAt?: string | null;
+  revokedAt?: string | null;
+  active: boolean;
+  viewCount: number;
+  lastViewedAt?: string | null;
+  createdAt: string;
+};
+
+export type CertificateShareLinkListResponse = {
+  items: CertificateShareLink[];
+  total: number;
+};
+
+export type PublicCertificateProofItem = {
+  certificateCode: string;
+  status: CertificateStatus;
+  clubCode: string;
+  clubName: string;
+  eventTitle: string;
+  eventStartTime?: string | null;
+  academicTerm?: string | null;
+  participantType: EventParticipantRole | string;
+  eventRole?: string | null;
+  issuedAt?: string | null;
+  acknowledgedAt?: string | null;
+  revokedAt?: string | null;
+  revocationReason?: string | null;
+  verificationSha256: string;
+  templateImageUrl?: string | null;
+};
+
+export type PublicCertificateProof = {
+  token: string;
+  title?: string | null;
+  academicTerm?: string | null;
+  active: boolean;
+  revoked: boolean;
+  expired: boolean;
+  createdAt: string;
+  expiresAt?: string | null;
+  viewCount: number;
+  verifiedAt: string;
+  studentName?: string | null;
+  studentCode?: string | null;
+  issuedCount: number;
+  revokedCount: number;
+  items: PublicCertificateProofItem[];
+};

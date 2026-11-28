@@ -9,6 +9,7 @@ import {
   Clock,
   ExternalLink,
   Image as ImageIcon,
+  Link2,
   Printer,
   Search,
   ShieldAlert,
@@ -17,6 +18,7 @@ import { apiModel, describeError, type EventCertificate } from "@/lib/api";
 import { qk } from "@/lib/api/query-keys";
 import { isYouthUnionCode, participantRoleLabel } from "@/lib/club/youth-union";
 import { cn, formatDateTime } from "@/lib/utils";
+import { ProfileCertificateSharePanel } from "@/components/profile/ProfileCertificateSharePanel";
 import { ErrorState, LoadingRows } from "@/components/shared/States";
 import { Badge, CountBadge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,6 +34,7 @@ export function ProfileCertificatesCard() {
   const [search, setSearch] = useState("");
   const [printingId, setPrintingId] = useState<string | null>(null);
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const certificatesQuery = useQuery({
     queryKey: qk.myCertificates(),
@@ -59,6 +62,13 @@ export function ProfileCertificatesCard() {
   });
 
   const allItems = useMemo(() => certificatesQuery.data?.items ?? [], [certificatesQuery.data?.items]);
+  const availableTerms = useMemo(
+    () =>
+      Array.from(
+        new Set(allItems.map((c) => c.academicTerm?.trim()).filter((t): t is string => Boolean(t))),
+      ).sort((a, b) => b.localeCompare(a)),
+    [allItems],
+  );
 
   const counts = useMemo(() => {
     let issued = 0;
@@ -123,14 +133,27 @@ export function ProfileCertificatesCard() {
             </p>
           </div>
         </div>
-        {counts.pending > 0 && (
-          <Badge tone="primary" dot={false}>
-            {counts.pending} chờ xác nhận
-          </Badge>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {counts.pending > 0 && (
+            <Badge tone="primary" dot={false}>
+              {counts.pending} chờ xác nhận
+            </Badge>
+          )}
+          <Button
+            type="button"
+            size="sm"
+            variant={shareOpen ? "default" : "outline"}
+            className="h-8 text-xs"
+            onClick={() => setShareOpen((v) => !v)}
+          >
+            <Link2 size={13} />
+            <span>Chia sẻ minh chứng ĐRL</span>
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-3 p-4 sm:p-5">
+        {shareOpen && <ProfileCertificateSharePanel availableTerms={availableTerms} />}
         {certificatesQuery.isPending ? (
           <LoadingRows rows={2} />
         ) : certificatesQuery.isError ? (

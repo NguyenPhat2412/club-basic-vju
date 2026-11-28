@@ -177,6 +177,9 @@ public final class ApiPaths {
     public static final String CERTIFICATES_MANAGEMENT = "/certificates/management";
     public static final String PUBLIC_CERTIFICATE_VERIFY = "/public/certificates/verify/{certificateCode}";
     public static final String PUBLIC_CERTIFICATE_TEMPLATE = "/public/certificates/templates/{fileName}";
+    public static final String MY_CERTIFICATE_SHARE_LINKS = "/me/certificate-share-links";
+    public static final String MY_CERTIFICATE_SHARE_LINK_BY_ID = "/me/certificate-share-links/{linkId}";
+    public static final String PUBLIC_CERTIFICATE_PROOF = "/public/certificates/proof/{token}";
     public static final String MY_CALENDAR = "/users/me/calendar";
 
     // Tasks

@@ -1,6 +1,7 @@
 package com.vju.club.service.impl;
 
 import com.vju.club.common.AcademicTermUtil;
+import com.vju.club.common.CertificateConstants;
 import com.vju.club.common.EventConstants;
 import com.vju.club.common.UserConstants;
 import com.vju.club.dto.response.TrainingPointReportResponse;
@@ -40,6 +41,8 @@ import java.util.UUID;
 public class TrainingPointReportServiceImpl implements TrainingPointReportService {
     private static final String DOAN_VJU_CODE = "DOANVJU";
     private static final Set<String> OFFICER_KEYS = Set.of(
+            CertificateConstants.PERMISSION_REPORT_TRAINING_POINTS,
+            CertificateConstants.PERMISSION_VIEW,
             EventConstants.PERMISSION_ATTENDANCE,
             EventConstants.PERMISSION_ATTENDANCE_EDIT,
             EventConstants.PERMISSION_UPDATE

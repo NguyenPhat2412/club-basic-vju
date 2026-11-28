@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { ClubAvatar, ClubCoverBanner } from "@/components/shared/ClubMedia";
+import { ClubAvatar, ClubCoverBanner, useClubMediaCatalog } from "@/components/shared/ClubMedia";
 import { HOME_MESSAGES } from "@/i18n/home-messages";
+import { clubSlugFromCode } from "@/lib/media";
 import { useI18n } from "@/providers/I18nContext";
 import { ClubItem, EventItem } from "@/types";
 import { DbText } from "./DbText";
@@ -20,6 +21,8 @@ export function HomeClubCard({
   const { locale, tr } = useI18n();
   const m = HOME_MESSAGES[locale];
   const localizedClubName = tr(club.name);
+  const mediaCatalog = useClubMediaCatalog(true);
+  const clubMedia = mediaCatalog.data?.clubs[clubSlugFromCode(club.code)];
   return (
     <article
       className="group flex flex-col justify-between overflow-hidden rounded-2xl bg-white transition-transform duration-200 hover:-translate-y-0.5"
@@ -30,6 +33,7 @@ export function HomeClubCard({
             name={localizedClubName}
             code={club.code}
             coverUrl={club.coverUrl}
+            fallbackUrl={clubMedia?.cover ?? undefined}
             className="h-44 w-full"
           >
             <div className="absolute left-3.5 top-3.5 flex flex-wrap items-center gap-1.5">
@@ -55,6 +59,7 @@ export function HomeClubCard({
               name={localizedClubName}
               code={club.code}
               logoUrl={club.logoUrl}
+              fallbackUrl={clubMedia?.logo ?? undefined}
               size="md"
               className="mt-0.5"
             />

@@ -291,8 +291,9 @@ export function EventAttendanceDrawer({
 
           <EventCertificatesSection
             event={effectiveSelected}
-            canManage={canAttend || canUpdate}
-            canRevoke={canLockAttendance}
+            canView={session.canInDepartment("certificate.view", clubId, effectiveSelected.departmentId) || session.canInDepartment("event.view", clubId, effectiveSelected.departmentId)}
+            canIssue={session.canInDepartment("certificate.issue", clubId, effectiveSelected.departmentId)}
+            canManageTemplate={session.canInDepartment("certificate.template", clubId, effectiveSelected.departmentId)}
             onNotice={onNotice}
             onError={onError}
           />

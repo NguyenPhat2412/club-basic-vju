@@ -92,7 +92,7 @@ function EventsPortalContent() {
 
   const canViewTrainingPointsReport =
     isLoggedIn &&
-    (["event.attendance", "event.attendance_edit", "event.update"].some((k) => session.can(k)) ||
+    (["report.training_points.view", "certificate.view", "event.attendance", "event.attendance_edit", "event.update"].some((k) => session.can(k)) ||
       session.hasGlobal("user.view"));
 
   const memberships = useQuery({

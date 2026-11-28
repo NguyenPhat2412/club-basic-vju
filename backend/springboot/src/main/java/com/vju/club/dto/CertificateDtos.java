@@ -1,5 +1,7 @@
 package com.vju.club.dto;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -129,6 +131,71 @@ public final class CertificateDtos {
             CertificateStatsSummary summary,
             List<EventCertificateResponse> items,
             long total
+    ) {
+    }
+
+    public record CreateCertificateShareLinkRequest(
+            @Size(max = 32) String academicTerm,
+            @Size(max = 160) String title,
+            @Min(1) @Max(365) Integer expiresInDays
+    ) {
+    }
+
+    public record CertificateShareLinkResponse(
+            UUID id,
+            String token,
+            String academicTerm,
+            String title,
+            OffsetDateTime expiresAt,
+            OffsetDateTime revokedAt,
+            boolean active,
+            int viewCount,
+            OffsetDateTime lastViewedAt,
+            OffsetDateTime createdAt
+    ) {
+    }
+
+    public record CertificateShareLinkListResponse(
+            List<CertificateShareLinkResponse> items,
+            long total
+    ) {
+    }
+
+    public record PublicCertificateProofItem(
+            String certificateCode,
+            String status,
+            String clubCode,
+            String clubName,
+            String eventTitle,
+            OffsetDateTime eventStartTime,
+            String academicTerm,
+            String participantType,
+            String eventRole,
+            OffsetDateTime issuedAt,
+            OffsetDateTime acknowledgedAt,
+            OffsetDateTime revokedAt,
+            String revocationReason,
+            String verificationSha256,
+            String templateImageUrl
+    ) {
+    }
+
+    public record PublicCertificateProofResponse(
+            String token,
+            String title,
+            String academicTerm,
+            boolean active,
+            boolean revoked,
+            boolean expired,
+            OffsetDateTime createdAt,
+            OffsetDateTime expiresAt,
+            int viewCount,
+            OffsetDateTime verifiedAt,
+            String studentName,
+            String studentCode,
+            long issuedCount,
+            long revokedCount,
+            List<PublicCertificateProofItem> items
     ) {
     }
 }

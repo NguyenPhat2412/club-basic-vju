@@ -144,6 +144,8 @@ export function computeVisibleClubTabs(
   }
   if (hasAny(['event.view', 'event.create', 'event.update', 'event.attendance', 'event.attendance_edit'])) {
     list.push({ value: 'events', label: 'Sự kiện' });
+  }
+  if (hasAny(['certificate.view', 'certificate.issue', 'certificate.template', 'certificate.revoke', 'event.view', 'event.update'])) {
     list.push({ value: 'certificates', label: 'Chứng nhận' });
   }
   if (hasAny(['task.view', 'task.create', 'task.update', 'task.verify'])) {
@@ -155,7 +157,7 @@ export function computeVisibleClubTabs(
   if (hasAny(['chat.view', 'chat.send', 'chat.summarize'])) {
     list.push({ value: 'chat', label: 'Chat & AI' });
   }
-  if (hasAny(['club.update', 'club.active', 'club.inactive', 'club.facebook.manage', 'notification.send'])) {
+  if (hasAny(['club.update', 'club.post.manage', 'club.active', 'club.inactive', 'club.facebook.manage', 'notification.send'])) {
     list.push({ value: 'settings', label: 'Cài đặt CLB' });
   }
   const locale = getPresentationLocale();

@@ -1419,7 +1419,7 @@ entries:
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: event.attendance | event.attendance_edit | event.update | user.view
+  permission: report.training_points.view | certificate.view | event.attendance | event.attendance_edit | event.update | user.view
 - method: POST
   path: /api/v1/events/{eventId}/cover
   module: event
@@ -1447,42 +1447,42 @@ entries:
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: event.attendance | event.attendance_edit | event.update
+  permission: certificate.issue
 - method: GET
   path: /api/v1/events/{eventId}/certificates
   module: event
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: event.view | event.attendance | event.attendance_edit | event.update
+  permission: certificate.view | certificate.issue | certificate.template | certificate.revoke | event.view
 - method: POST
   path: /api/v1/events/{eventId}/certificates/remind
   module: event
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: event.attendance | event.attendance_edit | event.update
+  permission: certificate.issue
 - method: POST
   path: /api/v1/events/{eventId}/certificate-template
   module: event
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: event.attendance | event.attendance_edit | event.update
+  permission: certificate.template
 - method: DELETE
   path: /api/v1/events/{eventId}/certificate-template
   module: event
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: event.attendance | event.attendance_edit | event.update
+  permission: certificate.template
 - method: POST
   path: /api/v1/certificates/{certificateId}/revoke
   module: event
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: event.update | event.attendance_edit
+  permission: certificate.revoke
 - method: GET
   path: /api/v1/me/certificates
   module: event
@@ -1503,7 +1503,7 @@ entries:
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: event.view | event.attendance | event.attendance_edit | event.update | club.view | system.view
+  permission: certificate.view | certificate.issue | certificate.template | certificate.revoke | event.view | club.view
 - method: GET
   path: /api/v1/public/certificates/verify/{certificateCode}
   module: event
@@ -1531,21 +1531,21 @@ entries:
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: club.update
+  permission: club.post.manage | club.update
 - method: PATCH
   path: /api/v1/clubs/{clubId}/posts/{postId}
   module: club
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: club.update
+  permission: club.post.manage | club.update
 - method: DELETE
   path: /api/v1/clubs/{clubId}/posts/{postId}
   module: club
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
-  permission: club.update
+  permission: club.post.manage | club.update
 - method: PUT
   path: /api/v1/clubs/{clubId}/posts/{postId}/like
   module: club
@@ -1566,4 +1566,32 @@ entries:
   backend: backend/springboot
   status: IMPLEMENTED
   authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/me/certificate-share-links
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: POST
+  path: /api/v1/me/certificate-share-links
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: DELETE
+  path: /api/v1/me/certificate-share-links/{linkId}
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: null
+- method: GET
+  path: /api/v1/public/certificates/proof/{token}
+  module: event
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
   permission: null

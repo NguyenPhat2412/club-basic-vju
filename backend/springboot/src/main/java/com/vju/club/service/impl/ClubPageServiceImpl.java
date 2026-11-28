@@ -1,6 +1,6 @@
 package com.vju.club.service.impl;
 
-import com.vju.club.annotation.RequirePermission;
+import com.vju.club.common.CertificateConstants;
 import com.vju.club.common.OffsetLimitRequest;
 import com.vju.club.dto.request.CreateClubPostRequest;
 import com.vju.club.dto.request.UpdateClubPostRequest;
@@ -21,6 +21,7 @@ import com.vju.club.repository.ClubPostRepository;
 import com.vju.club.repository.ClubRepository;
 import com.vju.club.repository.UserRepository;
 import com.vju.club.security.Actor;
+import com.vju.club.security.PermissionAuthorizationService;
 import com.vju.club.service.AuditService;
 import com.vju.club.service.ClubPageService;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +53,7 @@ public class ClubPageServiceImpl implements ClubPageService {
     private final ClubFollowerRepository followerRepository;
     private final UserRepository userRepository;
     private final AuditService auditService;
+    private final PermissionAuthorizationService authorizationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -82,8 +84,8 @@ public class ClubPageServiceImpl implements ClubPageService {
 
     @Override
     @Transactional
-    @RequirePermission(value = PERMISSION_CLUB_UPDATE, clubId = "clubId")
     public ClubPostResponse createPost(Actor actor, UUID clubId, CreateClubPostRequest request) {
+        requirePostManagePermission(actor, clubId);
         Club club = requireClub(clubId);
         String content = request.content() == null ? "" : request.content().trim();
         if (content.isEmpty()) {
@@ -115,8 +117,8 @@ public class ClubPageServiceImpl implements ClubPageService {
 
     @Override
     @Transactional
-    @RequirePermission(value = PERMISSION_CLUB_UPDATE, clubId = "clubId")
     public ClubPostResponse updatePost(Actor actor, UUID clubId, UUID postId, UpdateClubPostRequest request) {
+        requirePostManagePermission(actor, clubId);
         Club club = requireClub(clubId);
         ClubPost post = postRepository.findByIdAndClubId(postId, clubId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLUB_POST_NOT_FOUND", "Club post not found"));
@@ -149,8 +151,8 @@ public class ClubPageServiceImpl implements ClubPageService {
 
     @Override
     @Transactional
-    @RequirePermission(value = PERMISSION_CLUB_UPDATE, clubId = "clubId")
     public void deletePost(Actor actor, UUID clubId, UUID postId) {
+        requirePostManagePermission(actor, clubId);
         Club club = requireClub(clubId);
         ClubPost post = postRepository.findByIdAndClubId(postId, clubId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLUB_POST_NOT_FOUND", "Club post not found"));
@@ -205,6 +207,14 @@ public class ClubPageServiceImpl implements ClubPageService {
         }
         long count = followerRepository.countByClubId(clubId);
         return new ClubFollowStatusResponse(clubId, following, count);
+    }
+
+    private void requirePostManagePermission(Actor actor, UUID clubId) {
+        boolean allowed = authorizationService.hasPermission(actor, CertificateConstants.PERMISSION_CLUB_POST_MANAGE, clubId, null)
+                || authorizationService.hasPermission(actor, PERMISSION_CLUB_UPDATE, clubId, null);
+        if (!allowed) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "PERMISSION_DENIED", "Permission denied");
+        }
     }
 
     private Club requireClub(UUID clubId) {

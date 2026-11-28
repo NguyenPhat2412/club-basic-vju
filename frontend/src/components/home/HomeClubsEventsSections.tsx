@@ -226,7 +226,7 @@ export function HomeClubsEventsSections({
         )}
       </section>
 
-      <HomeEventsSection featuredEvents={featuredEvents} eventsPending={eventsPending} />
+      <HomeEventsSection allClubs={allClubs} featuredEvents={featuredEvents} eventsPending={eventsPending} />
 
       {previewClub && (
         <HomeClubPreviewDialog

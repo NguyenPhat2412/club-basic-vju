@@ -38,6 +38,7 @@ export function ClubSettingsTab({
   const clubMedia = mediaCatalog.data?.clubs[clubSlugFromCode(club.code)];
 
   const canUpdateClub = session.canInClub("club.update", club.id);
+  const canManagePosts = session.canInClub("club.post.manage", club.id) || canUpdateClub;
   const canManageFacebook = session.canInClub("club.facebook.manage", club.id) || canUpdateClub;
   const canActivateClub = club.status !== "ACTIVE" && session.canInClub("club.active", club.id);
   const canDeactivateClub = club.status === "ACTIVE" && session.canInClub("club.inactive", club.id);
@@ -46,7 +47,7 @@ export function ClubSettingsTab({
 
   const sections: { key: SettingsSectionKey; label: string; icon: React.ReactNode }[] = [
     ...(canEditProfile ? [{ key: "profile" as const, label: "Hồ sơ & Ảnh bìa", icon: <Building2 size={14} /> }] : []),
-    ...(canUpdateClub ? [{ key: "posts" as const, label: "Bảng tin CLB", icon: <Newspaper size={14} /> }] : []),
+    ...(canManagePosts ? [{ key: "posts" as const, label: "Bảng tin CLB", icon: <Newspaper size={14} /> }] : []),
     ...(canManageFacebook ? [{ key: "facebook" as const, label: "Fanpage Facebook", icon: <Share2 size={14} /> }] : []),
     ...(canUpdateClub ? [{ key: "appearance" as const, label: "Trang giới thiệu", icon: <LayoutTemplate size={14} /> }] : []),
   ];
@@ -215,7 +216,7 @@ export function ClubSettingsTab({
               />
             )}
 
-            {activeSection === "posts" && canUpdateClub && (
+            {activeSection === "posts" && canManagePosts && (
               <ClubPostsPanel key={`posts-${club.id}`} club={club} onNotice={onNotice} onError={onError} />
             )}
 

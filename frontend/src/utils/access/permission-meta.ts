@@ -18,6 +18,8 @@ export const MODULE_LABELS: Record<string, string> = {
   application: "Đơn đăng ký & Tuyển quân",
   document: "Quy chế & Kho tài liệu",
   event: "Sự kiện & Lịch sinh hoạt",
+  certificate: "Chứng nhận điện tử",
+  report: "Báo cáo & Điểm rèn luyện",
   task: "Công việc & Tiến độ",
   chat: "Kênh trao đổi & AI",
   notification: "Thông báo",
@@ -52,6 +54,16 @@ export const PERMISSION_META: Record<string, { label: string; description: strin
   "club.inactive": { label: "Ngừng hoạt động câu lạc bộ", description: "Tạm ngừng hoạt động câu lạc bộ" },
   "club.facebook.view": { label: "Xem thống kê & bài viết Fanpage Facebook", description: "Xem chỉ số tương tác, lượt theo dõi và bài viết đã đồng bộ từ Fanpage CLB" },
   "club.facebook.manage": { label: "Quản lý kết nối & đồng bộ Fanpage Facebook", description: "Kết nối, đăng nhập OAuth, đồng bộ bài viết và ngắt kết nối Fanpage Facebook của CLB" },
+  "club.post.manage": { label: "Quản lý bảng tin bài viết CLB", description: "Đăng, chỉnh sửa, ghim đầu trang và xoá bài viết trên bảng tin công khai của CLB" },
+
+  // Chứng nhận điện tử
+  "certificate.view": { label: "Xem & đối soát chứng nhận điện tử", description: "Xem danh sách, thống kê và tiến độ xác nhận chứng nhận đã phát hành" },
+  "certificate.issue": { label: "Phát hành & nhắc xác nhận chứng nhận", description: "Cấp chứng nhận điện tử sau khi khoá sổ SHA-256 và gửi nhắc xác nhận qua thông báo/Email" },
+  "certificate.template": { label: "Quản lý phôi ảnh chứng nhận", description: "Tải lên, thay đổi hoặc xoá phôi mẫu chứng nhận riêng cho từng sự kiện" },
+  "certificate.revoke": { label: "Thu hồi chứng nhận đã cấp", description: "Huỷ hiệu lực chứng nhận điện tử kèm lý do bắt buộc và lưu nhật ký kiểm toán" },
+
+  // Báo cáo & Điểm rèn luyện
+  "report.training_points.view": { label: "Xem & xuất báo cáo điểm rèn luyện", description: "Tra cứu, lọc theo học kỳ và xuất báo cáo tổng hợp điểm rèn luyện sinh viên" },
 
   // Ban chuyên môn
   "department.view": { label: "Xem danh sách ban", description: "Xem cơ cấu các ban chuyên môn trong câu lạc bộ" },
