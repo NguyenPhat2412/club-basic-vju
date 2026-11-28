@@ -253,6 +253,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(
             Exception exception, Object body, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        if (isClientDisconnect(exception)) {
+            log.debug("Client disconnected during framework response write: {}", exception.getMessage());
+            return null;
+        }
         ProblemDetail problem = body instanceof ProblemDetail detail
                 ? detail : ProblemDetail.forStatus(status);
         String code = codeFor(status);

@@ -3,8 +3,12 @@ package com.vju.club.error;
 import com.vju.club.service.TelegramAlertService;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotWritableException;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 
 import java.io.IOException;
@@ -60,5 +64,20 @@ class GlobalExceptionHandlerTest {
                 eq("server_500:POST:/api/v1/notifications/campaigns:IllegalStateException"),
                 eq("Lỗi máy chủ (HTTP 500)"),
                 contains("203.0.113.42"));
+    }
+
+    @Test
+    void brokenPipeInFrameworkWriteDoesNotTriggerFalse500TelegramAlert() {
+        TelegramAlertService telegram = mock(TelegramAlertService.class);
+        GlobalExceptionHandler handler = new GlobalExceptionHandler(telegram);
+        HttpMessageNotWritableException ex = new HttpMessageNotWritableException(
+                "Could not write JSON", new IOException("Broken pipe"));
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/api-catalog");
+
+        var response = handler.handleExceptionInternal(
+                ex, null, HttpHeaders.EMPTY, HttpStatus.INTERNAL_SERVER_ERROR, new ServletWebRequest(req));
+
+        assertThat(response).isNull();
+        verifyNoInteractions(telegram);
     }
 }
