@@ -60,6 +60,8 @@ export const qk = {
   publicClubCategories: key("public-club-categories"),
   publicClubDetail: key("public-club-detail"),
   publicClubFacebook: key("public-club-facebook"),
+  publicClubFollowStatus: key("public-club-follow-status"),
+  publicClubPosts: key("public-club-posts"),
   publicClubs: key("public-clubs"),
   publicEventBooths: key("public-event-booths"),
   roles: key("roles"),

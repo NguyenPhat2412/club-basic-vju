@@ -135,6 +135,48 @@
           "createdAt": "2026-11-28T07:47:05.000Z",
           "updatedAt": "2026-11-28T07:47:05.000Z",
           "uid": "40814722-4a22484f-b001-4140-976e-a971f37f6954"
+        },
+        {
+          "name": "GET Public Club Posts (/public/clubs/:id/posts)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Paginated posts envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('items'); pm.expect(j).to.have.property('total'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/public/clubs/{{sampleClubId}}/posts?offset=0&limit=10"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Public Club Follow Status (/public/clubs/:id/follow-status)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Follow status fields present', () => { const j = pm.response.json(); pm.expect(j).to.have.property('clubId'); pm.expect(j).to.have.property('following'); pm.expect(j).to.have.property('followersCount'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/public/clubs/{{sampleClubId}}/follow-status"
+          },
+          "response": []
         }
       ],
       "id": "836af335-8606-4c25-abbf-9f47b5ab33cb",

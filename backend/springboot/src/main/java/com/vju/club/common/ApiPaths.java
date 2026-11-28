@@ -230,6 +230,12 @@ public final class ApiPaths {
     public static final String CLUB_FACEBOOK_OAUTH_SELECT = "/clubs/{clubId}/facebook/oauth/select";
     public static final String FACEBOOK_OAUTH_CALLBACK = "/integrations/facebook/oauth/callback";
     public static final String PUBLIC_CLUB_FACEBOOK_POSTS = "/public/clubs/{clubId}/facebook-posts";
+    public static final String PUBLIC_CLUB_POSTS = "/public/clubs/{clubId}/posts";
+    public static final String CLUB_POSTS = "/clubs/{clubId}/posts";
+    public static final String CLUB_POST_BY_ID = "/clubs/{clubId}/posts/{postId}";
+    public static final String CLUB_POST_LIKE = "/clubs/{clubId}/posts/{postId}/like";
+    public static final String PUBLIC_CLUB_FOLLOW_STATUS = "/public/clubs/{clubId}/follow-status";
+    public static final String CLUB_FOLLOW = "/clubs/{clubId}/follow";
 
     // Swagger / Springdoc UI
     public static final String SWAGGER_UI_HTML = "/swagger-ui.html";

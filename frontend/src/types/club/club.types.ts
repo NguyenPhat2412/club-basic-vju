@@ -91,3 +91,47 @@ export type Membership = {
   leftAt?: string;
   departments: { id: string; name: string }[];
 };
+
+export type ClubPost = {
+  id: string;
+  clubId: string;
+  clubName: string;
+  clubCode: string;
+  authorId: string;
+  authorName: string;
+  authorAvatarUrl?: string | null;
+  title?: string | null;
+  content: string;
+  imageUrl?: string | null;
+  pinned: boolean;
+  likesCount: number;
+  likedByMe: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateClubPostInput = {
+  title?: string | null;
+  content: string;
+  imageUrl?: string | null;
+  pinned?: boolean;
+};
+
+export type UpdateClubPostInput = {
+  title?: string | null;
+  content?: string | null;
+  imageUrl?: string | null;
+  pinned?: boolean;
+};
+
+export type ClubPostLikeResult = {
+  postId: string;
+  liked: boolean;
+  likesCount: number;
+};
+
+export type ClubFollowStatus = {
+  clubId: string;
+  following: boolean;
+  followersCount: number;
+};

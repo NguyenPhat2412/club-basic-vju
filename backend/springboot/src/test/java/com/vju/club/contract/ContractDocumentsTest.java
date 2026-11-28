@@ -57,7 +57,7 @@ class ContractDocumentsTest {
         List<Map<String, Object>> entries = (List<Map<String, Object>>) catalogDoc.get("entries");
 
         Map<String, Object> paths = (Map<String, Object>) doc.get("paths");
-        assertThat(entries).hasSize(217);
+        assertThat(entries).hasSize(224);
         for (Map<String, Object> entry : entries) {
             String subPath = ((String) entry.get("path")).substring("/api/v1".length());
             String method = ((String) entry.get("method")).toLowerCase();

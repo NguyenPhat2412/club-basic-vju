@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type GuideAction =
-  | { kind: "section"; section: "profile" | "facebook" | "appearance" | "broadcast"; label: string }
+  | { kind: "section"; section: "profile" | "posts" | "facebook" | "appearance"; label: string }
   | { kind: "href"; href: string; label: string };
 
 type OnboardingStep = {
@@ -39,7 +39,7 @@ export function ClubOnboardingGuideCard({
 }: {
   club: Club;
   departments: Department[];
-  onSelectSection: (section: "profile" | "facebook" | "appearance" | "broadcast") => void;
+  onSelectSection: (section: "profile" | "posts" | "facebook" | "appearance") => void;
 }) {
   const profileReady = Boolean(club.description?.trim() && (club.logoUrl || club.coverUrl));
   const hasDepartments = departments.length > 0;

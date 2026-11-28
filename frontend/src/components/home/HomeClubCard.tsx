@@ -25,7 +25,7 @@ export function HomeClubCard({
       className="group flex flex-col justify-between overflow-hidden rounded-2xl bg-white transition-transform duration-200 hover:-translate-y-0.5"
     >
       <div>
-        <Link href={`/clubs?clubId=${club.id}`} className="block">
+        <Link href={`/clubs/${club.id}`} className="block">
           <ClubCoverBanner
             name={localizedClubName}
             code={club.code}
@@ -60,7 +60,7 @@ export function HomeClubCard({
             />
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold text-primary">{club.code}</p>
-              <Link href={`/clubs?clubId=${club.id}`} className="block">
+              <Link href={`/clubs/${club.id}`} className="block">
                 <h3 className="mt-0.5 line-clamp-2 text-[17px] font-bold leading-snug text-slate-900 transition-colors group-hover:text-primary">
                   <DbText value={club.name} />
                 </h3>
@@ -86,7 +86,7 @@ export function HomeClubCard({
           {m.clubsSection.quickView}
         </button>
         <Link
-          href={`/clubs?clubId=${club.id}`}
+          href={`/clubs/${club.id}`}
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
         >
           <span>{m.clubsSection.applyClub}</span>

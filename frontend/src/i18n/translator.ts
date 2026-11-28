@@ -323,6 +323,21 @@ const DYNAMIC_PATTERNS: PatternRule[] = [
     en: (_, code) => `Customize Club Overview & Identity (${code})`,
     ja: (_, code) => `クラブ概要・アイデンティティ設定 (${code})`,
   },
+  {
+    pattern: /^(\d+)\s+người theo dõi$/i,
+    en: (_, count) => `${count} followers`,
+    ja: (_, count) => `フォロワー ${count} 名`,
+  },
+  {
+    pattern: /^(\d+)\s+bài viết$/i,
+    en: (_, count) => `${count} posts`,
+    ja: (_, count) => `${count} 件の投稿`,
+  },
+  {
+    pattern: /^(\d+)\s+lượt thích$/i,
+    en: (_, count) => `${count} likes`,
+    ja: (_, count) => `${count} いいね`,
+  },
 ];
 
 export function translateUiText(

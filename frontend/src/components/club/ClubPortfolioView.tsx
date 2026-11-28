@@ -31,8 +31,10 @@ import { describeError } from "@/components/shared/ListPage";
 import { Section } from "@/components/shared/Overlays";
 import { EmptyState, LoadingRows } from "@/components/shared/States";
 import { Badge, StatusBadge } from "@/components/ui/badge";
+import { ClubFollowButton } from "@/components/club/ClubFollowButton";
 import { ClubOverviewShowcase } from "@/components/club/ClubOverviewShowcase";
 import { ClubPublicFacebookFeed, getSafeFacebookPageUrl } from "@/components/club/ClubPublicFacebookFeed";
+import { ClubPublicPostsFeed } from "@/components/club/ClubPublicPostsFeed";
 import { normalizeClubOverviewConfig } from "@/forms/club/club-overview-config";
 
 export function ClubPortfolioView({ clubId }: { clubId: string }) {
@@ -227,6 +229,7 @@ export function ClubPortfolioView({ clubId }: { clubId: string }) {
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <ClubFollowButton clubId={club.id} isAuthenticated={Boolean(session.user)} />
             {membership ? (
               <Link
                 href="/memberships"
@@ -255,6 +258,7 @@ export function ClubPortfolioView({ clubId }: { clubId: string }) {
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-5">
           <ClubOverviewShowcase club={club} variant="workspace" />
+          <ClubPublicPostsFeed clubId={club.id} clubName={club.name} isAuthenticated={Boolean(session.user)} canManage={canManage} />
 
           <section className="rounded-2xl border border-border bg-card p-5">
             <h2 className="text-sm font-bold text-foreground">{isDtn ? "Giới thiệu Đoàn Thanh niên Trường" : "Giới thiệu Câu lạc bộ"}</h2>

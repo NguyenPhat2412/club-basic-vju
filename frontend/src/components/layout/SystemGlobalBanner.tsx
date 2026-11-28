@@ -15,7 +15,13 @@ export function usePublicSystemStatus() {
   });
 }
 
-export function SystemGlobalBanner({ isAdmin }: { isAdmin: boolean }) {
+export function SystemGlobalBanner({
+  isAdmin,
+  showPublicMaintenance = false,
+}: {
+  isAdmin: boolean;
+  showPublicMaintenance?: boolean;
+}) {
   const status = usePublicSystemStatus();
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
   const data = status.data;
@@ -36,10 +42,14 @@ export function SystemGlobalBanner({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <>
-      {data.maintenanceMode && isAdmin && (
+      {data.maintenanceMode && (isAdmin || showPublicMaintenance) && (
         <div className="flex items-center justify-center gap-2 border-b border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-800">
           <Wrench size={13} className="shrink-0" />
-          <span>Chế độ bảo trì đang bật (người dùng thường đang tạm dừng truy cập).</span>
+          <span>
+            {isAdmin
+              ? "Chế độ bảo trì đang bật (người dùng thường đang tạm dừng truy cập)."
+              : "Hệ thống đang bảo trì định kỳ — một số chức năng tạm thời gián đoạn."}
+          </span>
         </div>
       )}
       {showAnnouncement && (

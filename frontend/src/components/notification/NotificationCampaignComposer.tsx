@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileText, Mail, Megaphone, Send, Users } from "lucide-react";
 import {
@@ -25,10 +26,14 @@ export function NotificationCampaignComposer({
   onSent,
 }: NotificationCampaignComposerProps) {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const initialClubId = searchParams.get("clubId");
   const [audienceType, setAudienceType] = useState<NotificationAudienceType>(
-    hasGlobalSend ? "ALL_USERS" : "CLUBS",
+    initialClubId ? "CLUBS" : hasGlobalSend ? "ALL_USERS" : "CLUBS",
   );
-  const [selectedClubIds, setSelectedClubIds] = useState<string[]>([]);
+  const [selectedClubIds, setSelectedClubIds] = useState<string[]>(
+    initialClubId ? [initialClubId] : [],
+  );
   const [category, setCategory] = useState<NotificationCampaignCategory>("DOCUMENT");
   const [documentId, setDocumentId] = useState("");
   const [sendEmail, setSendEmail] = useState(false);

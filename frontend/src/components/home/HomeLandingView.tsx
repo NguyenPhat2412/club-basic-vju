@@ -9,6 +9,7 @@ import { apiModel } from "@/lib/api";
 import { useI18n } from "@/providers/I18nContext";
 import { AuthModal, AuthModalMode } from "@/components/auth/AuthModal";
 import { SmartAuthPrompt } from "@/components/auth/SmartAuthPrompt";
+import { SystemGlobalBanner } from "@/components/layout/SystemGlobalBanner";
 import { HomeHeaderHero } from "./HomeHeaderHero";
 import { HomeClubsEventsSections } from "./HomeClubsEventsSections";
 import { HomeWorkspaceShowcase } from "./HomeWorkspaceShowcase";
@@ -119,6 +120,10 @@ function HomeLandingContent({ initialAuthMode }: { initialAuthMode?: AuthModalMo
 
   return (
     <main id="top" className="min-h-svh overflow-x-clip bg-background text-foreground">
+      <SystemGlobalBanner
+        isAdmin={Boolean(session.user && session.can("system.settings.manage"))}
+        showPublicMaintenance
+      />
       <div data-no-i18n="true">
         <HomeHeaderHero
           user={session.user}

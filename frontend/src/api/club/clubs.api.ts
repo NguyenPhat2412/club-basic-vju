@@ -1,7 +1,16 @@
 import { api, apiForm, cleanParams } from '@/lib/api/client';
 import { API_ROUTES } from '@/lib/api/routes';
 import type { Page } from '@/types/common.types';
-import type { Club, ClubInput, Membership } from '@/types/club/club.types';
+import type {
+  Club,
+  ClubFollowStatus,
+  ClubInput,
+  ClubPost,
+  ClubPostLikeResult,
+  CreateClubPostInput,
+  Membership,
+  UpdateClubPostInput,
+} from '@/types/club/club.types';
 import type {
   ClubFacebookOAuthPageOption,
   ClubFacebookOverview,
@@ -82,4 +91,18 @@ export const clubsApi = {
     }),
   publicClubFacebookPosts: (clubId: string, limit = 6) =>
     api<ClubFacebookPublicFeed>(`${API_ROUTES.clubs.publicFacebookPosts(clubId)}?${cleanParams({ limit })}`),
+  publicClubPosts: (clubId: string, offset = 0, limit = 10) =>
+    api<Page<ClubPost>>(`${API_ROUTES.clubs.publicPosts(clubId)}?${cleanParams({ offset, limit })}`),
+  createClubPost: (clubId: string, body: CreateClubPostInput) =>
+    api<ClubPost>(API_ROUTES.clubs.posts(clubId), { method: 'POST', body: JSON.stringify(body) }),
+  updateClubPost: (clubId: string, postId: string, body: UpdateClubPostInput) =>
+    api<ClubPost>(API_ROUTES.clubs.postDetail(clubId, postId), { method: 'PATCH', body: JSON.stringify(body) }),
+  deleteClubPost: (clubId: string, postId: string) =>
+    api<void>(API_ROUTES.clubs.postDetail(clubId, postId), { method: 'DELETE' }),
+  toggleClubPostLike: (clubId: string, postId: string) =>
+    api<ClubPostLikeResult>(API_ROUTES.clubs.postLike(clubId, postId), { method: 'PUT' }),
+  publicClubFollowStatus: (clubId: string) =>
+    api<ClubFollowStatus>(API_ROUTES.clubs.publicFollowStatus(clubId)),
+  toggleClubFollow: (clubId: string) =>
+    api<ClubFollowStatus>(API_ROUTES.clubs.follow(clubId), { method: 'PUT' }),
 };

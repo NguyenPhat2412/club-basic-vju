@@ -6788,6 +6788,177 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+  /public/clubs/{clubId}/posts:
+    get:
+      operationId: clubPage.listPublicPosts
+      summary: List public club feed posts (pinned first, newest first)
+      tags: [Club]
+      security: []
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: offset
+        in: query
+        schema: {type: integer, minimum: 0, default: 0}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 50, default: 10}
+      responses:
+        '200':
+          description: Paged club posts
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClubPostPageResponse'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /clubs/{clubId}/posts:
+    post:
+      operationId: clubPage.createPost
+      summary: Publish a new post on the club feed
+      tags: [Club]
+      x-permission: club.update
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateClubPostRequest'}
+      responses:
+        '201':
+          description: Club post created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClubPostResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /clubs/{clubId}/posts/{postId}:
+    patch:
+      operationId: clubPage.updatePost
+      summary: Edit or pin/unpin a club post
+      tags: [Club]
+      x-permission: club.update
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: postId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateClubPostRequest'}
+      responses:
+        '200':
+          description: Club post updated
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClubPostResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    delete:
+      operationId: clubPage.deletePost
+      summary: Delete a club feed post
+      tags: [Club]
+      x-permission: club.update
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: postId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '204':
+          description: Club post deleted
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /clubs/{clubId}/posts/{postId}/like:
+    put:
+      operationId: clubPage.toggleLike
+      summary: Toggle like on a club post
+      tags: [Club]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: postId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Updated like state
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClubPostLikeResponse'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /public/clubs/{clubId}/follow-status:
+    get:
+      operationId: clubPage.followStatus
+      summary: Get follower count and current viewer follow status for a club
+      tags: [Club]
+      security: []
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Club follow status
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClubFollowStatusResponse'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /clubs/{clubId}/follow:
+    put:
+      operationId: clubPage.toggleFollow
+      summary: Follow or unfollow a club
+      tags: [Club]
+      x-permission: null
+      x-implementation-status: IMPLEMENTED
+      parameters:
+      - name: clubId
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Updated follow status
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ClubFollowStatusResponse'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
 components:
   securitySchemes:
     sessionAuth:
@@ -9926,6 +10097,64 @@ components:
         items:
           type: array
           items: {$ref: '#/components/schemas/StudentTrainingPointItem'}
+    CreateClubPostRequest:
+      type: object
+      required: [content]
+      properties:
+        title: {type: [string, 'null'], maxLength: 160}
+        content: {type: string, minLength: 1, maxLength: 4000}
+        imageUrl: {type: [string, 'null'], maxLength: 500}
+        pinned: {type: [boolean, 'null']}
+    UpdateClubPostRequest:
+      type: object
+      properties:
+        title: {type: [string, 'null'], maxLength: 160}
+        content: {type: [string, 'null'], maxLength: 4000}
+        imageUrl: {type: [string, 'null'], maxLength: 500}
+        pinned: {type: [boolean, 'null']}
+    ClubPostResponse:
+      type: object
+      required: [id, clubId, clubName, clubCode, authorId, authorName, content, pinned, likesCount, likedByMe, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        clubId: {type: string, format: uuid}
+        clubName: {type: string}
+        clubCode: {type: string}
+        authorId: {type: string, format: uuid}
+        authorName: {type: string}
+        authorAvatarUrl: {type: [string, 'null']}
+        title: {type: [string, 'null']}
+        content: {type: string}
+        imageUrl: {type: [string, 'null']}
+        pinned: {type: boolean}
+        likesCount: {type: integer}
+        likedByMe: {type: boolean}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    ClubPostPageResponse:
+      type: object
+      required: [items, total, offset, limit]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/ClubPostResponse'}
+        total: {type: integer, format: int64}
+        offset: {type: integer}
+        limit: {type: integer}
+    ClubPostLikeResponse:
+      type: object
+      required: [postId, liked, likesCount]
+      properties:
+        postId: {type: string, format: uuid}
+        liked: {type: boolean}
+        likesCount: {type: integer}
+    ClubFollowStatusResponse:
+      type: object
+      required: [clubId, following, followersCount]
+      properties:
+        clubId: {type: string, format: uuid}
+        following: {type: boolean}
+        followersCount: {type: integer, format: int64}
 tags:
 - name: System
   description: Danh mục và trạng thái API
