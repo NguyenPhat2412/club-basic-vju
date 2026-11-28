@@ -156,6 +156,8 @@ class SystemSettingsServiceTest {
         values.put("telegramAlertOnRateLimit", true);
         values.put("telegramAlertOnAdminLogin", true);
         values.put("telegramAlertOnSettingsChange", true);
+        values.put("telegramAlertOnServerError", true);
+        values.put("telegramAlertOnBroadcast", true);
         values.put("telegramCooldownSeconds", 180);
         values.put("maintenanceMode", false);
         values.put("maintenanceMessage", null);
@@ -196,7 +198,7 @@ class SystemSettingsServiceTest {
                 "https://router.anhchau.all1.vn/v1", "sk-ai-secret", false, "apmarket",
                 "google-client-id", "st.vju.ac.vn", true,
                 true, "123456:telegram-secret-token", false, "-100123456789", "42",
-                true, 5, true, true, true, 120,
+                true, 5, true, true, true, true, true, 120,
                 false, null, false, null, "info", null, false);
 
         SystemSettingsResponse saved = securedService.update(actor, setReq);
@@ -221,7 +223,7 @@ class SystemSettingsServiceTest {
                 3, 7, 2, 48, true, 120, 7, 10, 4000, 20, 20, 10, 5, 500, 20, 30, 20, 50, 200, 5, 2, false, 60,
                 5, 5, 60, 5, null, 587, null, null, false, null, "VJU ClubHub", true,
                 "", null, true, "", "", "", "", null, true, "", "", "", null,
-                false, null, true, "", "", false, 5, false, false, false, 180,
+                false, null, true, "", "", false, 5, false, false, false, false, false, 180,
                 false, null, false, null, "info", null, true);
 
         SystemSettingsResponse cleared = securedService.update(actor, clearReq);

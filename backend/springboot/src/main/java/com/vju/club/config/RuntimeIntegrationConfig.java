@@ -103,6 +103,8 @@ public class RuntimeIntegrationConfig {
             boolean alertOnRateLimit,
             boolean alertOnAdminLogin,
             boolean alertOnSettingsChange,
+            boolean alertOnServerError,
+            boolean alertOnBroadcast,
             int cooldownSeconds) {
         public boolean isConfigured() {
             return hasText(botToken) && hasText(chatId);
@@ -132,6 +134,8 @@ public class RuntimeIntegrationConfig {
         boolean alertOnRateLimit = s == null || s.isTelegramAlertOnRateLimit();
         boolean alertOnAdminLogin = s == null || s.isTelegramAlertOnAdminLogin();
         boolean alertOnSettingsChange = s == null || s.isTelegramAlertOnSettingsChange();
+        boolean alertOnServerError = s == null || s.isTelegramAlertOnServerError();
+        boolean alertOnBroadcast = s == null || s.isTelegramAlertOnBroadcast();
         int cooldownSeconds = s == null ? 180 : Math.max(10, s.getTelegramCooldownSeconds());
         return new EffectiveTelegram(
                 enabled,
@@ -144,6 +148,8 @@ public class RuntimeIntegrationConfig {
                 alertOnRateLimit,
                 alertOnAdminLogin,
                 alertOnSettingsChange,
+                alertOnServerError,
+                alertOnBroadcast,
                 cooldownSeconds);
     }
 

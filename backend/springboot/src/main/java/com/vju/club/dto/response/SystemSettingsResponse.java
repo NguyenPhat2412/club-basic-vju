@@ -61,6 +61,8 @@ public record SystemSettingsResponse(
         boolean telegramAlertOnRateLimit,
         boolean telegramAlertOnAdminLogin,
         boolean telegramAlertOnSettingsChange,
+        boolean telegramAlertOnServerError,
+        boolean telegramAlertOnBroadcast,
         int telegramCooldownSeconds,
         boolean telegramConfigured,
         boolean maintenanceMode,

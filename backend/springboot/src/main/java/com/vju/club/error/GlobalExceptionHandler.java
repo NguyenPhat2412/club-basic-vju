@@ -1,5 +1,6 @@
 package com.vju.club.error;
 
+import com.vju.club.config.RuntimeIntegrationConfig;
 import com.vju.club.security.RequestMetadataExtractor;
 import com.vju.club.service.TelegramAlertService;
 import com.vju.club.service.impl.TelegramAlertServiceImpl;
@@ -45,14 +46,23 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @Nullable
     private final TelegramAlertService telegramAlertService;
+    @Nullable
+    private final RuntimeIntegrationConfig runtimeIntegrationConfig;
 
     public GlobalExceptionHandler() {
-        this(null);
+        this(null, null);
+    }
+
+    public GlobalExceptionHandler(@Nullable TelegramAlertService telegramAlertService) {
+        this(telegramAlertService, null);
     }
 
     @Autowired
-    public GlobalExceptionHandler(@Nullable TelegramAlertService telegramAlertService) {
+    public GlobalExceptionHandler(
+            @Nullable TelegramAlertService telegramAlertService,
+            @Nullable RuntimeIntegrationConfig runtimeIntegrationConfig) {
         this.telegramAlertService = telegramAlertService;
+        this.runtimeIntegrationConfig = runtimeIntegrationConfig;
     }
 
     private static final Map<String, String> CONSTRAINT_CODES = new LinkedHashMap<>();
@@ -166,6 +176,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             return;
         }
         try {
+            if (runtimeIntegrationConfig != null) {
+                RuntimeIntegrationConfig.EffectiveTelegram tg = runtimeIntegrationConfig.telegram();
+                if (!tg.isActive() || !tg.alertOnServerError()) {
+                    return;
+                }
+            }
             String method = request != null && request.getMethod() != null ? request.getMethod() : "UNKNOWN";
             String uri = request != null && request.getRequestURI() != null ? request.getRequestURI() : "unknown";
             String ip = request != null

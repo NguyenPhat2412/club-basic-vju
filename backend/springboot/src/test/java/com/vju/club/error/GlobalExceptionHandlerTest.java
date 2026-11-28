@@ -1,5 +1,6 @@
 package com.vju.club.error;
 
+import com.vju.club.config.RuntimeIntegrationConfig;
 import com.vju.club.service.TelegramAlertService;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -19,6 +20,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 class GlobalExceptionHandlerTest {
     @Test
@@ -78,6 +80,22 @@ class GlobalExceptionHandlerTest {
                 ex, null, HttpHeaders.EMPTY, HttpStatus.INTERNAL_SERVER_ERROR, new ServletWebRequest(req));
 
         assertThat(response).isNull();
+        verifyNoInteractions(telegram);
+    }
+
+    @Test
+    void unexpected500RespectsTelegramAlertOnServerErrorToggle() {
+        TelegramAlertService telegram = mock(TelegramAlertService.class);
+        RuntimeIntegrationConfig cfg = mock(RuntimeIntegrationConfig.class);
+        when(cfg.telegram()).thenReturn(new RuntimeIntegrationConfig.EffectiveTelegram(
+                true, "tok", "-1001", "", "https://api.telegram.org",
+                true, 5, true, true, true, false, true, 180));
+        GlobalExceptionHandler handler = new GlobalExceptionHandler(telegram, cfg);
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/clubs");
+
+        var response = handler.handleUnexpectedException(new RuntimeException("boom"), req);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(500);
         verifyNoInteractions(telegram);
     }
 }

@@ -57,6 +57,8 @@ export type SystemSettingsInput = {
   telegramAlertOnRateLimit: boolean;
   telegramAlertOnAdminLogin: boolean;
   telegramAlertOnSettingsChange: boolean;
+  telegramAlertOnServerError: boolean;
+  telegramAlertOnBroadcast: boolean;
   telegramCooldownSeconds: number;
   maintenanceMode: boolean;
   maintenanceMessage: string | null;

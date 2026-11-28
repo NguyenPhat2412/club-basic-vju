@@ -59,7 +59,9 @@ export function SystemTelegramCard({
       | "telegramAlertOnFailedLogin"
       | "telegramAlertOnRateLimit"
       | "telegramAlertOnAdminLogin"
-      | "telegramAlertOnSettingsChange";
+      | "telegramAlertOnSettingsChange"
+      | "telegramAlertOnServerError"
+      | "telegramAlertOnBroadcast";
     label: string;
     tooltip: string;
   }[] = [
@@ -80,10 +82,33 @@ export function SystemTelegramCard({
     },
     {
       key: "telegramAlertOnSettingsChange",
-      label: "Thay đổi cấu hình & Ngắt phiên",
-      tooltip: "Thông báo khi cập nhật cài đặt hệ thống hoặc ngắt phiên người dùng.",
+      label: "Cấu hình, IP & Ngắt phiên",
+      tooltip: "Thông báo khi đổi cài đặt hệ thống, bật bảo trì, chặn/gỡ IP hoặc ngắt phiên người dùng.",
+    },
+    {
+      key: "telegramAlertOnServerError",
+      label: "Lỗi máy chủ (HTTP 500)",
+      tooltip: "Báo ngay khi backend phát sinh lỗi 500 bất ngờ kèm endpoint và IP (đã lọc lỗi ngắt kết nối sớm).",
+    },
+    {
+      key: "telegramAlertOnBroadcast",
+      label: "Phát thông báo hàng loạt",
+      tooltip: "Thông báo khi có chiến dịch phát thông báo toàn trường / BCN hoặc gửi nhắc chưa đọc.",
     },
   ];
+
+  const activeRuleCount = alertRules.filter((r) => draft[r.key]).length;
+  const setAllRules = (enabled: boolean) => {
+    onChange({
+      ...draft,
+      telegramAlertOnFailedLogin: enabled,
+      telegramAlertOnRateLimit: enabled,
+      telegramAlertOnAdminLogin: enabled,
+      telegramAlertOnSettingsChange: enabled,
+      telegramAlertOnServerError: enabled,
+      telegramAlertOnBroadcast: enabled,
+    });
+  };
 
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs">
@@ -251,37 +276,74 @@ export function SystemTelegramCard({
           </FormField>
         </div>
 
-        {/* Horizontal row 2: 4 trigger switches in 4-col grid */}
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {alertRules.map((rule) => (
-            <div
-              key={rule.key}
-              title={rule.tooltip}
-              className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2.5"
-            >
-              <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-slate-800">
-                <ShieldAlert size={13} className="shrink-0 text-primary" />
-                <span className="truncate">{rule.label}</span>
+        {/* Horizontal row 2: 6 trigger switches in crisp 3x2 grid with quick toggle-all */}
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Sự kiện kích hoạt cảnh báo
               </span>
-              <button
-                type="button"
-                role="switch"
-                aria-label={rule.label}
-                aria-checked={draft[rule.key]}
-                disabled={!canEdit}
-                onClick={() => onChange({ ...draft, [rule.key]: !draft[rule.key] })}
-                className={`relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
-                  draft[rule.key] ? "bg-primary" : "bg-slate-300"
-                }`}
-              >
-                <span
-                  className={`absolute left-0 top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform ${
-                    draft[rule.key] ? "translate-x-4" : "translate-x-0.5"
-                  }`}
-                />
-              </button>
+              <Badge tone="neutral">
+                <span data-no-i18n="true">{activeRuleCount}/{alertRules.length}</span>
+              </Badge>
             </div>
-          ))}
+            {canEdit && (
+              <div className="flex items-center gap-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6.5 px-2 text-[11px]"
+                  disabled={activeRuleCount === alertRules.length}
+                  onClick={() => setAllRules(true)}
+                >
+                  Bật tất cả
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6.5 px-2 text-[11px]"
+                  disabled={activeRuleCount === 0}
+                  onClick={() => setAllRules(false)}
+                >
+                  Tắt tất cả
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {alertRules.map((rule) => (
+              <div
+                key={rule.key}
+                title={rule.tooltip}
+                className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2.5"
+              >
+                <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-slate-800">
+                  <ShieldAlert size={13} className="shrink-0 text-primary" />
+                  <span className="truncate">{rule.label}</span>
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-label={rule.label}
+                  aria-checked={draft[rule.key]}
+                  disabled={!canEdit}
+                  onClick={() => onChange({ ...draft, [rule.key]: !draft[rule.key] })}
+                  className={`relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
+                    draft[rule.key] ? "bg-primary" : "bg-slate-300"
+                  }`}
+                >
+                  <span
+                    className={`absolute left-0 top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform ${
+                      draft[rule.key] ? "translate-x-4" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Single-line setup tip */}

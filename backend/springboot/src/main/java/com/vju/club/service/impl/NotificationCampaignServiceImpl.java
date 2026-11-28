@@ -1,6 +1,7 @@
 package com.vju.club.service.impl;
 
 import com.vju.club.common.OffsetLimitRequest;
+import com.vju.club.config.RuntimeIntegrationConfig;
 import com.vju.club.dto.request.CreateNotificationCampaignRequest;
 import com.vju.club.dto.response.NotificationAudiencePreviewResponse;
 import com.vju.club.dto.response.NotificationCampaignRemindResponse;
@@ -21,9 +22,11 @@ import com.vju.club.repository.UserRepository;
 import com.vju.club.repository.UserRoleRepository;
 import com.vju.club.security.Actor;
 import com.vju.club.security.PermissionAuthorizationService;
+import com.vju.club.security.RequestMetadataExtractor;
 import com.vju.club.security.websocket.WebSocketSessionTracker;
 import com.vju.club.service.AuditService;
 import com.vju.club.service.NotificationCampaignService;
+import com.vju.club.service.TelegramAlertService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
@@ -76,6 +79,12 @@ public class NotificationCampaignServiceImpl implements NotificationCampaignServ
 
     @Autowired(required = false)
     private ApplicationEventPublisher eventPublisher;
+
+    @Autowired(required = false)
+    private TelegramAlertService telegramAlertService;
+
+    @Autowired(required = false)
+    private RuntimeIntegrationConfig runtimeIntegrationConfig;
 
     @Override
     @Transactional(readOnly = true)
@@ -202,6 +211,14 @@ public class NotificationCampaignServiceImpl implements NotificationCampaignServ
         auditService.record(actor.id(), AuditAction.NOTIFICATION_BROADCASTED, finalSaved.getId(), null, null, auditValues);
 
         String creatorName = userRepository.findById(actor.id()).map(User::getFullName).orElse(null);
+        notifyBroadcastTelegram(
+                "broadcast:" + finalSaved.getId(),
+                "Phát thông báo hàng loạt",
+                creatorName,
+                title,
+                audienceType,
+                delivered,
+                emailQueued);
         return toResponse(finalSaved, 0L, creatorName, attachedDoc == null ? null : attachedDoc.getName());
     }
 
@@ -234,7 +251,50 @@ public class NotificationCampaignServiceImpl implements NotificationCampaignServ
 
         auditService.record(actor.id(), AuditAction.NOTIFICATION_BROADCASTED, campaign.getId(), null, null,
                 Map.of("type", "REMIND_UNREAD", "campaignId", campaign.getId(), "remindedCount", delivered));
+        String actorName = userRepository.findById(actor.id()).map(User::getFullName).orElse(null);
+        notifyBroadcastTelegram(
+                "broadcast-remind:" + campaign.getId(),
+                "Nhắc đọc thông báo hàng loạt",
+                actorName,
+                campaign.getTitle(),
+                campaign.getAudienceType(),
+                delivered,
+                campaign.isSendEmail() ? delivered : 0);
         return new NotificationCampaignRemindResponse(campaignId, delivered);
+    }
+
+    private void notifyBroadcastTelegram(
+            String dedupeKey,
+            String alertTitle,
+            String senderName,
+            String campaignTitle,
+            String audienceType,
+            int recipientCount,
+            int emailQueued) {
+        if (telegramAlertService == null || runtimeIntegrationConfig == null) {
+            return;
+        }
+        try {
+            RuntimeIntegrationConfig.EffectiveTelegram tg = runtimeIntegrationConfig.telegram();
+            if (!tg.isActive() || !tg.alertOnBroadcast()) {
+                return;
+            }
+            String ip = RequestMetadataExtractor.extractCurrent().ipAddress();
+            String body = """
+                    • Người gửi: <b>%s</b>
+                    • Tiêu đề: <code>%s</code>
+                    • Đối tượng: <code>%s</code> · <b>%d</b> người nhận%s
+                    • Địa chỉ IP: <code>%s</code>"""
+                    .formatted(
+                            TelegramAlertServiceImpl.escapeHtml(senderName == null ? "Quản trị viên" : senderName),
+                            TelegramAlertServiceImpl.escapeHtml(campaignTitle),
+                            TelegramAlertServiceImpl.escapeHtml(audienceType),
+                            recipientCount,
+                            emailQueued > 0 ? " (Email: " + emailQueued + ")" : "",
+                            TelegramAlertServiceImpl.escapeHtml(ip == null ? "unknown" : ip));
+            telegramAlertService.sendAlertAsync(dedupeKey, alertTitle, body);
+        } catch (RuntimeException ignored) {
+        }
     }
 
     private int batchInsertNotifications(

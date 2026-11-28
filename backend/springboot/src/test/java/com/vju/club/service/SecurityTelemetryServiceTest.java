@@ -77,7 +77,7 @@ class SecurityTelemetryServiceTest {
 
         when(runtimeIntegrationConfig.telegram()).thenReturn(new RuntimeIntegrationConfig.EffectiveTelegram(
                 true, "token", "-1001", "", "https://api.telegram.org",
-                true, 3, true, true, true, 180));
+                true, 3, true, true, true, true, true, 180));
 
         service.recordLoginFailed(null, "victim@vju.ac.vn", "INVALID_CREDENTIALS", "password");
         service.recordLoginFailed(null, "victim@vju.ac.vn", "INVALID_CREDENTIALS", "password");
@@ -152,7 +152,7 @@ class SecurityTelemetryServiceTest {
         when(userRepository.findById(targetId)).thenReturn(Optional.of(target));
         when(userSessionService.endAllSessions(targetId)).thenReturn(2);
         when(runtimeIntegrationConfig.telegram()).thenReturn(new RuntimeIntegrationConfig.EffectiveTelegram(
-                false, "", "", "", "https://api.telegram.org", true, 5, true, true, true, 180));
+                false, "", "", "", "https://api.telegram.org", true, 5, true, true, true, true, true, 180));
 
         service.disconnectOnlineUser(actor, targetId);
         verify(userSessionService).endAllSessions(targetId);

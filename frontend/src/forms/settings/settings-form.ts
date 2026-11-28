@@ -148,6 +148,8 @@ export function defaultSystemSettingsInput(): SystemSettingsInput {
     telegramAlertOnRateLimit: true,
     telegramAlertOnAdminLogin: true,
     telegramAlertOnSettingsChange: true,
+    telegramAlertOnServerError: true,
+    telegramAlertOnBroadcast: true,
     telegramCooldownSeconds: 180,
     maintenanceMode: false,
     maintenanceMessage: null,
@@ -201,6 +203,8 @@ export function createSystemSettingsDraft(settings?: SystemSettings | null): Sys
   draft.telegramAlertOnRateLimit = settings.telegramAlertOnRateLimit ?? true;
   draft.telegramAlertOnAdminLogin = settings.telegramAlertOnAdminLogin ?? true;
   draft.telegramAlertOnSettingsChange = settings.telegramAlertOnSettingsChange ?? true;
+  draft.telegramAlertOnServerError = settings.telegramAlertOnServerError ?? true;
+  draft.telegramAlertOnBroadcast = settings.telegramAlertOnBroadcast ?? true;
   draft.telegramCooldownSeconds = settings.telegramCooldownSeconds ?? 180;
   draft.maintenanceMode = settings.maintenanceMode ?? false;
   draft.maintenanceMessage = settings.maintenanceMessage ?? null;
@@ -256,6 +260,8 @@ export function hasSystemSettingsChanged(draft: SystemSettingsInput, current?: S
   if (Boolean(draft.telegramAlertOnRateLimit) !== Boolean(current.telegramAlertOnRateLimit)) return true;
   if (Boolean(draft.telegramAlertOnAdminLogin) !== Boolean(current.telegramAlertOnAdminLogin)) return true;
   if (Boolean(draft.telegramAlertOnSettingsChange) !== Boolean(current.telegramAlertOnSettingsChange)) return true;
+  if (Boolean(draft.telegramAlertOnServerError) !== Boolean(current.telegramAlertOnServerError)) return true;
+  if (Boolean(draft.telegramAlertOnBroadcast) !== Boolean(current.telegramAlertOnBroadcast)) return true;
   if ((draft.telegramCooldownSeconds || 180) !== (current.telegramCooldownSeconds || 180)) return true;
   if (Boolean(draft.maintenanceMode) !== Boolean(current.maintenanceMode)) return true;
   if (normStr(draft.maintenanceMessage) !== normStr(current.maintenanceMessage)) return true;
@@ -301,6 +307,8 @@ export function toSystemSettingsPayload(draft: SystemSettingsInput): SystemSetti
     telegramAlertOnRateLimit: Boolean(draft.telegramAlertOnRateLimit),
     telegramAlertOnAdminLogin: Boolean(draft.telegramAlertOnAdminLogin),
     telegramAlertOnSettingsChange: Boolean(draft.telegramAlertOnSettingsChange),
+    telegramAlertOnServerError: Boolean(draft.telegramAlertOnServerError),
+    telegramAlertOnBroadcast: Boolean(draft.telegramAlertOnBroadcast),
     telegramCooldownSeconds: Math.max(10, Math.min(3600, draft.telegramCooldownSeconds || 180)),
     maintenanceMode: Boolean(draft.maintenanceMode),
     maintenanceMessage: normStr(draft.maintenanceMessage),

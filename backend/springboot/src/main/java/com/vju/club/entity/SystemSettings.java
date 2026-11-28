@@ -174,6 +174,12 @@ public class SystemSettings extends TimestampedEntity {
     @Column(name = "telegram_alert_on_settings_change", nullable = false)
     private boolean telegramAlertOnSettingsChange = true;
 
+    @Column(name = "telegram_alert_on_server_error", nullable = false)
+    private boolean telegramAlertOnServerError = true;
+
+    @Column(name = "telegram_alert_on_broadcast", nullable = false)
+    private boolean telegramAlertOnBroadcast = true;
+
     @Column(name = "telegram_cooldown_seconds", nullable = false)
     private int telegramCooldownSeconds = 180;
 

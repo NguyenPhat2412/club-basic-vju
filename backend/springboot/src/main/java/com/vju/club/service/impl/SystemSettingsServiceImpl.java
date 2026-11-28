@@ -192,6 +192,12 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
         if (request.telegramAlertOnSettingsChange() != null) {
             settings.setTelegramAlertOnSettingsChange(request.telegramAlertOnSettingsChange());
         }
+        if (request.telegramAlertOnServerError() != null) {
+            settings.setTelegramAlertOnServerError(request.telegramAlertOnServerError());
+        }
+        if (request.telegramAlertOnBroadcast() != null) {
+            settings.setTelegramAlertOnBroadcast(request.telegramAlertOnBroadcast());
+        }
         if (request.telegramCooldownSeconds() != null) {
             settings.setTelegramCooldownSeconds(request.telegramCooldownSeconds());
         }
@@ -296,6 +302,8 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
                 base.telegramAlertOnRateLimit(),
                 base.telegramAlertOnAdminLogin(),
                 base.telegramAlertOnSettingsChange(),
+                base.telegramAlertOnServerError(),
+                base.telegramAlertOnBroadcast(),
                 base.telegramCooldownSeconds(),
                 telegramReady,
                 base.maintenanceMode(),
@@ -401,6 +409,8 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
         values.put("telegramAlertOnRateLimit", s.isTelegramAlertOnRateLimit());
         values.put("telegramAlertOnAdminLogin", s.isTelegramAlertOnAdminLogin());
         values.put("telegramAlertOnSettingsChange", s.isTelegramAlertOnSettingsChange());
+        values.put("telegramAlertOnServerError", s.isTelegramAlertOnServerError());
+        values.put("telegramAlertOnBroadcast", s.isTelegramAlertOnBroadcast());
         values.put("telegramCooldownSeconds", s.getTelegramCooldownSeconds());
         values.put("maintenanceMode", s.isMaintenanceMode());
         values.put("maintenanceMessage", s.getMaintenanceMessage());

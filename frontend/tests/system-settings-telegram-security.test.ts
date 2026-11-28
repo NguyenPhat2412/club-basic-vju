@@ -68,6 +68,8 @@ function sampleSettings(): SystemSettings {
     telegramAlertOnRateLimit: true,
     telegramAlertOnAdminLogin: true,
     telegramAlertOnSettingsChange: true,
+    telegramAlertOnServerError: true,
+    telegramAlertOnBroadcast: true,
     telegramCooldownSeconds: 180,
     telegramConfigured: true,
     maintenanceMode: false,
@@ -116,6 +118,11 @@ test('Telegram settings and Security Monitor UI phrases translate completely to 
     'Danh sách IP bị chặn',
     'Chặn 24h',
     'Gỡ chặn',
+    'Cấu hình, IP & Ngắt phiên',
+    'Lỗi máy chủ (HTTP 500)',
+    'Phát thông báo hàng loạt',
+    'Bật tất cả',
+    'Tắt tất cả',
   ];
 
   for (const vi of phrases) {

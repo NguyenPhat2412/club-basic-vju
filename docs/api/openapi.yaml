@@ -6854,7 +6854,7 @@ components:
           items: {$ref: '#/components/schemas/MyClubApplicationSummary'}
     SystemSettings:
       type: object
-      required: [maxPendingApplications, reapplyCooldownDays, maxActiveClubs, attendanceEditWindowHours, allowSelfRegistration, attendanceOpensBeforeMinutes, eventTaskGraceDays, chatSummariesPerHour, chatMaxMessageLength, chatMessagesPerMinute, documentMaxFileMb, clubImageMaxMb, avatarMaxMb, clubStorageQuotaMb, documentMaxVersions, maxChannelsPerClub, maxDepartmentsPerClub, maxActiveEventsPerClub, maxOpenTasksPerClub, broadcastCooldownMinutes, facebookSyncCooldownMinutes, facebookAutoSyncEnabled, facebookAutoSyncIntervalMinutes, otpExpiryMinutes, otpMaxSendCount, otpResendCooldownSeconds, otpMaxVerifyAttempts, smtpPort, smtpPasswordConfigured, smtpFromName, smtpStartTls, facebookAppSecretConfigured, facebookOauthConfigured, aiApiKeyConfigured, aiConfigured, googleSignInConfigured, telegramEnabled, telegramBotTokenConfigured, telegramAlertOnFailedLogin, telegramFailedLoginThreshold, telegramAlertOnRateLimit, telegramAlertOnAdminLogin, telegramAlertOnSettingsChange, telegramCooldownSeconds, telegramConfigured, maintenanceMode, announcementEnabled, announcementTone]
+      required: [maxPendingApplications, reapplyCooldownDays, maxActiveClubs, attendanceEditWindowHours, allowSelfRegistration, attendanceOpensBeforeMinutes, eventTaskGraceDays, chatSummariesPerHour, chatMaxMessageLength, chatMessagesPerMinute, documentMaxFileMb, clubImageMaxMb, avatarMaxMb, clubStorageQuotaMb, documentMaxVersions, maxChannelsPerClub, maxDepartmentsPerClub, maxActiveEventsPerClub, maxOpenTasksPerClub, broadcastCooldownMinutes, facebookSyncCooldownMinutes, facebookAutoSyncEnabled, facebookAutoSyncIntervalMinutes, otpExpiryMinutes, otpMaxSendCount, otpResendCooldownSeconds, otpMaxVerifyAttempts, smtpPort, smtpPasswordConfigured, smtpFromName, smtpStartTls, facebookAppSecretConfigured, facebookOauthConfigured, aiApiKeyConfigured, aiConfigured, googleSignInConfigured, telegramEnabled, telegramBotTokenConfigured, telegramAlertOnFailedLogin, telegramFailedLoginThreshold, telegramAlertOnRateLimit, telegramAlertOnAdminLogin, telegramAlertOnSettingsChange, telegramAlertOnServerError, telegramAlertOnBroadcast, telegramCooldownSeconds, telegramConfigured, maintenanceMode, announcementEnabled, announcementTone]
       properties:
         maxPendingApplications: {type: integer, minimum: 0, maximum: 100, description: Số đơn PENDING tối đa của một sinh viên trên mọi CLB; 0 = không giới hạn}
         reapplyCooldownDays: {type: integer, minimum: 0, maximum: 365, description: Số ngày chờ sau khi bị từ chối mới được nộp lại cùng CLB; 0 = không chờ}
@@ -6913,6 +6913,8 @@ components:
         telegramAlertOnRateLimit: {type: boolean, description: Cảnh báo khi hệ thống chặn yêu cầu vượt ngưỡng HTTP 429}
         telegramAlertOnAdminLogin: {type: boolean, description: Cảnh báo khi tài khoản quản trị đăng nhập vào hệ thống}
         telegramAlertOnSettingsChange: {type: boolean, description: Cảnh báo khi có thay đổi cài đặt hệ thống hoặc ngắt phiên người dùng}
+        telegramAlertOnServerError: {type: boolean, description: Cảnh báo khi máy chủ gặp lỗi HTTP 500 bất ngờ}
+        telegramAlertOnBroadcast: {type: boolean, description: Cảnh báo khi phát thông báo hàng loạt hoặc nhắc chưa đọc}
         telegramCooldownSeconds: {type: integer, minimum: 10, maximum: 3600, description: Thời gian nghỉ tối thiểu giữa 2 cảnh báo cùng loại để chống spam}
         telegramConfigured: {type: boolean, description: Trạng thái sẵn sàng của Telegram Bot (tính cả cài đặt hệ thống và .env)}
         maintenanceMode: {type: boolean, description: Bật chế độ bảo trì hệ thống đối với người dùng thường}
@@ -6985,6 +6987,8 @@ components:
         telegramAlertOnRateLimit: {type: [boolean, 'null']}
         telegramAlertOnAdminLogin: {type: [boolean, 'null']}
         telegramAlertOnSettingsChange: {type: [boolean, 'null']}
+        telegramAlertOnServerError: {type: [boolean, 'null']}
+        telegramAlertOnBroadcast: {type: [boolean, 'null']}
         telegramCooldownSeconds: {type: [integer, 'null'], minimum: 10, maximum: 3600}
         maintenanceMode: {type: [boolean, 'null']}
         maintenanceMessage: {type: [string, 'null'], maxLength: 500}
