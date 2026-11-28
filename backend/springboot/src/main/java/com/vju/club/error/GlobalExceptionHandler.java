@@ -1,10 +1,14 @@
 package com.vju.club.error;
 
+import com.vju.club.security.RequestMetadataExtractor;
+import com.vju.club.service.TelegramAlertService;
+import com.vju.club.service.impl.TelegramAlertServiceImpl;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
@@ -13,6 +17,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.lang.Nullable;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
@@ -37,6 +42,18 @@ import java.util.stream.Stream;
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @Nullable
+    private final TelegramAlertService telegramAlertService;
+
+    public GlobalExceptionHandler() {
+        this(null);
+    }
+
+    @Autowired
+    public GlobalExceptionHandler(@Nullable TelegramAlertService telegramAlertService) {
+        this.telegramAlertService = telegramAlertService;
+    }
 
     private static final Map<String, String> CONSTRAINT_CODES = new LinkedHashMap<>();
 
@@ -129,14 +146,50 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Invalid multipart file upload request");
     }
 
-    @ExceptionHandler(Exception.class)
     ResponseEntity<ProblemDetail> handleUnexpectedException(Exception exception) {
+        return handleUnexpectedException(exception, null);
+    }
+
+    @ExceptionHandler(Exception.class)
+    ResponseEntity<ProblemDetail> handleUnexpectedException(Exception exception, @Nullable HttpServletRequest request) {
         if (isClientDisconnect(exception)) {
             log.debug("Client disconnected before response completed: {}", exception.getMessage());
             return null;
         }
         log.error("Unhandled exception", exception);
+        notifyServerError(exception, request);
         return problem(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "An unexpected error occurred");
+    }
+
+    private void notifyServerError(Exception exception, @Nullable HttpServletRequest request) {
+        if (telegramAlertService == null) {
+            return;
+        }
+        try {
+            String method = request != null && request.getMethod() != null ? request.getMethod() : "UNKNOWN";
+            String uri = request != null && request.getRequestURI() != null ? request.getRequestURI() : "unknown";
+            String ip = request != null
+                    ? RequestMetadataExtractor.extract(request).ipAddress()
+                    : RequestMetadataExtractor.extractCurrent().ipAddress();
+            String exType = exception.getClass().getSimpleName();
+            String rawMsg = exception.getMessage() == null ? "No message" : exception.getMessage().replaceAll("\\s+", " ").trim();
+            String safeMsg = rawMsg.length() > 180 ? rawMsg.substring(0, 180) + "…" : rawMsg;
+            String dedupeKey = "server_500:" + method + ":" + uri + ":" + exType;
+            String htmlBody = """
+                    • Endpoint: <code>%s %s</code>
+                    • Loại lỗi: <code>%s</code>
+                    • Chi tiết: <code>%s</code>
+                    • IP yêu cầu: <code>%s</code>"""
+                    .formatted(
+                            TelegramAlertServiceImpl.escapeHtml(method),
+                            TelegramAlertServiceImpl.escapeHtml(uri),
+                            TelegramAlertServiceImpl.escapeHtml(exType),
+                            TelegramAlertServiceImpl.escapeHtml(safeMsg),
+                            TelegramAlertServiceImpl.escapeHtml(ip == null ? "unknown" : ip));
+            telegramAlertService.sendAlertAsync(dedupeKey, "Lỗi máy chủ (HTTP 500)", htmlBody);
+        } catch (Exception alertEx) {
+            log.debug("Could not dispatch Telegram 500 alert: {}", alertEx.getMessage());
+        }
     }
 
     private static boolean isClientDisconnect(Throwable throwable) {
@@ -207,6 +260,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         problem.setProperty("code", code);
         if (status.is5xxServerError()) {
             log.error("Framework error", exception);
+            HttpServletRequest servletReq = request instanceof ServletWebRequest swr ? swr.getRequest() : null;
+            notifyServerError(exception, servletReq);
         }
         return new ResponseEntity<>(problem, headers, status);
     }

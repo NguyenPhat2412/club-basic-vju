@@ -138,6 +138,24 @@ export function defaultSystemSettingsInput(): SystemSettingsInput {
     googleClientId: null,
     googleAllowedDomains: null,
     googleCreateAccounts: null,
+    telegramEnabled: false,
+    telegramBotToken: '',
+    clearTelegramBotToken: false,
+    telegramChatId: null,
+    telegramThreadId: null,
+    telegramAlertOnFailedLogin: true,
+    telegramFailedLoginThreshold: 5,
+    telegramAlertOnRateLimit: true,
+    telegramAlertOnAdminLogin: true,
+    telegramAlertOnSettingsChange: true,
+    telegramCooldownSeconds: 180,
+    maintenanceMode: false,
+    maintenanceMessage: null,
+    announcementEnabled: false,
+    announcementMessage: null,
+    announcementTone: 'info',
+    announcementExpiresAt: null,
+    clearAnnouncementExpiresAt: false,
   };
 }
 
@@ -173,6 +191,24 @@ export function createSystemSettingsDraft(settings?: SystemSettings | null): Sys
   draft.googleClientId = settings.googleClientId ?? null;
   draft.googleAllowedDomains = settings.googleAllowedDomains ?? null;
   draft.googleCreateAccounts = settings.googleCreateAccounts ?? null;
+  draft.telegramEnabled = settings.telegramEnabled ?? false;
+  draft.telegramBotToken = '';
+  draft.clearTelegramBotToken = false;
+  draft.telegramChatId = settings.telegramChatId ?? null;
+  draft.telegramThreadId = settings.telegramThreadId ?? null;
+  draft.telegramAlertOnFailedLogin = settings.telegramAlertOnFailedLogin ?? true;
+  draft.telegramFailedLoginThreshold = settings.telegramFailedLoginThreshold ?? 5;
+  draft.telegramAlertOnRateLimit = settings.telegramAlertOnRateLimit ?? true;
+  draft.telegramAlertOnAdminLogin = settings.telegramAlertOnAdminLogin ?? true;
+  draft.telegramAlertOnSettingsChange = settings.telegramAlertOnSettingsChange ?? true;
+  draft.telegramCooldownSeconds = settings.telegramCooldownSeconds ?? 180;
+  draft.maintenanceMode = settings.maintenanceMode ?? false;
+  draft.maintenanceMessage = settings.maintenanceMessage ?? null;
+  draft.announcementEnabled = settings.announcementEnabled ?? false;
+  draft.announcementMessage = settings.announcementMessage ?? null;
+  draft.announcementTone = settings.announcementTone ?? 'info';
+  draft.announcementExpiresAt = settings.announcementExpiresAt ?? null;
+  draft.clearAnnouncementExpiresAt = false;
   return draft;
 }
 
@@ -210,6 +246,23 @@ export function hasSystemSettingsChanged(draft: SystemSettingsInput, current?: S
   if (normStr(draft.googleClientId) !== normStr(current.googleClientId)) return true;
   if (normStr(draft.googleAllowedDomains) !== normStr(current.googleAllowedDomains)) return true;
   if ((draft.googleCreateAccounts ?? null) !== (current.googleCreateAccounts ?? null)) return true;
+  if (Boolean(draft.telegramEnabled) !== Boolean(current.telegramEnabled)) return true;
+  if (Boolean(draft.telegramBotToken && draft.telegramBotToken.trim())) return true;
+  if (Boolean(draft.clearTelegramBotToken) && current.telegramBotTokenConfigured) return true;
+  if (normStr(draft.telegramChatId) !== normStr(current.telegramChatId)) return true;
+  if (normStr(draft.telegramThreadId) !== normStr(current.telegramThreadId)) return true;
+  if (Boolean(draft.telegramAlertOnFailedLogin) !== Boolean(current.telegramAlertOnFailedLogin)) return true;
+  if ((draft.telegramFailedLoginThreshold || 5) !== (current.telegramFailedLoginThreshold || 5)) return true;
+  if (Boolean(draft.telegramAlertOnRateLimit) !== Boolean(current.telegramAlertOnRateLimit)) return true;
+  if (Boolean(draft.telegramAlertOnAdminLogin) !== Boolean(current.telegramAlertOnAdminLogin)) return true;
+  if (Boolean(draft.telegramAlertOnSettingsChange) !== Boolean(current.telegramAlertOnSettingsChange)) return true;
+  if ((draft.telegramCooldownSeconds || 180) !== (current.telegramCooldownSeconds || 180)) return true;
+  if (Boolean(draft.maintenanceMode) !== Boolean(current.maintenanceMode)) return true;
+  if (normStr(draft.maintenanceMessage) !== normStr(current.maintenanceMessage)) return true;
+  if (Boolean(draft.announcementEnabled) !== Boolean(current.announcementEnabled)) return true;
+  if (normStr(draft.announcementMessage) !== normStr(current.announcementMessage)) return true;
+  if ((draft.announcementTone || 'info') !== (current.announcementTone || 'info')) return true;
+  if (normStr(draft.announcementExpiresAt) !== normStr(current.announcementExpiresAt)) return true;
   return false;
 }
 
@@ -238,5 +291,23 @@ export function toSystemSettingsPayload(draft: SystemSettingsInput): SystemSetti
     googleClientId: normStr(draft.googleClientId) || null,
     googleAllowedDomains: normStr(draft.googleAllowedDomains) || null,
     googleCreateAccounts: draft.googleCreateAccounts,
+    telegramEnabled: Boolean(draft.telegramEnabled),
+    telegramBotToken: normStr(draft.telegramBotToken) || undefined,
+    clearTelegramBotToken: draft.clearTelegramBotToken ? true : undefined,
+    telegramChatId: normStr(draft.telegramChatId) || null,
+    telegramThreadId: normStr(draft.telegramThreadId) || null,
+    telegramAlertOnFailedLogin: Boolean(draft.telegramAlertOnFailedLogin),
+    telegramFailedLoginThreshold: Math.max(2, Math.min(50, draft.telegramFailedLoginThreshold || 5)),
+    telegramAlertOnRateLimit: Boolean(draft.telegramAlertOnRateLimit),
+    telegramAlertOnAdminLogin: Boolean(draft.telegramAlertOnAdminLogin),
+    telegramAlertOnSettingsChange: Boolean(draft.telegramAlertOnSettingsChange),
+    telegramCooldownSeconds: Math.max(10, Math.min(3600, draft.telegramCooldownSeconds || 180)),
+    maintenanceMode: Boolean(draft.maintenanceMode),
+    maintenanceMessage: normStr(draft.maintenanceMessage),
+    announcementEnabled: Boolean(draft.announcementEnabled),
+    announcementMessage: normStr(draft.announcementMessage),
+    announcementTone: draft.announcementTone || 'info',
+    announcementExpiresAt: normStr(draft.announcementExpiresAt) || null,
+    clearAnnouncementExpiresAt: !normStr(draft.announcementExpiresAt) ? true : undefined,
   };
 }

@@ -5,6 +5,9 @@ import com.vju.club.security.AccountStatusFilter;
 import com.vju.club.security.ClubUserDetailsService;
 import com.vju.club.security.RateLimitFilter;
 import com.vju.club.security.RateLimitService;
+import com.vju.club.service.IpBlocklistService;
+import com.vju.club.service.SecurityTelemetryService;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -31,7 +34,7 @@ import java.time.temporal.ChronoUnit;
 
 @Configuration
 @EnableConfigurationProperties({BootstrapAdminProperties.class, RateLimitProperties.class, AiProperties.class,
-        GoogleSignInProperties.class})
+        GoogleSignInProperties.class, TelegramProperties.class})
 public class SecurityBeansConfig {
     @Bean
     Clock applicationClock() {
@@ -64,8 +67,11 @@ public class SecurityBeansConfig {
     }
 
     @Bean
-    RateLimitFilter rateLimitFilter(RateLimitService rateLimitService) {
-        return new RateLimitFilter(rateLimitService);
+    RateLimitFilter rateLimitFilter(
+            RateLimitService rateLimitService,
+            ObjectProvider<SecurityTelemetryService> telemetryProvider,
+            ObjectProvider<IpBlocklistService> ipBlocklistProvider) {
+        return new RateLimitFilter(rateLimitService, telemetryProvider, ipBlocklistProvider);
     }
 
     @Bean

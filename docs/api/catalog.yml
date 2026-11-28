@@ -482,6 +482,62 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: setting.update
+- method: PUT
+  path: /api/v1/system-settings/telegram-test
+  module: setting
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: setting.update
+- method: GET
+  path: /api/v1/system-settings/security-overview
+  module: setting
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: setting.view
+- method: DELETE
+  path: /api/v1/system-settings/online-users/{userId}/sessions
+  module: setting
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: setting.update
+- method: GET
+  path: /api/v1/public/system-status
+  module: setting
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: false
+  permission: PUBLIC
+- method: GET
+  path: /api/v1/system-settings/infra-health
+  module: setting
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: setting.view
+- method: GET
+  path: /api/v1/system-settings/blocked-ips
+  module: setting
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: setting.view
+- method: POST
+  path: /api/v1/system-settings/blocked-ips
+  module: setting
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: setting.update
+- method: DELETE
+  path: /api/v1/system-settings/blocked-ips/{ipId}
+  module: setting
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: setting.update
 - method: GET
   path: /api/v1/audit-logs
   module: audit
@@ -888,6 +944,34 @@ entries:
   status: IMPLEMENTED
   authRequired: true
   permission: notification.send | task.update | task.create
+- method: GET
+  path: /api/v1/notifications/campaigns
+  module: notification
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: notification.send
+- method: POST
+  path: /api/v1/notifications/campaigns
+  module: notification
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: notification.send
+- method: GET
+  path: /api/v1/notifications/campaigns/preview-count
+  module: notification
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: notification.send
+- method: POST
+  path: /api/v1/notifications/campaigns/{campaignId}/remind-unread
+  module: notification
+  backend: backend/springboot
+  status: IMPLEMENTED
+  authRequired: true
+  permission: notification.send
 - method: PATCH
   path: /api/v1/tasks/{taskId}/progress
   module: task

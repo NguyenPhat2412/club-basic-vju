@@ -147,6 +147,22 @@ class SystemSettingsServiceTest {
         values.put("googleClientId", null);
         values.put("googleAllowedDomains", null);
         values.put("googleCreateAccounts", null);
+        values.put("telegramEnabled", false);
+        values.put("telegramBotTokenConfigured", false);
+        values.put("telegramChatId", null);
+        values.put("telegramThreadId", null);
+        values.put("telegramAlertOnFailedLogin", true);
+        values.put("telegramFailedLoginThreshold", 5);
+        values.put("telegramAlertOnRateLimit", true);
+        values.put("telegramAlertOnAdminLogin", true);
+        values.put("telegramAlertOnSettingsChange", true);
+        values.put("telegramCooldownSeconds", 180);
+        values.put("maintenanceMode", false);
+        values.put("maintenanceMessage", null);
+        values.put("announcementEnabled", false);
+        values.put("announcementMessage", null);
+        values.put("announcementTone", "info");
+        values.put("announcementExpiresAt", null);
         return values;
     }
 
@@ -178,7 +194,10 @@ class SystemSettingsServiceTest {
                 "1536758708287043", "super-fb-secret", false, "v22.0",
                 "http://localhost:8080/api/v1/integrations/facebook/oauth/callback", "http://localhost:3000",
                 "https://router.anhchau.all1.vn/v1", "sk-ai-secret", false, "apmarket",
-                "google-client-id", "st.vju.ac.vn", true);
+                "google-client-id", "st.vju.ac.vn", true,
+                true, "123456:telegram-secret-token", false, "-100123456789", "42",
+                true, 5, true, true, true, 120,
+                false, null, false, null, "info", null, false);
 
         SystemSettingsResponse saved = securedService.update(actor, setReq);
         assertThat(saved.facebookAppId()).isEqualTo("1536758708287043");
@@ -187,20 +206,30 @@ class SystemSettingsServiceTest {
         assertThat(saved.facebookAutoSyncIntervalMinutes()).isEqualTo(30);
         assertThat(saved.aiApiKeyConfigured()).isTrue();
         assertThat(saved.googleClientId()).isEqualTo("google-client-id");
+        assertThat(saved.telegramEnabled()).isTrue();
+        assertThat(saved.telegramBotTokenConfigured()).isTrue();
+        assertThat(saved.telegramChatId()).isEqualTo("-100123456789");
+        assertThat(saved.telegramThreadId()).isEqualTo("42");
         assertThat(row.getFacebookAppSecret()).startsWith("enc:v1:");
         assertThat(crypto.decrypt(row.getFacebookAppSecret())).isEqualTo("super-fb-secret");
         assertThat(row.getAiApiKey()).startsWith("enc:v1:");
         assertThat(crypto.decrypt(row.getAiApiKey())).isEqualTo("sk-ai-secret");
+        assertThat(row.getTelegramBotToken()).startsWith("enc:v1:");
+        assertThat(crypto.decrypt(row.getTelegramBotToken())).isEqualTo("123456:telegram-secret-token");
 
         UpdateSystemSettingsRequest clearReq = new UpdateSystemSettingsRequest(
                 3, 7, 2, 48, true, 120, 7, 10, 4000, 20, 20, 10, 5, 500, 20, 30, 20, 50, 200, 5, 2, false, 60,
                 5, 5, 60, 5, null, 587, null, null, false, null, "VJU ClubHub", true,
-                "", null, true, "", "", "", "", null, true, "", "", "", null);
+                "", null, true, "", "", "", "", null, true, "", "", "", null,
+                false, null, true, "", "", false, 5, false, false, false, 180,
+                false, null, false, null, "info", null, true);
 
         SystemSettingsResponse cleared = securedService.update(actor, clearReq);
         assertThat(cleared.facebookAppSecretConfigured()).isFalse();
         assertThat(cleared.aiApiKeyConfigured()).isFalse();
+        assertThat(cleared.telegramBotTokenConfigured()).isFalse();
         assertThat(row.getFacebookAppSecret()).isNull();
         assertThat(row.getAiApiKey()).isNull();
+        assertThat(row.getTelegramBotToken()).isNull();
     }
 }

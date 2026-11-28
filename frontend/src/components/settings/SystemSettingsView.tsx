@@ -1,30 +1,53 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, ReactNode, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  BellRing,
+  Globe2,
+  Mail,
+  Save,
+  Server,
+  Settings,
+  ShieldCheck,
+  SlidersHorizontal,
+} from "lucide-react";
 import { qk } from "@/lib/api/query-keys";
-import { Settings } from "lucide-react";
 import { apiModel, SystemSettings, SystemSettingsInput } from "@/lib/api";
 import { useSession } from "@/hooks/useSession";
 import { describeError, ListPage } from "@/components/shared/ListPage";
 import { EmptyState, ErrorState, LoadingRows, Notice } from "@/components/shared/States";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { formatDateTime } from "@/lib/utils";
 import {
   createSystemSettingsDraft,
   hasSystemSettingsChanged,
-  SYSTEM_SETTINGS_GROUPS,
   toSystemSettingsPayload,
 } from "@/forms/settings/settings-form";
+import { SystemGeneralLimitsPanel } from "./SystemGeneralLimitsPanel";
 import { SystemSmtpCard } from "./SystemSmtpCard";
 import { SystemIntegrationsCard } from "./SystemIntegrationsCard";
+import { SystemTelegramCard } from "./SystemTelegramCard";
+import { SystemSecurityMonitorPanel } from "./SystemSecurityMonitorPanel";
+import { SystemOpsHealthPanel } from "./SystemOpsHealthPanel";
+
+type SettingsTabId = "general" | "smtp" | "integrations" | "telegram" | "security" | "ops";
+
+interface SettingsNavItem {
+  id: SettingsTabId;
+  label: string;
+  icon: ReactNode;
+  statusDot?: "active" | "idle";
+}
 
 export function SystemSettingsView() {
   const session = useSession();
   const canView = session.can("setting.view");
   const canEdit = session.can("setting.update");
+  const canViewAudit = session.can("audit.view");
   const [notice, setNotice] = useState<{ seq: number; text: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<SettingsTabId>("general");
+
   const settings = useQuery({
     queryKey: qk.systemSettings(),
     queryFn: apiModel.systemSettings,
@@ -42,16 +65,20 @@ export function SystemSettingsView() {
   return (
     <div className="flex min-h-full w-full min-w-0 max-w-full flex-1 flex-col overflow-x-clip">
       {notice && <Notice key={notice.seq} tone="success">{notice.text}</Notice>}
-      <div className="w-full min-w-0 space-y-4 px-3 py-3 sm:px-5 sm:py-4 lg:px-6">
+      <div className="w-full min-w-0 px-3 py-3 sm:px-5 sm:py-4 lg:px-6">
         {settings.isPending ? (
-          <LoadingRows rows={3} />
+          <LoadingRows rows={4} />
         ) : settings.isError ? (
           <ErrorState message={describeError(settings.error)} onRetry={() => settings.refetch()} />
         ) : (
-          <SettingsForm
+          <SettingsWorkspace
             key={settings.data.updatedAt ?? "default"}
             current={settings.data}
+            activeTab={activeTab}
+            onSelectTab={setActiveTab}
             canEdit={canEdit}
+            canViewAudit={canViewAudit}
+            currentUserId={session.user?.id}
             defaultRecipientEmail={session.user?.email ?? ""}
             onSaved={(saved) =>
               setNotice((prev) => ({
@@ -66,14 +93,22 @@ export function SystemSettingsView() {
   );
 }
 
-function SettingsForm({
+function SettingsWorkspace({
   current,
+  activeTab,
+  onSelectTab,
   canEdit,
+  canViewAudit,
+  currentUserId,
   defaultRecipientEmail,
   onSaved,
 }: {
   current: SystemSettings;
+  activeTab: SettingsTabId;
+  onSelectTab: (tab: SettingsTabId) => void;
   canEdit: boolean;
+  canViewAudit: boolean;
+  currentUserId?: string;
   defaultRecipientEmail: string;
   onSaved: (saved: SystemSettings) => void;
 }) {
@@ -83,6 +118,8 @@ function SettingsForm({
     mutationFn: () => apiModel.updateSystemSettings(toSystemSettingsPayload(draft)),
     onSuccess: (saved) => {
       queryClient.setQueryData(qk.systemSettings(), saved);
+      queryClient.invalidateQueries({ queryKey: qk.publicSystemStatus() });
+      queryClient.invalidateQueries({ queryKey: qk.systemInfraHealth() });
       setDraft(createSystemSettingsDraft(saved));
       onSaved(saved);
     },
@@ -91,97 +128,146 @@ function SettingsForm({
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    save.mutate();
+    if (activeTab !== "security") {
+      save.mutate();
+    }
   };
 
+  const smtpReady = Boolean((current.smtpHost ?? "").trim());
+  const integrationsReady =
+    current.facebookOauthConfigured || current.aiConfigured || current.googleSignInConfigured;
+  const telegramActive = current.telegramEnabled && current.telegramConfigured;
+
+  const navItems: SettingsNavItem[] = [
+    { id: "general", label: "Giới hạn", icon: <SlidersHorizontal size={14} /> },
+    { id: "smtp", label: "SMTP", icon: <Mail size={14} />, statusDot: smtpReady ? "active" : "idle" },
+    { id: "integrations", label: "Tích hợp", icon: <Globe2 size={14} />, statusDot: integrationsReady ? "active" : "idle" },
+    { id: "telegram", label: "Telegram", icon: <BellRing size={14} />, statusDot: telegramActive ? "active" : "idle" },
+    { id: "security", label: "Bảo mật", icon: <ShieldCheck size={14} />, statusDot: "active" },
+    {
+      id: "ops",
+      label: "Hạ tầng",
+      icon: <Server size={14} />,
+      statusDot: current.maintenanceMode || current.announcementEnabled ? "active" : "idle",
+    },
+  ];
+
+  const isConfigTab = activeTab !== "security";
+
   return (
-    <form onSubmit={submit} className="min-w-0 space-y-4">
-      {/* columns (masonry) instead of a grid: cards of different heights stack without row gaps */}
-      <div className="min-w-0 gap-4 @3xl:columns-2 @6xl:columns-3">
-        {SYSTEM_SETTINGS_GROUPS.map((group) => (
-          <section key={group.title} className="mb-4 min-w-0 break-inside-avoid overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs">
-            <h3 className="border-b border-slate-100 bg-slate-50/70 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-primary sm:px-5">{group.title}</h3>
-            <ul className="divide-y divide-slate-100">
-              {group.fields.map((f) => (
-                <li
-                  key={f.key}
-                  className={
-                    f.kind === "number"
-                      ? "flex flex-col items-stretch gap-2.5 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5"
-                      : "flex items-center justify-between gap-3 px-4 py-3.5 sm:gap-4 sm:px-5"
-                  }
-                >
-                  <label htmlFor={f.key} className="min-w-0 flex-1 break-words">
-                    <span className="block text-sm font-medium text-slate-900">
-                      <span>{f.label}</span>
-                      {f.kind === "number" && canEdit && (
-                        <span className="ml-1 font-bold text-destructive" aria-hidden="true">*</span>
-                      )}
-                    </span>
-                    <span className="block text-xs text-slate-500">{f.hint}</span>
-                  </label>
-                  {f.kind === "toggle" ? (
-                    <button
-                      id={f.key}
-                      type="button"
-                      role="switch"
-                      aria-checked={draft[f.key]}
-                      disabled={!canEdit}
-                      onClick={() => setDraft({ ...draft, [f.key]: !draft[f.key] })}
-                      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${draft[f.key] ? "bg-primary" : "bg-slate-300"}`}
-                    >
-                      <span className={`absolute left-0 top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform ${draft[f.key] ? "translate-x-5" : "translate-x-0.5"}`} />
-                    </button>
-                  ) : (
-                    <div className="flex shrink-0 items-center justify-end gap-2">
-                      <Input
-                        id={f.key}
-                        type="number"
-                        min={f.min}
-                        max={f.max}
-                        required
-                        disabled={!canEdit}
-                        className="h-9 w-24 text-right"
-                        value={draft[f.key]}
-                        onChange={(e) => setDraft({ ...draft, [f.key]: Math.max(f.min, Math.min(f.max, Number(e.target.value) || 0)) })}
-                      />
-                      <span className="min-w-10 shrink-0 whitespace-nowrap text-xs text-slate-500">{f.unit}</span>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-      </div>
+    <form onSubmit={submit} className="min-w-0 space-y-3.5 pb-16">
+      {/* Compact horizontal top tab bar + inline save control */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-2xs">
+        <nav
+          role="tablist"
+          aria-label="Danh mục cài đặt hệ thống"
+          className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
+        >
+          {navItems.map((item) => {
+            const active = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => onSelectTab(item.id)}
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors ${
+                  active
+                    ? "bg-primary text-white shadow-2xs"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+                {item.statusDot && (
+                  <span
+                    className={`size-1.5 rounded-full ${
+                      active
+                        ? "bg-white/90"
+                        : item.statusDot === "active"
+                          ? "bg-primary"
+                          : "bg-slate-300"
+                    }`}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </nav>
 
-      <SystemSmtpCard
-        current={current}
-        draft={draft}
-        canEdit={canEdit}
-        hasUnsavedChanges={changed}
-        defaultRecipientEmail={defaultRecipientEmail}
-        onChange={setDraft}
-      />
-
-      <SystemIntegrationsCard
-        current={current}
-        draft={draft}
-        canEdit={canEdit}
-        onChange={setDraft}
-      />
-
-      {save.isError && <Notice tone="error">{describeError(save.error)}</Notice>}
-      <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-5">
-        <span className="min-w-0 text-[11px] text-slate-500">
-          {save.isSuccess && !changed ? "Đã lưu." : current.updatedAt ? `Cập nhật ${formatDateTime(current.updatedAt)}` : ""}
-        </span>
-        {canEdit ? (
-          <Button type="submit" size="sm" className="ml-auto shrink-0" disabled={!changed || save.isPending}>{save.isPending ? "Đang lưu…" : "Lưu cài đặt"}</Button>
-        ) : (
-          <span className="ml-auto shrink-0 text-xs text-slate-500">Chỉ có quyền xem</span>
+        {isConfigTab && (
+          <div className="flex shrink-0 items-center gap-2.5 pl-1">
+            {current.updatedAt && (
+              <span className="hidden text-[11px] text-slate-400 2xl:inline">
+                <span>Cập nhật</span>{" "}
+                <span data-no-i18n="true">{formatDateTime(current.updatedAt)}</span>
+              </span>
+            )}
+            {canEdit ? (
+              <Button
+                type="submit"
+                size="sm"
+                className="h-8 shrink-0"
+                disabled={!changed || save.isPending}
+              >
+                <Save size={13} />
+                {save.isPending ? "Đang lưu…" : "Lưu cài đặt"}
+              </Button>
+            ) : (
+              <span className="text-xs text-slate-500">Chỉ có quyền xem</span>
+            )}
+          </div>
         )}
       </div>
+
+      {save.isError && <Notice tone="error">{describeError(save.error)}</Notice>}
+
+      {activeTab === "general" && (
+        <SystemGeneralLimitsPanel draft={draft} canEdit={canEdit} onChange={setDraft} />
+      )}
+
+      {activeTab === "smtp" && (
+        <SystemSmtpCard
+          current={current}
+          draft={draft}
+          canEdit={canEdit}
+          hasUnsavedChanges={changed}
+          defaultRecipientEmail={defaultRecipientEmail}
+          onChange={setDraft}
+        />
+      )}
+
+      {activeTab === "integrations" && (
+        <SystemIntegrationsCard
+          current={current}
+          draft={draft}
+          canEdit={canEdit}
+          onChange={setDraft}
+        />
+      )}
+
+      {activeTab === "telegram" && (
+        <SystemTelegramCard
+          current={current}
+          draft={draft}
+          canEdit={canEdit}
+          hasUnsavedChanges={changed}
+          onChange={setDraft}
+        />
+      )}
+
+      {activeTab === "security" && (
+        <SystemSecurityMonitorPanel
+          currentUserId={currentUserId}
+          canEdit={canEdit}
+          canViewAudit={canViewAudit}
+        />
+      )}
+
+      {activeTab === "ops" && (
+        <SystemOpsHealthPanel draft={draft} canEdit={canEdit} onChange={setDraft} />
+      )}
     </form>
   );
 }

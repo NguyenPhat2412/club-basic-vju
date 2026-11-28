@@ -128,6 +128,9 @@ public final class ApiPaths {
     public static final String CLUB_NOTIFICATIONS = "/clubs/{clubId}/notifications";
     public static final String EVENT_NOTIFICATIONS = "/events/{eventId}/notifications";
     public static final String TASK_NOTIFICATIONS = "/tasks/{taskId}/notifications";
+    public static final String NOTIFICATION_CAMPAIGNS = "/notifications/campaigns";
+    public static final String NOTIFICATION_CAMPAIGNS_PREVIEW = "/notifications/campaigns/preview-count";
+    public static final String NOTIFICATION_CAMPAIGN_REMIND = "/notifications/campaigns/{campaignId}/remind-unread";
 
     // Documents
     public static final String SYSTEM_DOCUMENTS = "/system/documents";
@@ -207,8 +210,15 @@ public final class ApiPaths {
     public static final String CHANNEL_SUMMARIES = "/channels/{channelId}/summaries";
 
     // System Settings & Audit Logs
+    public static final String PUBLIC_SYSTEM_STATUS = "/public/system-status";
     public static final String SYSTEM_SETTINGS = "/system-settings";
     public static final String SYSTEM_SETTINGS_SMTP_TEST = "/system-settings/smtp-test";
+    public static final String SYSTEM_SETTINGS_TELEGRAM_TEST = "/system-settings/telegram-test";
+    public static final String SYSTEM_SETTINGS_SECURITY_OVERVIEW = "/system-settings/security-overview";
+    public static final String SYSTEM_SETTINGS_DISCONNECT_USER = "/system-settings/online-users/{userId}/sessions";
+    public static final String SYSTEM_SETTINGS_INFRA_HEALTH = "/system-settings/infra-health";
+    public static final String SYSTEM_SETTINGS_BLOCKED_IPS = "/system-settings/blocked-ips";
+    public static final String SYSTEM_SETTINGS_BLOCKED_IP_BY_ID = "/system-settings/blocked-ips/{ipId}";
     public static final String AUDIT_LOGS = "/audit-logs";
 
     // Club Facebook Fanpage Integration

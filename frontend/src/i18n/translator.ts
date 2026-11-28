@@ -139,6 +139,36 @@ const DYNAMIC_PATTERNS: PatternRule[] = [
     ja: (_, step) => `ステップ ${step}`,
   },
   {
+    pattern: /^(\d+)\s+IP cần chú ý$/i,
+    en: (_, count) => `${count} flagged IP${count === '1' ? '' : 's'}`,
+    ja: (_, count) => `${count} 件の不審なIP`,
+  },
+  {
+    pattern: /^(\d+)\s+người nhận$/i,
+    en: (_, count) => `${count} recipient${count === '1' ? '' : 's'}`,
+    ja: (_, count) => `配信先 ${count} 名`,
+  },
+  {
+    pattern: /^(\d+)\s+chưa đọc$/i,
+    en: (_, count) => `${count} unread`,
+    ja: (_, count) => `未読 ${count} 件`,
+  },
+  {
+    pattern: /^Đã phát thông báo tới\s+(\d+)\s+người nhận\.$/i,
+    en: (_, count) => `Broadcast sent to ${count} recipients.`,
+    ja: (_, count) => `${count} 名へ一斉通知を配信しました。`,
+  },
+  {
+    pattern: /^Đã gửi nhắc đọc tới\s+(\d+)\s+người chưa đọc\.$/i,
+    en: (_, count) => `Reminder sent to ${count} unread recipients.`,
+    ja: (_, count) => `未読の ${count} 名へ再通知を送信しました。`,
+  },
+  {
+    pattern: /^Trang\s+(\d+)$/i,
+    en: (_, page) => `Page ${page}`,
+    ja: (_, page) => `ページ ${page}`,
+  },
+  {
     pattern: /^Ảnh\s+(\d+)$/i,
     en: (_, index) => `Slide ${index}`,
     ja: (_, index) => `スライド ${index}`,

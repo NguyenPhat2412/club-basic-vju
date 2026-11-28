@@ -68,6 +68,12 @@ public interface UserRoleRepository extends JpaRepository<UserRole, UUID> {
             + "AND ur.user.status = com.vju.club.enums.UserStatus.ACTIVE")
     long countActiveHolders(@Param("roleCode") String roleCode);
 
+    @Query("SELECT DISTINCT ur.user.id FROM UserRole ur WHERE ur.revokedAt IS NULL AND ur.role.active = true "
+            + "AND ur.role.maxHolders IS NOT NULL AND ur.role.maxHolders > 0 "
+            + "AND ur.scope IN (com.vju.club.enums.PermissionScope.CLUB, com.vju.club.enums.PermissionScope.DEPARTMENT) "
+            + "AND ur.user.status = com.vju.club.enums.UserStatus.ACTIVE AND ur.user.anonymizedAt IS NULL")
+    List<UUID> findActiveClubLeaderUserIds();
+
     @Modifying(flushAutomatically = true)
     @Query(value = "UPDATE user_roles SET revoked_at = :now, revoked_by = :actorId WHERE user_id = :userId "
             + "AND revoked_at IS NULL AND (club_id = :clubId "

@@ -84,6 +84,8 @@ public class AuthServiceImpl implements AuthService {
     private com.vju.club.config.RuntimeIntegrationConfig runtimeIntegrationConfig;
     @Autowired(required = false)
     private TwoFactorOtpService twoFactorOtpService;
+    @Autowired(required = false)
+    private com.vju.club.service.SecurityTelemetryService securityTelemetryService;
 
     private com.vju.club.config.RuntimeIntegrationConfig.EffectiveGoogle effectiveGoogle() {
         if (runtimeIntegrationConfig != null) {
@@ -115,22 +117,27 @@ public class AuthServiceImpl implements AuthService {
             if (user != null && user.getStatus() != UserStatus.ACTIVE
                     && passwordEncoder.matches(request.password(), user.getPasswordHash())) {
                 if (user.getStatus() == UserStatus.LOCKED) {
+                    recordFailedLogin(user.getId(), email, "ACCOUNT_LOCKED", "password");
                     throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_LOCKED", "Account is locked");
                 }
+                recordFailedLogin(user.getId(), email, "ACCOUNT_INACTIVE", "password");
                 throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_INACTIVE", "Account is inactive");
             }
+            recordFailedLogin(user != null ? user.getId() : null, email, "INVALID_CREDENTIALS", "password");
             throw invalidCredentials();
         }
 
         ClubPrincipal principal = (ClubPrincipal) authentication.getPrincipal();
         assert principal != null;
         User user = userRepository.findById(principal.id()).orElseThrow(this::invalidCredentials);
-        if (user.isTwoFactorEnabled() && isTier1To3Admin(user.getId())) {
+        boolean admin = isTier1To3Admin(user.getId());
+        if (user.isTwoFactorEnabled() && admin) {
             throw new ApiException(HttpStatus.FORBIDDEN, "TWO_FACTOR_REQUIRED",
                     "Two-factor verification code is required");
         }
         auditService.record(user.getId(), AuditAction.USER_LOGGED_IN, user.getId(), null, null,
-                Map.of("email", user.getEmail()));
+                Map.of("email", user.getEmail(), "method", "password"));
+        notifyLoginSuccess(user, "password", admin);
         return new SignedIn(principal, new AuthResponse(userMapper.toResponse(user)));
     }
 
@@ -221,6 +228,7 @@ public class AuthServiceImpl implements AuthService {
         User saved = userRepository.saveAndFlush(user);
         auditService.record(saved.getId(), AuditAction.USER_LOGGED_IN, saved.getId(), null, null,
                 Map.of("email", saved.getEmail(), "method", "google"));
+        notifyLoginSuccess(saved, "google", isTier1To3Admin(saved.getId()));
         ClubPrincipal principal = new ClubPrincipal(saved.getId(), saved.getEmail(), null, true);
         return new SignedIn(principal, new AuthResponse(userMapper.toResponse(saved)));
     }
@@ -375,5 +383,21 @@ public class AuthServiceImpl implements AuthService {
         return googleSubject != null
                 && (SELF_REGISTERED_MARKER.equals(googleSubject)
                 || googleSubject.startsWith(SELF_REGISTERED_MARKER + ":"));
+    }
+
+    private void recordFailedLogin(UUID targetUserId, String email, String reason, String method) {
+        if (securityTelemetryService == null) return;
+        try {
+            securityTelemetryService.recordLoginFailed(targetUserId, email, reason, method);
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    private void notifyLoginSuccess(User user, String method, boolean isAdmin) {
+        if (securityTelemetryService == null) return;
+        try {
+            securityTelemetryService.onLoginSuccess(user, method, isAdmin);
+        } catch (RuntimeException ignored) {
+        }
     }
 }

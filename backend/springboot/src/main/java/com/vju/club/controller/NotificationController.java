@@ -2,13 +2,18 @@ package com.vju.club.controller;
 
 import com.vju.club.common.ApiPaths;
 import com.vju.club.dto.request.BroadcastNotificationRequest;
+import com.vju.club.dto.request.CreateNotificationCampaignRequest;
 import com.vju.club.dto.request.ResourceNotificationRequest;
+import com.vju.club.dto.response.NotificationAudiencePreviewResponse;
 import com.vju.club.dto.response.NotificationBroadcastResponse;
+import com.vju.club.dto.response.NotificationCampaignRemindResponse;
+import com.vju.club.dto.response.NotificationCampaignResponse;
 import com.vju.club.dto.response.NotificationResponse;
 import com.vju.club.dto.response.NotificationUnreadSummaryResponse;
 import com.vju.club.dto.response.PageResponse;
 import com.vju.club.dto.response.ResourceNotificationResponse;
 import com.vju.club.security.Actor;
+import com.vju.club.service.NotificationCampaignService;
 import com.vju.club.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -28,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -36,6 +42,7 @@ import java.util.UUID;
 @Tag(name = "Notifications", description = "Thông báo trong ứng dụng cá nhân và gửi thông báo theo CLB/Ban/Sự kiện/Nhiệm vụ")
 public class NotificationController {
     private final NotificationService service;
+    private final NotificationCampaignService campaignService;
 
     @GetMapping(ApiPaths.MY_NOTIFICATIONS)
     @Operation(summary = "Danh sách thông báo của tôi", description = "Trả danh sách thông báo cá nhân mới nhất trước.")
@@ -106,5 +113,39 @@ public class NotificationController {
             @PathVariable UUID taskId,
             @Valid @RequestBody ResourceNotificationRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.notifyTaskAssignees(actor, taskId, request));
+    }
+
+    @GetMapping(ApiPaths.NOTIFICATION_CAMPAIGNS)
+    @Operation(summary = "Lịch sử các đợt phát thông báo hàng loạt & tỷ lệ đã đọc")
+    public PageResponse<NotificationCampaignResponse> listCampaigns(
+            Actor actor,
+            @RequestParam(defaultValue = "0") @Min(0) int offset,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
+        return campaignService.listCampaigns(actor, offset, limit);
+    }
+
+    @GetMapping(ApiPaths.NOTIFICATION_CAMPAIGNS_PREVIEW)
+    @Operation(summary = "Xem trước số lượng người nhận theo nhóm đối tượng")
+    public NotificationAudiencePreviewResponse previewAudience(
+            Actor actor,
+            @RequestParam String audienceType,
+            @RequestParam(required = false) List<UUID> clubIds) {
+        return campaignService.previewAudience(actor, audienceType, clubIds);
+    }
+
+    @PostMapping(ApiPaths.NOTIFICATION_CAMPAIGNS)
+    @Operation(summary = "Phát thông báo hàng loạt (Toàn hệ thống / Ban Chủ nhiệm / Nhiều CLB) kèm tài liệu & email")
+    public ResponseEntity<NotificationCampaignResponse> createCampaign(
+            Actor actor,
+            @Valid @RequestBody CreateNotificationCampaignRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(campaignService.createAndSend(actor, request));
+    }
+
+    @PostMapping(ApiPaths.NOTIFICATION_CAMPAIGN_REMIND)
+    @Operation(summary = "Gửi nhắc đọc lại cho những người chưa đọc đợt thông báo")
+    public ResponseEntity<NotificationCampaignRemindResponse> remindUnread(
+            Actor actor,
+            @PathVariable UUID campaignId) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(campaignService.remindUnread(actor, campaignId));
     }
 }

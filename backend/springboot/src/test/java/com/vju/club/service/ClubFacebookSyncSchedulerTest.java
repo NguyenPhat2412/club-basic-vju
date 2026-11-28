@@ -66,6 +66,8 @@ class ClubFacebookSyncSchedulerTest {
                 enabled, intervalMinutes,
                 5, 5, 60, 5, null, 587, null, false, null, "VJU ClubHub", true,
                 null, false, null, null, null, false, null, false, null, false, null, null, null, false,
+                false, false, null, null, true, 5, true, true, true, 180, false,
+                false, null, false, null, "info", null,
                 OffsetDateTime.now(), null);
     }
 

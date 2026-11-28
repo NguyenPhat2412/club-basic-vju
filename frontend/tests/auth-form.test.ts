@@ -105,6 +105,8 @@ test("validateLoginFields, validateRegisterFields, and validateForgotPasswordFie
     aiApiKeyConfigured: false,
     aiConfigured: false,
     googleSignInConfigured: false,
+    telegramBotTokenConfigured: false,
+    telegramConfigured: false,
   };
   const draft = createSystemSettingsDraft(baseSettings);
   assert.equal(hasSystemSettingsChanged(draft, baseSettings), false);

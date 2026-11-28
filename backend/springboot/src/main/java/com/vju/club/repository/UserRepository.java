@@ -22,6 +22,11 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
     boolean existsByIdAndStatus(UUID id, UserStatus status);
 
+    long countByStatus(UserStatus status);
+
+    @Query("SELECT u.id FROM User u WHERE u.status = com.vju.club.enums.UserStatus.ACTIVE AND u.anonymizedAt IS NULL")
+    java.util.List<UUID> findAllActiveUserIds();
+
     @Query("SELECT u.status AS status, u.requiresPasswordChange AS requiresPasswordChange FROM User u WHERE u.id = :id")
     Optional<AccessState> findAccessState(@Param("id") UUID id);
 

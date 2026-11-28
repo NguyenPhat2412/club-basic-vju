@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/query-keys";
-import { Bell, CheckCheck, ExternalLink, Eye, FilterX, Search, X } from "lucide-react";
+import { Bell, CheckCheck, ExternalLink, Eye, FilterX, Inbox, Megaphone, Search, X } from "lucide-react";
 import { apiModel, Notification } from "@/lib/api";
+import { useSession } from "@/hooks/useSession";
 import { DataTable } from "@/components/shared/DataTable";
 import { DetailList, EntityDrawer } from "@/components/shared/Overlays";
 import { Pagination } from "@/components/shared/Pagination";
@@ -18,12 +19,22 @@ import { Input, Select } from "@/components/ui/input";
 import { targetHrefForNotification } from "@/forms/notification/notification-links";
 import { formatDateTime, formatDay, formatTime } from "@/lib/utils";
 import { BrowserNotificationToggle } from "./BrowserNotificationToggle";
+import { NotificationCampaignsPanel } from "./NotificationCampaignsPanel";
 
 export const targetHrefFor = targetHrefForNotification;
 
 export function NotificationsView() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const session = useSession();
+  const canManageBroadcast = session.can("notification.send");
+  const hasGlobalSend = session.hasGlobal("notification.send");
+  const activeTab: "inbox" | "campaigns" =
+    canManageBroadcast && searchParams.get("tab") === "campaigns" ? "campaigns" : "inbox";
+  const setActiveTab = (next: "inbox" | "campaigns") => {
+    router.replace(next === "campaigns" ? "/notifications?tab=campaigns" : "/notifications");
+  };
   const [offset, setOffset] = useState(0);
   const [limit, setLimit] = useState(20);
   const [search, setSearch] = useState("");
@@ -90,6 +101,39 @@ export function NotificationsView() {
 
   return (
     <ListPage title="Thông báo">
+      {canManageBroadcast && (
+        <div className="flex items-center gap-1 border-b border-border bg-white px-3 py-1.5 sm:px-4">
+          <button
+            type="button"
+            onClick={() => setActiveTab("inbox")}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              activeTab === "inbox"
+                ? "bg-primary text-white shadow-2xs"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            }`}
+          >
+            <Inbox size={13} />
+            <span>Hộp thư của tôi</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("campaigns")}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              activeTab === "campaigns"
+                ? "bg-primary text-white shadow-2xs"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            }`}
+          >
+            <Megaphone size={13} />
+            <span>Quản lý & Phát thông báo</span>
+          </button>
+        </div>
+      )}
+
+      {canManageBroadcast && activeTab === "campaigns" ? (
+        <NotificationCampaignsPanel hasGlobalSend={hasGlobalSend} />
+      ) : (
+        <>
       <div className="relative z-30 flex flex-wrap items-center justify-between gap-1.5 border-b border-border bg-white px-3 py-1.5 sm:px-4">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
           <CountBadge>{unread} chưa đọc</CountBadge>
@@ -149,6 +193,7 @@ export function NotificationsView() {
             <option value="EVENT">Sự kiện CLB</option>
             <option value="TASK">Công việc</option>
             <option value="DOCUMENT">Kho tài liệu</option>
+            <option value="SYSTEM">Hệ thống</option>
           </Select>
 
           {hasClientFilter && (
@@ -314,6 +359,8 @@ export function NotificationsView() {
           )
         )}
       </EntityDrawer>
+        </>
+      )}
     </ListPage>
   );
 }

@@ -25,5 +25,11 @@ public interface SystemSettingsMapper {
     @Mapping(
             target = "googleSignInConfigured",
             expression = "java(settings.getGoogleClientId() != null && !settings.getGoogleClientId().isBlank())")
+    @Mapping(
+            target = "telegramBotTokenConfigured",
+            expression = "java(settings.getTelegramBotToken() != null && !settings.getTelegramBotToken().isBlank())")
+    @Mapping(
+            target = "telegramConfigured",
+            expression = "java(settings.getTelegramBotToken() != null && !settings.getTelegramBotToken().isBlank() && settings.getTelegramChatId() != null && !settings.getTelegramChatId().isBlank())")
     SystemSettingsResponse toResponse(SystemSettings settings);
 }

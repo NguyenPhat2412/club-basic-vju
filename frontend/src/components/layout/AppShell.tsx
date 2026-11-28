@@ -19,6 +19,7 @@ import { SmartAuthPrompt } from "@/components/auth/SmartAuthPrompt";
 import { ChangePasswordModal } from "./ChangePasswordModal";
 import { FirstLoginPassword } from "./FirstLoginPassword";
 import { SidebarNav } from "./SidebarNav";
+import { MaintenanceNoticeScreen, SystemGlobalBanner, usePublicSystemStatus } from "./SystemGlobalBanner";
 import { Topbar } from "./Topbar";
 import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
 import { WorkspaceTabBar } from "./WorkspaceTabBar";
@@ -147,6 +148,9 @@ function AppShellInner({ children }: { children: ReactNode }) {
     s.groups.some((g) => g.items.some((i) => i.href.startsWith("/management")))
   );
   const realtimeReady = Boolean(session.user && !session.mustChangePassword);
+  const publicSystemStatus = usePublicSystemStatus();
+  const isSystemAdmin = session.can("setting.update");
+  const maintenanceBlocked = Boolean(publicSystemStatus.data?.maintenanceMode && !isSystemAdmin);
   useGlobalRealtimeNotifications({
     enabled: realtimeReady,
     currentUserId: session.user?.id,
@@ -270,12 +274,16 @@ function AppShellInner({ children }: { children: ReactNode }) {
           />
         )}
 
+        <SystemGlobalBanner isAdmin={isSystemAdmin} />
+
         <main
           key={locale}
           data-design-system="admin-v1"
           className="@container workspace-canvas flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto"
         >
-          {session.user && session.mustChangePassword ? (
+          {maintenanceBlocked ? (
+            <MaintenanceNoticeScreen message={publicSystemStatus.data?.maintenanceMessage} />
+          ) : session.user && session.mustChangePassword ? (
             <FirstLoginPassword email={session.user.email} />
           ) : isWorkspaceEmpty ? (
             <WorkspaceEmptyState

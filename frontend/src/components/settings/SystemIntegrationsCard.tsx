@@ -69,7 +69,7 @@ export function SystemIntegrationsCard({
 
       <div className="divide-y divide-slate-100">
         {/* 1. Facebook Fanpage OAuth */}
-        <div className="space-y-3 p-4 sm:p-5">
+        <div className="space-y-3 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Facebook size={15} className="text-primary" />
@@ -100,104 +100,90 @@ export function SystemIntegrationsCard({
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <FormField label="Facebook App ID" hint="FACEBOOK_APP_ID từ Meta for Developers">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <FormField label="Facebook App ID">
               <Input
                 maxLength={64}
                 disabled={!canEdit}
                 value={draft.facebookAppId ?? ""}
                 onChange={(e) => onChange({ ...draft, facebookAppId: e.target.value })}
-                placeholder="Dùng từ .env nếu để trống"
-                className="h-9 font-mono text-xs"
+                placeholder="FACEBOOK_APP_ID"
+                className="h-8.5 font-mono text-xs"
               />
             </FormField>
 
             <FormField label="Facebook App Secret" hint={fbSecretHint}>
-              <div className="flex items-center gap-1.5">
-                <PasswordInput
-                  maxLength={256}
-                  autoComplete="new-password"
-                  disabled={!canEdit}
-                  value={draft.facebookAppSecret ?? ""}
-                  onChange={(e) =>
-                    onChange({
-                      ...draft,
-                      facebookAppSecret: e.target.value,
-                      clearFacebookAppSecret: false,
-                    })
-                  }
-                  placeholder={
-                    current.facebookAppSecretConfigured
-                      ? "•••••••• (đã lưu trong hệ thống)"
-                      : "FACEBOOK_APP_SECRET"
-                  }
-                  className="h-9 font-mono text-xs"
-                />
+              <div className="flex w-full items-center gap-1">
+                <div className="min-w-0 flex-1">
+                  <PasswordInput
+                    maxLength={256}
+                    autoComplete="new-password"
+                    disabled={!canEdit}
+                    value={draft.facebookAppSecret ?? ""}
+                    onChange={(e) =>
+                      onChange({
+                        ...draft,
+                        facebookAppSecret: e.target.value,
+                        clearFacebookAppSecret: false,
+                      })
+                    }
+                    placeholder={current.facebookAppSecretConfigured ? "••••••••" : "FACEBOOK_APP_SECRET"}
+                    className="h-8.5 w-full font-mono text-xs"
+                  />
+                </div>
                 {canEdit && current.facebookAppSecretConfigured && !draft.clearFacebookAppSecret && (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="h-8.5 shrink-0 px-2"
                     onClick={() =>
                       onChange({ ...draft, facebookAppSecret: "", clearFacebookAppSecret: true })
                     }
                     title="Xoá Facebook App Secret đã lưu"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={13} />
                   </Button>
                 )}
               </div>
             </FormField>
 
-            <FormField label="Phiên bản Graph API" hint="FACEBOOK_GRAPH_VERSION (mặc định v22.0)">
+            <FormField label="Graph API">
               <Input
                 maxLength={32}
                 disabled={!canEdit}
                 value={draft.facebookGraphVersion ?? ""}
                 onChange={(e) => onChange({ ...draft, facebookGraphVersion: e.target.value })}
                 placeholder="v22.0"
-                className="h-9 font-mono text-xs"
+                className="h-8.5 font-mono text-xs"
               />
             </FormField>
-          </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FormField
-              label="Valid OAuth Redirect URI"
-              hint="FACEBOOK_OAUTH_REDIRECT_URI phải khớp chính xác với Meta App"
-            >
+            <FormField label="OAuth Redirect URI">
               <Input
                 maxLength={500}
                 disabled={!canEdit}
                 value={draft.facebookOauthRedirectUri ?? ""}
                 onChange={(e) => onChange({ ...draft, facebookOauthRedirectUri: e.target.value })}
-                placeholder="http://localhost:8080/api/v1/integrations/facebook/oauth/callback"
-                className="h-9 font-mono text-xs"
+                placeholder="https://.../oauth/callback"
+                className="h-8.5 font-mono text-xs"
               />
             </FormField>
 
-            <FormField
-              label="Frontend Base URL"
-              hint="FRONTEND_BASE_URL dùng để chuyển hướng lại sau khi đăng nhập Facebook"
-            >
+            <FormField label="Frontend Base URL">
               <Input
                 maxLength={500}
                 disabled={!canEdit}
                 value={draft.frontendBaseUrl ?? ""}
                 onChange={(e) => onChange({ ...draft, frontendBaseUrl: e.target.value })}
-                placeholder="http://localhost:3000"
-                className="h-9 font-mono text-xs"
+                placeholder="https://vju-club.all1.vn"
+                className="h-8.5 font-mono text-xs"
               />
             </FormField>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50/70 px-3.5 py-2.5">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-slate-900">Tự động đồng bộ Fanpage Facebook định kỳ</p>
-              <p className="text-[11px] text-slate-500">
-                Tiến trình nền tự làm mới bài viết, chỉ số tương tác và đường dẫn ảnh theo chu kỳ (tự cảnh báo nếu Token hết hạn).
-              </p>
-            </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50/70 px-3.5 py-2">
+            <span className="text-xs font-semibold text-slate-800">Tự động đồng bộ Fanpage định kỳ</span>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5">
                 <Input
@@ -234,135 +220,131 @@ export function SystemIntegrationsCard({
           </div>
         </div>
 
-        {/* 2. AI Gateway (9router) */}
-        <div className="space-y-3 p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Bot size={15} className="text-primary" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                Cổng AI (Tóm tắt thảo luận & Dịch tự động)
-              </h4>
-            </div>
-            <Badge tone={current.aiConfigured ? "success" : "neutral"}>
-              {current.aiConfigured ? "AI đang kết nối" : "Đang dùng chế độ ngoại tuyến"}
-            </Badge>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <FormField label="AI Base URL" hint="AI_BASE_URL (tương thích OpenAI / 9router)">
-              <Input
-                maxLength={500}
-                disabled={!canEdit}
-                value={draft.aiBaseUrl ?? ""}
-                onChange={(e) => onChange({ ...draft, aiBaseUrl: e.target.value })}
-                placeholder="https://router.anhchau.all1.vn/v1"
-                className="h-9 font-mono text-xs"
-              />
-            </FormField>
-
-            <FormField label="AI API Key" hint={aiKeyHint}>
-              <div className="flex items-center gap-1.5">
-                <PasswordInput
-                  maxLength={256}
-                  autoComplete="new-password"
-                  disabled={!canEdit}
-                  value={draft.aiApiKey ?? ""}
-                  onChange={(e) =>
-                    onChange({ ...draft, aiApiKey: e.target.value, clearAiApiKey: false })
-                  }
-                  placeholder={
-                    current.aiApiKeyConfigured ? "•••••••• (đã lưu trong hệ thống)" : "AI_API_KEY"
-                  }
-                  className="h-9 font-mono text-xs"
-                />
-                {canEdit && current.aiApiKeyConfigured && !draft.clearAiApiKey && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onChange({ ...draft, aiApiKey: "", clearAiApiKey: true })}
-                    title="Xoá AI API Key đã lưu"
-                  >
-                    <Trash2 size={14} />
-                  </Button>
-                )}
+        {/* 2 & 3. AI Gateway + Google Sign-In side-by-side horizontally */}
+        <div className="grid divide-y divide-slate-100 lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+          <div className="space-y-3 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Bot size={15} className="text-primary" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                  Cổng AI
+                </h4>
               </div>
-            </FormField>
-
-            <FormField label="AI Model" hint="AI_MODEL (VD: apmarket, gpt-4o-mini)">
-              <Input
-                maxLength={120}
-                disabled={!canEdit}
-                value={draft.aiModel ?? ""}
-                onChange={(e) => onChange({ ...draft, aiModel: e.target.value })}
-                placeholder="apmarket"
-                className="h-9 font-mono text-xs"
-              />
-            </FormField>
-          </div>
-        </div>
-
-        {/* 3. Google Sign-In */}
-        <div className="space-y-3 p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Globe2 size={15} className="text-primary" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                Đăng nhập Google (Tài khoản sinh viên VJU)
-              </h4>
+              <Badge tone={current.aiConfigured ? "success" : "neutral"}>
+                {current.aiConfigured ? "AI đang kết nối" : "Ngoại tuyến"}
+              </Badge>
             </div>
-            <Badge tone={current.googleSignInConfigured ? "success" : "neutral"}>
-              {current.googleSignInConfigured ? "Google SSO đang bật" : "Google SSO đang tắt"}
-            </Badge>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <FormField label="AI Base URL">
+                <Input
+                  maxLength={500}
+                  disabled={!canEdit}
+                  value={draft.aiBaseUrl ?? ""}
+                  onChange={(e) => onChange({ ...draft, aiBaseUrl: e.target.value })}
+                  placeholder="https://.../v1"
+                  className="h-8.5 font-mono text-xs"
+                />
+              </FormField>
+
+              <FormField label="AI API Key" hint={aiKeyHint}>
+                <div className="flex w-full items-center gap-1">
+                  <div className="min-w-0 flex-1">
+                    <PasswordInput
+                      maxLength={256}
+                      autoComplete="new-password"
+                      disabled={!canEdit}
+                      value={draft.aiApiKey ?? ""}
+                      onChange={(e) =>
+                        onChange({ ...draft, aiApiKey: e.target.value, clearAiApiKey: false })
+                      }
+                      placeholder={current.aiApiKeyConfigured ? "••••••••" : "AI_API_KEY"}
+                      className="h-8.5 w-full font-mono text-xs"
+                    />
+                  </div>
+                  {canEdit && current.aiApiKeyConfigured && !draft.clearAiApiKey && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8.5 shrink-0 px-2"
+                      onClick={() => onChange({ ...draft, aiApiKey: "", clearAiApiKey: true })}
+                      title="Xoá AI API Key đã lưu"
+                    >
+                      <Trash2 size={13} />
+                    </Button>
+                  )}
+                </div>
+              </FormField>
+
+              <FormField label="AI Model">
+                <Input
+                  maxLength={120}
+                  disabled={!canEdit}
+                  value={draft.aiModel ?? ""}
+                  onChange={(e) => onChange({ ...draft, aiModel: e.target.value })}
+                  placeholder="apmarket"
+                  className="h-8.5 font-mono text-xs"
+                />
+              </FormField>
+            </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <FormField label="Google Client ID" hint="GOOGLE_CLIENT_ID từ Google Cloud Console">
-              <Input
-                maxLength={255}
-                disabled={!canEdit}
-                value={draft.googleClientId ?? ""}
-                onChange={(e) => onChange({ ...draft, googleClientId: e.target.value })}
-                placeholder="xxxx.apps.googleusercontent.com"
-                className="h-9 font-mono text-xs"
-              />
-            </FormField>
+          <div className="space-y-3 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Globe2 size={15} className="text-primary" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                  Google Sign-In (SSO)
+                </h4>
+              </div>
+              <Badge tone={current.googleSignInConfigured ? "success" : "neutral"}>
+                {current.googleSignInConfigured ? "Google SSO đang bật" : "Google SSO đang tắt"}
+              </Badge>
+            </div>
 
-            <FormField
-              label="Tên miền email được phép"
-              hint="GOOGLE_ALLOWED_DOMAINS (phân tách bằng dấu phẩy)"
-            >
-              <Input
-                maxLength={500}
-                disabled={!canEdit}
-                value={draft.googleAllowedDomains ?? ""}
-                onChange={(e) => onChange({ ...draft, googleAllowedDomains: e.target.value })}
-                placeholder="st.vju.ac.vn"
-                className="h-9 font-mono text-xs"
-              />
-            </FormField>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <FormField label="Google Client ID">
+                <Input
+                  maxLength={255}
+                  disabled={!canEdit}
+                  value={draft.googleClientId ?? ""}
+                  onChange={(e) => onChange({ ...draft, googleClientId: e.target.value })}
+                  placeholder="xxxx.apps.googleusercontent.com"
+                  className="h-8.5 font-mono text-xs"
+                />
+              </FormField>
 
-            <FormField
-              label="Tự tạo tài khoản qua Google"
-              hint="GOOGLE_CREATE_ACCOUNTS áp dụng tại trang đăng ký"
-            >
-              <Select
-                disabled={!canEdit}
-                value={googleModeValue}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  onChange({
-                    ...draft,
-                    googleCreateAccounts: val === "env" ? null : val === "true",
-                  });
-                }}
-                className="h-9 text-xs"
-              >
-                <option value="env">Theo cấu hình .env</option>
-                <option value="true">Cho phép tự tạo tài khoản</option>
-                <option value="false">Chỉ đăng nhập tài khoản đã cấp</option>
-              </Select>
-            </FormField>
+              <FormField label="Tên miền email">
+                <Input
+                  maxLength={500}
+                  disabled={!canEdit}
+                  value={draft.googleAllowedDomains ?? ""}
+                  onChange={(e) => onChange({ ...draft, googleAllowedDomains: e.target.value })}
+                  placeholder="st.vju.ac.vn"
+                  className="h-8.5 font-mono text-xs"
+                />
+              </FormField>
+
+              <FormField label="Tự tạo tài khoản">
+                <Select
+                  disabled={!canEdit}
+                  value={googleModeValue}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    onChange({
+                      ...draft,
+                      googleCreateAccounts: val === "env" ? null : val === "true",
+                    });
+                  }}
+                  className="h-8.5 text-xs"
+                >
+                  <option value="env">Theo cấu hình .env</option>
+                  <option value="true">Cho phép tự tạo tài khoản</option>
+                  <option value="false">Chỉ đăng nhập tài khoản đã cấp</option>
+                </Select>
+              </FormField>
+            </div>
           </div>
         </div>
       </div>

@@ -31,7 +31,9 @@ public class NotificationEmailListener {
             "DEPARTMENT",
             "TASK",
             "EVENT",
-            "CLUB"
+            "CLUB",
+            "DOCUMENT",
+            "SYSTEM"
     );
 
     private final OtpMailService otpMailService;
@@ -42,21 +44,67 @@ public class NotificationEmailListener {
     private Executor mailTaskExecutor;
 
     private ExecutorService fallbackPool;
+    private ExecutorService bulkCampaignPool;
 
     private synchronized Executor resolveExecutor() {
         if (mailTaskExecutor != null) return mailTaskExecutor;
         if (fallbackPool == null) {
             fallbackPool = new ThreadPoolExecutor(
                     1, 2, 60L, TimeUnit.SECONDS,
-                    new ArrayBlockingQueue<>(128),
+                    new ArrayBlockingQueue<>(4096),
                     r -> {
                         Thread t = new Thread(r, "vju-notif-mail-fallback");
                         t.setDaemon(true);
                         return t;
                     },
-                    (r, p) -> log.warn("Fallback mail pool queue full; skipping alert email"));
+                    new ThreadPoolExecutor.CallerRunsPolicy());
         }
         return fallbackPool;
+    }
+
+    private synchronized ExecutorService resolveBulkPool() {
+        if (bulkCampaignPool == null) {
+            bulkCampaignPool = new ThreadPoolExecutor(
+                    1, 1, 60L, TimeUnit.SECONDS,
+                    new ArrayBlockingQueue<>(256),
+                    r -> {
+                        Thread t = new Thread(r, "vju-notif-campaign-mail");
+                        t.setDaemon(true);
+                        return t;
+                    },
+                    new ThreadPoolExecutor.DiscardOldestPolicy());
+        }
+        return bulkCampaignPool;
+    }
+
+    public int enqueueCampaignEmails(java.util.List<User> recipients, String title, String message, String category) {
+        if (recipients == null || recipients.isEmpty() || !otpMailService.isMailConfigured()) {
+            return 0;
+        }
+        record RecipientTarget(String email, String fullName) { }
+        java.util.List<RecipientTarget> eligible = recipients.stream()
+                .filter(User::isEmailNotificationsEnabled)
+                .filter(u -> u.getEmail() != null && !u.getEmail().isBlank()
+                        && !u.getEmail().endsWith(".local") && !u.getEmail().endsWith(".test"))
+                .map(u -> new RecipientTarget(u.getEmail(), u.getFullName()))
+                .toList();
+        if (eligible.isEmpty()) {
+            return 0;
+        }
+        resolveBulkPool().execute(() -> {
+            for (RecipientTarget target : eligible) {
+                try {
+                    otpMailService.sendNotificationAlertEmail(target.email(), target.fullName(), title, message, category);
+                    Thread.sleep(25L);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                } catch (RuntimeException ex) {
+                    log.warn("Failed to deliver campaign email to {}: {}", target.email(), ex.getMessage());
+                }
+            }
+        });
+        return eligible.size();
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -94,6 +142,9 @@ public class NotificationEmailListener {
     void shutdown() {
         if (fallbackPool != null) {
             fallbackPool.shutdown();
+        }
+        if (bulkCampaignPool != null) {
+            bulkCampaignPool.shutdown();
         }
     }
 }

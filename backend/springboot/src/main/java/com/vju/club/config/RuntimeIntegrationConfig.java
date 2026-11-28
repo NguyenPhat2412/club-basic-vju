@@ -26,6 +26,9 @@ public class RuntimeIntegrationConfig {
     private final GoogleSignInProperties googleProperties;
 
     @Autowired(required = false)
+    private TelegramProperties telegramProperties;
+
+    @Autowired(required = false)
     private TokenCryptoService tokenCryptoService;
 
     public record EffectiveFacebook(
@@ -87,6 +90,61 @@ public class RuntimeIntegrationConfig {
                 ? s.getGoogleCreateAccounts()
                 : googleProperties.isCreateAccounts();
         return new EffectiveGoogle(clientId, domains, createAccounts);
+    }
+
+    public record EffectiveTelegram(
+            boolean enabled,
+            String botToken,
+            String chatId,
+            String threadId,
+            String apiBaseUrl,
+            boolean alertOnFailedLogin,
+            int failedLoginThreshold,
+            boolean alertOnRateLimit,
+            boolean alertOnAdminLogin,
+            boolean alertOnSettingsChange,
+            int cooldownSeconds) {
+        public boolean isConfigured() {
+            return hasText(botToken) && hasText(chatId);
+        }
+
+        public boolean isActive() {
+            return enabled && isConfigured();
+        }
+    }
+
+    public EffectiveTelegram telegram() {
+        SystemSettings s = loadSettings();
+        String envToken = telegramProperties == null ? null : telegramProperties.getBotToken();
+        String envChatId = telegramProperties == null ? null : telegramProperties.getChatId();
+        String envThreadId = telegramProperties == null ? null : telegramProperties.getThreadId();
+        String apiBase = firstText(
+                telegramProperties == null ? null : telegramProperties.getApiBaseUrl(),
+                "https://api.telegram.org");
+        boolean envEnabled = telegramProperties != null && telegramProperties.isEnabled();
+
+        String botToken = firstText(decryptOrNull(s == null ? null : s.getTelegramBotToken()), envToken);
+        String chatId = firstText(s == null ? null : s.getTelegramChatId(), envChatId);
+        String threadId = firstText(s == null ? null : s.getTelegramThreadId(), envThreadId);
+        boolean enabled = s != null ? (s.isTelegramEnabled() || envEnabled) : envEnabled;
+        boolean alertOnFailedLogin = s == null || s.isTelegramAlertOnFailedLogin();
+        int failedLoginThreshold = s == null ? 5 : Math.max(2, s.getTelegramFailedLoginThreshold());
+        boolean alertOnRateLimit = s == null || s.isTelegramAlertOnRateLimit();
+        boolean alertOnAdminLogin = s == null || s.isTelegramAlertOnAdminLogin();
+        boolean alertOnSettingsChange = s == null || s.isTelegramAlertOnSettingsChange();
+        int cooldownSeconds = s == null ? 180 : Math.max(10, s.getTelegramCooldownSeconds());
+        return new EffectiveTelegram(
+                enabled,
+                botToken,
+                chatId,
+                threadId,
+                apiBase,
+                alertOnFailedLogin,
+                failedLoginThreshold,
+                alertOnRateLimit,
+                alertOnAdminLogin,
+                alertOnSettingsChange,
+                cooldownSeconds);
     }
 
     private SystemSettings loadSettings() {

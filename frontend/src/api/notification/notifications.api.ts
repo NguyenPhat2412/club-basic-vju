@@ -2,7 +2,12 @@ import { api, cleanParams } from '@/lib/api/client';
 import { API_ROUTES } from '@/lib/api/routes';
 import type { Page } from '@/types/common.types';
 import type {
+  CreateNotificationCampaignInput,
   Notification,
+  NotificationAudiencePreview,
+  NotificationAudienceType,
+  NotificationCampaign,
+  NotificationCampaignRemindResult,
   NotificationUnreadSummary,
   ResourceNotificationInput,
   ResourceNotificationResult,
@@ -32,5 +37,21 @@ export const notificationsApi = {
     api<ResourceNotificationResult>(`/tasks/${taskId}/notifications`, {
       method: 'POST',
       body: JSON.stringify(body),
+    }),
+  notificationCampaigns: (offset = 0, limit = 20) =>
+    api<Page<NotificationCampaign>>(`/notifications/campaigns?${cleanParams({ offset, limit })}`),
+  previewNotificationAudience: (audienceType: NotificationAudienceType, clubIds: string[] = []) => {
+    const params = new URLSearchParams({ audienceType });
+    clubIds.forEach((id) => params.append('clubIds', id));
+    return api<NotificationAudiencePreview>(`/notifications/campaigns/preview-count?${params.toString()}`);
+  },
+  createNotificationCampaign: (body: CreateNotificationCampaignInput) =>
+    api<NotificationCampaign>('/notifications/campaigns', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  remindUnreadCampaign: (campaignId: string) =>
+    api<NotificationCampaignRemindResult>(`/notifications/campaigns/${encodeURIComponent(campaignId)}/remind-unread`, {
+      method: 'POST',
     }),
 };

@@ -19,4 +19,5 @@ public class Notification extends TimestampedEntity {
     @Column(name = "reference_type", length = 40) private String referenceType;
     @Column(name = "reference_id") private UUID referenceId;
     @Column(name = "event_key", length = 120) private String eventKey;
+    @Column(name = "campaign_id") private UUID campaignId;
 }

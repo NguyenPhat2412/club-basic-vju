@@ -18,9 +18,16 @@ export const RESOURCE_LABELS: Record<string, string> = {
   CHAT_CHANNEL: "Kênh trao đổi",
   NOTIFICATION: "Thông báo",
   SYSTEM_SETTINGS: "Cài đặt hệ thống",
+  SECURITY: "Bảo mật & Chống tấn công",
 };
 
 export const ACTION_LABELS: Record<string, string> = {
+  USER_LOGGED_IN: "Đăng nhập thành công",
+  USER_LOGIN_FAILED: "Đăng nhập thất bại",
+  USER_SESSION_TERMINATED: "Ngắt phiên hoạt động",
+  SECURITY_RATE_LIMIT_BLOCKED: "Chặn vượt ngưỡng (429)",
+  SECURITY_IP_BLOCKED: "Chặn địa chỉ IP",
+  SECURITY_IP_UNBLOCKED: "Gỡ chặn địa chỉ IP",
   LOGIN: "Đăng nhập",
   LOGOUT: "Đăng xuất",
   CREATE: "Tạo mới",

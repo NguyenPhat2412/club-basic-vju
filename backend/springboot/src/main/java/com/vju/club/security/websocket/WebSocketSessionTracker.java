@@ -8,12 +8,24 @@ import org.springframework.web.socket.handler.WebSocketHandlerDecorator;
 import org.springframework.web.socket.handler.WebSocketHandlerDecoratorFactory;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class WebSocketSessionTracker implements WebSocketHandlerDecoratorFactory {
+    public record ActiveSessionSnapshot(
+            UUID userId,
+            String displayName,
+            String ipAddress,
+            String userAgent,
+            int connections,
+            Instant connectedAt) {
+    }
+
     private final ConcurrentHashMap<UUID, Set<WebSocketSession>> sessionsByUser = new ConcurrentHashMap<>();
 
     @Override
@@ -40,6 +52,37 @@ public class WebSocketSessionTracker implements WebSocketHandlerDecoratorFactory
                 super.afterConnectionClosed(session, closeStatus);
             }
         };
+    }
+
+    public List<ActiveSessionSnapshot> activeSessions() {
+        List<ActiveSessionSnapshot> result = new ArrayList<>();
+        sessionsByUser.forEach((userId, sessions) -> {
+            List<WebSocketSession> open = sessions.stream().filter(WebSocketSession::isOpen).toList();
+            if (open.isEmpty()) return;
+            String displayName = null;
+            String ipAddress = null;
+            String userAgent = null;
+            Instant latestConnected = null;
+            for (WebSocketSession s : open) {
+                Object p = s.getAttributes().get(SessionHandshakeInterceptor.ATTR_PRINCIPAL);
+                if (displayName == null && p instanceof ActorPrincipal ap) {
+                    displayName = ap.fullName();
+                }
+                Instant connectedAt = s.getAttributes().get(SessionHandshakeInterceptor.ATTR_CONNECTED_AT) instanceof Instant inst
+                        ? inst : null;
+                if (latestConnected == null || (connectedAt != null && connectedAt.isAfter(latestConnected))) {
+                    latestConnected = connectedAt;
+                    if (s.getAttributes().get(SessionHandshakeInterceptor.ATTR_IP_ADDRESS) instanceof String ip) {
+                        ipAddress = ip;
+                    }
+                    if (s.getAttributes().get(SessionHandshakeInterceptor.ATTR_USER_AGENT) instanceof String ua) {
+                        userAgent = ua;
+                    }
+                }
+            }
+            result.add(new ActiveSessionSnapshot(userId, displayName, ipAddress, userAgent, open.size(), latestConnected));
+        });
+        return result;
     }
 
     public void closeUserSessions(UUID userId) {

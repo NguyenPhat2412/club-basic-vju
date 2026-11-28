@@ -5,17 +5,22 @@ import com.vju.club.common.SettingConstants;
 import com.vju.club.config.RuntimeIntegrationConfig;
 import com.vju.club.dto.request.TestSmtpEmailRequest;
 import com.vju.club.dto.request.UpdateSystemSettingsRequest;
+import com.vju.club.dto.response.PublicSystemStatusResponse;
 import com.vju.club.dto.response.SystemSettingsResponse;
 import com.vju.club.entity.SystemSettings;
 import com.vju.club.enums.AuditAction;
 import com.vju.club.error.ApiException;
 import com.vju.club.mapper.SystemSettingsMapper;
 import com.vju.club.repository.SystemSettingsRepository;
+import com.vju.club.repository.UserRepository;
 import com.vju.club.security.Actor;
+import com.vju.club.security.RequestMetadataExtractor;
 import com.vju.club.security.TokenCryptoService;
 import com.vju.club.service.AuditService;
 import com.vju.club.service.OtpMailService;
+import com.vju.club.service.SecurityTelemetryService;
 import com.vju.club.service.SystemSettingsService;
+import com.vju.club.service.TelegramAlertService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -42,10 +47,37 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
     @Autowired(required = false)
     private RuntimeIntegrationConfig runtimeIntegrationConfig;
 
+    @Autowired(required = false)
+    private TelegramAlertService telegramAlertService;
+
+    @Autowired(required = false)
+    private SecurityTelemetryService securityTelemetryService;
+
+    @Autowired(required = false)
+    private UserRepository userRepository;
+
     @Override
     @Transactional(readOnly = true)
     public SystemSettingsResponse current() {
         return toEnrichedResponse(find());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PublicSystemStatusResponse publicStatus() {
+        SystemSettings s = find();
+        java.time.OffsetDateTime now = java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC);
+        boolean activeAnnouncement = s.isAnnouncementEnabled()
+                && s.getAnnouncementMessage() != null
+                && !s.getAnnouncementMessage().isBlank()
+                && (s.getAnnouncementExpiresAt() == null || s.getAnnouncementExpiresAt().isAfter(now));
+        return new PublicSystemStatusResponse(
+                s.isMaintenanceMode(),
+                s.getMaintenanceMessage(),
+                activeAnnouncement,
+                activeAnnouncement ? s.getAnnouncementMessage() : null,
+                s.getAnnouncementTone() == null ? "info" : s.getAnnouncementTone(),
+                s.getAnnouncementExpiresAt());
     }
 
     @Override
@@ -137,8 +169,63 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
         if (request.googleAllowedDomains() != null) settings.setGoogleAllowedDomains(blankToNull(request.googleAllowedDomains()));
         if (request.googleCreateAccounts() != null) settings.setGoogleCreateAccounts(request.googleCreateAccounts());
 
+        if (request.telegramEnabled() != null) settings.setTelegramEnabled(request.telegramEnabled());
+        if (Boolean.TRUE.equals(request.clearTelegramBotToken())) {
+            settings.setTelegramBotToken(null);
+        } else if (request.telegramBotToken() != null && !request.telegramBotToken().isBlank()) {
+            settings.setTelegramBotToken(encryptSecret(request.telegramBotToken().trim()));
+        }
+        if (request.telegramChatId() != null) settings.setTelegramChatId(blankToNull(request.telegramChatId()));
+        if (request.telegramThreadId() != null) settings.setTelegramThreadId(blankToNull(request.telegramThreadId()));
+        if (request.telegramAlertOnFailedLogin() != null) {
+            settings.setTelegramAlertOnFailedLogin(request.telegramAlertOnFailedLogin());
+        }
+        if (request.telegramFailedLoginThreshold() != null) {
+            settings.setTelegramFailedLoginThreshold(request.telegramFailedLoginThreshold());
+        }
+        if (request.telegramAlertOnRateLimit() != null) {
+            settings.setTelegramAlertOnRateLimit(request.telegramAlertOnRateLimit());
+        }
+        if (request.telegramAlertOnAdminLogin() != null) {
+            settings.setTelegramAlertOnAdminLogin(request.telegramAlertOnAdminLogin());
+        }
+        if (request.telegramAlertOnSettingsChange() != null) {
+            settings.setTelegramAlertOnSettingsChange(request.telegramAlertOnSettingsChange());
+        }
+        if (request.telegramCooldownSeconds() != null) {
+            settings.setTelegramCooldownSeconds(request.telegramCooldownSeconds());
+        }
+        if (request.maintenanceMode() != null) {
+            settings.setMaintenanceMode(request.maintenanceMode());
+        }
+        if (request.maintenanceMessage() != null) {
+            settings.setMaintenanceMessage(blankToNull(request.maintenanceMessage()));
+        }
+        if (request.announcementEnabled() != null) {
+            settings.setAnnouncementEnabled(request.announcementEnabled());
+        }
+        if (request.announcementMessage() != null) {
+            settings.setAnnouncementMessage(blankToNull(request.announcementMessage()));
+        }
+        if (request.announcementTone() != null) {
+            String tone = request.announcementTone().trim().toLowerCase(Locale.ROOT);
+            settings.setAnnouncementTone(
+                    ("warning".equals(tone) || "danger".equals(tone)) ? tone : "info");
+        }
+        if (Boolean.TRUE.equals(request.clearAnnouncementExpiresAt())) {
+            settings.setAnnouncementExpiresAt(null);
+        } else if (request.announcementExpiresAt() != null) {
+            settings.setAnnouncementExpiresAt(request.announcementExpiresAt());
+        }
+
         SystemSettings saved = repository.saveAndFlush(settings);
         auditService.record(actor.id(), AuditAction.SYSTEM_SETTINGS_UPDATED, saved.getId(), null, before, values(saved));
+        if (securityTelemetryService != null) {
+            try {
+                securityTelemetryService.onSensitiveSettingsChanged(actor.id(), "Cập nhật cấu hình hệ thống");
+            } catch (RuntimeException ignored) {
+            }
+        }
         return toEnrichedResponse(saved);
     }
 
@@ -150,6 +237,7 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
         boolean fbReady = runtimeIntegrationConfig.facebook().isOauthConfigured();
         boolean aiReady = runtimeIntegrationConfig.ai().isConfigured();
         boolean googleReady = runtimeIntegrationConfig.google().isEnabled();
+        boolean telegramReady = runtimeIntegrationConfig.telegram().isConfigured();
         return new SystemSettingsResponse(
                 base.maxPendingApplications(),
                 base.reapplyCooldownDays(),
@@ -199,6 +287,23 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
                 base.googleAllowedDomains(),
                 base.googleCreateAccounts(),
                 googleReady,
+                base.telegramEnabled(),
+                base.telegramBotTokenConfigured(),
+                base.telegramChatId(),
+                base.telegramThreadId(),
+                base.telegramAlertOnFailedLogin(),
+                base.telegramFailedLoginThreshold(),
+                base.telegramAlertOnRateLimit(),
+                base.telegramAlertOnAdminLogin(),
+                base.telegramAlertOnSettingsChange(),
+                base.telegramCooldownSeconds(),
+                telegramReady,
+                base.maintenanceMode(),
+                base.maintenanceMessage(),
+                base.announcementEnabled(),
+                base.announcementMessage(),
+                base.announcementTone(),
+                base.announcementExpiresAt(),
                 base.updatedAt(),
                 base.updatedBy());
     }
@@ -215,6 +320,20 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "SMTP_NOT_CONFIGURED", "Mail service is unavailable");
         }
         otpMailService.sendTestSmtpEmail(request.recipientEmail().trim().toLowerCase(Locale.ROOT));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    @RequirePermission(SettingConstants.PERMISSION_UPDATE)
+    public void sendTestTelegram(Actor actor) {
+        if (telegramAlertService == null) {
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "TELEGRAM_NOT_CONFIGURED", "Telegram alert service is unavailable");
+        }
+        String actorEmail = userRepository == null
+                ? actor.id().toString()
+                : userRepository.findById(actor.id()).map(u -> u.getEmail()).orElse(actor.id().toString());
+        String ip = RequestMetadataExtractor.extractCurrent().ipAddress();
+        telegramAlertService.sendTestMessage(actorEmail, ip);
     }
 
     private SystemSettings find() {
@@ -273,6 +392,22 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
         values.put("googleClientId", s.getGoogleClientId());
         values.put("googleAllowedDomains", s.getGoogleAllowedDomains());
         values.put("googleCreateAccounts", s.getGoogleCreateAccounts());
+        values.put("telegramEnabled", s.isTelegramEnabled());
+        values.put("telegramBotTokenConfigured", s.getTelegramBotToken() != null && !s.getTelegramBotToken().isBlank());
+        values.put("telegramChatId", s.getTelegramChatId());
+        values.put("telegramThreadId", s.getTelegramThreadId());
+        values.put("telegramAlertOnFailedLogin", s.isTelegramAlertOnFailedLogin());
+        values.put("telegramFailedLoginThreshold", s.getTelegramFailedLoginThreshold());
+        values.put("telegramAlertOnRateLimit", s.isTelegramAlertOnRateLimit());
+        values.put("telegramAlertOnAdminLogin", s.isTelegramAlertOnAdminLogin());
+        values.put("telegramAlertOnSettingsChange", s.isTelegramAlertOnSettingsChange());
+        values.put("telegramCooldownSeconds", s.getTelegramCooldownSeconds());
+        values.put("maintenanceMode", s.isMaintenanceMode());
+        values.put("maintenanceMessage", s.getMaintenanceMessage());
+        values.put("announcementEnabled", s.isAnnouncementEnabled());
+        values.put("announcementMessage", s.getAnnouncementMessage());
+        values.put("announcementTone", s.getAnnouncementTone());
+        values.put("announcementExpiresAt", s.getAnnouncementExpiresAt());
         return values;
     }
 }

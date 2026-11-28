@@ -3,6 +3,7 @@ package com.vju.club.security.websocket;
 import com.vju.club.entity.User;
 import com.vju.club.enums.UserStatus;
 import com.vju.club.repository.UserRepository;
+import com.vju.club.security.RequestMetadataExtractor;
 import com.vju.club.security.SecurityIdentity;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,6 +27,9 @@ import java.util.UUID;
 public class SessionHandshakeInterceptor implements HandshakeInterceptor {
     private static final Logger log = LoggerFactory.getLogger(SessionHandshakeInterceptor.class);
     public static final String ATTR_PRINCIPAL = "vju.actorPrincipal";
+    public static final String ATTR_IP_ADDRESS = "vju.ipAddress";
+    public static final String ATTR_USER_AGENT = "vju.userAgent";
+    public static final String ATTR_CONNECTED_AT = "vju.connectedAt";
 
     private final UserRepository userRepository;
 
@@ -50,6 +55,14 @@ public class SessionHandshakeInterceptor implements HandshakeInterceptor {
             return false;
         }
         attributes.put(ATTR_PRINCIPAL, new ActorPrincipal(user.getId(), user.getFullName()));
+        RequestMetadataExtractor.Metadata meta = RequestMetadataExtractor.extract(request);
+        if (meta.ipAddress() != null) {
+            attributes.put(ATTR_IP_ADDRESS, meta.ipAddress());
+        }
+        if (meta.userAgent() != null) {
+            attributes.put(ATTR_USER_AGENT, meta.userAgent());
+        }
+        attributes.put(ATTR_CONNECTED_AT, Instant.now());
         return true;
     }
 

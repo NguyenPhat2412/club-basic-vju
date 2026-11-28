@@ -40,6 +40,8 @@ const NAV_LABEL_FALLBACKS: Record<string, { en: string; ja: string }> = {
   "Cổng thông tin": { en: "Information Portal", ja: "情報ポータル" },
   "Hệ thống CLB sinh viên": { en: "Student Club System", ja: "学生クラブ管理システム" },
   "Không gian quản lý CLB": { en: "Club Management Workspace", ja: "クラブ管理ワークスペース" },
+  "Phát thông báo": { en: "Broadcast Center", ja: "一斉通知配信" },
+  "Tài liệu hệ thống": { en: "System Documents", ja: "システム文書" },
 };
 
 function translateNavLabel(text: string, locale: ReturnType<typeof getPresentationLocale>): string {
@@ -58,6 +60,8 @@ export function buildNavigationSections(params: {
   const { authenticated, mustChangePassword, can, hasGlobal } = params;
   const hasAnyPerm = (keys: string[]) => keys.some(can);
   const canGlobalRoleView = can("role.manage") || (hasGlobal ? hasGlobal("role.view") : can("role.view"));
+  const canGlobalBroadcast = hasGlobal ? hasGlobal("notification.send") : can("notification.send");
+  const canSystemDocuments = hasGlobal ? hasGlobal("document.view") : can("document.view");
 
   const canManageClub = CLUB_MANAGEMENT_KEYS.some(can);
   const canSystemAdmin = canGlobalRoleView || hasAnyPerm(["user.view", "audit.view", "setting.view"]);
@@ -193,6 +197,8 @@ export function buildNavigationSections(params: {
                 items: [
                   { href: "/users", label: "Tài khoản người dùng", visible: can("user.view") },
                   { href: "/roles", label: "Vai trò & Phân quyền", visible: canGlobalRoleView },
+                  { href: "/notifications?tab=campaigns", label: "Phát thông báo", visible: canGlobalBroadcast },
+                  { href: "/documents?tier=system", tier: "system", label: "Tài liệu hệ thống", visible: canSystemDocuments },
                   { href: "/audit-logs", label: "Nhật ký hệ thống", visible: can("audit.view") },
                   { href: "/settings", label: "Cài đặt hệ thống", visible: can("setting.view") },
                 ],
@@ -301,6 +307,12 @@ export function isNavItemActive(
     if (pathname !== "/management") return false;
     if (!currentTab) return item.tab === "clubs";
     return currentTab === item.tab;
+  }
+  if (item.href === "/notifications?tab=campaigns") {
+    return pathname === "/notifications" && currentTab === "campaigns";
+  }
+  if (item.href === "/notifications") {
+    return pathname === "/notifications" && currentTab !== "campaigns";
   }
   if (item.tier) {
     if (pathname !== "/documents") return false;

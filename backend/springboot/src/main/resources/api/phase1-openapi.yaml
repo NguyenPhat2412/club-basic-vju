@@ -3026,6 +3026,159 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '409': {$ref: '#/components/responses/Conflict'}
+  /system-settings/telegram-test:
+    put:
+      operationId: systemSettings.testTelegram
+      summary: Send a test security alert message to configured Telegram bot and chat
+      tags: [SystemSettings]
+      x-permission: setting.update
+      x-scope: GLOBAL
+      x-implementation-status: IMPLEMENTED
+      description: Gửi tin nhắn kiểm tra kết nối Telegram Bot theo cấu hình đã lưu trong cài đặt hệ thống hoặc biến môi trường.
+      responses:
+        '204':
+          description: Test Telegram alert sent successfully
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /system-settings/security-overview:
+    get:
+      operationId: systemSettings.securityOverview
+      summary: Read live online users, suspicious IPs, and recent login/security activity
+      tags: [SystemSettings]
+      x-permission: setting.view
+      x-scope: GLOBAL
+      x-implementation-status: IMPLEMENTED
+      description: Tổng hợp người dùng đang trực tuyến kèm địa chỉ IP, danh sách IP đáng ngờ (sai mật khẩu / chặn 429) và nhật ký đăng nhập/bảo mật gần đây.
+      parameters:
+        - name: hours
+          in: query
+          required: false
+          schema: {type: integer, minimum: 1, maximum: 168, default: 24}
+          description: Khoảng thời gian thống kê tính theo giờ (1..168, mặc định 24).
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SystemSecurityOverview'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /system-settings/online-users/{userId}/sessions:
+    delete:
+      operationId: systemSettings.disconnectOnlineUser
+      summary: Terminate all active HTTP and WebSocket sessions of a user
+      tags: [SystemSettings]
+      x-permission: setting.update
+      x-scope: GLOBAL
+      x-implementation-status: IMPLEMENTED
+      description: Ngắt ngay toàn bộ phiên đăng nhập và kết nối WebSocket của người dùng được chỉ định và ghi nhật ký USER_SESSION_TERMINATED.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '204':
+          description: User sessions terminated
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /public/system-status:
+    get:
+      operationId: systemSettings.publicStatus
+      summary: Read public maintenance mode and active announcement banner
+      tags: [SystemSettings]
+      security: []
+      x-permission: PUBLIC
+      x-scope: PUBLIC
+      x-implementation-status: IMPLEMENTED
+      description: Trả về trạng thái bảo trì hệ thống và banner thông báo toàn trường đang kích hoạt (không chứa dữ liệu nhạy cảm).
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PublicSystemStatus'}
+  /system-settings/infra-health:
+    get:
+      operationId: systemSettings.infraHealth
+      summary: Inspect live health of PostgreSQL, Redis, Storage, SMTP, AI, and Telegram plus storage usage
+      tags: [SystemSettings]
+      x-permission: setting.view
+      x-scope: GLOBAL
+      x-implementation-status: IMPLEMENTED
+      description: Kiểm tra kết nối và độ trễ các dịch vụ hạ tầng cùng tổng dung lượng lưu trữ hệ thống.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SystemInfraHealth'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /system-settings/blocked-ips:
+    get:
+      operationId: systemSettings.listBlockedIps
+      summary: List currently active blocked IP addresses
+      tags: [SystemSettings]
+      x-permission: setting.view
+      x-scope: GLOBAL
+      x-implementation-status: IMPLEMENTED
+      description: Danh sách địa chỉ IP đang bị chặn truy cập hệ thống (còn hạn hoặc vĩnh viễn).
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/BlockedIp'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+    post:
+      operationId: systemSettings.blockIp
+      summary: Block an IP address temporarily or permanently
+      tags: [SystemSettings]
+      x-permission: setting.update
+      x-scope: GLOBAL
+      x-implementation-status: IMPLEMENTED
+      description: Chặn một địa chỉ IP khỏi hệ thống (ngăn truy cập ngay tại bộ lọc đầu vào) và ghi nhật ký SECURITY_IP_BLOCKED.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BlockIpRequest'}
+      responses:
+        '201':
+          description: IP blocked
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BlockedIp'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /system-settings/blocked-ips/{ipId}:
+    delete:
+      operationId: systemSettings.unblockIp
+      summary: Remove an IP address from the blocklist
+      tags: [SystemSettings]
+      x-permission: setting.update
+      x-scope: GLOBAL
+      x-implementation-status: IMPLEMENTED
+      description: Gỡ chặn một địa chỉ IP và ghi nhật ký SECURITY_IP_UNBLOCKED.
+      parameters:
+        - name: ipId
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '204':
+          description: IP unblocked
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
   /audit-logs:
     get:
       operationId: audit.list
@@ -5641,6 +5794,97 @@ paths:
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
+  /notifications/campaigns:
+    get:
+      operationId: notification.listCampaigns
+      summary: List broadcast notification campaigns with live read counts
+      tags: [Notification]
+      x-permission: notification.send
+      x-implementation-status: IMPLEMENTED
+      parameters:
+        - name: offset
+          in: query
+          schema: {type: integer, minimum: 0, default: 0}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: Paged list of notification campaigns
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/NotificationCampaignPage'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+    post:
+      operationId: notification.createCampaign
+      summary: Create and batch-deliver a system-wide, club-leader, or multi-club notification campaign
+      tags: [Notification]
+      x-permission: notification.send
+      x-implementation-status: IMPLEMENTED
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateNotificationCampaignRequest'}
+      responses:
+        '201':
+          description: Campaign created and delivered
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/NotificationCampaign'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /notifications/campaigns/preview-count:
+    get:
+      operationId: notification.previewAudience
+      summary: Preview recipient count for a target notification audience
+      tags: [Notification]
+      x-permission: notification.send
+      x-implementation-status: IMPLEMENTED
+      parameters:
+        - name: audienceType
+          in: query
+          required: true
+          schema: {type: string, enum: [ALL_USERS, CLUB_LEADERS, CLUBS]}
+        - name: clubIds
+          in: query
+          required: false
+          schema:
+            type: array
+            items: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Recipient count preview
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/NotificationAudiencePreview'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /notifications/campaigns/{campaignId}/remind-unread:
+    post:
+      operationId: notification.remindUnread
+      summary: Send a follow-up reminder to recipients who have not read a campaign yet
+      tags: [Notification]
+      x-permission: notification.send
+      x-implementation-status: IMPLEMENTED
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '201':
+          description: Follow-up reminders delivered
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/NotificationCampaignRemindResponse'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
   /statistics/system:
     get:
       operationId: statistics.system
@@ -6610,7 +6854,7 @@ components:
           items: {$ref: '#/components/schemas/MyClubApplicationSummary'}
     SystemSettings:
       type: object
-      required: [maxPendingApplications, reapplyCooldownDays, maxActiveClubs, attendanceEditWindowHours, allowSelfRegistration, attendanceOpensBeforeMinutes, eventTaskGraceDays, chatSummariesPerHour, chatMaxMessageLength, chatMessagesPerMinute, documentMaxFileMb, clubImageMaxMb, avatarMaxMb, clubStorageQuotaMb, documentMaxVersions, maxChannelsPerClub, maxDepartmentsPerClub, maxActiveEventsPerClub, maxOpenTasksPerClub, broadcastCooldownMinutes, facebookSyncCooldownMinutes, facebookAutoSyncEnabled, facebookAutoSyncIntervalMinutes, otpExpiryMinutes, otpMaxSendCount, otpResendCooldownSeconds, otpMaxVerifyAttempts, smtpPort, smtpPasswordConfigured, smtpFromName, smtpStartTls, facebookAppSecretConfigured, facebookOauthConfigured, aiApiKeyConfigured, aiConfigured, googleSignInConfigured]
+      required: [maxPendingApplications, reapplyCooldownDays, maxActiveClubs, attendanceEditWindowHours, allowSelfRegistration, attendanceOpensBeforeMinutes, eventTaskGraceDays, chatSummariesPerHour, chatMaxMessageLength, chatMessagesPerMinute, documentMaxFileMb, clubImageMaxMb, avatarMaxMb, clubStorageQuotaMb, documentMaxVersions, maxChannelsPerClub, maxDepartmentsPerClub, maxActiveEventsPerClub, maxOpenTasksPerClub, broadcastCooldownMinutes, facebookSyncCooldownMinutes, facebookAutoSyncEnabled, facebookAutoSyncIntervalMinutes, otpExpiryMinutes, otpMaxSendCount, otpResendCooldownSeconds, otpMaxVerifyAttempts, smtpPort, smtpPasswordConfigured, smtpFromName, smtpStartTls, facebookAppSecretConfigured, facebookOauthConfigured, aiApiKeyConfigured, aiConfigured, googleSignInConfigured, telegramEnabled, telegramBotTokenConfigured, telegramAlertOnFailedLogin, telegramFailedLoginThreshold, telegramAlertOnRateLimit, telegramAlertOnAdminLogin, telegramAlertOnSettingsChange, telegramCooldownSeconds, telegramConfigured, maintenanceMode, announcementEnabled, announcementTone]
       properties:
         maxPendingApplications: {type: integer, minimum: 0, maximum: 100, description: Số đơn PENDING tối đa của một sinh viên trên mọi CLB; 0 = không giới hạn}
         reapplyCooldownDays: {type: integer, minimum: 0, maximum: 365, description: Số ngày chờ sau khi bị từ chối mới được nộp lại cùng CLB; 0 = không chờ}
@@ -6660,6 +6904,23 @@ components:
         googleAllowedDomains: {type: [string, 'null'], maxLength: 500, description: Danh sách tên miền email Google được phép (phân tách bằng dấu phẩy)}
         googleCreateAccounts: {type: [boolean, 'null'], description: Cho phép tự tạo tài khoản sinh viên mới khi đăng ký bằng Google (null = theo .env)}
         googleSignInConfigured: {type: boolean, description: Trạng thái hiệu lực của Google Sign-In (tính cả cài đặt hệ thống và .env)}
+        telegramEnabled: {type: boolean, description: Bật/tắt gửi cảnh báo bảo mật và vận hành qua Telegram}
+        telegramBotTokenConfigured: {type: boolean, description: Đã lưu Telegram Bot Token trong cài đặt hệ thống hay chưa (không trả token thô)}
+        telegramChatId: {type: [string, 'null'], maxLength: 128, description: Telegram Chat ID hoặc Group ID nhận cảnh báo}
+        telegramThreadId: {type: [string, 'null'], maxLength: 64, description: Message Thread ID tuỳ chọn cho nhóm Telegram có bật Topic}
+        telegramAlertOnFailedLogin: {type: boolean, description: Cảnh báo khi phát hiện đăng nhập sai liên tiếp từ cùng một IP}
+        telegramFailedLoginThreshold: {type: integer, minimum: 2, maximum: 50, description: Ngưỡng số lần đăng nhập thất bại trong 10 phút từ cùng IP để gửi cảnh báo}
+        telegramAlertOnRateLimit: {type: boolean, description: Cảnh báo khi hệ thống chặn yêu cầu vượt ngưỡng HTTP 429}
+        telegramAlertOnAdminLogin: {type: boolean, description: Cảnh báo khi tài khoản quản trị đăng nhập vào hệ thống}
+        telegramAlertOnSettingsChange: {type: boolean, description: Cảnh báo khi có thay đổi cài đặt hệ thống hoặc ngắt phiên người dùng}
+        telegramCooldownSeconds: {type: integer, minimum: 10, maximum: 3600, description: Thời gian nghỉ tối thiểu giữa 2 cảnh báo cùng loại để chống spam}
+        telegramConfigured: {type: boolean, description: Trạng thái sẵn sàng của Telegram Bot (tính cả cài đặt hệ thống và .env)}
+        maintenanceMode: {type: boolean, description: Bật chế độ bảo trì hệ thống đối với người dùng thường}
+        maintenanceMessage: {type: [string, 'null'], maxLength: 500, description: Thông báo hiển thị khi bật chế độ bảo trì}
+        announcementEnabled: {type: boolean, description: Bật banner thông báo nổi toàn trường}
+        announcementMessage: {type: [string, 'null'], maxLength: 500, description: Nội dung banner thông báo toàn trường}
+        announcementTone: {type: string, enum: [info, warning, danger], description: Mức độ hiển thị của banner thông báo}
+        announcementExpiresAt: {type: [string, 'null'], format: date-time, description: Thời điểm tự động ẩn banner (null = không hết hạn)}
         updatedAt: {type: string, format: date-time}
         updatedBy: {type: [string, 'null'], format: uuid}
     UpdateSystemSettingsRequest:
@@ -6714,11 +6975,138 @@ components:
         googleClientId: {type: [string, 'null'], maxLength: 255}
         googleAllowedDomains: {type: [string, 'null'], maxLength: 500}
         googleCreateAccounts: {type: [boolean, 'null']}
+        telegramEnabled: {type: [boolean, 'null']}
+        telegramBotToken: {type: [string, 'null'], format: password, maxLength: 256}
+        clearTelegramBotToken: {type: [boolean, 'null']}
+        telegramChatId: {type: [string, 'null'], maxLength: 128}
+        telegramThreadId: {type: [string, 'null'], maxLength: 64}
+        telegramAlertOnFailedLogin: {type: [boolean, 'null']}
+        telegramFailedLoginThreshold: {type: [integer, 'null'], minimum: 2, maximum: 50}
+        telegramAlertOnRateLimit: {type: [boolean, 'null']}
+        telegramAlertOnAdminLogin: {type: [boolean, 'null']}
+        telegramAlertOnSettingsChange: {type: [boolean, 'null']}
+        telegramCooldownSeconds: {type: [integer, 'null'], minimum: 10, maximum: 3600}
+        maintenanceMode: {type: [boolean, 'null']}
+        maintenanceMessage: {type: [string, 'null'], maxLength: 500}
+        announcementEnabled: {type: [boolean, 'null']}
+        announcementMessage: {type: [string, 'null'], maxLength: 500}
+        announcementTone: {type: [string, 'null'], maxLength: 16}
+        announcementExpiresAt: {type: [string, 'null'], format: date-time}
+        clearAnnouncementExpiresAt: {type: [boolean, 'null']}
     TestSmtpEmailRequest:
       type: object
       required: [recipientEmail]
       properties:
         recipientEmail: {type: string, format: email, maxLength: 320}
+    SystemSecurityOverview:
+      type: object
+      required: [windowHours, onlineUserCount, activeConnectionCount, loginSuccessCount, loginFailedCount, rateLimitBlockedCount, sensitiveChangeCount, onlineUsers, suspiciousIps, recentEvents]
+      properties:
+        windowHours: {type: integer}
+        onlineUserCount: {type: integer}
+        activeConnectionCount: {type: integer}
+        loginSuccessCount: {type: integer, format: int64}
+        loginFailedCount: {type: integer, format: int64}
+        rateLimitBlockedCount: {type: integer, format: int64}
+        sensitiveChangeCount: {type: integer, format: int64}
+        onlineUsers:
+          type: array
+          items:
+            type: object
+            required: [userId, connections]
+            properties:
+              userId: {type: string, format: uuid}
+              fullName: {type: [string, 'null']}
+              email: {type: [string, 'null']}
+              ipAddress: {type: [string, 'null']}
+              userAgent: {type: [string, 'null']}
+              connections: {type: integer}
+              connectedAt: {type: [string, 'null'], format: date-time}
+        suspiciousIps:
+          type: array
+          items:
+            type: object
+            required: [ipAddress, failedLoginCount, rateLimitBlockedCount, targetEmails]
+            properties:
+              ipAddress: {type: string}
+              failedLoginCount: {type: integer, format: int64}
+              rateLimitBlockedCount: {type: integer, format: int64}
+              targetEmails:
+                type: array
+                items: {type: string}
+              lastSeenAt: {type: [string, 'null'], format: date-time}
+              latestUserAgent: {type: [string, 'null']}
+        recentEvents:
+          type: array
+          items:
+            type: object
+            required: [id, createdAt, action, resourceType]
+            properties:
+              id: {type: string, format: uuid}
+              createdAt: {type: string, format: date-time}
+              action: {type: string}
+              resourceType: {type: string}
+              actorUserId: {type: [string, 'null'], format: uuid}
+              actorName: {type: [string, 'null']}
+              actorEmail: {type: [string, 'null']}
+              ipAddress: {type: [string, 'null']}
+              userAgent: {type: [string, 'null']}
+              summary: {type: [string, 'null']}
+    PublicSystemStatus:
+      type: object
+      required: [maintenanceMode, announcementEnabled, announcementTone]
+      properties:
+        maintenanceMode: {type: boolean}
+        maintenanceMessage: {type: [string, 'null']}
+        announcementEnabled: {type: boolean}
+        announcementMessage: {type: [string, 'null']}
+        announcementTone: {type: string}
+        announcementExpiresAt: {type: [string, 'null'], format: date-time}
+    SystemInfraHealth:
+      type: object
+      required: [checkedAt, services, storage]
+      properties:
+        checkedAt: {type: string, format: date-time}
+        services:
+          type: array
+          items:
+            type: object
+            required: [key, name, status]
+            properties:
+              key: {type: string}
+              name: {type: string}
+              status: {type: string}
+              latencyMs: {type: [integer, 'null'], format: int64}
+              detail: {type: [string, 'null']}
+        storage:
+          type: object
+          required: [storageMode, documentBytes, chatMediaBytes, totalBytes, clubCount, totalUsers, activeUsers]
+          properties:
+            storageMode: {type: string}
+            documentBytes: {type: integer, format: int64}
+            chatMediaBytes: {type: integer, format: int64}
+            totalBytes: {type: integer, format: int64}
+            clubCount: {type: integer, format: int64}
+            totalUsers: {type: integer, format: int64}
+            activeUsers: {type: integer, format: int64}
+    BlockIpRequest:
+      type: object
+      required: [ipAddress]
+      properties:
+        ipAddress: {type: string, minLength: 1, maxLength: 64}
+        reason: {type: [string, 'null'], maxLength: 300}
+        durationHours: {type: [integer, 'null'], minimum: 0, maximum: 8760}
+    BlockedIp:
+      type: object
+      required: [id, ipAddress, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        ipAddress: {type: string}
+        reason: {type: [string, 'null']}
+        blockedBy: {type: [string, 'null'], format: uuid}
+        blockedByName: {type: [string, 'null']}
+        expiresAt: {type: [string, 'null'], format: date-time}
+        createdAt: {type: string, format: date-time}
     FormFieldDefinition:
       type: object
       required: [key, label, type, required]
@@ -8617,6 +9005,64 @@ components:
         clubId: {type: string, format: uuid}
         departmentId: {type: [string, 'null'], format: uuid}
         recipientCount: {type: integer}
+    CreateNotificationCampaignRequest:
+      type: object
+      required: [title, message, audienceType]
+      properties:
+        title: {type: string, minLength: 1, maxLength: 160}
+        message: {type: string, minLength: 1, maxLength: 2000}
+        audienceType: {type: string, enum: [ALL_USERS, CLUB_LEADERS, CLUBS]}
+        clubIds:
+          type: [array, 'null']
+          items: {type: string, format: uuid}
+        category: {type: [string, 'null'], enum: [SYSTEM, DOCUMENT, ANNOUNCEMENT, null]}
+        documentId: {type: [string, 'null'], format: uuid}
+        sendEmail: {type: [boolean, 'null']}
+    NotificationCampaign:
+      type: object
+      required: [id, title, message, audienceType, targetClubIds, category, sendEmail, totalRecipients, deliveredCount, readCount, emailQueuedCount, status, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        title: {type: string}
+        message: {type: string}
+        audienceType: {type: string}
+        targetClubIds:
+          type: array
+          items: {type: string, format: uuid}
+        category: {type: string}
+        documentId: {type: [string, 'null'], format: uuid}
+        documentTitle: {type: [string, 'null']}
+        sendEmail: {type: boolean}
+        totalRecipients: {type: integer}
+        deliveredCount: {type: integer}
+        readCount: {type: integer, format: int64}
+        emailQueuedCount: {type: integer}
+        status: {type: string}
+        createdBy: {type: [string, 'null'], format: uuid}
+        createdByName: {type: [string, 'null']}
+        createdAt: {type: string, format: date-time}
+    NotificationCampaignPage:
+      type: object
+      required: [items, total, offset, limit]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/NotificationCampaign'}
+        total: {type: integer, format: int64}
+        offset: {type: integer}
+        limit: {type: integer}
+    NotificationAudiencePreview:
+      type: object
+      required: [audienceType, recipientCount]
+      properties:
+        audienceType: {type: string}
+        recipientCount: {type: integer}
+    NotificationCampaignRemindResponse:
+      type: object
+      required: [campaignId, remindedCount]
+      properties:
+        campaignId: {type: string, format: uuid}
+        remindedCount: {type: integer}
     CreateEventRequest:
       type: object
       required: [title, startTime, endTime, registrationDeadline]

@@ -137,3 +137,9 @@ app:
     oauth-redirect-uri: ${FACEBOOK_OAUTH_REDIRECT_URI:http://localhost:8080/api/v1/integrations/facebook/oauth/callback}
     frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:3000}
     auto-sync-poll-ms: ${FACEBOOK_AUTO_SYNC_POLL_MS:300000}
+  telegram:
+    enabled: ${TELEGRAM_ENABLED:false}
+    bot-token: ${TELEGRAM_BOT_TOKEN:}
+    chat-id: ${TELEGRAM_CHAT_ID:}
+    thread-id: ${TELEGRAM_THREAD_ID:}
+    api-base-url: ${TELEGRAM_API_BASE_URL:https://api.telegram.org}

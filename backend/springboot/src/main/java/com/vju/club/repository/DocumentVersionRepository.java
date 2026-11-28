@@ -19,4 +19,7 @@ public interface DocumentVersionRepository extends JpaRepository<DocumentVersion
 
     @Query("SELECT COALESCE(SUM(v.sizeBytes), 0) FROM DocumentVersion v WHERE v.document.id = :documentId")
     long sumSizeBytesByDocumentId(@Param("documentId") UUID documentId);
+
+    @Query("SELECT COALESCE(SUM(v.sizeBytes), 0) FROM DocumentVersion v WHERE v.document.deleted = false")
+    long sumAllLiveSizeBytes();
 }

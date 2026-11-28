@@ -146,4 +146,52 @@ public class SystemSettings extends TimestampedEntity {
 
     @Column(name = "google_create_accounts")
     private Boolean googleCreateAccounts;
+
+    @Column(name = "telegram_enabled", nullable = false)
+    private boolean telegramEnabled = false;
+
+    @Column(name = "telegram_bot_token", length = 512)
+    private String telegramBotToken;
+
+    @Column(name = "telegram_chat_id", length = 128)
+    private String telegramChatId;
+
+    @Column(name = "telegram_thread_id", length = 64)
+    private String telegramThreadId;
+
+    @Column(name = "telegram_alert_on_failed_login", nullable = false)
+    private boolean telegramAlertOnFailedLogin = true;
+
+    @Column(name = "telegram_failed_login_threshold", nullable = false)
+    private int telegramFailedLoginThreshold = 5;
+
+    @Column(name = "telegram_alert_on_rate_limit", nullable = false)
+    private boolean telegramAlertOnRateLimit = true;
+
+    @Column(name = "telegram_alert_on_admin_login", nullable = false)
+    private boolean telegramAlertOnAdminLogin = true;
+
+    @Column(name = "telegram_alert_on_settings_change", nullable = false)
+    private boolean telegramAlertOnSettingsChange = true;
+
+    @Column(name = "telegram_cooldown_seconds", nullable = false)
+    private int telegramCooldownSeconds = 180;
+
+    @Column(name = "maintenance_mode", nullable = false)
+    private boolean maintenanceMode = false;
+
+    @Column(name = "maintenance_message", length = 500)
+    private String maintenanceMessage;
+
+    @Column(name = "announcement_enabled", nullable = false)
+    private boolean announcementEnabled = false;
+
+    @Column(name = "announcement_message", length = 500)
+    private String announcementMessage;
+
+    @Column(name = "announcement_tone", nullable = false, length = 16)
+    private String announcementTone = "info";
+
+    @Column(name = "announcement_expires_at")
+    private java.time.OffsetDateTime announcementExpiresAt;
 }

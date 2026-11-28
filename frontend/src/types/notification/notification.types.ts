@@ -37,3 +37,46 @@ export type ResourceNotificationResult = {
   clubId: string;
   recipientCount: number;
 };
+
+export type NotificationAudienceType = 'ALL_USERS' | 'CLUB_LEADERS' | 'CLUBS';
+export type NotificationCampaignCategory = 'SYSTEM' | 'DOCUMENT' | 'ANNOUNCEMENT';
+
+export type CreateNotificationCampaignInput = {
+  title: string;
+  message: string;
+  audienceType: NotificationAudienceType;
+  clubIds?: string[];
+  category?: NotificationCampaignCategory;
+  documentId?: string | null;
+  sendEmail?: boolean;
+};
+
+export type NotificationCampaign = {
+  id: string;
+  title: string;
+  message: string;
+  audienceType: NotificationAudienceType | string;
+  targetClubIds: string[];
+  category: NotificationCampaignCategory | string;
+  documentId: string | null;
+  documentTitle: string | null;
+  sendEmail: boolean;
+  totalRecipients: number;
+  deliveredCount: number;
+  readCount: number;
+  emailQueuedCount: number;
+  status: string;
+  createdBy: string | null;
+  createdByName: string | null;
+  createdAt: string;
+};
+
+export type NotificationAudiencePreview = {
+  audienceType: string;
+  recipientCount: number;
+};
+
+export type NotificationCampaignRemindResult = {
+  campaignId: string;
+  remindedCount: number;
+};

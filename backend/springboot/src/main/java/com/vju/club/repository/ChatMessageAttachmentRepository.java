@@ -28,5 +28,8 @@ public interface ChatMessageAttachmentRepository extends JpaRepository<ChatMessa
     @Query("SELECT COALESCE(SUM(a.sizeBytes), 0) FROM ChatMessageAttachment a WHERE a.channel.club.id = :clubId")
     long sumSizeBytesByClubId(@Param("clubId") UUID clubId);
 
+    @Query("SELECT COALESCE(SUM(a.sizeBytes), 0) FROM ChatMessageAttachment a")
+    long sumAllSizeBytes();
+
     List<ChatMessageAttachment> findByMessageIsNullAndCreatedAtBefore(OffsetDateTime cutoff);
 }

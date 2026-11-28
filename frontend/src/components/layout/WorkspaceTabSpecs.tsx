@@ -14,6 +14,7 @@ import {
   History,
   Layers,
   LayoutDashboard,
+  Megaphone,
   MessageSquare,
   Settings,
   ShieldCheck,
@@ -61,6 +62,7 @@ export function iconForTab(href: string, tab?: string, tier?: string): ReactNode
   if (href === "/applications") return <ClipboardList size={13.5} />;
   if (href === "/memberships") return <Building2 size={13.5} />;
   if (href === "/documents") return <FileText size={13.5} />;
+  if (href === "/notifications?tab=campaigns" || tab === "campaigns") return <Megaphone size={13.5} />;
   if (href === "/notifications") return <Bell size={13.5} />;
   if (href === "/profile") return <UserCircle size={13.5} />;
   return <Compass size={13.5} />;
@@ -70,6 +72,9 @@ export function resolveTabId(pathname: string, currentTab: string | null, _curre
   void _currentTier;
   if (pathname === "/management") {
     return `mgmt:${currentTab || "clubs"}`;
+  }
+  if (pathname === "/notifications" && currentTab === "campaigns") {
+    return "route:/notifications:campaigns";
   }
   if (pathname === "/documents") {
     return "route:/documents";
