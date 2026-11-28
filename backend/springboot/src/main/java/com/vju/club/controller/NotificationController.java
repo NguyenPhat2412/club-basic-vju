@@ -21,6 +21,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -128,8 +129,8 @@ public class NotificationController {
     @Operation(summary = "Xem trước số lượng người nhận theo nhóm đối tượng")
     public NotificationAudiencePreviewResponse previewAudience(
             Actor actor,
-            @RequestParam String audienceType,
-            @RequestParam(required = false) List<UUID> clubIds) {
+            @RequestParam @Size(max = 32) String audienceType,
+            @RequestParam(required = false) @Size(max = 100) List<UUID> clubIds) {
         return campaignService.previewAudience(actor, audienceType, clubIds);
     }
 

@@ -229,7 +229,7 @@ export function SystemTelegramCard({
             />
           </FormField>
 
-          <FormField label="Ngưỡng sai MK (10p)">
+          <FormField label="Ngưỡng sai MK" required>
             <div className="flex items-center gap-1.5">
               <Input
                 type="number"
@@ -246,13 +246,14 @@ export function SystemTelegramCard({
                     ),
                   })
                 }
+                title="Số lần đăng nhập sai tối đa từ 1 IP trong 10 phút trước khi báo Telegram"
                 className="h-8.5 text-right font-mono text-xs"
               />
-              <span className="shrink-0 text-[11px] text-slate-500">lần / IP</span>
+              <span className="shrink-0 text-[11px] text-slate-500">lần/10p</span>
             </div>
           </FormField>
 
-          <FormField label="Chống spam">
+          <FormField label="Chống spam" required>
             <div className="flex items-center gap-1.5">
               <Input
                 type="number"

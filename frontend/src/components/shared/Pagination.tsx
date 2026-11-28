@@ -38,7 +38,7 @@ export function Pagination({
   };
 
   return (
-    <div className="mt-auto shrink-0 border-t border-border bg-card px-4 py-2 sm:px-6">
+    <div className="mt-auto shrink-0 border-t border-border bg-card px-4 py-2 pr-14 sm:px-6 sm:pr-16">
       <div className="flex flex-wrap items-center justify-between gap-2 px-1 py-1 text-xs text-muted-foreground">
         <div className="flex flex-wrap items-center gap-2">
           <span>

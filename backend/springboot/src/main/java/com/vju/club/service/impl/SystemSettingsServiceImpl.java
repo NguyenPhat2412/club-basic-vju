@@ -2,7 +2,10 @@ package com.vju.club.service.impl;
 
 import com.vju.club.annotation.RequirePermission;
 import com.vju.club.common.SettingConstants;
+import com.vju.club.config.CacheConfig;
 import com.vju.club.config.RuntimeIntegrationConfig;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import com.vju.club.dto.request.TestSmtpEmailRequest;
 import com.vju.club.dto.request.UpdateSystemSettingsRequest;
 import com.vju.club.dto.response.PublicSystemStatusResponse;
@@ -64,6 +67,7 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheConfig.CACHE_PUBLIC_SYSTEM_STATUS, key = "'singleton'")
     public PublicSystemStatusResponse publicStatus() {
         SystemSettings s = find();
         java.time.OffsetDateTime now = java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC);
@@ -90,6 +94,7 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
     @Override
     @Transactional
     @RequirePermission(SettingConstants.PERMISSION_UPDATE)
+    @CacheEvict(value = CacheConfig.CACHE_PUBLIC_SYSTEM_STATUS, allEntries = true)
     public SystemSettingsResponse update(Actor actor, UpdateSystemSettingsRequest request) {
         SystemSettings settings = find();
         Map<String, Object> before = values(settings);

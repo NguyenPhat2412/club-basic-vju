@@ -35,7 +35,7 @@ class AiTranslationServiceImplTest {
     }
 
     @Test
-    void getCatalogFiltersOutDisallowedPbTagsAndTelegramReferences() {
+    void getCatalogFiltersOutDisallowedPbTagsWhileAllowingOfficialTelegramLabels() {
         when(repository.findByTargetLocale("en")).thenReturn(List.of(
                 entry("en", "THÀNH VIÊN VJU", "VJU MEMBER"),
                 entry("en", "THÀNH VIÊN VJU (PB-03)", "VJU MEMBER (PB-03)"),
@@ -47,33 +47,31 @@ class AiTranslationServiceImplTest {
 
         assertThat(catalog)
                 .containsEntry("THÀNH VIÊN VJU", "VJU MEMBER")
-                .doesNotContainKey("THÀNH VIÊN VJU (PB-03)")
-                .doesNotContainKey("Thông báo Telegram");
+                .containsEntry("Thông báo Telegram", "Telegram notification")
+                .doesNotContainKey("THÀNH VIÊN VJU (PB-03)");
     }
 
     @Test
-    void translateBatchSkipsDisallowedFullWidthPbTagsAndTelegramFromDbAndInput() {
+    void translateBatchSkipsDisallowedFullWidthPbTagsFromDbAndInput() {
         when(repository.findByTargetLocale("ja")).thenReturn(List.of(
                 entry("ja", "Cài đặt", "設定"),
                 entry("ja", "Nhãn cũ", "古いラベル（PB-03）")
         ));
         when(repository.findByTargetLocaleAndSourceHashIn(eq("ja"), any())).thenReturn(List.of(
-                entry("ja", "Kênh ngoài", "Telegram channel")
+                entry("ja", "Kênh cũ", "古いチャンネル（PB-99）")
         ));
 
         AiTranslationServiceImpl service = new AiTranslationServiceImpl(repository, new AiProperties());
         TranslateBatchResponse response = service.translateBatch("ja", List.of(
                 "Cài đặt",
                 "THÀNH VIÊN VJU (PB-03)",
-                "Telegram bot",
-                "Kênh ngoài"
+                "Kênh cũ"
         ));
 
         assertThat(response.translations())
                 .containsEntry("Cài đặt", "設定")
                 .doesNotContainKey("THÀNH VIÊN VJU (PB-03)")
-                .doesNotContainKey("Telegram bot")
-                .doesNotContainKey("Kênh ngoài");
+                .doesNotContainKey("Kênh cũ");
         assertThat(service.getCatalog("ja")).doesNotContainKey("Nhãn cũ");
         verify(repository, never()).save(any());
     }

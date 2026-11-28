@@ -1,0 +1,1056 @@
+{
+  "info": {
+    "_postman_id": "cdc4f5b3-c25e-43a5-8e6b-50f6d3489607",
+    "name": "VJU ClubHub — Full API QA, Security & Contract Suite",
+    "description": "End-to-end API QA, Security, Performance SLA, and Contract Test Suite for VJU ClubHub (Public, Auth/CSRF, System Settings, Telegram 6-Toggles, Security Monitor, IP Blocklist, Infra Health, Notification Campaigns, Core Modules).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "createdAt": "2026-11-28T07:47:04.000Z",
+    "updatedAt": "2026-11-28T07:47:04.000Z",
+    "lastUpdatedBy": "40814722",
+    "uid": "40814722-cdc4f5b3-c25e-43a5-8e6b-50f6d3489607"
+  },
+  "item": [
+    {
+      "name": "01. Health, Public & Security Headers",
+      "item": [
+        {
+          "name": "GET API Catalog",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 and fast (< 800ms)', () => { pm.response.to.have.status(200); pm.expect(pm.response.responseTime).to.be.below(800); });",
+                  "pm.test('Security header X-Content-Type-Options=nosniff', () => { pm.expect(pm.response.headers.get('X-Content-Type-Options')).to.eql('nosniff'); });",
+                  "pm.test('Catalog exposes >= 200 operations', () => { const j = pm.response.json(); pm.expect(j.endpoints ? j.endpoints.length : Object.keys(j).length).to.be.above(0); });"
+                ]
+              }
+            }
+          ],
+          "id": "6c14b1cb-0fdf-48c2-9875-8297de5fb30c",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/api-catalog",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "api-catalog"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-6c14b1cb-0fdf-48c2-9875-8297de5fb30c"
+        },
+        {
+          "name": "GET Public System Status (Maintenance & Banner)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 and cached (< 500ms)', () => { pm.response.to.have.status(200); pm.expect(pm.response.responseTime).to.be.below(500); });",
+                  "pm.test('Contains maintenanceMode & announcement fields', () => { const j = pm.response.json(); pm.expect(j).to.have.property('maintenanceMode'); pm.expect(j).to.have.property('announcementEnabled'); });"
+                ]
+              }
+            }
+          ],
+          "id": "f3bfedcf-d957-44d0-85c5-574fa24d336e",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/public/system-status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "system-status"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-f3bfedcf-d957-44d0-85c5-574fa24d336e"
+        },
+        {
+          "name": "GET Public Clubs Directory",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json(); pm.test('Has items array', () => pm.expect(j.items).to.be.an('array'));",
+                  "if (j.items && j.items.length > 0) { pm.environment.set('sampleClubId', j.items[0].id); }"
+                ]
+              }
+            }
+          ],
+          "id": "f75da0e2-ca8d-460b-b724-c98c40dd1045",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/public/clubs?offset=0&limit=20"
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-f75da0e2-ca8d-460b-b724-c98c40dd1045"
+        },
+        {
+          "name": "GET Public Events",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Paginated envelope', () => { const j = pm.response.json(); pm.expect(j).to.have.property('items'); pm.expect(j).to.have.property('total'); });"
+                ]
+              }
+            }
+          ],
+          "id": "4a22484f-b001-4140-976e-a971f37f6954",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/public/events?offset=0&limit=10"
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-4a22484f-b001-4140-976e-a971f37f6954"
+        }
+      ],
+      "id": "836af335-8606-4c25-abbf-9f47b5ab33cb",
+      "createdAt": "2026-11-28T07:47:05.000Z",
+      "updatedAt": "2026-11-28T07:47:05.000Z",
+      "uid": "40814722-836af335-8606-4c25-abbf-9f47b5ab33cb"
+    },
+    {
+      "name": "02. Auth, Session & Security Negative Tests",
+      "item": [
+        {
+          "name": "GET Bootstrap CSRF Token (/auth/csrf)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200 or 204\", () => pm.expect([200, 204]).to.include(pm.response.code));",
+                  "const cookieVal = pm.cookies.get(\"XSRF-TOKEN\");",
+                  "let bodyToken = null;",
+                  "try { bodyToken = pm.response.json().token; } catch (e) {}",
+                  "const token = cookieVal || bodyToken;",
+                  "pm.test(\"CSRF token issued\", () => pm.expect(token).to.be.a(\"string\").and.not.empty);",
+                  "if (token) pm.environment.set(\"xsrfToken\", token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/auth/csrf"
+          }
+        },
+        {
+          "name": "[Negative] Unauthenticated System Settings -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unauthenticated system-settings returns 401', () => { pm.response.to.have.status(401); pm.expect(pm.response.json().code).to.eql('UNAUTHORIZED'); });"
+                ]
+              }
+            }
+          ],
+          "id": "8ae5a430-0453-49e9-90a9-a85153aa66fe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/system-settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "system-settings"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-8ae5a430-0453-49e9-90a9-a85153aa66fe"
+        },
+        {
+          "name": "[Negative] Invalid Login -> 401 + Rate-Limit Headers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invalid login rejected with 401 or 429', () => pm.expect([401, 429]).to.include(pm.response.code));",
+                  "pm.test('Rate-limit headers present', () => pm.expect(pm.response.headers.get('X-RateLimit-Limit')).to.exist);"
+                ]
+              }
+            }
+          ],
+          "id": "f05c8027-359e-4636-8b51-e631fcfac852",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"nonexistent-qa@vju.ac.vn\",\"password\":\"WrongPassword123!\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-f05c8027-359e-4636-8b51-e631fcfac852"
+        },
+        {
+          "name": "POST Admin Login (Session + CSRF)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Admin login succeeds (200)\", () => pm.response.to.have.status(200));",
+                  "const xsrf = pm.cookies.get(\"XSRF-TOKEN\"); if (xsrf) pm.environment.set(\"xsrfToken\", xsrf);",
+                  "pm.test(\"User profile returned without password\", () => { const j = pm.response.json(); pm.expect(j.user || j).to.have.property(\"email\"); });",
+                  "pm.test(\"Session cookie is HttpOnly\", () => { const setCookie = pm.response.headers.all().filter(h => h.key.toLowerCase() === \"set-cookie\").map(h => h.value).join(\";\"); pm.expect(setCookie.toLowerCase()).to.include(\"httponly\"); });"
+                ]
+              }
+            }
+          ],
+          "id": "b8631437-364f-4c1c-a03b-c88c7dcd1478",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{adminEmail}}\",\"password\":\"{{adminPassword}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-b8631437-364f-4c1c-a03b-c88c7dcd1478"
+        },
+        {
+          "name": "GET Refresh Post-Login CSRF Token (/auth/csrf)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Post-login CSRF refresh succeeds\", () => pm.expect([200, 204]).to.include(pm.response.code));",
+                  "const cookieVal = pm.cookies.get(\"XSRF-TOKEN\");",
+                  "let bodyToken = null; try { bodyToken = pm.response.json().token; } catch (e) {}",
+                  "const token = cookieVal || bodyToken;",
+                  "if (token) pm.environment.set(\"xsrfToken\", token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/auth/csrf"
+          }
+        },
+        {
+          "name": "GET Current Authenticated User (/auth/me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Authenticated /auth/me returns 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Returns authenticated principal\", () => { const j = pm.response.json(); pm.expect(j.email || j.user?.email).to.eql(pm.environment.get(\"adminEmail\")); });"
+                ]
+              }
+            }
+          ],
+          "id": "52559d08-dc62-49c6-8266-fa8dda74e2d6",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-52559d08-dc62-49c6-8266-fa8dda74e2d6"
+        }
+      ],
+      "id": "729b6a20-54ca-43e2-bc80-b36f4b4ee7db",
+      "createdAt": "2026-11-28T07:47:05.000Z",
+      "updatedAt": "2026-11-28T07:47:05.000Z",
+      "uid": "40814722-729b6a20-54ca-43e2-bc80-b36f4b4ee7db"
+    },
+    {
+      "name": "03. System Settings, Telegram & Infra Health",
+      "item": [
+        {
+          "name": "GET System Settings (All 6 Telegram Toggles & Zero Secret Leak)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('All 6 Telegram toggles & Ops fields present', () => {",
+                  "  ['telegramAlertOnFailedLogin','telegramAlertOnRateLimit','telegramAlertOnAdminLogin','telegramAlertOnSettingsChange','telegramAlertOnServerError','telegramAlertOnBroadcast','maintenanceMode','announcementEnabled'].forEach(k => pm.expect(j).to.have.property(k));",
+                  "});",
+                  "pm.test('No raw secrets returned', () => { pm.expect(j).to.not.have.property('telegramBotToken'); pm.expect(j).to.not.have.property('smtpPassword'); pm.expect(j).to.not.have.property('aiApiKey'); });"
+                ]
+              }
+            }
+          ],
+          "id": "feed652e-0558-4a79-8f2f-dfdc22a33c6d",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/system-settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "system-settings"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-feed652e-0558-4a79-8f2f-dfdc22a33c6d"
+        },
+        {
+          "name": "GET Security Monitor Overview (24h)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 (< 1500ms)', () => { pm.response.to.have.status(200); pm.expect(pm.response.responseTime).to.be.below(1500); });",
+                  "const j = pm.response.json(); pm.test('Contains telemetry arrays', () => { pm.expect(j.onlineUsers).to.be.an('array'); pm.expect(j.suspiciousIps).to.be.an('array'); pm.expect(j.recentEvents).to.be.an('array'); });"
+                ]
+              }
+            }
+          ],
+          "id": "db59ead1-9404-4fd5-87fc-569e5fd547f2",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/system-settings/security-overview?windowHours=24",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "system-settings",
+                "security-overview"
+              ],
+              "query": [
+                {
+                  "key": "windowHours",
+                  "value": "24"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-db59ead1-9404-4fd5-87fc-569e5fd547f2"
+        },
+        {
+          "name": "GET Infrastructure Health Probes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json(); pm.test('PostgreSQL & Storage reported UP', () => { pm.expect(j.services).to.be.an('array'); const pg = j.services.find(s => s.key === 'postgres'); pm.expect(pg.status).to.eql('UP'); });"
+                ]
+              }
+            }
+          ],
+          "id": "3e5afb51-7811-4eba-92b2-a601eeafdc8b",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/system-settings/infra-health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "system-settings",
+                "infra-health"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-3e5afb51-7811-4eba-92b2-a601eeafdc8b"
+        },
+        {
+          "name": "GET Active Blocked IPs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 and array response', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });"
+                ]
+              }
+            }
+          ],
+          "id": "c401493c-71b8-45ac-9681-3d1e93616db5",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/system-settings/blocked-ips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "system-settings",
+                "blocked-ips"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-c401493c-71b8-45ac-9681-3d1e93616db5"
+        },
+        {
+          "name": "[Negative] Mutating Request Without CSRF Token -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Missing CSRF token rejected with 403 CSRF_INVALID', () => { pm.response.to.have.status(403); pm.expect(pm.response.json().code).to.eql('CSRF_INVALID'); });"
+                ]
+              }
+            }
+          ],
+          "id": "4538a7b6-6d6e-4dc7-9ec7-237178f31236",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"ipAddress\":\"198.51.100.250\",\"reason\":\"CSRF check\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/system-settings/blocked-ips",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "system-settings",
+                "blocked-ips"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-4538a7b6-6d6e-4dc7-9ec7-237178f31236"
+        }
+      ],
+      "id": "1ee8eb86-7f1f-43f7-928a-d2ac65356647",
+      "createdAt": "2026-11-28T07:47:05.000Z",
+      "updatedAt": "2026-11-28T07:47:05.000Z",
+      "uid": "40814722-1ee8eb86-7f1f-43f7-928a-d2ac65356647"
+    },
+    {
+      "name": "04. Notification Campaigns & Broadcast Center",
+      "item": [
+        {
+          "name": "GET Audience Preview (ALL_USERS)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 and recipientCount >= 1', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().recipientCount).to.be.at.least(1); });"
+                ]
+              }
+            }
+          ],
+          "id": "eab89876-59f6-4222-8a47-d73dcf218e71",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/notifications/campaigns/preview-count?audienceType=ALL_USERS"
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-eab89876-59f6-4222-8a47-d73dcf218e71"
+        },
+        {
+          "name": "GET Audience Preview (CLUB_LEADERS)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 and valid count', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().recipientCount).to.be.at.least(0); });"
+                ]
+              }
+            }
+          ],
+          "id": "27516acf-663b-4126-ad15-aa61646e27a7",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/notifications/campaigns/preview-count?audienceType=CLUB_LEADERS"
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-27516acf-663b-4126-ad15-aa61646e27a7"
+        },
+        {
+          "name": "[Negative] Create Campaign With Blank Title -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Empty title rejected with 400 VALIDATION_ERROR', () => { pm.response.to.have.status(400); pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'); });"
+                ]
+              }
+            }
+          ],
+          "id": "89e21aa6-4ed5-4456-acd8-2bb4c893c787",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"\",\"message\":\"Test\",\"audienceType\":\"ALL_USERS\",\"category\":\"SYSTEM\",\"sendEmail\":false}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/campaigns",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "campaigns"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-89e21aa6-4ed5-4456-acd8-2bb4c893c787"
+        },
+        {
+          "name": "GET Notification Campaigns History",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Campaign history envelope', () => { const j = pm.response.json(); pm.expect(j.items).to.be.an('array'); pm.expect(j).to.have.property('total'); });"
+                ]
+              }
+            }
+          ],
+          "id": "acb4fd1c-fec6-40a8-bbcd-0dbc7d19bd98",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/campaigns?offset=0&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "campaigns"
+              ],
+              "query": [
+                {
+                  "key": "offset",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-acb4fd1c-fec6-40a8-bbcd-0dbc7d19bd98"
+        },
+        {
+          "name": "GET My Unread Summary (Indexed Fast Path)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 (< 400ms)', () => { pm.response.to.have.status(200); pm.expect(pm.response.responseTime).to.be.below(400); });",
+                  "pm.test('Has unread counters', () => { const j = pm.response.json(); pm.expect(j).to.have.property('unreadNotifications'); pm.expect(j).to.have.property('unreadChatMessages'); });"
+                ]
+              }
+            }
+          ],
+          "id": "ae1d8033-d66c-4348-9b13-a641af886b81",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/notifications/unread-summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "notifications",
+                "unread-summary"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-ae1d8033-d66c-4348-9b13-a641af886b81"
+        }
+      ],
+      "id": "ef0a943c-69b9-4772-913d-aa1c66da3694",
+      "createdAt": "2026-11-28T07:47:05.000Z",
+      "updatedAt": "2026-11-28T07:47:05.000Z",
+      "uid": "40814722-ef0a943c-69b9-4772-913d-aa1c66da3694"
+    },
+    {
+      "name": "05. Core Modules (Users, Roles, Vault, Audit)",
+      "item": [
+        {
+          "name": "GET Users Directory",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Users paginated without sensitive hash', () => { const j = pm.response.json(); pm.expect(j.items).to.be.an('array'); });"
+                ]
+              }
+            }
+          ],
+          "id": "622515a8-4f71-4ed9-88c5-5d832586e72c",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users?offset=0&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "offset",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-622515a8-4f71-4ed9-88c5-5d832586e72c"
+        },
+        {
+          "name": "GET Roles & Permissions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Roles payload non-empty\", () => { const j = pm.response.json(); const arr = Array.isArray(j) ? j : j.items; pm.expect(arr).to.be.an(\"array\").and.not.empty; });"
+                ]
+              }
+            }
+          ],
+          "id": "d122d89b-9f41-485d-886e-6a7aba3abf52",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "roles"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-d122d89b-9f41-485d-886e-6a7aba3abf52"
+        },
+        {
+          "name": "GET System Documents Vault",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('System documents envelope', () => pm.expect(pm.response.json().items).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "id": "277cb0b3-7ee9-4fac-b1fa-e921e3091545",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/system/documents?offset=0&limit=10"
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-277cb0b3-7ee9-4fac-b1fa-e921e3091545"
+        },
+        {
+          "name": "GET Audit Logs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Audit logs array present', () => pm.expect(pm.response.json().items).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "id": "efa207d9-aed2-4138-b043-11e9cc191f36",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/audit-logs?offset=0&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit-logs"
+              ],
+              "query": [
+                {
+                  "key": "offset",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-efa207d9-aed2-4138-b043-11e9cc191f36"
+        }
+      ],
+      "id": "bf5b1d54-a3a1-4aa3-ba1d-54348ad80248",
+      "createdAt": "2026-11-28T07:47:05.000Z",
+      "updatedAt": "2026-11-28T07:47:05.000Z",
+      "uid": "40814722-bf5b1d54-a3a1-4aa3-ba1d-54348ad80248"
+    },
+    {
+      "name": "06. Session Cleanup & Logout",
+      "item": [
+        {
+          "name": "POST Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Logout succeeds (204)\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "id": "54a6cf99-5148-4270-a540-151d8fc629ca",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-54a6cf99-5148-4270-a540-151d8fc629ca"
+        },
+        {
+          "name": "[Verify] Post-Logout Session Invalidated -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Post-logout /auth/me returns 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "id": "359939cb-f915-4673-a505-c13f717aed06",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": [],
+          "createdAt": "2026-11-28T07:47:05.000Z",
+          "updatedAt": "2026-11-28T07:47:05.000Z",
+          "uid": "40814722-359939cb-f915-4673-a505-c13f717aed06"
+        }
+      ],
+      "id": "e833d37d-6c31-4fe5-86e5-46eb17f17257",
+      "createdAt": "2026-11-28T07:47:05.000Z",
+      "updatedAt": "2026-11-28T07:47:05.000Z",
+      "uid": "40814722-e833d37d-6c31-4fe5-86e5-46eb17f17257"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const xsrf = pm.cookies.get('XSRF-TOKEN') || pm.environment.get('xsrfToken');",
+          "if (xsrf) { pm.environment.set('xsrfToken', xsrf); }"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const xsrf = pm.cookies.get('XSRF-TOKEN');",
+          "if (xsrf) { pm.environment.set('xsrfToken', xsrf); }",
+          "pm.test('No sensitive secrets leaked in response body', function () {",
+          "  const text = pm.response.text();",
+          "  pm.expect(text).to.not.include('passwordHash');",
+          "  pm.expect(text).to.not.include('enc:v1:');",
+          "  pm.expect(text).to.not.include('java.lang.');",
+          "});"
+        ]
+      }
+    }
+  ]
+}

@@ -69,10 +69,12 @@ public final class RequestMetadataExtractor {
     }
 
     private static String firstValidHeaderIp(String cfConnectingIp, String realIp, String forwardedFor) {
-        String cf = sanitizeIp(cfConnectingIp);
-        if (cf != null) return cf;
+        // Prefer X-Real-IP (authoritatively set by Nginx $remote_addr after Cloudflare CIDR verification)
+        // over raw CF-Connecting-IP so direct clients cannot spoof Cloudflare headers.
         String real = sanitizeIp(realIp);
         if (real != null) return real;
+        String cf = sanitizeIp(cfConnectingIp);
+        if (cf != null) return cf;
         if (forwardedFor != null && !forwardedFor.isBlank()) {
             for (String hop : forwardedFor.split(",")) {
                 String candidate = sanitizeIp(hop);

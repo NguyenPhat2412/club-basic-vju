@@ -10,7 +10,7 @@ public record CreateNotificationCampaignRequest(
         @NotBlank @Size(max = 160) String title,
         @NotBlank @Size(max = 2000) String message,
         @NotBlank @Size(max = 32) String audienceType,
-        List<UUID> clubIds,
+        @Size(max = 100) List<UUID> clubIds,
         @Size(max = 32) String category,
         UUID documentId,
         Boolean sendEmail) {

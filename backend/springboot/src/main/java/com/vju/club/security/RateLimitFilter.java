@@ -42,8 +42,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
             HttpServletRequest request,
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
-        RequestMetadataExtractor.Metadata meta = RequestMetadataExtractor.extract(request);
-        if (isIpBlocked(meta.ipAddress())) {
+        // Use request.getRemoteAddr() for security decisions (IP blocklist & rate limits):
+        // Tomcat/Spring ForwardedHeaderFilter + Nginx real_ip_module already resolve real IP
+        // ONLY from trusted proxies, preventing clients from spoofing X-Forwarded-For / CF-Connecting-IP.
+        String clientIp = request.getRemoteAddr();
+        String userAgent = request.getHeader("User-Agent");
+        RequestMetadataExtractor.Metadata meta = new RequestMetadataExtractor.Metadata(clientIp, userAgent);
+        if (isIpBlocked(clientIp)) {
             ProblemResponses.write(response, HttpServletResponse.SC_FORBIDDEN, "IP_BLOCKED",
                     "Your IP address has been temporarily blocked by the system administrator");
             return;
@@ -51,8 +56,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         if (isPublicRateLimitedEndpoint(request)) {
             String route = request.getRequestURI();
-            String remoteAddress = meta.ipAddress();
-            String key = route + ":" + (remoteAddress == null || remoteAddress.isBlank() ? "unknown" : remoteAddress);
+            String key = route + ":" + (clientIp == null || clientIp.isBlank() ? "unknown" : clientIp);
             RateLimitDecision decision = rateLimitService.check(key);
             if (!applyDecision(response, rateLimitService.limit(), decision, "Too many requests")) {
                 recordRateLimit(route, meta, null);

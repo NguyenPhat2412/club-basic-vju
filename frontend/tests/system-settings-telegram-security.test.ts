@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 import {
   createSystemSettingsDraft,
@@ -6,7 +8,7 @@ import {
   toSystemSettingsPayload,
 } from '@/forms/settings/settings-form';
 import { translateUiText } from '@/i18n/translator';
-import { ACTION_LABELS, RESOURCE_LABELS } from '@/utils/audit/audit-meta';
+import { ACTION_LABELS, formatAuditAction, RESOURCE_LABELS } from '@/utils/audit/audit-meta';
 import type { SystemSettings } from '@/types/settings/settings.types';
 
 function sampleSettings(): SystemSettings {
@@ -136,4 +138,36 @@ test('Telegram settings and Security Monitor UI phrases translate completely to 
   assert.equal(ACTION_LABELS.USER_LOGIN_FAILED, 'Đăng nhập thất bại');
   assert.equal(ACTION_LABELS.SECURITY_RATE_LIMIT_BLOCKED, 'Chặn vượt ngưỡng (429)');
   assert.equal(ACTION_LABELS.USER_SESSION_TERMINATED, 'Ngắt phiên hoạt động');
+  assert.equal(ACTION_LABELS.NOTIFICATION_BROADCASTED, 'Phát thông báo hàng loạt');
+});
+
+test('every backend AuditAction enum maps to a localized label, Pagination clears FAB, HSTS & Postman suite exist', () => {
+  const repoRoot = path.resolve(process.cwd(), '..');
+  const auditEnumSrc = fs.readFileSync(
+    path.join(repoRoot, 'backend/springboot/src/main/java/com/vju/club/enums/AuditAction.java'),
+    'utf8',
+  );
+  const enumActions = [...auditEnumSrc.matchAll(/^\s+([A-Z][A-Z0-9_]+)\(ResourceType\./gm)].map((m) => m[1]);
+  assert.ok(enumActions.length >= 60, `Expected >= 60 AuditAction values, got ${enumActions.length}`);
+  for (const action of enumActions) {
+    const label = formatAuditAction(action);
+    assert.notEqual(label, action, `AuditAction ${action} fell back to raw enum code`);
+  }
+
+  const paginationSrc = fs.readFileSync(
+    path.join(process.cwd(), 'src/components/shared/Pagination.tsx'),
+    'utf8',
+  );
+  assert.ok(paginationSrc.includes('pr-14'), 'Pagination must reserve right padding for floating chat FAB');
+
+  const nextConfigSrc = fs.readFileSync(path.join(process.cwd(), 'next.config.ts'), 'utf8');
+  assert.ok(nextConfigSrc.includes('Strict-Transport-Security'), 'next.config.ts must emit HSTS in production');
+
+  const postmanRaw = fs.readFileSync(
+    path.join(repoRoot, 'docs/api/postman/vju-clubhub.postman_collection.json'),
+    'utf8',
+  );
+  const postmanJson = JSON.parse(postmanRaw);
+  assert.equal(postmanJson.item.length, 6, 'Postman collection must have 6 structured folders');
+  assert.equal(postmanRaw.includes('Admin123@'), false, 'Postman collection must never hardcode admin passwords');
 });

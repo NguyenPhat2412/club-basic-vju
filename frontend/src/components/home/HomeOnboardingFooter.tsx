@@ -328,7 +328,7 @@ export function HomeOnboardingFooter({ user, openAuthModal }: HomeOnboardingFoot
               className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
               href="https://vju.ac.vn"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
             >
               <span>{m.footer.officialSiteLabel}</span>
               <ArrowRight size={13} />

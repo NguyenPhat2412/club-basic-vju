@@ -70,11 +70,22 @@ class RateLimitFilterTest {
 
         MockHttpServletRequest request = request("/api/v1/auth/login", "10.0.0.1", "POST");
         request.addHeader("X-Forwarded-For", "10.0.0.2");
+        request.addHeader("CF-Connecting-IP", "198.51.100.77");
         MockHttpServletResponse first = invoke(filter, request);
         MockHttpServletResponse second = invoke(filter, request("/api/v1/auth/login", "10.0.0.1", "POST"));
 
         assertThat(first.getStatus()).isEqualTo(200);
         assertThat(second.getStatus()).isEqualTo(429);
+    }
+
+    @Test
+    void requestMetadataExtractorPrefersAuthoritativeXRealIpOverSpoofedCfHeader() {
+        MockHttpServletRequest req = request("/api/v1/auth/login", "127.0.0.1", "POST");
+        req.addHeader("X-Real-IP", "203.0.113.10");
+        req.addHeader("CF-Connecting-IP", "198.51.100.99");
+
+        RequestMetadataExtractor.Metadata meta = RequestMetadataExtractor.extract(req);
+        assertThat(meta.ipAddress()).isEqualTo("203.0.113.10");
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.vju.club.dto.response;
 
+import java.io.Serializable;
 import java.time.OffsetDateTime;
 
 public record PublicSystemStatusResponse(
@@ -8,5 +9,5 @@ public record PublicSystemStatusResponse(
         boolean announcementEnabled,
         String announcementMessage,
         String announcementTone,
-        OffsetDateTime announcementExpiresAt) {
+        OffsetDateTime announcementExpiresAt) implements Serializable {
 }

@@ -25,6 +25,7 @@ public class CacheConfig implements CachingConfigurer {
     public static final String CACHE_PUBLIC_CLUBS = "public-clubs";
     public static final String CACHE_PUBLIC_CLUB_DETAIL = "public-club-detail";
     public static final String CACHE_PUBLIC_EVENTS = "public-events";
+    public static final String CACHE_PUBLIC_SYSTEM_STATUS = "public-system-status";
 
     @Bean
     public CacheManager cacheManager(
@@ -43,7 +44,8 @@ public class CacheConfig implements CachingConfigurer {
         return new ConcurrentMapCacheManager(
                 CACHE_PUBLIC_CLUBS,
                 CACHE_PUBLIC_CLUB_DETAIL,
-                CACHE_PUBLIC_EVENTS
+                CACHE_PUBLIC_EVENTS,
+                CACHE_PUBLIC_SYSTEM_STATUS
         );
     }
 
