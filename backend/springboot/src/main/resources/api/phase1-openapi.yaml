@@ -5756,6 +5756,7 @@ paths:
                 type: array
                 items: {$ref: '#/components/schemas/MyChatChannel'}
         '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
   /clubs/{clubId}/channels:
     post:
       operationId: chat.createChannel
